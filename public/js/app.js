@@ -1038,36 +1038,118 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Edit a link
   async function editLink(linkId, currentWeight, currentDescription) {
-    const weight = prompt('Enter new weight:', currentWeight);
-    if (weight === null) return;
+    // Create edit link modal
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
     
-    const description = prompt('Enter new description:', currentDescription || '');
-    if (description === null) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
     
-    try {
-      const response = await fetch(`/api/links/${linkId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          weight: parseFloat(weight),
-          description
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(errorData.error || 'Error updating link');
-        return;
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = 'Edit Link';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', () => {
+      document.body.removeChild(modalOverlay);
+    });
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    
+    // Weight input
+    const weightLabel = document.createElement('label');
+    weightLabel.textContent = 'Link Weight:';
+    modalBody.appendChild(weightLabel);
+    
+    const weightInput = document.createElement('input');
+    weightInput.type = 'number';
+    weightInput.min = '0';
+    weightInput.step = '0.1';
+    weightInput.value = currentWeight;
+    weightInput.className = 'weight-input';
+    modalBody.appendChild(weightInput);
+    
+    // Description input
+    const descriptionLabel = document.createElement('label');
+    descriptionLabel.textContent = 'Description:';
+    modalBody.appendChild(descriptionLabel);
+    
+    const descriptionInput = document.createElement('textarea');
+    descriptionInput.className = 'description-input';
+    descriptionInput.value = currentDescription || '';
+    modalBody.appendChild(descriptionInput);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'btn btn-secondary';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', () => {
+      document.body.removeChild(modalOverlay);
+    });
+    
+    const saveButton = document.createElement('button');
+    saveButton.className = 'btn btn-primary';
+    saveButton.textContent = 'Save';
+    saveButton.addEventListener('click', async () => {
+      try {
+        const response = await fetch(`/api/links/${linkId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            weight: parseFloat(weightInput.value),
+            description: descriptionInput.value
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          alert(errorData.error || 'Error updating link');
+          return;
+        }
+        
+        // Refresh links
+        await fetchNodeLinks(currentModalNodeId);
+        
+        // Close modal
+        document.body.removeChild(modalOverlay);
+      } catch (error) {
+        console.error('Error updating link:', error);
+        alert('Error updating link');
       }
-      
-      // Refresh links
-      await fetchNodeLinks(currentModalNodeId);
-    } catch (error) {
-      console.error('Error updating link:', error);
-      alert('Error updating link');
-    }
+    });
+    
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(saveButton);
+    
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
+    
+    // Add to document
+    document.body.appendChild(modalOverlay);
+    
+    // Focus the weight input
+    setTimeout(() => {
+      weightInput.focus();
+    }, 100);
   }
   
   // Delete a link
