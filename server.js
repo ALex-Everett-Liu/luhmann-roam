@@ -125,6 +125,9 @@ app.delete('/api/nodes/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Start a transaction
+    await db.run('BEGIN TRANSACTION');
+    
     // First delete all children recursively
     const deleteChildren = async (nodeId) => {
       const children = await db.all('SELECT id FROM nodes WHERE parent_id = ?', nodeId);
@@ -138,12 +141,19 @@ app.delete('/api/nodes/:id', async (req, res) => {
         fs.unlinkSync(filePath);
       }
       
+      // Delete links associated with this node
+      await db.run('DELETE FROM links WHERE from_node_id = ? OR to_node_id = ?', [nodeId, nodeId]);
+      
+      // Delete the node
       await db.run('DELETE FROM nodes WHERE id = ?', nodeId);
     };
     
     await deleteChildren(id);
+    
+    await db.run('COMMIT');
     res.status(204).send();
   } catch (error) {
+    await db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });
@@ -571,6 +581,123 @@ app.post('/api/nodes/:id/move-down', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     await db.run('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all links for a node (both incoming and outgoing)
+app.get('/api/nodes/:id/links', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get outgoing links (from this node to others)
+    const outgoingLinks = await db.all(
+      'SELECT l.*, n.content, n.content_zh FROM links l JOIN nodes n ON l.to_node_id = n.id WHERE l.from_node_id = ?',
+      id
+    );
+    
+    // Get incoming links (from others to this node)
+    const incomingLinks = await db.all(
+      'SELECT l.*, n.content, n.content_zh FROM links l JOIN nodes n ON l.from_node_id = n.id WHERE l.to_node_id = ?',
+      id
+    );
+    
+    res.json({
+      outgoing: outgoingLinks,
+      incoming: incomingLinks
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new link
+app.post('/api/links', async (req, res) => {
+  try {
+    const { from_node_id, to_node_id, weight, description } = req.body;
+    
+    // Validate that both nodes exist
+    const fromNode = await db.get('SELECT id FROM nodes WHERE id = ?', from_node_id);
+    const toNode = await db.get('SELECT id FROM nodes WHERE id = ?', to_node_id);
+    
+    if (!fromNode || !toNode) {
+      return res.status(400).json({ error: 'One or both nodes do not exist' });
+    }
+    
+    // Check if link already exists
+    const existingLink = await db.get(
+      'SELECT id FROM links WHERE from_node_id = ? AND to_node_id = ?',
+      [from_node_id, to_node_id]
+    );
+    
+    if (existingLink) {
+      return res.status(400).json({ error: 'Link already exists between these nodes' });
+    }
+    
+    const now = Date.now();
+    const id = uuidv4();
+    
+    await db.run(
+      'INSERT INTO links (id, from_node_id, to_node_id, weight, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, from_node_id, to_node_id, weight || 1.0, description || '', now, now]
+    );
+    
+    const link = await db.get('SELECT * FROM links WHERE id = ?', id);
+    res.status(201).json(link);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a link
+app.put('/api/links/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { weight, description } = req.body;
+    const now = Date.now();
+    
+    let query = 'UPDATE links SET updated_at = ?';
+    const params = [now];
+    
+    if (weight !== undefined) {
+      query += ', weight = ?';
+      params.push(weight);
+    }
+    
+    if (description !== undefined) {
+      query += ', description = ?';
+      params.push(description);
+    }
+    
+    query += ' WHERE id = ?';
+    params.push(id);
+    
+    await db.run(query, params);
+    const link = await db.get('SELECT * FROM links WHERE id = ?', id);
+    
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+    
+    res.json(link);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a link
+app.delete('/api/links/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const link = await db.get('SELECT * FROM links WHERE id = ?', id);
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+    
+    await db.run('DELETE FROM links WHERE id = ?', id);
+    res.status(204).send();
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

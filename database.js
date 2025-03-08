@@ -30,6 +30,21 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create links table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS links (
+      id TEXT PRIMARY KEY,
+      from_node_id TEXT NOT NULL,
+      to_node_id TEXT NOT NULL,
+      weight REAL DEFAULT 1.0,
+      description TEXT,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY (from_node_id) REFERENCES nodes (id) ON DELETE CASCADE,
+      FOREIGN KEY (to_node_id) REFERENCES nodes (id) ON DELETE CASCADE
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }
