@@ -244,6 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
     nodeText.textContent = displayContent;
     
+    // Add link count if the node has links
+    if (node.link_count && node.link_count > 0) {
+      const linkCount = document.createElement('sup');
+      linkCount.className = 'link-count';
+      linkCount.textContent = node.link_count;
+      nodeText.appendChild(linkCount);
+    }
+    
     nodeText.addEventListener('blur', () => {
       if (currentLanguage === 'en') {
         updateNodeContent(node.id, nodeText.textContent, node.content_zh);

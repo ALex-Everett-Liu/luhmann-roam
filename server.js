@@ -37,7 +37,15 @@ if (!fs.existsSync(markdownDir)) {
 // Get all top-level nodes
 app.get('/api/nodes', async (req, res) => {
   try {
-    const nodes = await db.all('SELECT * FROM nodes WHERE parent_id IS NULL ORDER BY position');
+    // Get nodes with link counts
+    const nodes = await db.all(`
+      SELECT n.*, 
+        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count
+      FROM nodes n 
+      WHERE n.parent_id IS NULL 
+      ORDER BY n.position
+    `);
+    
     res.json(nodes);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -48,7 +56,16 @@ app.get('/api/nodes', async (req, res) => {
 app.get('/api/nodes/:id/children', async (req, res) => {
   try {
     const { id } = req.params;
-    const nodes = await db.all('SELECT * FROM nodes WHERE parent_id = ? ORDER BY position', id);
+    
+    // Get children with link counts
+    const nodes = await db.all(`
+      SELECT n.*, 
+        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count
+      FROM nodes n 
+      WHERE n.parent_id = ? 
+      ORDER BY n.position
+    `, id);
+    
     res.json(nodes);
   } catch (error) {
     res.status(500).json({ error: error.message });

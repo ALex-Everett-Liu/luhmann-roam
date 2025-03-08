@@ -450,4 +450,17 @@ button:hover {
 
 .selected-node-content {
   font-weight: 500;
+}
+
+/* Link count styles */
+.link-count {
+  font-size: 10px;
+  color: #4285f4;
+  margin-left: 3px;
+  font-weight: bold;
+  position: relative;
+  top: -5px;
+  background-color: #e8f0fe;
+  padding: 1px 4px;
+  border-radius: 8px;
 } 
