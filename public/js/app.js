@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   let nodes = [];
   let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  let currentModalNodeId = null;
   
   // Update language toggle button text
   function updateLanguageToggle() {
@@ -17,6 +18,146 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('preferredLanguage', currentLanguage);
     updateLanguageToggle();
     renderOutliner();
+  }
+  
+  // Create modal elements
+  function createModal() {
+    // Create overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = 'Markdown Notes';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', closeModal);
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    
+    const textarea = document.createElement('textarea');
+    textarea.className = 'markdown-editor';
+    textarea.placeholder = 'Write your markdown notes here...';
+    modalBody.appendChild(textarea);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const saveButton = document.createElement('button');
+    saveButton.className = 'btn btn-primary';
+    saveButton.textContent = 'Save';
+    saveButton.addEventListener('click', saveMarkdown);
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'btn btn-danger';
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', deleteMarkdown);
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'btn btn-secondary';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', closeModal);
+    
+    modalFooter.appendChild(deleteButton);
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(saveButton);
+    
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
+    
+    return { modalOverlay, textarea };
+  }
+  
+  // Open markdown modal
+  async function openMarkdownModal(nodeId) {
+    const { modalOverlay, textarea } = createModal();
+    document.body.appendChild(modalOverlay);
+    
+    currentModalNodeId = nodeId;
+    
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/markdown`);
+      const data = await response.json();
+      textarea.value = data.content;
+      
+      // Focus the textarea
+      setTimeout(() => {
+        textarea.focus();
+      }, 100);
+    } catch (error) {
+      console.error('Error loading markdown:', error);
+    }
+  }
+  
+  // Close modal
+  function closeModal() {
+    const modalOverlay = document.querySelector('.modal-overlay');
+    if (modalOverlay) {
+      document.body.removeChild(modalOverlay);
+    }
+    currentModalNodeId = null;
+  }
+  
+  // Save markdown
+  async function saveMarkdown() {
+    if (!currentModalNodeId) return;
+    
+    const textarea = document.querySelector('.markdown-editor');
+    const content = textarea.value;
+    
+    try {
+      await fetch(`/api/nodes/${currentModalNodeId}/markdown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content })
+      });
+      
+      // Update UI
+      fetchNodes();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving markdown:', error);
+    }
+  }
+  
+  // Delete markdown
+  async function deleteMarkdown() {
+    if (!currentModalNodeId) return;
+    
+    if (confirm('Are you sure you want to delete this markdown note?')) {
+      try {
+        await fetch(`/api/nodes/${currentModalNodeId}/markdown`, {
+          method: 'DELETE'
+        });
+        
+        // Update UI
+        fetchNodes();
+        closeModal();
+      } catch (error) {
+        console.error('Error deleting markdown:', error);
+      }
+    }
   }
   
   // Fetch top-level nodes
@@ -62,6 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Node content
     const nodeContent = document.createElement('div');
     nodeContent.className = 'node-content';
+    
+    // Add 'has-markdown' class if node has markdown
+    if (node.has_markdown) {
+      nodeContent.classList.add('has-markdown');
+    }
     
     // Drag handle
     const dragHandle = document.createElement('span');
@@ -113,6 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Node actions
     const nodeActions = document.createElement('div');
     nodeActions.className = 'node-actions';
+    
+    // Markdown button
+    const markdownButton = document.createElement('button');
+    markdownButton.className = 'markdown-button';
+    markdownButton.innerHTML = '📝';
+    markdownButton.title = 'Edit markdown notes';
+    markdownButton.addEventListener('click', () => openMarkdownModal(node.id));
+    nodeActions.appendChild(markdownButton);
     
     const addButton = document.createElement('button');
     addButton.innerHTML = '+';

@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const { getDb, initializeDatabase } = require('./database');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +25,12 @@ let db;
 initializeDatabase().then(database => {
   db = database;
 });
+
+// Create markdown directory if it doesn't exist
+const markdownDir = path.join(__dirname, 'markdown');
+if (!fs.existsSync(markdownDir)) {
+  fs.mkdirSync(markdownDir);
+}
 
 // Routes
 
@@ -123,6 +131,13 @@ app.delete('/api/nodes/:id', async (req, res) => {
       for (const child of children) {
         await deleteChildren(child.id);
       }
+      
+      // Delete markdown file if it exists
+      const filePath = path.join(markdownDir, `${nodeId}.md`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
       await db.run('DELETE FROM nodes WHERE id = ?', nodeId);
     };
     
@@ -198,6 +213,66 @@ app.post('/api/nodes/:id/toggle', async (req, res) => {
     );
     
     res.json({ id, is_expanded: !node.is_expanded });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get markdown content
+app.get('/api/nodes/:id/markdown', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const filePath = path.join(markdownDir, `${id}.md`);
+    
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      res.json({ content });
+    } else {
+      res.json({ content: '' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save markdown content
+app.post('/api/nodes/:id/markdown', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const filePath = path.join(markdownDir, `${id}.md`);
+    
+    fs.writeFileSync(filePath, content);
+    
+    // Update the node to indicate it has markdown
+    await db.run(
+      'UPDATE nodes SET has_markdown = 1, updated_at = ? WHERE id = ?',
+      [Date.now(), id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete markdown content
+app.delete('/api/nodes/:id/markdown', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const filePath = path.join(markdownDir, `${id}.md`);
+    
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    
+    // Update the node to indicate it no longer has markdown
+    await db.run(
+      'UPDATE nodes SET has_markdown = 0, updated_at = ? WHERE id = ?',
+      [Date.now(), id]
+    );
+    
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

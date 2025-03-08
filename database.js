@@ -23,6 +23,7 @@ async function initializeDatabase() {
       parent_id TEXT,
       position INTEGER,
       is_expanded BOOLEAN DEFAULT 1,
+      has_markdown BOOLEAN DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER,
       FOREIGN KEY (parent_id) REFERENCES nodes (id)
