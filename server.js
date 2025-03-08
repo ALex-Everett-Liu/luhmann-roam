@@ -278,6 +278,194 @@ app.delete('/api/nodes/:id/markdown', async (req, res) => {
   }
 });
 
+// Get node above
+app.get('/api/nodes/:id/above', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    let nodeAbove;
+    
+    if (node.parent_id) {
+      // If it has a parent, get siblings with position less than current node
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id = ? AND position < ? ORDER BY position DESC LIMIT 1',
+        [node.parent_id, node.position]
+      );
+    } else {
+      // If it's a root node, get the root node above it
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id IS NULL AND position < ? ORDER BY position DESC LIMIT 1',
+        [node.position]
+      );
+    }
+    
+    if (nodeAbove) {
+      res.json(nodeAbove);
+    } else {
+      res.status(404).json({ error: 'No node above' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Handle indenting a node
+app.post('/api/nodes/:id/indent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Can't indent a root node without siblings above it
+    if (!node.parent_id && node.position === 0) {
+      return res.status(400).json({ error: 'Cannot indent the first root node' });
+    }
+    
+    let nodeAbove;
+    
+    if (node.parent_id) {
+      // If it has a parent, get siblings with position less than current node
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id = ? AND position < ? ORDER BY position DESC LIMIT 1',
+        [node.parent_id, node.position]
+      );
+    } else {
+      // If it's a root node, get the root node above it
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id IS NULL AND position < ? ORDER BY position DESC LIMIT 1',
+        [node.position]
+      );
+    }
+    
+    if (!nodeAbove) {
+      return res.status(400).json({ error: 'No node above to make parent' });
+    }
+    
+    // Get children of the node above
+    const children = await db.all('SELECT * FROM nodes WHERE parent_id = ? ORDER BY position', nodeAbove.id);
+    const maxPosition = children.length;
+    
+    // Start a transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    // Update positions of nodes in old parent
+    if (node.parent_id) {
+      await db.run(
+        'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position > ?',
+        [node.parent_id, node.position]
+      );
+    } else {
+      await db.run(
+        'UPDATE nodes SET position = position - 1 WHERE parent_id IS NULL AND position > ?',
+        node.position
+      );
+    }
+    
+    // Update the node itself
+    await db.run(
+      'UPDATE nodes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?',
+      [nodeAbove.id, maxPosition, Date.now(), id]
+    );
+    
+    // Ensure the parent is expanded
+    await db.run(
+      'UPDATE nodes SET is_expanded = 1, updated_at = ? WHERE id = ?',
+      [Date.now(), nodeAbove.id]
+    );
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true });
+  } catch (error) {
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Handle outdenting a node
+app.post('/api/nodes/:id/outdent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Can't outdent a root node
+    if (!node.parent_id) {
+      return res.status(400).json({ error: 'Cannot outdent a root node' });
+    }
+    
+    // Get the parent node
+    const parentNode = await db.get('SELECT * FROM nodes WHERE id = ?', node.parent_id);
+    
+    // Start a transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    // Update positions of nodes in old parent
+    await db.run(
+      'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position > ?',
+      [node.parent_id, node.position]
+    );
+    
+    let targetPosition;
+    
+    if (parentNode.parent_id) {
+      // Parent has a parent, find parent's next sibling position
+      const parentSiblings = await db.all(
+        'SELECT * FROM nodes WHERE parent_id = ? AND position > ? ORDER BY position',
+        [parentNode.parent_id, parentNode.position]
+      );
+      
+      if (parentSiblings.length > 0) {
+        // Insert at parent's sibling position
+        targetPosition = parentNode.position + 1;
+        
+        // Shift parent's siblings
+        await db.run(
+          'UPDATE nodes SET position = position + 1 WHERE parent_id = ? AND position > ?',
+          [parentNode.parent_id, parentNode.position]
+        );
+      } else {
+        // Parent is the last child, so insert at the end
+        targetPosition = parentNode.position + 1;
+      }
+      
+      // Update the node
+      await db.run(
+        'UPDATE nodes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?',
+        [parentNode.parent_id, targetPosition, Date.now(), id]
+      );
+    } else {
+      // Parent is a root node, find position for new root node
+      const rootCount = await db.get('SELECT COUNT(*) as count FROM nodes WHERE parent_id IS NULL');
+      targetPosition = rootCount.count;
+      
+      // Update the node to be a root node
+      await db.run(
+        'UPDATE nodes SET parent_id = NULL, position = ?, updated_at = ? WHERE id = ?',
+        [targetPosition, Date.now(), id]
+      );
+    }
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true });
+  } catch (error) {
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

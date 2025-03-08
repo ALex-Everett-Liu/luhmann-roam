@@ -252,6 +252,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') {
         e.preventDefault();
         addChildNode(node.id);
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Outdent - Shift+Tab
+          outdentNode(node.id);
+        } else {
+          // Indent - Tab
+          indentNode(node.id);
+        }
       }
     });
     nodeContent.appendChild(nodeText);
@@ -545,6 +554,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
+  }
+  
+  // Indent a node (make it a child of the node above)
+  async function indentNode(nodeId) {
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/indent`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(errorData.error);
+        return;
+      }
+      
+      // Refresh the outliner
+      fetchNodes();
+    } catch (error) {
+      console.error(`Error indenting node ${nodeId}:`, error);
+    }
+  }
+  
+  // Outdent a node (make it a sibling of its parent)
+  async function outdentNode(nodeId) {
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/outdent`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(errorData.error);
+        return;
+      }
+      
+      // Refresh the outliner
+      fetchNodes();
+    } catch (error) {
+      console.error(`Error outdenting node ${nodeId}:`, error);
+    }
   }
   
   // Event listeners
