@@ -261,6 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
           // Indent - Tab
           indentNode(node.id);
         }
+      } else if (e.key === 'ArrowUp' && e.altKey && e.shiftKey) {
+        e.preventDefault();
+        moveNodeUp(node.id);
+      } else if (e.key === 'ArrowDown' && e.altKey && e.shiftKey) {
+        e.preventDefault();
+        moveNodeDown(node.id);
       }
     });
     nodeContent.appendChild(nodeText);
@@ -593,6 +599,46 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchNodes();
     } catch (error) {
       console.error(`Error outdenting node ${nodeId}:`, error);
+    }
+  }
+  
+  // Move node up
+  async function moveNodeUp(nodeId) {
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/move-up`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(errorData.error);
+        return;
+      }
+      
+      // Refresh the outliner
+      fetchNodes();
+    } catch (error) {
+      console.error(`Error moving node ${nodeId} up:`, error);
+    }
+  }
+  
+  // Move node down
+  async function moveNodeDown(nodeId) {
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}/move-down`, {
+        method: 'POST'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(errorData.error);
+        return;
+      }
+      
+      // Refresh the outliner
+      fetchNodes();
+    } catch (error) {
+      console.error(`Error moving node ${nodeId} down:`, error);
     }
   }
   

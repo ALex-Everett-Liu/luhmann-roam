@@ -466,6 +466,115 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
   }
 });
 
+// Move node up
+app.post('/api/nodes/:id/move-up', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Can't move up if it's already at the top
+    if (node.position === 0) {
+      return res.status(400).json({ error: 'Node is already at the top' });
+    }
+    
+    // Start a transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    // Find the node directly above this one
+    let nodeAbove;
+    if (node.parent_id) {
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id = ? AND position = ?',
+        [node.parent_id, node.position - 1]
+      );
+    } else {
+      nodeAbove = await db.get(
+        'SELECT * FROM nodes WHERE parent_id IS NULL AND position = ?',
+        [node.position - 1]
+      );
+    }
+    
+    if (!nodeAbove) {
+      await db.run('ROLLBACK');
+      return res.status(400).json({ error: 'No node above to swap with' });
+    }
+    
+    // Swap positions
+    await db.run(
+      'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+      [node.position, Date.now(), nodeAbove.id]
+    );
+    
+    await db.run(
+      'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+      [node.position - 1, Date.now(), id]
+    );
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true });
+  } catch (error) {
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Move node down
+app.post('/api/nodes/:id/move-down', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Find the node directly below this one
+    let nodeBelow;
+    if (node.parent_id) {
+      nodeBelow = await db.get(
+        'SELECT * FROM nodes WHERE parent_id = ? AND position = ?',
+        [node.parent_id, node.position + 1]
+      );
+    } else {
+      nodeBelow = await db.get(
+        'SELECT * FROM nodes WHERE parent_id IS NULL AND position = ?',
+        [node.position + 1]
+      );
+    }
+    
+    // Can't move down if it's already at the bottom
+    if (!nodeBelow) {
+      return res.status(400).json({ error: 'Node is already at the bottom' });
+    }
+    
+    // Start a transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    // Swap positions
+    await db.run(
+      'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+      [node.position, Date.now(), nodeBelow.id]
+    );
+    
+    await db.run(
+      'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+      [node.position + 1, Date.now(), id]
+    );
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true });
+  } catch (error) {
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
