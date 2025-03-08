@@ -702,6 +702,24 @@ app.delete('/api/links/:id', async (req, res) => {
   }
 });
 
+// Search for nodes
+app.get('/api/nodes/search', async (req, res) => {
+  try {
+    const { q, excludeId } = req.query;
+    const searchTerm = `%${q}%`;
+    
+    // Search in both English and Chinese content based on current language
+    const nodes = await db.all(
+      'SELECT * FROM nodes WHERE (content LIKE ? OR content_zh LIKE ?) AND id != ? LIMIT 10',
+      [searchTerm, searchTerm, excludeId || '']
+    );
+    
+    res.json(nodes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

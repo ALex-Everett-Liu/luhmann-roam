@@ -709,19 +709,73 @@ document.addEventListener('DOMContentLoaded', () => {
     createTabContent.className = 'tab-pane active';
     createTabContent.dataset.tab = 'create';
     
-    const nodeSelector = document.createElement('select');
-    nodeSelector.className = 'node-selector';
-    nodeSelector.innerHTML = '<option value="">Select a node to link to...</option>';
+    // Replace dropdown with search input
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'search-container';
     
-    // Populate node selector
-    nodes.forEach(node => {
-      if (node.id !== nodeId) {
-        const option = document.createElement('option');
-        option.value = node.id;
-        option.textContent = node.content || node.content_zh || 'Untitled';
-        nodeSelector.appendChild(option);
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'node-search';
+    searchInput.placeholder = 'Type to search for nodes...';
+    
+    const searchResults = document.createElement('div');
+    searchResults.className = 'search-results';
+    
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(searchResults);
+    
+    // Hidden input to store the selected node ID
+    const selectedNodeInput = document.createElement('input');
+    selectedNodeInput.type = 'hidden';
+    selectedNodeInput.id = 'selected-node-id';
+    
+    // Selected node display
+    const selectedNodeDisplay = document.createElement('div');
+    selectedNodeDisplay.className = 'selected-node';
+    selectedNodeDisplay.innerHTML = '<span class="no-selection">No node selected</span>';
+    
+    // Add search functionality
+    searchInput.addEventListener('input', debounce(async (e) => {
+      const query = e.target.value.trim();
+      if (query.length < 2) {
+        searchResults.innerHTML = '';
+        return;
       }
-    });
+      
+      try {
+        const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&excludeId=${nodeId}`);
+        const results = await response.json();
+        
+        searchResults.innerHTML = '';
+        
+        if (results.length === 0) {
+          searchResults.innerHTML = '<div class="no-results">No matching nodes found</div>';
+          return;
+        }
+        
+        results.forEach(node => {
+          const resultItem = document.createElement('div');
+          resultItem.className = 'search-result-item';
+          resultItem.dataset.id = node.id;
+          
+          const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+          resultItem.textContent = nodeContent;
+          
+          resultItem.addEventListener('click', () => {
+            // Set the selected node
+            selectedNodeInput.value = node.id;
+            selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${nodeContent}</div>`;
+            searchResults.innerHTML = '';
+            searchInput.value = '';
+          });
+          
+          searchResults.appendChild(resultItem);
+        });
+      } catch (error) {
+        console.error('Error searching nodes:', error);
+        searchResults.innerHTML = '<div class="search-error">Error searching nodes</div>';
+      }
+    }, 300));
     
     const weightInput = document.createElement('input');
     weightInput.type = 'number';
@@ -739,11 +793,14 @@ document.addEventListener('DOMContentLoaded', () => {
     createLinkButton.className = 'btn btn-primary';
     createLinkButton.textContent = 'Create Link';
     createLinkButton.addEventListener('click', () => {
-      createLink(nodeId, nodeSelector.value, parseFloat(weightInput.value), descriptionInput.value);
+      createLink(nodeId, selectedNodeInput.value, parseFloat(weightInput.value), descriptionInput.value);
     });
     
-    createTabContent.appendChild(document.createElement('label')).textContent = 'Target Node:';
-    createTabContent.appendChild(nodeSelector);
+    createTabContent.appendChild(document.createElement('label')).textContent = 'Search for a node:';
+    createTabContent.appendChild(searchContainer);
+    createTabContent.appendChild(document.createElement('label')).textContent = 'Selected node:';
+    createTabContent.appendChild(selectedNodeDisplay);
+    createTabContent.appendChild(selectedNodeInput);
     createTabContent.appendChild(document.createElement('label')).textContent = 'Link Weight:';
     createTabContent.appendChild(weightInput);
     createTabContent.appendChild(document.createElement('label')).textContent = 'Description:';
@@ -822,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.appendChild(modalFooter);
     modalOverlay.appendChild(modal);
     
-    return { modalOverlay, nodeSelector, weightInput, descriptionInput };
+    return { modalOverlay, selectedNodeInput, weightInput, descriptionInput };
   }
   
   // Open link modal
@@ -962,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector('.tab[data-tab="manage"]').click();
       
       // Clear form
-      document.querySelector('.node-selector').value = '';
+      document.querySelector('.node-search').value = '';
       document.querySelector('.weight-input').value = '1.0';
       document.querySelector('.description-input').value = '';
     } catch (error) {
@@ -1028,6 +1085,16 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error deleting link:', error);
       alert('Error deleting link');
     }
+  }
+  
+  // Simple debounce function to prevent too many API calls
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), wait);
+    };
   }
   
   // Event listeners
