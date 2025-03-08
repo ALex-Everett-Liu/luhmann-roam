@@ -12,6 +12,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Add language preference middleware
+app.use((req, res, next) => {
+  req.lang = req.query.lang || 'en'; // Default to English if not specified
+  next();
+});
+
 // Initialize database
 let db;
 initializeDatabase().then(database => {
@@ -44,13 +50,13 @@ app.get('/api/nodes/:id/children', async (req, res) => {
 // Create a new node
 app.post('/api/nodes', async (req, res) => {
   try {
-    const { content, parent_id, position } = req.body;
+    const { content, content_zh, parent_id, position } = req.body;
     const now = Date.now();
     const id = uuidv4();
     
     await db.run(
-      'INSERT INTO nodes (id, content, parent_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, content, parent_id, position, now, now]
+      'INSERT INTO nodes (id, content, content_zh, parent_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, content, content_zh, parent_id, position, now, now]
     );
     
     const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
@@ -64,7 +70,7 @@ app.post('/api/nodes', async (req, res) => {
 app.put('/api/nodes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { content, parent_id, position, is_expanded } = req.body;
+    const { content, content_zh, parent_id, position, is_expanded } = req.body;
     const now = Date.now();
     
     let query = 'UPDATE nodes SET updated_at = ?';
@@ -73,6 +79,11 @@ app.put('/api/nodes/:id', async (req, res) => {
     if (content !== undefined) {
       query += ', content = ?';
       params.push(content);
+    }
+    
+    if (content_zh !== undefined) {
+      query += ', content_zh = ?';
+      params.push(content_zh);
     }
     
     if (parent_id !== undefined) {

@@ -114,4 +114,18 @@ button:hover {
 
 .node-content:hover .node-actions {
   opacity: 1;
+}
+
+.language-toggle {
+  margin-top: 10px;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.language-toggle:hover {
+  background-color: #e0e0e0;
+}
+
+.node-text[lang="zh"] {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 } 

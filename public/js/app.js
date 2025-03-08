@@ -1,13 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
   const outlinerContainer = document.getElementById('outliner-container');
   const addRootNodeButton = document.getElementById('add-root-node');
+  const languageToggle = document.getElementById('language-toggle');
   
   let nodes = [];
+  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  
+  // Update language toggle button text
+  function updateLanguageToggle() {
+    languageToggle.textContent = currentLanguage === 'en' ? 'Switch to Chinese' : '切换到英文';
+  }
+  
+  // Toggle language
+  function toggleLanguage() {
+    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
+    localStorage.setItem('preferredLanguage', currentLanguage);
+    updateLanguageToggle();
+    renderOutliner();
+  }
   
   // Fetch top-level nodes
   async function fetchNodes() {
     try {
-      const response = await fetch('/api/nodes');
+      const response = await fetch(`/api/nodes?lang=${currentLanguage}`);
       nodes = await response.json();
       renderOutliner();
     } catch (error) {
@@ -18,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch children for a node
   async function fetchChildren(nodeId) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/children`);
+      const response = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}`);
       return await response.json();
     } catch (error) {
       console.error(`Error fetching children for node ${nodeId}:`, error);
@@ -75,8 +90,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const nodeText = document.createElement('div');
     nodeText.className = 'node-text';
     nodeText.contentEditable = true;
-    nodeText.textContent = node.content;
-    nodeText.addEventListener('blur', () => updateNodeContent(node.id, nodeText.textContent));
+    
+    // Display content based on current language
+    const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+    nodeText.textContent = displayContent;
+    
+    nodeText.addEventListener('blur', () => {
+      if (currentLanguage === 'en') {
+        updateNodeContent(node.id, nodeText.textContent, node.content_zh);
+      } else {
+        updateNodeContent(node.id, node.content, nodeText.textContent);
+      }
+    });
     nodeText.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -132,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          content: 'New node',
+          content: currentLanguage === 'en' ? 'New node' : '',
+          content_zh: currentLanguage === 'zh' ? '新节点' : '',
           parent_id: null,
           position: maxPosition
         })
@@ -159,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          content: 'New node',
+          content: currentLanguage === 'en' ? 'New node' : '',
+          content_zh: currentLanguage === 'zh' ? '新节点' : '',
           parent_id: parentId,
           position: maxPosition
         })
@@ -186,16 +213,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Update node content
-  async function updateNodeContent(nodeId, content) {
+  async function updateNodeContent(nodeId, content, content_zh) {
     try {
+      const updateData = { content, content_zh };
+      
       await fetch(`/api/nodes/${nodeId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          content
-        })
+        body: JSON.stringify(updateData)
       });
     } catch (error) {
       console.error(`Error updating node ${nodeId}:`, error);
@@ -368,7 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Event listeners
   addRootNodeButton.addEventListener('click', addRootNode);
+  languageToggle.addEventListener('click', toggleLanguage);
   
-  // Initial load
+  // Initial setup
+  updateLanguageToggle();
   fetchNodes();
 }); 

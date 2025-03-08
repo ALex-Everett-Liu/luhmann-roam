@@ -19,6 +19,7 @@ async function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS nodes (
       id TEXT PRIMARY KEY,
       content TEXT,
+      content_zh TEXT,
       parent_id TEXT,
       position INTEGER,
       is_expanded BOOLEAN DEFAULT 1,
