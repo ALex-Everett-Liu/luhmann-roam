@@ -464,3 +464,13 @@ button:hover {
   padding: 1px 4px;
   border-radius: 8px;
 } 
+
+.save-button {
+    background-color: #34a853;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+  
+.save-button:hover {
+background-color: #2d9249;
+}

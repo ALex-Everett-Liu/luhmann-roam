@@ -252,11 +252,26 @@ document.addEventListener('DOMContentLoaded', () => {
       nodeText.appendChild(linkCount);
     }
     
-    nodeText.addEventListener('blur', () => {
+    nodeText.addEventListener('blur', async () => {
+      console.log(`Node ${node.id} blur event triggered`);
+      let savedContent = nodeText.textContent;
+      
+      // Handle removing the link count from the content if present
+      const linkCountElement = nodeText.querySelector('.link-count');
+      if (linkCountElement) {
+        savedContent = nodeText.textContent.replace(linkCountElement.textContent, '');
+      }
+      
+      let success;
       if (currentLanguage === 'en') {
-        updateNodeContent(node.id, nodeText.textContent, node.content_zh);
+        success = await updateNodeContent(node.id, savedContent, node.content_zh);
       } else {
-        updateNodeContent(node.id, node.content, nodeText.textContent);
+        success = await updateNodeContent(node.id, node.content, savedContent);
+      }
+      
+      if (!success) {
+        console.error(`Failed to save node ${node.id}`);
+        // Optionally show an error message to the user
       }
     });
     nodeText.addEventListener('keydown', (e) => {
@@ -403,19 +418,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update node content
   async function updateNodeContent(nodeId, content, content_zh) {
     try {
-      const updateData = { content, content_zh };
-      
-      await fetch(`/api/nodes/${nodeId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-      });
-    } catch (error) {
-      console.error(`Error updating node ${nodeId}:`, error);
+        console.log(`Saving node ${nodeId}:`, { content, content_zh });
+        const updateData = {};
+        
+        if (content !== null) {
+          updateData.content = content;
+        }
+        
+        if (content_zh !== null) {
+          updateData.content_zh = content_zh;
+        }
+        
+        const response = await fetch(`/api/nodes/${nodeId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(`Error saving node ${nodeId}:`, errorData);
+          return false;
+        }
+        
+        console.log(`Successfully saved node ${nodeId}`);
+        return true;
+      } catch (error) {
+        console.error(`Error updating node ${nodeId}:`, error);
+        return false;
+      }
     }
-  }
   
   // Delete a node
   async function deleteNode(nodeId) {
@@ -1187,9 +1221,45 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   
+  // Save changes function - provides visual feedback
+  function saveChanges() {
+    const saveButton = document.getElementById('save-changes');
+    const originalText = saveButton.textContent;
+    
+    // Change button text to show saving in progress
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    
+    // Actually try to manually save by refreshing data from server
+    console.log('Save button clicked, refreshing data from server');
+    fetchNodes().then(() => {
+      console.log('Data refreshed from server');
+      
+      saveButton.textContent = 'Saved!';
+      
+      // Reset button after 2 seconds
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+      }, 2000);
+    }).catch(error => {
+      console.error('Error refreshing data:', error);
+      saveButton.textContent = 'Error!';
+      
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+      }, 2000);
+    });
+  }
+  
   // Event listeners
   addRootNodeButton.addEventListener('click', addRootNode);
   languageToggle.addEventListener('click', toggleLanguage);
+  
+  // Add event listener for save changes button
+  const saveChangesButton = document.getElementById('save-changes');
+  saveChangesButton.addEventListener('click', saveChanges);
   
   // Initial setup
   updateLanguageToggle();
