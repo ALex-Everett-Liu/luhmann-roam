@@ -510,3 +510,33 @@ background-color: #2d9249;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+
+.position-button {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.position-button:hover {
+  background-color: #e9ecef;
+}
+
+.current-position-info {
+  margin-bottom: 16px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.current-position-info p {
+  margin: 5px 0;
+}
+
+.current-position-info .error {
+  color: #dc3545;
+}

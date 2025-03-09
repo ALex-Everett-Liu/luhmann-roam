@@ -311,6 +311,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Alt+M to open move node modal
         e.preventDefault();
         openMoveNodeModal(node.id);
+      } else if (e.key === '#' && e.altKey) {
+        // Alt+# to open position adjustment modal
+        e.preventDefault();
+        openPositionAdjustModal(node.id);
       }
     });
     nodeContent.appendChild(nodeText);
@@ -318,6 +322,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Node actions
     const nodeActions = document.createElement('div');
     nodeActions.className = 'node-actions';
+    
+    // Position button
+    const positionButton = document.createElement('button');
+    positionButton.className = 'position-button';
+    positionButton.innerHTML = '#';
+    positionButton.title = 'Adjust position';
+    positionButton.addEventListener('click', () => openPositionAdjustModal(node.id));
+    nodeActions.appendChild(positionButton);
     
     // Link button
     const linkButton = document.createElement('button');
@@ -1599,6 +1611,177 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add event listener for save changes button
   const saveChangesButton = document.getElementById('save-changes');
   saveChangesButton.addEventListener('click', saveChanges);
+  
+  // Create position adjustment modal
+  function createPositionAdjustModal(nodeId) {
+    // Create overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = 'Adjust Node Position';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', closePositionAdjustModal);
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    
+    // Current position info
+    const currentPositionInfo = document.createElement('div');
+    currentPositionInfo.className = 'current-position-info';
+    currentPositionInfo.innerHTML = '<p>Loading position information...</p>';
+    modalBody.appendChild(currentPositionInfo);
+    
+    // Position input
+    const positionLabel = document.createElement('label');
+    positionLabel.textContent = 'New Position (0-based index):';
+    modalBody.appendChild(positionLabel);
+    
+    const positionInput = document.createElement('input');
+    positionInput.type = 'number';
+    positionInput.min = '0';
+    positionInput.className = 'position-input';
+    positionInput.placeholder = 'Enter new position';
+    modalBody.appendChild(positionInput);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const applyButton = document.createElement('button');
+    applyButton.className = 'btn btn-primary';
+    applyButton.textContent = 'Apply';
+    applyButton.addEventListener('click', () => {
+      const newPosition = parseInt(positionInput.value, 10);
+      adjustNodePosition(nodeId, newPosition);
+    });
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'btn btn-secondary';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', closePositionAdjustModal);
+    
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(applyButton);
+    
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
+    
+    return { modalOverlay, positionInput, currentPositionInfo };
+  }
+  
+  // Open position adjustment modal
+  async function openPositionAdjustModal(nodeId) {
+    const { modalOverlay, positionInput, currentPositionInfo } = createPositionAdjustModal(nodeId);
+    document.body.appendChild(modalOverlay);
+    
+    currentModalNodeId = nodeId;
+    
+    try {
+      // Get current node info
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      
+      // Get sibling nodes to show total count
+      let siblings = [];
+      if (node.parent_id) {
+        const siblingsResponse = await fetch(`/api/nodes/${node.parent_id}/children`);
+        siblings = await siblingsResponse.json();
+      } else {
+        // Root node - get all root nodes
+        const rootsResponse = await fetch('/api/nodes');
+        siblings = await rootsResponse.json();
+      }
+      
+      // Set current position in the input
+      positionInput.value = node.position;
+      positionInput.max = siblings.length - 1;
+      
+      // Update position info
+      const parentInfo = node.parent_id 
+        ? `under parent node "${currentLanguage === 'en' 
+            ? siblings[0].parent_content 
+            : (siblings[0].parent_content_zh || siblings[0].parent_content)}"`
+        : 'at root level';
+      
+      currentPositionInfo.innerHTML = `
+        <p>Current position: <strong>${node.position}</strong> ${parentInfo}</p>
+        <p>Total siblings: <strong>${siblings.length}</strong> (Valid positions: 0-${siblings.length - 1})</p>
+      `;
+      
+      // Focus the input
+      setTimeout(() => {
+        positionInput.focus();
+        positionInput.select();
+      }, 100);
+    } catch (error) {
+      console.error('Error getting node info:', error);
+      currentPositionInfo.innerHTML = '<p class="error">Error loading position information</p>';
+    }
+  }
+  
+  // Close position adjustment modal
+  function closePositionAdjustModal() {
+    const modalOverlay = document.querySelector('.modal-overlay');
+    if (modalOverlay) {
+      document.body.removeChild(modalOverlay);
+    }
+    currentModalNodeId = null;
+  }
+  
+  // Adjust node position
+  async function adjustNodePosition(nodeId, newPosition) {
+    try {
+      // Get the node to find its parent
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      
+      if (node.position === newPosition) {
+        // No change needed
+        closePositionAdjustModal();
+        return;
+      }
+      
+      // Use the reorder API to move the node
+      await fetch('/api/nodes/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nodeId: nodeId,
+          newParentId: node.parent_id, // Keep the same parent
+          newPosition: newPosition
+        })
+      });
+      
+      // Refresh the outliner
+      fetchNodes();
+      closePositionAdjustModal();
+    } catch (error) {
+      console.error(`Error adjusting position for node ${nodeId}:`, error);
+      alert('Error adjusting node position');
+    }
+  }
   
   // Initial setup
   updateLanguageToggle();
