@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add link-related state
   let currentNodeLinks = { outgoing: [], incoming: [] };
   
+  // Add this variable to track the currently focused node
+  let lastFocusedNodeId = null;
+  
   // Application functions
   // Update language toggle button text
   function updateLanguageToggle() {
@@ -171,13 +174,28 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Fetch top-level nodes
   async function fetchNodes(forceFresh = false) {
+    // Save scroll position before updating
+    const scrollPosition = window.scrollY;
+    console.log(`Saving scroll position: ${scrollPosition}px`);
+    
     try {
       // Add cache-busting parameter to prevent stale data
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
       console.log(`Fetching nodes with lang=${currentLanguage}${forceFresh ? ' (forced fresh load)' : ''}`);
       const response = await fetch(`/api/nodes?lang=${currentLanguage}${cacheBuster}`);
       nodes = await response.json();
-      renderOutliner();
+      await renderOutliner();
+      
+      // Restore scroll position after rendering is complete
+      setTimeout(() => {
+        console.log(`Restoring scroll position to: ${scrollPosition}px`);
+        window.scrollTo(0, scrollPosition);
+        
+        // Verify the scroll position was actually set
+        setTimeout(() => {
+          console.log(`Current scroll position after restore: ${window.scrollY}px`);
+        }, 50);
+      }, 10);
     } catch (error) {
       console.error('Error fetching nodes:', error);
     }
@@ -198,6 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Render the outliner
   async function renderOutliner() {
+    const scrollPosition = window.scrollY;
+    console.log(`Saving scroll position: ${scrollPosition}px`);
+    
     outlinerContainer.innerHTML = '';
     
     for (const node of nodes) {
@@ -206,6 +227,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     setupDragAndDrop();
+    
+    // Try to restore scroll position
+    setTimeout(() => {
+      // First try to find and scroll to the last focused node
+      if (lastFocusedNodeId) {
+        const focusedElement = document.querySelector(`.node[data-id="${lastFocusedNodeId}"]`);
+        if (focusedElement) {
+          console.log(`Scrolling to last focused node: ${lastFocusedNodeId}`);
+          focusedElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+          return;
+        }
+      }
+      
+      // Fall back to the saved scroll position if we can't find the focused node
+      console.log(`Restoring scroll position to: ${scrollPosition}px`);
+      window.scrollTo(0, scrollPosition);
+    }, 10);
   }
   
   // Create a node element
@@ -262,6 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
       linkCount.textContent = node.link_count;
       nodeText.appendChild(linkCount);
     }
+    
+    // Add focus tracking to the node text
+    nodeText.addEventListener('focus', () => {
+      lastFocusedNodeId = node.id;
+      console.log(`Node ${node.id} focused`);
+    });
     
     nodeText.addEventListener('blur', async () => {
       console.log(`Node ${node.id} blur event triggered`);
@@ -1856,6 +1900,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2000);
     });
   }
+
+  // Add this function to check container settings
+  function checkContainerSettings() {
+    const contentContainer = document.querySelector('.content');
+    if (contentContainer) {
+      const styles = window.getComputedStyle(contentContainer);
+      console.log('Content container settings:');
+      console.log(`- Height: ${styles.height}`);
+      console.log(`- Max Height: ${styles.maxHeight}`);
+      console.log(`- Overflow: ${styles.overflow}`);
+      console.log(`- Overflow-Y: ${styles.overflowY}`);
+      
+      // If the container doesn't have proper overflow settings, fix them
+      if (styles.overflowY !== 'auto' && styles.overflowY !== 'scroll') {
+        console.log('Fixing container overflow settings');
+        contentContainer.style.overflowY = 'auto';
+      }
+    }
+  }
   
   // Event listeners
   addRootNodeButton.addEventListener('click', addRootNode);
@@ -1867,9 +1930,17 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initial setup
   updateLanguageToggle();
+
+  // Call this function during initialization
+  // Add this right before fetchNodes() in the initialization section
+  checkContainerSettings();
+
+
   fetchNodes();
 
   // ================================================================
   // END OF APPLICATION CODE - DO NOT ADD FUNCTIONS BELOW THIS LINE
   // ================================================================
+
+
 }); 
