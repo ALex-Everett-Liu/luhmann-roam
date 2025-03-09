@@ -41,6 +41,7 @@ body {
 .node-content {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .bullet {
@@ -51,6 +52,8 @@ body {
   justify-content: center;
   cursor: pointer;
   user-select: none;
+  position: relative;
+  z-index: 1;
 }
 
 .bullet:hover {
@@ -73,6 +76,47 @@ body {
 
 .children {
   margin-left: 24px;
+  position: relative;
+}
+
+/* Add indentation indicator lines */
+.children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 2px;
+  height: 100%;
+  background-color: #e0e0e0;
+  z-index: 0;
+}
+
+/* Add horizontal connector lines to each node */
+.node-content::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  width: 10px;
+  height: 2px;
+  background-color: #e0e0e0;
+  z-index: 0;
+}
+
+/* Don't show horizontal connector for root nodes */
+.app-container > .content > #outliner-container > .node > .node-content::before {
+  display: none;
+}
+
+/* Hover effect for the indentation lines */
+.children:hover::before {
+  background-color: #bbb;
+}
+
+/* Highlight active branch when a node is focused */
+.node:has(.node-text:focus) > .children::before,
+.node:has(.node-text:focus) > .node-content::before {
+  background-color: #4285f4;
 }
 
 button {
@@ -96,6 +140,8 @@ button:hover {
   justify-content: center;
   cursor: pointer;
   margin-right: 5px;
+  position: relative;
+  z-index: 1;
 }
 
 .drag-handle {
