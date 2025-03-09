@@ -99,26 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return { modalOverlay, textarea };
   }
   
-  // Open markdown modal
-  async function openMarkdownModal(nodeId) {
-    const { modalOverlay, textarea } = createModal();
-    document.body.appendChild(modalOverlay);
-    
-    currentModalNodeId = nodeId;
-    
-    try {
-      const response = await fetch(`/api/nodes/${nodeId}/markdown`);
-      const data = await response.json();
-      textarea.value = data.content;
-      
-      // Focus the textarea
-      setTimeout(() => {
-        textarea.focus();
-      }, 100);
-    } catch (error) {
-      console.error('Error loading markdown:', error);
-    }
-  }
   
   // Close modal
   function closeModal() {
@@ -129,48 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     currentModalNodeId = null;
   }
   
-  // Save markdown
-  async function saveMarkdown() {
-    if (!currentModalNodeId) return;
-    
-    const textarea = document.querySelector('.markdown-editor');
-    const content = textarea.value;
-    
-    try {
-      await fetch(`/api/nodes/${currentModalNodeId}/markdown`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ content })
-      });
-      
-      // Update UI
-      fetchNodes();
-      closeModal();
-    } catch (error) {
-      console.error('Error saving markdown:', error);
-    }
-  }
-  
-  // Delete markdown
-  async function deleteMarkdown() {
-    if (!currentModalNodeId) return;
-    
-    if (confirm('Are you sure you want to delete this markdown note?')) {
-      try {
-        await fetch(`/api/nodes/${currentModalNodeId}/markdown`, {
-          method: 'DELETE'
-        });
-        
-        // Update UI
-        fetchNodes();
-        closeModal();
-      } catch (error) {
-        console.error('Error deleting markdown:', error);
-      }
-    }
-  }
   
   // Fetch top-level nodes
   async function fetchNodes(forceFresh = false) {
@@ -424,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
     markdownButton.className = 'markdown-button';
     markdownButton.innerHTML = '📝';
     markdownButton.title = 'Edit markdown notes';
-    markdownButton.addEventListener('click', () => openMarkdownModal(node.id));
+    markdownButton.addEventListener('click', () => MarkdownManager.openModal(node.id));
     nodeActions.appendChild(markdownButton);
     
     const addButton = document.createElement('button');
