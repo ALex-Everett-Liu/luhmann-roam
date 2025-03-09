@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
     localStorage.setItem('preferredLanguage', currentLanguage);
     updateLanguageToggle();
-    renderOutliner();
+    console.log(`Language switched to ${currentLanguage}, forcing fresh data load`);
+    fetchNodes(true); // Pass true to force fresh data
   }
   
   // Create modal elements
@@ -164,9 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Fetch top-level nodes
-  async function fetchNodes() {
+  async function fetchNodes(forceFresh = false) {
     try {
-      const response = await fetch(`/api/nodes?lang=${currentLanguage}`);
+      // Add cache-busting parameter to prevent stale data
+      const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
+      console.log(`Fetching nodes with lang=${currentLanguage}${forceFresh ? ' (forced fresh load)' : ''}`);
+      const response = await fetch(`/api/nodes?lang=${currentLanguage}${cacheBuster}`);
       nodes = await response.json();
       renderOutliner();
     } catch (error) {
@@ -175,9 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Fetch children for a node
-  async function fetchChildren(nodeId) {
+  async function fetchChildren(nodeId, forceFresh = false) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}`);
+      // Add cache-busting parameter to prevent stale data
+      const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
+      const response = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}${cacheBuster}`);
       return await response.json();
     } catch (error) {
       console.error(`Error fetching children for node ${nodeId}:`, error);
@@ -254,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     nodeText.addEventListener('blur', async () => {
       console.log(`Node ${node.id} blur event triggered`);
+      let originalContent = currentLanguage === 'en' ? node.content : node.content_zh;
       let savedContent = nodeText.textContent;
       
       // Handle removing the link count from the content if present
@@ -262,16 +269,23 @@ document.addEventListener('DOMContentLoaded', () => {
         savedContent = nodeText.textContent.replace(linkCountElement.textContent, '');
       }
       
-      let success;
-      if (currentLanguage === 'en') {
-        success = await updateNodeContent(node.id, savedContent, node.content_zh);
+      // Only save if content has actually changed
+      if (originalContent !== savedContent) {
+        console.log(`Content changed from "${originalContent}" to "${savedContent}"`);
+        
+        let success;
+        if (currentLanguage === 'en') {
+          success = await updateNodeContent(node.id, savedContent, node.content_zh);
+        } else {
+          success = await updateNodeContent(node.id, node.content, savedContent);
+        }
+        
+        if (!success) {
+          console.error(`Failed to save node ${node.id}`);
+          // Optionally show an error message to the user
+        }
       } else {
-        success = await updateNodeContent(node.id, node.content, savedContent);
-      }
-      
-      if (!success) {
-        console.error(`Failed to save node ${node.id}`);
-        // Optionally show an error message to the user
+        console.log(`No content change detected for node ${node.id}`);
       }
     });
     nodeText.addEventListener('keydown', (e) => {
@@ -429,6 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
           updateData.content_zh = content_zh;
         }
         
+        console.log(`Sending update request for node ${nodeId} with data:`, updateData);
+        
         const response = await fetch(`/api/nodes/${nodeId}`, {
           method: 'PUT',
           headers: {
@@ -443,12 +459,38 @@ document.addEventListener('DOMContentLoaded', () => {
           return false;
         }
         
-        console.log(`Successfully saved node ${nodeId}`);
+        const updatedNode = await response.json();
+        console.log(`Successfully saved node ${nodeId}:`, updatedNode);
+        
+        // Update the node in our local data structure to ensure consistency
+        updateLocalNodeData(nodeId, updateData);
+        
         return true;
       } catch (error) {
         console.error(`Error updating node ${nodeId}:`, error);
         return false;
       }
+    }
+    
+    // Helper function to update local node data after a successful save
+    function updateLocalNodeData(nodeId, updateData) {
+      // Update in the top-level nodes array if present
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === nodeId) {
+          if (updateData.content !== undefined) {
+            nodes[i].content = updateData.content;
+          }
+          if (updateData.content_zh !== undefined) {
+            nodes[i].content_zh = updateData.content_zh;
+          }
+          console.log(`Updated local data for top-level node ${nodeId}`);
+          return;
+        }
+      }
+      
+      // If not found at top level, it might be a child node
+      // We'll handle this in a future update if needed
+      console.log(`Node ${nodeId} not found in top-level nodes, may be a child node`);
     }
   
   // Delete a node
@@ -1231,9 +1273,9 @@ document.addEventListener('DOMContentLoaded', () => {
     saveButton.disabled = true;
     
     // Actually try to manually save by refreshing data from server
-    console.log('Save button clicked, refreshing data from server');
-    fetchNodes().then(() => {
-      console.log('Data refreshed from server');
+    console.log('Save button clicked, forcing fresh data load from server');
+    fetchNodes(true).then(() => {
+      console.log('Data refreshed from server with forced fresh load');
       
       saveButton.textContent = 'Saved!';
       
