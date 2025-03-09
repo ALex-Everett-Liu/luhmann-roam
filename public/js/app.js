@@ -307,6 +307,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (e.key === 'ArrowDown' && e.altKey && e.shiftKey) {
         e.preventDefault();
         moveNodeDown(node.id);
+      } else if (e.key === 'm' && e.altKey) {
+        // Alt+M to open move node modal
+        e.preventDefault();
+        openMoveNodeModal(node.id);
       }
     });
     nodeContent.appendChild(nodeText);
@@ -322,6 +326,14 @@ document.addEventListener('DOMContentLoaded', () => {
     linkButton.title = 'Manage links';
     linkButton.addEventListener('click', () => openLinkModal(node.id));
     nodeActions.appendChild(linkButton);
+    
+    // Move node button
+    const moveNodeButton = document.createElement('button');
+    moveNodeButton.className = 'move-button';
+    moveNodeButton.innerHTML = '📍';
+    moveNodeButton.title = 'Move node';
+    moveNodeButton.addEventListener('click', () => openMoveNodeModal(node.id));
+    nodeActions.appendChild(moveNodeButton);
     
     // Add sibling before button
     const addSiblingBeforeButton = document.createElement('button');
@@ -1310,6 +1322,241 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchNodes();
     } catch (error) {
       console.error(`Error adding sibling node to ${nodeId}:`, error);
+    }
+  }
+  
+  // Create move node modal
+  function createMoveNodeModal(nodeId) {
+    // Create overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = 'Move Node';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', closeMoveNodeModal);
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    
+    // Search container
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'search-container';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'node-search';
+    searchInput.placeholder = 'Type to search for a parent node...';
+    
+    const searchResults = document.createElement('div');
+    searchResults.className = 'search-results';
+    
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(searchResults);
+    
+    // Hidden input to store the selected node ID
+    const selectedNodeInput = document.createElement('input');
+    selectedNodeInput.type = 'hidden';
+    selectedNodeInput.id = 'selected-parent-id';
+    
+    // Selected node display
+    const selectedNodeDisplay = document.createElement('div');
+    selectedNodeDisplay.className = 'selected-node';
+    selectedNodeDisplay.innerHTML = '<span class="no-selection">No parent node selected (will become a root node)</span>';
+    
+    // Add search functionality
+    searchInput.addEventListener('input', debounce(async (e) => {
+      const query = e.target.value.trim();
+      if (query.length < 2) {
+        searchResults.innerHTML = '';
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&excludeId=${nodeId}`);
+        const results = await response.json();
+        
+        searchResults.innerHTML = '';
+        
+        if (results.length === 0) {
+          searchResults.innerHTML = '<div class="no-results">No matching nodes found</div>';
+          return;
+        }
+        
+        results.forEach(node => {
+          const resultItem = document.createElement('div');
+          resultItem.className = 'search-result-item';
+          resultItem.dataset.id = node.id;
+          
+          const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+          resultItem.textContent = nodeContent;
+          
+          resultItem.addEventListener('click', () => {
+            // Set the selected node
+            selectedNodeInput.value = node.id;
+            selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${nodeContent}</div>`;
+            searchResults.innerHTML = '';
+            searchInput.value = '';
+          });
+          
+          searchResults.appendChild(resultItem);
+        });
+      } catch (error) {
+        console.error('Error searching nodes:', error);
+        searchResults.innerHTML = '<div class="search-error">Error searching nodes</div>';
+      }
+    }, 300));
+    
+    // Position selection
+    const positionLabel = document.createElement('label');
+    positionLabel.textContent = 'Position:';
+    
+    const positionInput = document.createElement('input');
+    positionInput.type = 'number';
+    positionInput.min = '0';
+    positionInput.value = '0';
+    positionInput.className = 'position-input';
+    positionInput.placeholder = 'Position (0 = first child)';
+    
+    // Move button
+    const moveButton = document.createElement('button');
+    moveButton.className = 'btn btn-primary';
+    moveButton.textContent = 'Move Node';
+    moveButton.addEventListener('click', () => {
+      moveNodeToParent(nodeId, selectedNodeInput.value, parseInt(positionInput.value, 10));
+    });
+    
+    // Make root node button
+    const makeRootButton = document.createElement('button');
+    makeRootButton.className = 'btn btn-secondary';
+    makeRootButton.textContent = 'Make Root Node';
+    makeRootButton.addEventListener('click', () => {
+      moveNodeToParent(nodeId, null, parseInt(positionInput.value, 10));
+    });
+    
+    modalBody.appendChild(document.createElement('label')).textContent = 'Search for a parent node:';
+    modalBody.appendChild(searchContainer);
+    modalBody.appendChild(document.createElement('label')).textContent = 'Selected parent:';
+    modalBody.appendChild(selectedNodeDisplay);
+    modalBody.appendChild(selectedNodeInput);
+    modalBody.appendChild(positionLabel);
+    modalBody.appendChild(positionInput);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'btn btn-secondary';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', closeMoveNodeModal);
+    
+    modalFooter.appendChild(makeRootButton);
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(moveButton);
+    
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
+    
+    return { modalOverlay, selectedNodeInput, positionInput };
+  }
+  
+  // Open move node modal
+  async function openMoveNodeModal(nodeId) {
+    const { modalOverlay, selectedNodeInput, positionInput } = createMoveNodeModal(nodeId);
+    document.body.appendChild(modalOverlay);
+    
+    currentModalNodeId = nodeId;
+    
+    // Get current node info to set default values
+    try {
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      
+      if (node.parent_id) {
+        // If it has a parent, get parent info
+        const parentResponse = await fetch(`/api/nodes/${node.parent_id}`);
+        const parentNode = await parentResponse.json();
+        
+        // Set the parent as the default selected node
+        selectedNodeInput.value = parentNode.id;
+        const parentContent = currentLanguage === 'en' ? parentNode.content : (parentNode.content_zh || parentNode.content);
+        const selectedNodeDisplay = document.querySelector('.selected-node');
+        selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${parentContent}</div>`;
+        
+        // Set current position
+        positionInput.value = node.position;
+      } else {
+        // It's a root node, set position
+        positionInput.value = node.position;
+      }
+    } catch (error) {
+      console.error('Error getting node info:', error);
+    }
+  }
+  
+  // Close move node modal
+  function closeMoveNodeModal() {
+    const modalOverlay = document.querySelector('.modal-overlay');
+    if (modalOverlay) {
+      document.body.removeChild(modalOverlay);
+    }
+    currentModalNodeId = null;
+  }
+  
+  // Move node to new parent
+  async function moveNodeToParent(nodeId, parentId, position) {
+    try {
+      await fetch('/api/nodes/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nodeId: nodeId,
+          newParentId: parentId,
+          newPosition: position
+        })
+      });
+      
+      // If moving to a parent, ensure the parent is expanded
+      if (parentId) {
+        await fetch(`/api/nodes/${parentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            is_expanded: true
+          })
+        });
+      }
+      
+      // Refresh the outliner
+      fetchNodes();
+      closeMoveNodeModal();
+    } catch (error) {
+      console.error('Error moving node:', error);
+      alert('Error moving node');
     }
   }
   

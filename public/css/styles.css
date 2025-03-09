@@ -488,3 +488,25 @@ background-color: #2d9249;
 .sibling-button:hover {
   background-color: #e9ecef;
 }
+
+.move-button {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.move-button:hover {
+  background-color: #e9ecef;
+}
+
+.position-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
