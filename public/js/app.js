@@ -236,6 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (focusedElement) {
           console.log(`Scrolling to last focused node: ${lastFocusedNodeId}`);
           focusedElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+          
+          // Add a brief highlight effect
+          focusedElement.classList.add('highlight-focus');
+          setTimeout(() => {
+            focusedElement.classList.remove('highlight-focus');
+          }, 1000);
+          
           return;
         }
       }
