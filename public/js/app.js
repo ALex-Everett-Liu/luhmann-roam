@@ -323,6 +323,22 @@ document.addEventListener('DOMContentLoaded', () => {
     linkButton.addEventListener('click', () => openLinkModal(node.id));
     nodeActions.appendChild(linkButton);
     
+    // Add sibling before button
+    const addSiblingBeforeButton = document.createElement('button');
+    addSiblingBeforeButton.className = 'sibling-button';
+    addSiblingBeforeButton.innerHTML = '↑+';
+    addSiblingBeforeButton.title = 'Add sibling before';
+    addSiblingBeforeButton.addEventListener('click', () => addSiblingNode(node.id, 'before'));
+    nodeActions.appendChild(addSiblingBeforeButton);
+    
+    // Add sibling after button
+    const addSiblingAfterButton = document.createElement('button');
+    addSiblingAfterButton.className = 'sibling-button';
+    addSiblingAfterButton.innerHTML = '↓+';
+    addSiblingAfterButton.title = 'Add sibling after';
+    addSiblingAfterButton.addEventListener('click', () => addSiblingNode(node.id, 'after'));
+    nodeActions.appendChild(addSiblingAfterButton);
+    
     // Markdown button
     const markdownButton = document.createElement('button');
     markdownButton.className = 'markdown-button';
@@ -1261,6 +1277,40 @@ document.addEventListener('DOMContentLoaded', () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(context, args), wait);
     };
+  }
+  
+  // Add a sibling node
+  async function addSiblingNode(nodeId, position) {
+    try {
+      // Get the node to find its parent and position
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      
+      // Calculate new position
+      let newPosition = node.position;
+      if (position === 'after') {
+        newPosition += 1;
+      }
+      
+      // Create the new node
+      await fetch('/api/nodes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: currentLanguage === 'en' ? 'New node' : '',
+          content_zh: currentLanguage === 'zh' ? '新节点' : '',
+          parent_id: node.parent_id,
+          position: newPosition
+        })
+      });
+      
+      // Refresh the outliner
+      fetchNodes();
+    } catch (error) {
+      console.error(`Error adding sibling node to ${nodeId}:`, error);
+    }
   }
   
   // Save changes function - provides visual feedback

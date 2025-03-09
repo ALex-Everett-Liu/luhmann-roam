@@ -737,6 +737,22 @@ app.get('/api/nodes/search', async (req, res) => {
   }
 });
 
+// Get a single node
+app.get('/api/nodes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    res.json(node);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
