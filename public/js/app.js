@@ -1,8 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // ================================================================
+  // ALL APPLICATION CODE AND FUNCTIONS SHOULD BE DEFINED INSIDE HERE
+  // =
   const outlinerContainer = document.getElementById('outliner-container');
   const addRootNodeButton = document.getElementById('add-root-node');
   const languageToggle = document.getElementById('language-toggle');
   
+  // Variables and state
   let nodes = [];
   let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
   let currentModalNodeId = null;
@@ -10,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add link-related state
   let currentNodeLinks = { outgoing: [], incoming: [] };
   
+  // Application functions
   // Update language toggle button text
   function updateLanguageToggle() {
     languageToggle.textContent = currentLanguage === 'en' ? 'Switch to Chinese' : '切换到英文';
@@ -1337,6 +1342,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  // ===================================================================
+  // FEATURE: Move Node Modal
+  // LOCATION: Inside DOMContentLoaded event listener
+  // DEPENDENCIES: fetchNodes, debounce, currentLanguage
+  // ===================================================================
   // Create move node modal
   function createMoveNodeModal(nodeId) {
     // Create overlay
@@ -1572,46 +1582,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Save changes function - provides visual feedback
-  function saveChanges() {
-    const saveButton = document.getElementById('save-changes');
-    const originalText = saveButton.textContent;
-    
-    // Change button text to show saving in progress
-    saveButton.textContent = 'Saving...';
-    saveButton.disabled = true;
-    
-    // Actually try to manually save by refreshing data from server
-    console.log('Save button clicked, forcing fresh data load from server');
-    fetchNodes(true).then(() => {
-      console.log('Data refreshed from server with forced fresh load');
-      
-      saveButton.textContent = 'Saved!';
-      
-      // Reset button after 2 seconds
-      setTimeout(() => {
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-      }, 2000);
-    }).catch(error => {
-      console.error('Error refreshing data:', error);
-      saveButton.textContent = 'Error!';
-      
-      setTimeout(() => {
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
-      }, 2000);
-    });
-  }
-  
-  // Event listeners
-  addRootNodeButton.addEventListener('click', addRootNode);
-  languageToggle.addEventListener('click', toggleLanguage);
-  
-  // Add event listener for save changes button
-  const saveChangesButton = document.getElementById('save-changes');
-  saveChangesButton.addEventListener('click', saveChanges);
-  
   // Create position adjustment modal
   function createPositionAdjustModal(nodeId) {
     // Create overlay
@@ -1719,8 +1689,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update position info
       const parentInfo = node.parent_id 
         ? `under parent node "${currentLanguage === 'en' 
-            ? siblings[0].parent_content 
-            : (siblings[0].parent_content_zh || siblings[0].parent_content)}"`
+            ? siblings[0].content 
+            : (siblings[0].content_zh || siblings[0].content)}"`
         : 'at root level';
       
       currentPositionInfo.innerHTML = `
@@ -1783,7 +1753,123 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  // Test and fix node positions
+  async function fixNodePositions(nodeId) {
+    try {
+      console.log(`Fixing positions for siblings of node ${nodeId}...`);
+      
+      // Get the node to find its parent
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      console.log('Current node:', node);
+      
+      // Get all siblings (including the node itself)
+      let siblings;
+      if (node.parent_id) {
+        console.log(`Getting children of parent ${node.parent_id}`);
+        const siblingsResponse = await fetch(`/api/nodes/${node.parent_id}/children`);
+        siblings = await siblingsResponse.json();
+      } else {
+        console.log('Node is a root node, getting all root nodes');
+        const rootsResponse = await fetch('/api/nodes');
+        siblings = await rootsResponse.json();
+      }
+      
+      console.log('All siblings before fix:', siblings);
+      
+      // Check for duplicate positions
+      const positionCounts = {};
+      siblings.forEach(sibling => {
+        positionCounts[sibling.position] = (positionCounts[sibling.position] || 0) + 1;
+      });
+      
+      const hasDuplicates = Object.values(positionCounts).some(count => count > 1);
+      
+      if (hasDuplicates) {
+        console.log('Duplicate positions detected:', positionCounts);
+        console.log('Will normalize all positions...');
+        
+        // Sort siblings by ID to maintain a consistent order
+        // (or you could use another criterion like creation date if available)
+        siblings.sort((a, b) => a.id.localeCompare(b.id));
+        
+        // Update each sibling with consecutive positions
+        for (let i = 0; i < siblings.length; i++) {
+          const sibling = siblings[i];
+          console.log(`Setting node ${sibling.id} position from ${sibling.position} to ${i}`);
+          
+          await fetch(`/api/nodes/${sibling.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              position: i
+            })
+          });
+        }
+        
+        console.log('Position fix completed, refreshing data...');
+        await fetchNodes(true);
+        return { fixed: true, siblings };
+      } else {
+        console.log('No duplicate positions found, no fix needed');
+        return { fixed: false, siblings };
+      }
+    } catch (error) {
+      console.error('Error fixing node positions:', error);
+      return { error: error.message };
+    }
+  }
+
+  // Add this right after the fixNodePositions function definition
+  window.fixNodePositions = fixNodePositions;
+  
+  // Save changes function - provides visual feedback
+  function saveChanges() {
+    const saveButton = document.getElementById('save-changes');
+    const originalText = saveButton.textContent;
+    
+    // Change button text to show saving in progress
+    saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    
+    // Actually try to manually save by refreshing data from server
+    console.log('Save button clicked, forcing fresh data load from server');
+    fetchNodes(true).then(() => {
+      console.log('Data refreshed from server with forced fresh load');
+      
+      saveButton.textContent = 'Saved!';
+      
+      // Reset button after 2 seconds
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+      }, 2000);
+    }).catch(error => {
+      console.error('Error refreshing data:', error);
+      saveButton.textContent = 'Error!';
+      
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
+      }, 2000);
+    });
+  }
+  
+  // Event listeners
+  addRootNodeButton.addEventListener('click', addRootNode);
+  languageToggle.addEventListener('click', toggleLanguage);
+  
+  // Add event listener for save changes button
+  const saveChangesButton = document.getElementById('save-changes');
+  saveChangesButton.addEventListener('click', saveChanges);
+  
   // Initial setup
   updateLanguageToggle();
   fetchNodes();
+
+  // ================================================================
+  // END OF APPLICATION CODE - DO NOT ADD FUNCTIONS BELOW THIS LINE
+  // ================================================================
 }); 
