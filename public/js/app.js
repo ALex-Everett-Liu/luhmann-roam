@@ -382,40 +382,55 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add a child node
   async function addChildNode(parentId) {
     try {
-      // Get all children of this parent
-      const children = await fetchChildren(parentId);
-      const maxPosition = children.length > 0 ? Math.max(...children.map(n => n.position)) + 1 : 0;
+      // Store whether we're in focus mode before the operation
+      const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
       
-      const response = await fetch('/api/nodes', {
+      // Get the current parent node data
+      const response = await fetch(`/api/nodes/${parentId}`);
+      const parentNode = await response.json();
+      
+      // Get count of existing children to determine position
+      const childrenResponse = await fetch(`/api/nodes/${parentId}/children`);
+      const children = await childrenResponse.json();
+      const position = children.length;
+      
+      // Create the new node
+      const newNodeResponse = await fetch('/api/nodes', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: currentLanguage === 'en' ? 'New node' : '',
-          content_zh: currentLanguage === 'zh' ? '新节点' : '',
+          content: 'New Node',
+          content_zh: '新节点',
           parent_id: parentId,
-          position: maxPosition
-        })
+          position: position
+        }),
       });
       
-      await response.json();
+      if (!newNodeResponse.ok) {
+        throw new Error('Failed to create child node');
+      }
       
-      // Make sure the parent is expanded
-      await fetch(`/api/nodes/${parentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          is_expanded: true
-        })
-      });
+      // Make sure parent is expanded
+      if (!parentNode.is_expanded) {
+        await fetch(`/api/nodes/${parentId}/toggle`, {
+          method: 'POST'
+        });
+      }
       
       // Refresh the outliner
-      fetchNodes();
+      await fetchNodes(true);
+      
+      // Restore focus state if we were in focus mode
+      if (wasInFocusMode && window.BreadcrumbManager) {
+        window.BreadcrumbManager.focusOnNode(parentId);
+      }
+      
+      // Set this as the last focused node
+      lastFocusedNodeId = parentId;
     } catch (error) {
-      console.error(`Error adding child node to ${parentId}:`, error);
+      console.error('Error adding child node:', error);
     }
   }
   
@@ -502,17 +517,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Toggle node expansion
   async function toggleNode(nodeId) {
     try {
-      await fetch(`/api/nodes/${nodeId}/toggle`, {
-        method: 'POST'
+      await preserveFocusState(async () => {
+        await fetch(`/api/nodes/${nodeId}/toggle`, {
+          method: 'POST'
+        });
+        
+        // Refresh the outliner
+        await fetchNodes();
+        
+        // Reapply filters after the nodes are refreshed
+        if (window.FilterManager) {
+          FilterManager.applyFilters();
+        }
       });
-      
-      // Refresh the outliner
-      await fetchNodes();
-      
-      // Reapply filters after the nodes are refreshed
-      if (window.FilterManager) {
-        FilterManager.applyFilters();
-      }
     } catch (error) {
       console.error(`Error toggling node ${nodeId}:`, error);
     }
@@ -655,18 +672,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Indent a node (make it a child of the node above)
   async function indentNode(nodeId) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/indent`, {
-        method: 'POST'
+      await preserveFocusState(async () => {
+        const response = await fetch(`/api/nodes/${nodeId}/indent`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(errorData.error);
+          return;
+        }
+        
+        // Refresh the outliner
+        await fetchNodes();
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(errorData.error);
-        return;
-      }
-      
-      // Refresh the outliner
-      fetchNodes();
     } catch (error) {
       console.error(`Error indenting node ${nodeId}:`, error);
     }
@@ -675,18 +694,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Outdent a node (make it a sibling of its parent)
   async function outdentNode(nodeId) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/outdent`, {
-        method: 'POST'
+      await preserveFocusState(async () => {
+        const response = await fetch(`/api/nodes/${nodeId}/outdent`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(errorData.error);
+          return;
+        }
+        
+        // Refresh the outliner
+        await fetchNodes();
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(errorData.error);
-        return;
-      }
-      
-      // Refresh the outliner
-      fetchNodes();
     } catch (error) {
       console.error(`Error outdenting node ${nodeId}:`, error);
     }
@@ -695,18 +716,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Move node up
   async function moveNodeUp(nodeId) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/move-up`, {
-        method: 'POST'
+      await preserveFocusState(async () => {
+        const response = await fetch(`/api/nodes/${nodeId}/move-up`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(errorData.error);
+          return;
+        }
+        
+        // Refresh the outliner
+        await fetchNodes();
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(errorData.error);
-        return;
-      }
-      
-      // Refresh the outliner
-      fetchNodes();
     } catch (error) {
       console.error(`Error moving node ${nodeId} up:`, error);
     }
@@ -715,18 +738,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Move node down
   async function moveNodeDown(nodeId) {
     try {
-      const response = await fetch(`/api/nodes/${nodeId}/move-down`, {
-        method: 'POST'
+      await preserveFocusState(async () => {
+        const response = await fetch(`/api/nodes/${nodeId}/move-down`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(errorData.error);
+          return;
+        }
+        
+        // Refresh the outliner
+        await fetchNodes();
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(errorData.error);
-        return;
-      }
-      
-      // Refresh the outliner
-      fetchNodes();
     } catch (error) {
       console.error(`Error moving node ${nodeId} down:`, error);
     }
@@ -746,32 +771,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add a sibling node
   async function addSiblingNode(nodeId, position) {
     try {
-      // Get the node to find its parent and position
-      const response = await fetch(`/api/nodes/${nodeId}`);
-      const node = await response.json();
-      
-      // Calculate new position
-      let newPosition = node.position;
-      if (position === 'after') {
-        newPosition += 1;
-      }
-      
-      // Create the new node
-      await fetch('/api/nodes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: currentLanguage === 'en' ? 'New node' : '',
-          content_zh: currentLanguage === 'zh' ? '新节点' : '',
-          parent_id: node.parent_id,
-          position: newPosition
-        })
+      await preserveFocusState(async () => {
+        // Get the node to find its parent and position
+        const response = await fetch(`/api/nodes/${nodeId}`);
+        const node = await response.json();
+        
+        // Calculate new position
+        let newPosition = node.position;
+        if (position === 'after') {
+          newPosition += 1;
+        }
+        
+        // Create the new node
+        await fetch('/api/nodes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            content: currentLanguage === 'en' ? 'New node' : '',
+            content_zh: currentLanguage === 'zh' ? '新节点' : '',
+            parent_id: node.parent_id,
+            position: newPosition
+          })
+        });
+        
+        // Refresh the outliner
+        await fetchNodes();
       });
-      
-      // Refresh the outliner
-      fetchNodes();
     } catch (error) {
       console.error(`Error adding sibling node to ${nodeId}:`, error);
     }
@@ -983,34 +1010,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Move node to new parent
   async function moveNodeToParent(nodeId, parentId, position) {
     try {
-      await fetch('/api/nodes/reorder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          nodeId: nodeId,
-          newParentId: parentId,
-          newPosition: position
-        })
-      });
-      
-      // If moving to a parent, ensure the parent is expanded
-      if (parentId) {
-        await fetch(`/api/nodes/${parentId}`, {
-          method: 'PUT',
+      await preserveFocusState(async () => {
+        await fetch('/api/nodes/reorder', {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            is_expanded: true
+            nodeId: nodeId,
+            newParentId: parentId,
+            newPosition: position
           })
         });
-      }
-      
-      // Refresh the outliner
-      fetchNodes();
-      closeMoveNodeModal();
+        
+        // If moving to a parent, ensure the parent is expanded
+        if (parentId) {
+          await fetch(`/api/nodes/${parentId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              is_expanded: true
+            })
+          });
+        }
+        
+        // Refresh the outliner
+        await fetchNodes();
+        closeMoveNodeModal();
+      });
     } catch (error) {
       console.error('Error moving node:', error);
       alert('Error moving node');
@@ -1156,32 +1185,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // Adjust node position
   async function adjustNodePosition(nodeId, newPosition) {
     try {
-      // Get the node to find its parent
-      const response = await fetch(`/api/nodes/${nodeId}`);
-      const node = await response.json();
-      
-      if (node.position === newPosition) {
-        // No change needed
+      await preserveFocusState(async () => {
+        // Get the node to find its parent
+        const response = await fetch(`/api/nodes/${nodeId}`);
+        const node = await response.json();
+        
+        if (node.position === newPosition) {
+          // No change needed
+          closePositionAdjustModal();
+          return;
+        }
+        
+        // Use the reorder API to move the node
+        await fetch('/api/nodes/reorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            nodeId: nodeId,
+            newParentId: node.parent_id, // Keep the same parent
+            newPosition: newPosition
+          })
+        });
+        
+        // Refresh the outliner
+        await fetchNodes();
         closePositionAdjustModal();
-        return;
-      }
-      
-      // Use the reorder API to move the node
-      await fetch('/api/nodes/reorder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          nodeId: nodeId,
-          newParentId: node.parent_id, // Keep the same parent
-          newPosition: newPosition
-        })
       });
-      
-      // Refresh the outliner
-      fetchNodes();
-      closePositionAdjustModal();
     } catch (error) {
       console.error(`Error adjusting position for node ${nodeId}:`, error);
       alert('Error adjusting node position');
@@ -1346,5 +1377,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // END OF APPLICATION CODE - DO NOT ADD FUNCTIONS BELOW THIS LINE
   // ================================================================
 
+  // Helper function to preserve focus state across operations
+  async function preserveFocusState(operation) {
+    // Store whether we're in focus mode before the operation
+    const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
+    // Store the currently focused node ID if in focus mode
+    const focusedNodeId = wasInFocusMode && window.BreadcrumbManager ? 
+      currentModalNodeId || lastFocusedNodeId : null;
+    
+    try {
+      // Run the provided operation
+      await operation();
+      
+      // Restore focus state if we were in focus mode
+      if (wasInFocusMode && window.BreadcrumbManager && focusedNodeId) {
+        window.BreadcrumbManager.focusOnNode(focusedNodeId);
+      }
+    } catch (error) {
+      console.error('Operation failed:', error);
+      throw error;
+    }
+  }
 
 }); 
