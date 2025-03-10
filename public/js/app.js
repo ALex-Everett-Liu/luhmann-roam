@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
       SearchManager.updateLanguage(currentLanguage);
     }
     
+    // Update breadcrumb language
+    if (window.BreadcrumbManager) {
+      BreadcrumbManager.updateLanguage(currentLanguage);
+    }
+    
     fetchNodes(true); // Pass true to force fresh data
   }
   
@@ -414,6 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       nodeDiv.appendChild(childrenDiv);
+    }
+    
+    // After creating the node element and before returning it
+    if (window.BreadcrumbManager) {
+      BreadcrumbManager.addNodeFocusHandler(nodeDiv, node.id);
     }
     
     return nodeDiv;
@@ -1398,6 +1408,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the SearchManager
   SearchManager.initialize();
+
+  // Initialize the BreadcrumbManager
+  if (window.BreadcrumbManager) {
+    BreadcrumbManager.initialize();
+  }
 
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
