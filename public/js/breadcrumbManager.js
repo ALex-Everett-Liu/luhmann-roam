@@ -221,6 +221,11 @@ const BreadcrumbManager = (function() {
    * @returns {Promise<Array>} Array of ancestors ordered from root to the node
    */
   async function getNodeAncestry(nodeId) {
+    // Since the /api/nodes/:id/ancestry endpoint doesn't exist in our server,
+    // we'll directly use the manual ancestry building method
+    return await buildNodeAncestry(nodeId);
+    
+    /* Original code with API attempt - commented out to avoid 404 errors
     try {
       const response = await fetch(`/api/nodes/${nodeId}/ancestry`);
       if (!response.ok) {
@@ -233,6 +238,7 @@ const BreadcrumbManager = (function() {
       // Fall back to manual ancestry building
       return await buildNodeAncestry(nodeId);
     }
+    */
   }
   
   /**
