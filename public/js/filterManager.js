@@ -284,25 +284,115 @@ const FilterManager = (function() {
       return;
     }
     
-    // Prompt for bookmark name
-    const bookmarkName = prompt('Enter a name for this filter bookmark:');
-    if (!bookmarkName) return;
+    // Create a custom modal for bookmark name input
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
     
-    // Create bookmark object
-    const bookmark = {
-      id: Date.now().toString(),
-      name: bookmarkName,
-      filters: [...activeFilters]
-    };
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.maxWidth = '400px';
     
-    // Add to bookmarks
-    filterBookmarks.push(bookmark);
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
     
-    // Save to localStorage
-    saveBookmarks();
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = 'Save Filter Bookmark';
     
-    // Update bookmarks display
-    updateBookmarksList();
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', () => {
+      document.body.removeChild(modalOverlay);
+    });
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Enter a name for this filter bookmark:';
+    nameLabel.style.display = 'block';
+    nameLabel.style.marginBottom = '8px';
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'node-search';
+    nameInput.style.width = '100%';
+    nameInput.placeholder = 'Bookmark name';
+    
+    modalBody.appendChild(nameLabel);
+    modalBody.appendChild(nameInput);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.className = 'btn btn-secondary';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.addEventListener('click', () => {
+      document.body.removeChild(modalOverlay);
+    });
+    
+    const saveButton = document.createElement('button');
+    saveButton.className = 'btn btn-primary';
+    saveButton.textContent = 'Save';
+    saveButton.addEventListener('click', () => {
+      const bookmarkName = nameInput.value.trim();
+      if (!bookmarkName) {
+        // Highlight the input field if empty
+        nameInput.style.borderColor = '#dc3545';
+        return;
+      }
+      
+      // Create bookmark object
+      const bookmark = {
+        id: Date.now().toString(),
+        name: bookmarkName,
+        filters: [...activeFilters]
+      };
+      
+      // Add to bookmarks
+      filterBookmarks.push(bookmark);
+      
+      // Save to localStorage
+      saveBookmarks();
+      
+      // Update bookmarks display
+      updateBookmarksList();
+      
+      // Close the modal
+      document.body.removeChild(modalOverlay);
+    });
+    
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(saveButton);
+    
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
+    
+    // Add to document
+    document.body.appendChild(modalOverlay);
+    
+    // Focus the input
+    setTimeout(() => {
+      nameInput.focus();
+    }, 100);
+    
+    // Allow Enter key to save
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        saveButton.click();
+      }
+    });
   }
   
   /**

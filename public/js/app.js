@@ -132,6 +132,11 @@ document.addEventListener('DOMContentLoaded', () => {
       nodes = await response.json();
       await renderOutliner();
       
+      // Reapply filters after rendering
+      if (window.FilterManager) {
+        FilterManager.applyFilters();
+      }
+      
       // Restore scroll position after rendering is complete
       setTimeout(() => {
         console.log(`Restoring scroll position to: ${scrollPosition}px`);
@@ -564,7 +569,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       
       // Refresh the outliner
-      fetchNodes();
+      await fetchNodes();
+      
+      // Reapply filters after the nodes are refreshed
+      if (window.FilterManager) {
+        FilterManager.applyFilters();
+      }
     } catch (error) {
       console.error(`Error toggling node ${nodeId}:`, error);
     }
