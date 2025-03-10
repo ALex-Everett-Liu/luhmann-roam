@@ -24,6 +24,8 @@ Luhmann-Roam is a knowledge management system inspired by Niklas Luhmann's Zette
 - **Multilingual Interface**: Toggle between English and Chinese
 - **Node Operations**: Indent, outdent, reorder, and reposition nodes
 - **Visual Feedback**: Highlighting for focus and active branches
+- **Search Functionality**: Search for nodes quickly and navigate to them
+- **Filtering Options**: Filter nodes based on user-defined criteria
 
 ## Core Components
 
@@ -56,6 +58,16 @@ The frontend is organized into modular components:
 - **Link Management**: Editing and deleting existing links
 - **Bidirectional View**: Showing both incoming and outgoing links
 - **Link Metadata**: Managing weights and descriptions for links
+
+#### Search Manager (searchManager.js)
+- **Search Modal**: Interface for searching nodes
+- **Search Functionality**: Fetching and displaying search results
+- **Node Navigation**: Navigating to nodes based on search results
+
+#### Filter Manager (filterManager.js)
+- **Filter UI**: Interface for managing filters in the sidebar
+- **Active Filters**: Adding and removing filters based on user selection
+- **Bookmarking Filters**: Saving and loading filter configurations
 
 ### 3. Database (database.js)
 
@@ -101,6 +113,8 @@ The frontend is organized into modular components:
 4. Access markdown editor for rich content
 5. Manage links through the link modal
 6. Adjust node positions as needed
+7. Search for nodes using the search functionality
+8. Apply filters to display specific nodes
 
 ## Technical Stack
 
@@ -163,12 +177,15 @@ The frontend is organized into modular components:
 - **Move Up/Down**: Reorder within siblings
 - **Link**: Manage connections to other nodes
 - **Markdown**: Edit rich content
+- **Filter**: Manage filters for node visibility
+- **Search**: Find nodes quickly
 
 ### Modals
 - **Markdown Editor**: Rich text editing for nodes
 - **Link Manager**: Create and manage bidirectional links
 - **Move Node**: Reposition nodes in the hierarchy
 - **Position Adjust**: Fine-tune node ordering
+- **Search Modal**: Interface for searching nodes
 
 ### Visual Elements
 - **Indentation Lines**: Visual guides showing hierarchy
@@ -204,6 +221,30 @@ The frontend is organized into modular components:
   - Link creation and management
   - Link listing and display
   - Search functionality for finding nodes to link
+
+### SearchManager.js
+- **Public API**:
+  - `openSearchModal()`: Opens the search modal for finding nodes
+  - `closeSearchModal()`: Closes the search modal
+  - `updateLanguage(language)`: Updates the language for search display
+- **Private Functions**:
+  - Search functionality for nodes
+  - Navigation to nodes based on search results
+  - Expanding parent nodes for visibility
+
+### FilterManager.js
+- **Public API**:
+  - `initialize()`: Creates the filter UI in the sidebar
+  - `addFilter(nodeId)`: Adds a filter for a specific node
+  - `removeFilter(nodeId)`: Removes a filter for a specific node
+  - `applyFilters()`: Applies active filters to the outliner
+  - `clearFilters()`: Clears all active filters
+  - `addFilterBookmark()`: Saves the current filter configuration as a bookmark
+  - `saveBookmarks()`: Saves bookmarks to localStorage
+  - `addFilterButtonToNode(nodeElement, nodeId)`: Adds a filter button to a node's action area
+- **Private Functions**:
+  - UI updates for active filters
+  - Handling search functionality for filtering nodes
 
 ## Future Extensions
 
@@ -263,3 +304,13 @@ The frontend is organized into modular components:
 - Edit content in the markdown editor
 - Save to update the node's rich content
 - Nodes with markdown content are indicated with a special icon
+
+### Searching Nodes
+- Click the "Search Nodes" button to open the search modal
+- Type to search for nodes and click on results to navigate
+- Use keyboard shortcuts (Ctrl+F) to quickly access the search modal
+
+### Filtering Nodes
+- Use the filter input to search for nodes to filter
+- Click on filter results to add them to active filters
+- Clear filters or save them as bookmarks for later use

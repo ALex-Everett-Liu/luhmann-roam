@@ -19,6 +19,7 @@ const SearchManager = (function() {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.maxWidth = '600px';
+    modal.style.maxHeight = '80vh';
     
     // Create modal header
     const modalHeader = document.createElement('div');
@@ -43,6 +44,7 @@ const SearchManager = (function() {
     // Search container
     const searchContainer = document.createElement('div');
     searchContainer.className = 'search-container';
+    searchContainer.style.marginBottom = '0';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -52,6 +54,11 @@ const SearchManager = (function() {
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results search-results-scrollable';
+    searchResults.style.maxHeight = '50vh';
+    searchResults.style.position = 'static';
+    searchResults.style.border = '1px solid #ddd';
+    searchResults.style.marginTop = '8px';
+    searchResults.style.borderRadius = '4px';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchResults);
