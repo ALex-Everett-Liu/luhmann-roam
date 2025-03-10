@@ -11,9 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
   let currentModalNodeId = null;
   
-  // Add link-related state
-  let currentNodeLinks = { outgoing: [], incoming: [] };
-  
   // Add this variable to track the currently focused node
   let lastFocusedNodeId = null;
   
@@ -25,14 +22,19 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Toggle language
   function toggleLanguage() {
-    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
-    localStorage.setItem('preferredLanguage', currentLanguage);
+    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en'; // uses a ternary operator to check the current value of currentLanguage.
+    localStorage.setItem('preferredLanguage', currentLanguage); // saves the newly selected language in the browser's localStorage.
     updateLanguageToggle();
     console.log(`Language switched to ${currentLanguage}, forcing fresh data load`);
     
     // Update language in LinkManager
     if (window.LinkManager) {
       LinkManager.updateLanguage(currentLanguage);
+    }
+    
+    // Update FilterManager language
+    if (window.FilterManager) {
+      FilterManager.updateLanguage(currentLanguage);
     }
     
     fetchNodes(true); // Pass true to force fresh data
@@ -382,6 +384,11 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteButton.title = 'Delete node';
     deleteButton.addEventListener('click', () => deleteNode(node.id));
     nodeActions.appendChild(deleteButton);
+    
+    // In the createNodeElement function, after creating all the node actions
+    // and before appending nodeActions to nodeContent:
+    // Add the filter button to node actions
+    FilterManager.addFilterButtonToNode(nodeDiv, node.id);
     
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
@@ -1371,6 +1378,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add this right before fetchNodes() in the initialization section
   checkContainerSettings();
 
+  // Initialize the FilterManager
+  FilterManager.initialize();
 
   fetchNodes();
 
