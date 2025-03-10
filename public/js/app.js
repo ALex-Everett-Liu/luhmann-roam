@@ -22,8 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Toggle language
   function toggleLanguage() {
-    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en'; // uses a ternary operator to check the current value of currentLanguage.
-    localStorage.setItem('preferredLanguage', currentLanguage); // saves the newly selected language in the browser's localStorage.
+    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
+    localStorage.setItem('preferredLanguage', currentLanguage);
     updateLanguageToggle();
     console.log(`Language switched to ${currentLanguage}, forcing fresh data load`);
     
@@ -35,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update FilterManager language
     if (window.FilterManager) {
       FilterManager.updateLanguage(currentLanguage);
+    }
+    
+    // Update SearchManager language
+    if (window.SearchManager) {
+      SearchManager.updateLanguage(currentLanguage);
     }
     
     fetchNodes(true); // Pass true to force fresh data
@@ -1390,6 +1395,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the FilterManager
   FilterManager.initialize();
+
+  // Initialize the SearchManager
+  SearchManager.initialize();
+
+  // Make fetchNodes available globally for the SearchManager
+  window.fetchNodes = fetchNodes;
 
   fetchNodes();
 
