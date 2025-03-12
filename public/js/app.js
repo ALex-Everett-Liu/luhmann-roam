@@ -447,9 +447,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update node content
   async function updateNodeContent(nodeId, content, content_zh) {
     try {
-        console.log(`Saving node ${nodeId}:`, { content, content_zh });
-        const updateData = {};
+      console.log(`Saving node ${nodeId}:`, { content, content_zh });
+      const updateData = {};
+      
+      // Check if this is the first edit of a default node
+      let isFirstEdit = false;
+      
+      // Fetch the current node data directly from the server to ensure accuracy
+      console.log(`Fetching current node data for ${nodeId} to check if it's a first edit`);
+      const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+      const node = await nodeResponse.json();
+      
+      console.log(`Current node data:`, node);
+      
+      // Define default content values
+      const defaultEnContent = 'New node';
+      const defaultZhContent = '新节点';
+      
+      // Check if the node still has default content in either language field
+      if ((node.content === defaultEnContent || node.content === defaultZhContent) && 
+          (node.content_zh === defaultEnContent || node.content_zh === defaultZhContent)) {
+        isFirstEdit = true;
+        console.log(`First edit detected for node ${nodeId} - will update both language fields`);
+      }
+      
+      // For first edit, update both language fields with the same content
+      if (isFirstEdit) {
+        // Determine which content to use based on current language
+        const editedContent = currentLanguage === 'en' ? content : content_zh;
+        console.log(`Using ${currentLanguage} content for both fields: "${editedContent}"`);
         
+        updateData.content = editedContent;
+        updateData.content_zh = editedContent;
+      } else {
+        // For subsequent edits, only update the current language field
+        console.log(`Not first edit, only updating ${currentLanguage} content`);
         if (content !== null) {
           updateData.content = content;
         }
@@ -457,56 +489,94 @@ document.addEventListener('DOMContentLoaded', () => {
         if (content_zh !== null) {
           updateData.content_zh = content_zh;
         }
-        
-        console.log(`Sending update request for node ${nodeId} with data:`, updateData);
-        
-        const response = await fetch(`/api/nodes/${nodeId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updateData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(`Error saving node ${nodeId}:`, errorData);
-          return false;
-        }
-        
-        const updatedNode = await response.json();
-        console.log(`Successfully saved node ${nodeId}:`, updatedNode);
-        
-        // Update the node in our local data structure to ensure consistency
-        updateLocalNodeData(nodeId, updateData);
-        
-        return true;
-      } catch (error) {
-        console.error(`Error updating node ${nodeId}:`, error);
+      }
+      
+      console.log(`Sending update request for node ${nodeId} with data:`, updateData);
+      
+      const response = await fetch(`/api/nodes/${nodeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`Error saving node ${nodeId}:`, errorData);
         return false;
+      }
+      
+      const updatedNode = await response.json();
+      console.log(`Successfully saved node ${nodeId}:`, updatedNode);
+      
+      // Update the node in our local data structure to ensure consistency
+      updateLocalNodeData(nodeId, updateData);
+      
+      return true;
+    } catch (error) {
+      console.error(`Error updating node ${nodeId}:`, error);
+      return false;
+    }
+  }
+  
+  // Helper function to update local node data after a successful save
+  function updateLocalNodeData(nodeId, updateData) {
+    // Update in the top-level nodes array if present
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].id === nodeId) {
+        if (updateData.content !== undefined) {
+          nodes[i].content = updateData.content;
+        }
+        if (updateData.content_zh !== undefined) {
+          nodes[i].content_zh = updateData.content_zh;
+        }
+        console.log(`Updated local data for top-level node ${nodeId}`);
+        return;
       }
     }
     
-    // Helper function to update local node data after a successful save
-    function updateLocalNodeData(nodeId, updateData) {
-      // Update in the top-level nodes array if present
-      for (let i = 0; i < nodes.length; i++) {
-        if (nodes[i].id === nodeId) {
-          if (updateData.content !== undefined) {
-            nodes[i].content = updateData.content;
-          }
-          if (updateData.content_zh !== undefined) {
-            nodes[i].content_zh = updateData.content_zh;
-          }
-          console.log(`Updated local data for top-level node ${nodeId}`);
-          return;
-        }
+    // If not found at top level, it might be a child node
+    // We'll handle this in a future update if needed
+    console.log(`Node ${nodeId} not found in top-level nodes, may be a child node`);
+  }
+  
+  // Helper function to find a node by ID in our local data structure
+  function findNodeById(nodeId) {
+    // First check top-level nodes
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        return node;
       }
       
-      // If not found at top level, it might be a child node
-      // We'll handle this in a future update if needed
-      console.log(`Node ${nodeId} not found in top-level nodes, may be a child node`);
+      // Recursively check children if the node has any
+      if (node.children) {
+        const found = findNodeInChildren(node.children, nodeId);
+        if (found) return found;
+      }
     }
+    
+    // Node not found in our local data
+    return null;
+  }
+  
+  // Helper function to recursively search for a node in children
+  function findNodeInChildren(children, nodeId) {
+    if (!children || children.length === 0) return null;
+    
+    for (const child of children) {
+      if (child.id === nodeId) {
+        return child;
+      }
+      
+      if (child.children) {
+        const found = findNodeInChildren(child.children, nodeId);
+        if (found) return found;
+      }
+    }
+    
+    return null;
+  }
   
   // Delete a node
   async function deleteNode(nodeId) {
