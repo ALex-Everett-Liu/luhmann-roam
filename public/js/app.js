@@ -205,7 +205,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     nodeText.addEventListener('blur', async () => {
       console.log(`Node ${node.id} blur event triggered`);
-      let originalContent = currentLanguage === 'en' ? node.content : node.content_zh;
+      
+      // Fetch the latest node data to ensure we have current values
+      const nodeResponse = await fetch(`/api/nodes/${node.id}`);
+      const currentNode = await nodeResponse.json();
+      
+      let originalContent = currentLanguage === 'en' ? currentNode.content : currentNode.content_zh;
       let savedContent = nodeText.textContent;
       
       // Handle removing the link count from the content if present
@@ -220,9 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let success;
         if (currentLanguage === 'en') {
-          success = await updateNodeContent(node.id, savedContent, node.content_zh);
+          success = await updateNodeContent(node.id, savedContent, currentNode.content_zh);
         } else {
-          success = await updateNodeContent(node.id, node.content, savedContent);
+          success = await updateNodeContent(node.id, currentNode.content, savedContent);
         }
         
         if (!success) {
