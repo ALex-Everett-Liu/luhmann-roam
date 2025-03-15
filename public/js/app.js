@@ -964,26 +964,30 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupResizableSidebar() {
     const appContainer = document.querySelector('.app-container');
     const sidebar = document.querySelector('.sidebar');
+    const content = document.querySelector('.content');
     
-    // Create the resize handle
+    // Create the resize handle with a visible grip
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
-    sidebar.appendChild(resizeHandle); // Append to sidebar instead of appContainer
+    resizeHandle.innerHTML = '<div class="resize-grip"></div>';
+    
+    // Insert the handle between sidebar and content
+    appContainer.insertBefore(resizeHandle, content);
     
     // Get the initial sidebar width from localStorage or use default
     const savedWidth = localStorage.getItem('sidebarWidth');
     if (savedWidth) {
       sidebar.style.width = savedWidth + 'px';
+      // Also update the handle position
+      resizeHandle.style.left = `${parseInt(savedWidth)}px`;
     }
     
     // Variables for tracking resize state
     let isResizing = false;
-    let lastX = 0;
     
     // Mouse down event on the resize handle
     resizeHandle.addEventListener('mousedown', (e) => {
       isResizing = true;
-      lastX = e.clientX;
       
       // Add a class to the body during resize to prevent text selection
       document.body.classList.add('resizing');
@@ -996,23 +1000,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('mousemove', (e) => {
       if (!isResizing) return;
       
-      const deltaX = e.clientX - lastX;
-      lastX = e.clientX;
+      // Calculate new width based on mouse position
+      const newWidth = Math.max(200, Math.min(e.clientX, window.innerWidth * 0.8));
       
-      // Get current width and calculate new width
-      const currentWidth = parseInt(getComputedStyle(sidebar).width);
-      const newWidth = currentWidth + deltaX;
+      // Update sidebar width
+      sidebar.style.width = `${newWidth}px`;
       
-      // Set min and max constraints
-      const minWidth = 200; // Minimum sidebar width
-      const maxWidth = window.innerWidth * 0.8; // Maximum sidebar width (80% of window)
+      // Update handle position
+      resizeHandle.style.left = `${newWidth}px`;
       
-      if (newWidth >= minWidth && newWidth <= maxWidth) {
-        sidebar.style.width = newWidth + 'px';
-        
-        // Save the width to localStorage
-        localStorage.setItem('sidebarWidth', newWidth);
-      }
+      // Save the width to localStorage
+      localStorage.setItem('sidebarWidth', newWidth);
     });
     
     // Mouse up event to stop resizing
@@ -1031,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (currentWidth > maxWidth) {
         sidebar.style.width = maxWidth + 'px';
+        resizeHandle.style.left = `${maxWidth}px`;
         localStorage.setItem('sidebarWidth', maxWidth);
       }
     });
