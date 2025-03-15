@@ -180,11 +180,23 @@ app.post('/api/nodes/reorder', async (req, res) => {
   try {
     const { nodeId, newParentId, newPosition } = req.body;
     
+    // Validate input
+    if (!nodeId) {
+      return res.status(400).json({ error: 'Missing required parameter: nodeId' });
+    }
+    
     // Start a transaction
     await db.run('BEGIN TRANSACTION');
     
     // Get current parent and position
     const node = await db.get('SELECT parent_id, position FROM nodes WHERE id = ?', nodeId);
+    
+    // Check if node exists
+    if (!node) {
+      await db.run('ROLLBACK');
+      return res.status(404).json({ error: `Node with ID ${nodeId} not found` });
+    }
+    
     const oldParentId = node.parent_id;
     const oldPosition = node.position;
     

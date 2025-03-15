@@ -60,7 +60,8 @@
       this.dragEndHandler = function() {
         console.log(`Drag ended for node ${self.draggedNodeId}`);
         this.parentElement.parentElement.style.opacity = '1';
-        self.draggedNodeId = null;
+        // Don't reset draggedNodeId here, as it might be needed in the drop handler
+        // self.draggedNodeId = null;
       };
       
       this.dragOverHandler = function(e) {
@@ -105,6 +106,12 @@
         const targetNodeId = this.dataset.id;
         console.log(`Drop event on node ${targetNodeId}`);
         
+        // Make sure we have a valid dragged node ID
+        if (!self.draggedNodeId) {
+          console.error('No dragged node ID found');
+          return;
+        }
+        
         // If dropping onto itself, do nothing
         if (self.draggedNodeId === targetNodeId) {
           console.log('Cannot drop node onto itself');
@@ -125,50 +132,85 @@
             console.log(`Dropping node ${self.draggedNodeId} above node ${targetNodeId}`);
             const targetNode = await (await fetch(`/api/nodes/${targetNodeId}`)).json();
             
-            await fetch('/api/nodes/reorder', {
+            // Ensure we're sending the correct data format
+            const requestData = {
+              nodeId: self.draggedNodeId,
+              newParentId: targetNode.parent_id,
+              newPosition: targetNode.position
+            };
+            
+            console.log('Sending reorder request with data:', requestData);
+            
+            const response = await fetch('/api/nodes/reorder', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({
-                nodeId: self.draggedNodeId,
-                newParentId: targetNode.parent_id,
-                newPosition: targetNode.position
-              })
+              body: JSON.stringify(requestData)
             });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Server error (${response.status}):`, errorText);
+              throw new Error(`Server error: ${response.status}`);
+            }
+            
           } else if (y > rect.height * 2 / 3) {
             // Drop below
             console.log(`Dropping node ${self.draggedNodeId} below node ${targetNodeId}`);
             const targetNode = await (await fetch(`/api/nodes/${targetNodeId}`)).json();
             
-            await fetch('/api/nodes/reorder', {
+            // Ensure we're sending the correct data format
+            const requestData = {
+              nodeId: self.draggedNodeId,
+              newParentId: targetNode.parent_id,
+              newPosition: targetNode.position + 1
+            };
+            
+            console.log('Sending reorder request with data:', requestData);
+            
+            const response = await fetch('/api/nodes/reorder', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({
-                nodeId: self.draggedNodeId,
-                newParentId: targetNode.parent_id,
-                newPosition: targetNode.position + 1
-              })
+              body: JSON.stringify(requestData)
             });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Server error (${response.status}):`, errorText);
+              throw new Error(`Server error: ${response.status}`);
+            }
+            
           } else {
             // Drop as child
             console.log(`Dropping node ${self.draggedNodeId} as child of node ${targetNodeId}`);
             const children = await self.fetchChildren(targetNodeId);
             const maxPosition = children.length > 0 ? Math.max(...children.map(n => n.position)) + 1 : 0;
             
-            await fetch('/api/nodes/reorder', {
+            // Ensure we're sending the correct data format
+            const requestData = {
+              nodeId: self.draggedNodeId,
+              newParentId: targetNodeId,
+              newPosition: maxPosition
+            };
+            
+            console.log('Sending reorder request with data:', requestData);
+            
+            const response = await fetch('/api/nodes/reorder', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({
-                nodeId: self.draggedNodeId,
-                newParentId: targetNodeId,
-                newPosition: maxPosition
-              })
+              body: JSON.stringify(requestData)
             });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Server error (${response.status}):`, errorText);
+              throw new Error(`Server error: ${response.status}`);
+            }
             
             // Ensure the target is expanded
             await fetch(`/api/nodes/${targetNodeId}`, {
@@ -184,10 +226,15 @@
           
           // Refresh the outliner
           if (window.fetchNodes) {
+            console.log('Refreshing nodes after successful reorder');
             window.fetchNodes(true);
           }
         } catch (error) {
           console.error('Error reordering nodes:', error);
+          alert('Error moving node. Please try again.');
+        } finally {
+          // Reset the dragged node ID after the operation is complete
+          self.draggedNodeId = null;
         }
       };
     },
@@ -284,6 +331,41 @@
       this.isInitialized = false;
       this.draggedNodeId = null;
       return 'DragDropManager reset complete';
+    },
+    
+    // Debug the server API (useful for troubleshooting)
+    debugServerAPI: async function() {
+      try {
+        // Test the reorder API with minimal data
+        const testData = {
+          nodeId: "test-node-id",
+          newParentId: null,
+          newPosition: 0
+        };
+        
+        console.log('Testing reorder API with data:', testData);
+        
+        const response = await fetch('/api/nodes/reorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testData)
+        });
+        
+        const responseText = await response.text();
+        
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          responseText: responseText
+        };
+      } catch (error) {
+        console.error('Error testing API:', error);
+        return {
+          error: error.message
+        };
+      }
     }
   };
   
