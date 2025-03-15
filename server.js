@@ -753,6 +753,163 @@ app.get('/api/nodes/:id', async (req, res) => {
   }
 });
 
+// Task Management API Endpoints
+
+// Get tasks for a specific date
+app.get('/api/tasks/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    
+    const tasks = await db.all(
+      'SELECT * FROM tasks WHERE date = ? ORDER BY created_at',
+      date
+    );
+    
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new task
+app.post('/api/tasks', async (req, res) => {
+  try {
+    const { name, date } = req.body;
+    const now = Date.now();
+    const id = uuidv4();
+    
+    await db.run(
+      'INSERT INTO tasks (id, name, date, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [id, name, date, now, now]
+    );
+    
+    const task = await db.get('SELECT * FROM tasks WHERE id = ?', id);
+    res.status(201).json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a task
+app.put('/api/tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, is_completed, is_active, total_duration } = req.body;
+    const now = Date.now();
+    
+    let query = 'UPDATE tasks SET updated_at = ?';
+    const params = [now];
+    
+    if (name !== undefined) {
+      query += ', name = ?';
+      params.push(name);
+    }
+    
+    if (is_completed !== undefined) {
+      query += ', is_completed = ?';
+      params.push(is_completed);
+    }
+    
+    if (is_active !== undefined) {
+      query += ', is_active = ?';
+      params.push(is_active);
+    }
+    
+    if (total_duration !== undefined) {
+      query += ', total_duration = ?';
+      params.push(total_duration);
+    }
+    
+    query += ' WHERE id = ?';
+    params.push(id);
+    
+    await db.run(query, params);
+    const task = await db.get('SELECT * FROM tasks WHERE id = ?', id);
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start timing a task
+app.post('/api/tasks/:id/start', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const now = Date.now();
+    
+    // First, stop any currently active task
+    await db.run(
+      'UPDATE tasks SET is_active = 0, updated_at = ? WHERE is_active = 1',
+      now
+    );
+    
+    // Then activate the selected task
+    await db.run(
+      'UPDATE tasks SET is_active = 1, start_time = ?, updated_at = ? WHERE id = ?',
+      [now, now, id]
+    );
+    
+    const task = await db.get('SELECT * FROM tasks WHERE id = ?', id);
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Pause timing a task
+app.post('/api/tasks/:id/pause', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { elapsed } = req.body;
+    const now = Date.now();
+    
+    // Get the task
+    const task = await db.get('SELECT * FROM tasks WHERE id = ?', id);
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // Update the task's total duration and deactivate it
+    const newDuration = (task.total_duration || 0) + elapsed;
+    
+    await db.run(
+      'UPDATE tasks SET is_active = 0, total_duration = ?, start_time = NULL, updated_at = ? WHERE id = ?',
+      [newDuration, now, id]
+    );
+    
+    const updatedTask = await db.get('SELECT * FROM tasks WHERE id = ?', id);
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a task
+app.delete('/api/tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await db.run('DELETE FROM tasks WHERE id = ?', id);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get dates with tasks
+app.get('/api/tasks/dates', async (req, res) => {
+  try {
+    const dates = await db.all(
+      'SELECT DISTINCT date FROM tasks ORDER BY date DESC'
+    );
+    
+    res.json(dates.map(item => item.date));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

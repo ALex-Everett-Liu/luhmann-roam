@@ -45,6 +45,21 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create tasks table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      start_time INTEGER,
+      total_duration INTEGER DEFAULT 0,
+      is_completed BOOLEAN DEFAULT 0,
+      is_active BOOLEAN DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }

@@ -991,6 +991,11 @@ document.addEventListener('DOMContentLoaded', () => {
     PositionManager.initialize();
   }
 
+  // Initialize the TaskManager
+  if (window.TaskManager) {
+    TaskManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
