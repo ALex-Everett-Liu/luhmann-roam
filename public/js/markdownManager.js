@@ -21,10 +21,15 @@ const MarkdownManager = (function() {
         <div class="modal">
           <div class="modal-header">
             <h3 class="modal-title">Edit Markdown Content</h3>
+            <div class="markdown-mode-toggle">
+              <button id="edit-mode-btn" class="mode-btn active">Edit</button>
+              <button id="read-mode-btn" class="mode-btn">Preview</button>
+            </div>
             <button class="modal-close" id="close-markdown-modal">&times;</button>
           </div>
           <div class="modal-body">
             <textarea id="markdown-editor" class="markdown-editor" placeholder="Enter markdown content..."></textarea>
+            <div id="markdown-preview" class="markdown-preview" style="display: none;"></div>
           </div>
           <div class="modal-footer">
             <button id="delete-markdown" class="btn btn-danger">Delete Markdown</button>
@@ -43,7 +48,101 @@ const MarkdownManager = (function() {
     document.getElementById('save-markdown').addEventListener('click', saveMarkdown);
     document.getElementById('delete-markdown').addEventListener('click', deleteMarkdown);
     
+    // Add new event listeners for mode toggle
+    document.getElementById('edit-mode-btn').addEventListener('click', switchToEditMode);
+    document.getElementById('read-mode-btn').addEventListener('click', switchToReadMode);
+    
     return modal;
+  }
+  
+  /**
+   * Switches to edit mode
+   */
+  function switchToEditMode() {
+    document.getElementById('edit-mode-btn').classList.add('active');
+    document.getElementById('read-mode-btn').classList.remove('active');
+    document.getElementById('markdown-editor').style.display = 'block';
+    document.getElementById('markdown-preview').style.display = 'none';
+  }
+  
+  /**
+   * Switches to read (preview) mode
+   */
+  function switchToReadMode() {
+    document.getElementById('edit-mode-btn').classList.remove('active');
+    document.getElementById('read-mode-btn').classList.add('active');
+    document.getElementById('markdown-editor').style.display = 'none';
+    document.getElementById('markdown-preview').style.display = 'block';
+    
+    // Get the markdown content and render it
+    const markdownContent = document.getElementById('markdown-editor').value;
+    renderMarkdown(markdownContent);
+  }
+  
+  /**
+   * Renders markdown content as HTML
+   * @param {string} content - The markdown content to render
+   */
+  function renderMarkdown(content) {
+    // You need to include a markdown parser library like marked.js
+    // For now, we'll use a simple implementation that just handles basic formatting
+    const html = simpleMarkdownToHtml(content);
+    document.getElementById('markdown-preview').innerHTML = html;
+  }
+  
+  /**
+   * Simple markdown to HTML converter (placeholder until a proper library is used)
+   * @param {string} markdown - The markdown content
+   * @returns {string} The HTML content
+   */
+  function simpleMarkdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    // Replace headers
+    let html = markdown
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+      .replace(/^##### (.+)$/gm, '<h5>$1</h5>')
+      .replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+    
+    // Replace bold and italic
+    html = html
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\_\_(.+?)\_\_/g, '<strong>$1</strong>')
+      .replace(/\_(.+?)\_/g, '<em>$1</em>');
+    
+    // Replace lists
+    html = html
+      .replace(/^\* (.+)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
+    
+    // Replace links
+    html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+    
+    // Replace inline code
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+    
+    // Replace code blocks
+    html = html.replace(/```(.+?)```/gs, '<pre><code>$1</code></pre>');
+    
+    // Replace paragraphs (two new lines)
+    html = html.replace(/\n\s*\n/g, '</p><p>');
+    
+    // Wrap with paragraph tags if needed
+    if (html && !html.startsWith('<')) {
+      html = '<p>' + html + '</p>';
+    }
+    
+    // Cleanup adjacent lists
+    html = html
+      .replace(/<\/ul><ul>/g, '')
+      .replace(/<\/ol><ol>/g, '');
+    
+    return html;
   }
   
   /**
@@ -59,6 +158,8 @@ const MarkdownManager = (function() {
       const data = await response.json();
       
       document.getElementById('markdown-editor').value = data.content || '';
+      // Start in edit mode
+      switchToEditMode();
       modalElement.style.display = 'flex';
     } catch (error) {
       console.error('Error fetching markdown:', error);
