@@ -960,6 +960,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  // Add this function to set up the resizable sidebar
+  function setupResizableSidebar() {
+    const appContainer = document.querySelector('.app-container');
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Create the resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    sidebar.appendChild(resizeHandle); // Append to sidebar instead of appContainer
+    
+    // Get the initial sidebar width from localStorage or use default
+    const savedWidth = localStorage.getItem('sidebarWidth');
+    if (savedWidth) {
+      sidebar.style.width = savedWidth + 'px';
+    }
+    
+    // Variables for tracking resize state
+    let isResizing = false;
+    let lastX = 0;
+    
+    // Mouse down event on the resize handle
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      lastX = e.clientX;
+      
+      // Add a class to the body during resize to prevent text selection
+      document.body.classList.add('resizing');
+      
+      // Prevent text selection during resize
+      e.preventDefault();
+    });
+    
+    // Mouse move event for resizing
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const deltaX = e.clientX - lastX;
+      lastX = e.clientX;
+      
+      // Get current width and calculate new width
+      const currentWidth = parseInt(getComputedStyle(sidebar).width);
+      const newWidth = currentWidth + deltaX;
+      
+      // Set min and max constraints
+      const minWidth = 200; // Minimum sidebar width
+      const maxWidth = window.innerWidth * 0.8; // Maximum sidebar width (80% of window)
+      
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        sidebar.style.width = newWidth + 'px';
+        
+        // Save the width to localStorage
+        localStorage.setItem('sidebarWidth', newWidth);
+      }
+    });
+    
+    // Mouse up event to stop resizing
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.classList.remove('resizing');
+      }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      // Make sure sidebar doesn't exceed max width when window is resized
+      const currentWidth = parseInt(getComputedStyle(sidebar).width);
+      const maxWidth = window.innerWidth * 0.8;
+      
+      if (currentWidth > maxWidth) {
+        sidebar.style.width = maxWidth + 'px';
+        localStorage.setItem('sidebarWidth', maxWidth);
+      }
+    });
+  }
+  
   // Event listeners
   addRootNodeButton.addEventListener('click', addRootNode);
   languageToggle.addEventListener('click', toggleLanguage);
@@ -972,8 +1048,10 @@ document.addEventListener('DOMContentLoaded', () => {
   updateLanguageToggle();
 
   // Call this function during initialization
-  // Add this right before fetchNodes() in the initialization section
   checkContainerSettings();
+  
+  // Set up resizable sidebar
+  setupResizableSidebar();
 
   // Initialize the FilterManager
   FilterManager.initialize();
