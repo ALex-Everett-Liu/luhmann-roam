@@ -57,6 +57,11 @@ document.addEventListener('DOMContentLoaded', () => {
       DragDropManager.updateLanguage(currentLanguage);
     }
     
+    // Update TimestampManager language
+    if (window.TimestampManager) {
+      TimestampManager.updateLanguage(currentLanguage);
+    }
+    
     fetchNodes(true); // Pass true to force fresh data
   }
   
@@ -288,6 +293,14 @@ document.addEventListener('DOMContentLoaded', () => {
     positionButton.title = 'Adjust position';
     positionButton.addEventListener('click', () => PositionManager.openPositionAdjustModal(node.id));
     nodeActions.appendChild(positionButton);
+    
+    // Timestamp button
+    const timestampButton = document.createElement('button');
+    timestampButton.className = 'timestamp-button';
+    timestampButton.innerHTML = '🕒';
+    timestampButton.title = 'View timestamps';
+    timestampButton.addEventListener('click', () => TimestampManager.openModal(node.id));
+    nodeActions.appendChild(timestampButton);
     
     // Link button
     const linkButton = document.createElement('button');
@@ -940,6 +953,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the PositionManager
   if (window.PositionManager) {
     PositionManager.initialize();
+  }
+
+  // Initialize the TimestampManager
+  if (window.TimestampManager) {
+    TimestampManager.initialize();
   }
 
   // Initialize the TaskManager

@@ -1184,3 +1184,43 @@ background-color: #2d9249;
   left: 0;
   margin-left: -4px;
 }
+
+/* Timestamp button */
+.timestamp-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  margin-right: 2px;
+  padding: 2px 4px;
+  transition: background-color 0.2s;
+}
+
+.timestamp-button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Timestamp modal */
+.timestamp-info {
+  padding: 10px;
+}
+
+.timestamp-section {
+  margin-bottom: 20px;
+}
+
+.timestamp-section h3 {
+  color: #555;
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.timestamp {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  padding: 8px 12px;
+}
