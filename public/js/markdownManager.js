@@ -6,6 +6,7 @@ const MarkdownManager = (function() {
   // Private variables
   let modalElement = null;
   let currentNodeId = null;
+  let imageViewMode = localStorage.getItem('markdownImageViewMode') || 'lightbox'; // Default to lightbox
   
   /**
    * Creates the markdown modal if it doesn't exist
@@ -29,7 +30,15 @@ const MarkdownManager = (function() {
           </div>
           <div class="modal-body">
             <textarea id="markdown-editor" class="markdown-editor" placeholder="Enter markdown content..."></textarea>
-            <div id="markdown-preview" class="markdown-preview" style="display: none;"></div>
+            <div id="markdown-preview" class="markdown-preview" style="display: none;">
+              <div class="image-view-toggle">
+                <label>
+                  <input type="checkbox" id="image-view-toggle" ${imageViewMode === 'newtab' ? 'checked' : ''}>
+                  Open images in new tab
+                </label>
+              </div>
+              <div id="markdown-content"></div>
+            </div>
           </div>
           <div class="modal-footer">
             <button id="delete-markdown" class="btn btn-danger">Delete Markdown</button>
@@ -51,6 +60,16 @@ const MarkdownManager = (function() {
     // Add new event listeners for mode toggle
     document.getElementById('edit-mode-btn').addEventListener('click', switchToEditMode);
     document.getElementById('read-mode-btn').addEventListener('click', switchToReadMode);
+    
+    // Add event listener for image view toggle
+    document.getElementById('image-view-toggle').addEventListener('change', function() {
+      imageViewMode = this.checked ? 'newtab' : 'lightbox';
+      localStorage.setItem('markdownImageViewMode', imageViewMode);
+      
+      // Re-render the markdown to apply the new image view mode
+      const markdownContent = document.getElementById('markdown-editor').value;
+      renderMarkdown(markdownContent);
+    });
     
     return modal;
   }
@@ -87,7 +106,7 @@ const MarkdownManager = (function() {
     // You need to include a markdown parser library like marked.js
     // For now, we'll use a simple implementation that just handles basic formatting
     const html = simpleMarkdownToHtml(content);
-    document.getElementById('markdown-preview').innerHTML = html;
+    document.getElementById('markdown-content').innerHTML = html;
   }
   
   /**
@@ -107,13 +126,22 @@ const MarkdownManager = (function() {
       .replace(/^##### (.+)$/gm, '<h5>$1</h5>')
       .replace(/^###### (.+)$/gm, '<h6>$1</h6>');
     
-    // Replace images - this handles ![alt text](image.jpg) syntax
+    // Replace images - handle based on current view mode
     html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, src) => {
       // Path handling - if it's a relative path without http/https, prefix with /attachment/
       if (!src.startsWith('http') && !src.startsWith('/')) {
         src = `/attachment/${src}`;
       }
-      return `<img src="${src}" alt="${alt}" class="markdown-image" onclick="MarkdownManager.openImageViewer('${src}')">`;
+      
+      if (imageViewMode === 'newtab') {
+        // New tab mode - wrap image in a link that opens in a new tab
+        return `<a href="${src}" target="_blank" rel="noopener noreferrer">
+                  <img src="${src}" alt="${alt}" class="markdown-image">
+                </a>`;
+      } else {
+        // Lightbox mode - make image clickable to open in lightbox
+        return `<img src="${src}" alt="${alt}" class="markdown-image" onclick="MarkdownManager.openImageViewer('${src}')">`;
+      }
     });
     
     // Replace bold and italic
@@ -126,8 +154,8 @@ const MarkdownManager = (function() {
     // Replace lists
     html = html
       .replace(/^\* (.+)$/gm, '<ul><li>$1</li></ul>')
-        .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
-        .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
+      .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
+      .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
     
     // Replace links
     html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
