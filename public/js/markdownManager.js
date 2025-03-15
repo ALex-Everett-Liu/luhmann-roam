@@ -107,6 +107,15 @@ const MarkdownManager = (function() {
       .replace(/^##### (.+)$/gm, '<h5>$1</h5>')
       .replace(/^###### (.+)$/gm, '<h6>$1</h6>');
     
+    // Replace images - this handles ![alt text](image.jpg) syntax
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, src) => {
+      // Path handling - if it's a relative path without http/https, prefix with /attachment/
+      if (!src.startsWith('http') && !src.startsWith('/')) {
+        src = `/attachment/${src}`;
+      }
+      return `<img src="${src}" alt="${alt}" class="markdown-image" onclick="MarkdownManager.openImageViewer('${src}')">`;
+    });
+    
     // Replace bold and italic
     html = html
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -117,8 +126,8 @@ const MarkdownManager = (function() {
     // Replace lists
     html = html
       .replace(/^\* (.+)$/gm, '<ul><li>$1</li></ul>')
-      .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
-      .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
+        .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
+        .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
     
     // Replace links
     html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
@@ -297,11 +306,49 @@ const MarkdownManager = (function() {
     }
   }
   
+  /**
+   * Opens the image viewer for a full-size view
+   * @param {string} imageSrc - The source URL of the image
+   */
+  function openImageViewer(imageSrc) {
+    // Create the viewer if it doesn't exist
+    let viewer = document.getElementById('markdown-image-viewer');
+    if (!viewer) {
+      const viewerHTML = `
+        <div id="markdown-image-viewer" class="image-viewer-overlay" style="display: none;">
+          <div class="image-viewer-content">
+            <span class="image-viewer-close">&times;</span>
+            <img id="image-viewer-img" class="image-viewer-img">
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', viewerHTML);
+      viewer = document.getElementById('markdown-image-viewer');
+      
+      // Set up close functionality
+      document.querySelector('.image-viewer-close').addEventListener('click', () => {
+        viewer.style.display = 'none';
+      });
+      
+      // Close when clicking outside the image
+      viewer.addEventListener('click', (e) => {
+        if (e.target === viewer) {
+          viewer.style.display = 'none';
+        }
+      });
+    }
+    
+    // Set the image source and show the viewer
+    document.getElementById('image-viewer-img').src = imageSrc;
+    viewer.style.display = 'flex';
+  }
+  
   // Public API
   return {
     openModal: openMarkdownModal,
     closeModal: closeModal,
-    updateIndicator: updateMarkdownIndicator
+    updateIndicator: updateMarkdownIndicator,
+    openImageViewer: openImageViewer
   };
 })();
 
