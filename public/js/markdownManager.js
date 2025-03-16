@@ -660,10 +660,6 @@ const MarkdownManager = (function() {
     // Re-render to see changes
     renderMarkdown(updatedMarkdown);
     
-    // Give feedback
-    imgElement.classList.remove('selected-for-resize');
-    document.getElementById('image-resize-panel').style.display = 'none';
-    
     // Flash the image to show it's been updated
     imgElement.classList.add('resize-updated');
     setTimeout(() => {

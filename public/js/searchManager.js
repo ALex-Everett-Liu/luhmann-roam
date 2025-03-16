@@ -197,6 +197,17 @@ const SearchManager = (function() {
           if (nodeText) {
             nodeText.focus();
           }
+          
+          // Track this as the last focused node
+          if (window.lastFocusedNodeId !== undefined) {
+            window.lastFocusedNodeId = nodeId;
+            console.log(`Search set focus to node: ${nodeId}`);
+          }
+          
+          // Use BreadcrumbManager if available
+          if (window.BreadcrumbManager) {
+            window.BreadcrumbManager.focusOnNode(nodeId);
+          }
         }
       }, 300); // Give time for the DOM to update after expanding parents
     } catch (error) {
