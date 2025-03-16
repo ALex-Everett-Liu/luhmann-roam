@@ -38,22 +38,15 @@ const MarkdownManager = (function() {
                     Open images in new tab
                   </label>
                 </div>
-                <div class="image-size-controls">
-                  <label>Image Size: 
-                    <select id="image-size-preset">
-                      <option value="100">100% (Original)</option>
-                      <option value="75">75%</option>
-                      <option value="50">50%</option>
-                      <option value="25">25%</option>
-                      <option value="custom">Custom...</option>
-                    </select>
+                
+                <!-- Image size control for selected image -->
+                <div class="image-size-control">
+                  <label>Selected Image Width (px): 
+                    <input type="number" id="image-width-input" min="50" max="2000" value="800" disabled>
+                    <button id="apply-image-width" class="btn-small" disabled>Apply</button>
+                    <button id="remove-image-width" class="btn-small btn-danger-small" disabled>Remove</button>
                   </label>
-                  <div id="custom-image-size" style="display: none; margin-top: 5px;">
-                    <label>Max width (px): 
-                      <input type="number" id="image-max-width" min="50" max="2000" value="800">
-                      <button id="apply-custom-width" class="btn-small">Apply</button>
-                    </label>
-                  </div>
+                  <span id="no-image-selected-msg">Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)</span>
                 </div>
               </div>
               <div id="markdown-content"></div>
@@ -85,31 +78,31 @@ const MarkdownManager = (function() {
       imageViewMode = this.checked ? 'newtab' : 'lightbox';
       localStorage.setItem('markdownImageViewMode', imageViewMode);
       
+      // Update the help message
+      const helpMsg = document.getElementById('no-image-selected-msg');
+      if (helpMsg) {
+        helpMsg.textContent = `Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)`;
+      }
+      
       // Re-render the markdown to apply the new image view mode
       const markdownContent = document.getElementById('markdown-editor').value;
       renderMarkdown(markdownContent);
     });
     
-    // Add event listeners for image size controls
-    document.getElementById('image-size-preset').addEventListener('change', function() {
-      const customSizeDiv = document.getElementById('custom-image-size');
-      if (this.value === 'custom') {
-        customSizeDiv.style.display = 'block';
-      } else {
-        customSizeDiv.style.display = 'none';
-        applyImageSize(parseInt(this.value));
-      }
+    // Add event listener for applying image width
+    document.getElementById('apply-image-width').addEventListener('click', function() {
+      applySelectedImageWidth();
     });
     
-    document.getElementById('apply-custom-width').addEventListener('click', function() {
-      const width = parseInt(document.getElementById('image-max-width').value);
-      applyImageSize('custom', width);
+    // Add event listener for removing image width
+    document.getElementById('remove-image-width').addEventListener('click', function() {
+      removeSelectedImageWidth();
     });
     
-    document.getElementById('image-max-width').addEventListener('keypress', function(e) {
+    // Add event listener for Enter key on width input
+    document.getElementById('image-width-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
-        const width = parseInt(this.value);
-        applyImageSize('custom', width);
+        applySelectedImageWidth();
       }
     });
     
@@ -135,41 +128,17 @@ const MarkdownManager = (function() {
     document.getElementById('markdown-editor').style.display = 'none';
     document.getElementById('markdown-preview').style.display = 'block';
     
-    // First try to get node-specific preferences
-    let sizePreset = '100';
-    let customWidth = 800;
-    
-    if (currentNodeId) {
-      const nodePreferences = JSON.parse(localStorage.getItem('nodeImagePreferences') || '{}');
-      if (nodePreferences[currentNodeId]) {
-        sizePreset = nodePreferences[currentNodeId].preset;
-        customWidth = nodePreferences[currentNodeId].customWidth;
-      }
-    }
-    
-    // Fall back to global preferences if no node-specific ones exist
-    if (sizePreset === '100' && customWidth === 800) {
-      sizePreset = localStorage.getItem('markdownImageSizePreset') || '100';
-      customWidth = parseInt(localStorage.getItem('markdownImageCustomWidth') || '800');
-    }
-    
     // Get the markdown content and render it
     const markdownContent = document.getElementById('markdown-editor').value;
     renderMarkdown(markdownContent);
     
-    const sizeSelector = document.getElementById('image-size-preset');
-    if (sizeSelector.querySelector(`option[value="${sizePreset}"]`)) {
-      sizeSelector.value = sizePreset;
-    }
+    // Set up image resize handlers after rendering
+    setupImageResizeHandlers();
     
-    document.getElementById('image-max-width').value = customWidth;
-    
-    if (sizePreset === 'custom') {
-      document.getElementById('custom-image-size').style.display = 'block';
-      applyImageSize('custom', customWidth);
-    } else {
-      document.getElementById('custom-image-size').style.display = 'none';
-      applyImageSize(parseInt(sizePreset));
+    // Hide the resize panel initially
+    const resizePanel = document.getElementById('image-resize-panel');
+    if (resizePanel) {
+      resizePanel.style.display = 'none';
     }
   }
   
@@ -181,7 +150,18 @@ const MarkdownManager = (function() {
     // You need to include a markdown parser library like marked.js
     // For now, we'll use a simple implementation that just handles basic formatting
     const html = simpleMarkdownToHtml(content);
-    document.getElementById('markdown-content').innerHTML = html;
+    const contentDiv = document.getElementById('markdown-content');
+    
+    // Add help message
+    const helpMessage = `
+      <div class="resize-help-message">
+        <p><strong>Tip:</strong> ${imageViewMode === 'lightbox' ? 
+          'Ctrl+Click (or Cmd+Click) on any image to resize it.' : 
+          'Right-click on any image to resize it.'}</p>
+      </div>
+    `;
+
+    contentDiv.innerHTML = helpMessage + html;
   }
   
   /**
@@ -478,45 +458,217 @@ const MarkdownManager = (function() {
   }
   
   /**
-   * Applies size adjustments to all images in the preview
-   * @param {string|number} preset - Size preset (100, 75, 50, 25) or 'custom'
-   * @param {number} [customWidth] - Custom max width in pixels
+   * Sets up image click handlers for resize functionality in preview mode
    */
-  function applyImageSize(preset, customWidth) {
+  function setupImageResizeHandlers() {
+    // Find all images in the preview
     const images = document.querySelectorAll('#markdown-content .markdown-image');
+    let selectedImage = null;
     
+    // Get the control elements
+    const widthInput = document.getElementById('image-width-input');
+    const applyButton = document.getElementById('apply-image-width');
+    const removeButton = document.getElementById('remove-image-width');
+    const noSelectionMsg = document.getElementById('no-image-selected-msg');
+    
+    // Reset the selection state
+    widthInput.disabled = true;
+    applyButton.disabled = true;
+    removeButton.disabled = true;
+    noSelectionMsg.style.display = 'inline';
+    
+    if (selectedImage) {
+      selectedImage.classList.remove('selected-for-resize');
+      selectedImage = null;
+    }
+    
+    // Add click handler to each image
     images.forEach(img => {
-      // Remove any previously set inline styles
-      img.style.maxWidth = '';
-      
-      if (preset === 'custom' && customWidth) {
-        img.style.maxWidth = `${customWidth}px`;
-      } else if (preset !== 100) {
-        img.style.maxWidth = `${preset}%`;
+      // Modify click behavior for lightbox mode
+      if (imageViewMode === 'lightbox') {
+        // Override the default lightbox click handler
+        img.onclick = (e) => {
+          // If Ctrl/Cmd key is pressed, open resize panel instead of lightbox
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectImageForResize(img);
+          } else {
+            // Otherwise proceed with lightbox
+            const src = img.getAttribute('src');
+            openImageViewer(src);
+          }
+        };
+      } else {
+        // For new tab mode, add a right-click handler (contextmenu)
+        img.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          selectImageForResize(img);
+        });
       }
+      
+      // Add a special class to indicate the image is resizable
+      img.classList.add('resizable-image');
     });
     
-    // Save preferences globally
-    localStorage.setItem('markdownImageSizePreset', preset);
-    
-    if (customWidth) {
-      localStorage.setItem('markdownImageCustomWidth', customWidth);
+    // Function to select an image for resizing
+    function selectImageForResize(img) {
+      // Unhighlight previously selected image
+      if (selectedImage) {
+        selectedImage.classList.remove('selected-for-resize');
+      }
+      
+      // Highlight the selected image
+      selectedImage = img;
+      selectedImage.classList.add('selected-for-resize');
+      
+      // Set the current width in the input
+      const currentWidth = img.getAttribute('width') || Math.round(img.offsetWidth);
+      widthInput.value = currentWidth;
+      
+      // Enable the controls
+      widthInput.disabled = false;
+      applyButton.disabled = false;
+      removeButton.disabled = false;
+      noSelectionMsg.style.display = 'none';
+      
+      // Focus the input for immediate editing
+      widthInput.focus();
+      widthInput.select();
     }
     
-    // Also save node-specific preferences if we have a current node
-    if (currentNodeId) {
-      // Get existing node preferences or create a new object
-      let nodePreferences = JSON.parse(localStorage.getItem('nodeImagePreferences') || '{}');
+    // Function to apply width to the selected image
+    window.applySelectedImageWidth = function() {
+      if (!selectedImage) return;
       
-      // Update preferences for this node
-      nodePreferences[currentNodeId] = {
-        preset: preset,
-        customWidth: customWidth || 800
-      };
+      const newWidth = widthInput.value;
+      if (!newWidth || isNaN(parseInt(newWidth))) return;
       
-      // Save back to localStorage
-      localStorage.setItem('nodeImagePreferences', JSON.stringify(nodePreferences));
+      // Apply width to the selected image
+      updateImageInMarkdown(selectedImage, parseInt(newWidth));
+      
+      // Reset selection state
+      resetImageSelection();
+    };
+    
+    // Function to remove width from the selected image
+    window.removeSelectedImageWidth = function() {
+      if (!selectedImage) return;
+      
+      // Remove width from the selected image
+      updateImageInMarkdown(selectedImage, null);
+      
+      // Reset selection state
+      resetImageSelection();
+    };
+    
+    // Function to reset the image selection state
+    function resetImageSelection() {
+      if (selectedImage) {
+        selectedImage.classList.remove('selected-for-resize');
+      }
+      
+      selectedImage = null;
+      widthInput.disabled = true;
+      applyButton.disabled = true;
+      removeButton.disabled = true;
+      noSelectionMsg.style.display = 'inline';
     }
+  }
+  
+  /**
+   * Updates the image width directly in the markdown content
+   * @param {HTMLElement} imgElement - The selected image element
+   * @param {number|null} width - The new width to apply, or null to remove width
+   */
+  function updateImageInMarkdown(imgElement, width) {
+    // Get the current markdown content
+    const markdownContent = document.getElementById('markdown-editor').value;
+    const imgSrc = imgElement.getAttribute('src');
+    const imgAlt = imgElement.getAttribute('alt') || '';
+    
+    // Extract the filename from the src (removing /attachment/ if present)
+    let filename = imgSrc.split('/').pop();
+    
+    // Check if this is an HTML img tag or a markdown image
+    let isHtmlImg = false;
+    let updatedMarkdown = '';
+    
+    // Try to find the exact image in the markdown content
+    const htmlImgRegex = new RegExp(`<img[^>]*src=["']([^"']*${filename})[^>]*>`, 'g');
+    const markdownImgRegex = new RegExp(`!\\[(.*?)\\]\\(([^\\)]*${filename}[^\\)]*)\\)(?:{([^}]*)})?`, 'g');
+    
+    if (htmlImgRegex.test(markdownContent)) {
+      isHtmlImg = true;
+      
+      // Replace HTML img tag
+      updatedMarkdown = markdownContent.replace(htmlImgRegex, (match, src) => {
+        // Remove any existing width attribute
+        let newTag = match.replace(/width=["'][^"']*["']/g, '');
+        
+        // Add the new width if provided
+        if (width) {
+          // If the tag ends with /> or >, insert before that
+          if (newTag.endsWith('/>')) {
+            newTag = newTag.replace(/\/>$/, ` width="${width}" />`);
+          } else if (newTag.endsWith('>')) {
+            newTag = newTag.replace(/>$/, ` width="${width}">`);
+          } else {
+            // Just append
+            newTag = newTag + ` width="${width}"`;
+          }
+        }
+        
+        return newTag;
+      });
+    } else if (markdownImgRegex.test(markdownContent)) {
+      // Replace markdown image syntax
+      updatedMarkdown = markdownContent.replace(markdownImgRegex, (match, alt, src, options) => {
+        if (width) {
+          // If options exist, update them
+          if (options) {
+            // Remove any existing width option
+            const updatedOptions = options.replace(/width=\d+/g, '').trim();
+            return `![${alt}](${src}){${updatedOptions ? updatedOptions + ' ' : ''}width=${width}}`;
+          } else {
+            // Add new options
+            return `![${alt}](${src}){width=${width}}`;
+          }
+        } else {
+          // Remove width option if it exists
+          if (options) {
+            const updatedOptions = options.replace(/width=\d+/g, '').trim();
+            if (updatedOptions) {
+              return `![${alt}](${src}){${updatedOptions}}`;
+            } else {
+              return `![${alt}](${src})`;
+            }
+          } else {
+            return match; // No change needed
+          }
+        }
+      });
+    } else {
+      // Image not found in markdown - could be a newly added image or syntax we don't recognize
+      alert('Could not locate this image in the markdown. Please adjust the width manually.');
+      return;
+    }
+    
+    // Update the editor with the new content
+    document.getElementById('markdown-editor').value = updatedMarkdown;
+    
+    // Re-render to see changes
+    renderMarkdown(updatedMarkdown);
+    
+    // Give feedback
+    imgElement.classList.remove('selected-for-resize');
+    document.getElementById('image-resize-panel').style.display = 'none';
+    
+    // Flash the image to show it's been updated
+    imgElement.classList.add('resize-updated');
+    setTimeout(() => {
+      imgElement.classList.remove('resize-updated');
+    }, 1000);
   }
   
   // Public API

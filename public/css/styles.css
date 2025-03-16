@@ -1447,3 +1447,121 @@ background-color: #2d9249;
   border-radius: 4px;
   border: 1px solid #ccc;
 }
+
+/* Image resize panel */
+.image-resize-panel {
+  margin-top: 15px;
+  padding: 12px;
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  border: 1px solid #cce5ff;
+}
+
+.image-resize-panel h4 {
+  margin: 0 0 10px 0;
+  color: #0056b3;
+}
+
+.resize-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.resize-controls label {
+  display: flex;
+  align-items: center;
+}
+
+.resize-controls input {
+  width: 60px;
+  margin: 0 5px;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  text-align: right;
+}
+
+/* Small button styles */
+.btn-small {
+  padding: 4px 8px;
+  font-size: 13px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.btn-small:hover {
+  background-color: #3367d6;
+}
+
+.btn-secondary-small {
+  background-color: #f1f3f4;
+  color: #5f6368;
+}
+
+.btn-secondary-small:hover {
+  background-color: #e0e0e0;
+}
+
+.btn-danger-small {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn-danger-small:hover {
+  background-color: #d32f2f;
+}
+
+/* Selected image style */
+.selected-for-resize {
+  box-shadow: 0 0 0 4px #4285f4;
+  border-radius: 4px;
+}
+
+/* Visual feedback for updated image */
+.resize-updated {
+  animation: resize-flash 1s ease;
+}
+
+@keyframes resize-flash {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 0 4px #34a853; }
+}
+
+/* Style to indicate resizable images */
+.resizable-image {
+  position: relative;
+}
+
+.resizable-image::after {
+  content: "🔍";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 3px;
+  padding: 2px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resizable-image:hover::after {
+  opacity: 1;
+}
+
+.resize-help-message {
+  margin-bottom: 15px;
+  padding: 8px 12px;
+  background-color: #fffde7;
+  border-left: 4px solid #ffd600;
+  font-size: 14px;
+}
+
+.resize-help-message p {
+  margin: 0;
+}
