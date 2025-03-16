@@ -1404,3 +1404,46 @@ background-color: #2d9249;
 .image-view-toggle input[type="checkbox"] {
   margin-right: 8px;
 }
+
+/* Preview controls container */
+.preview-controls {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+/* Image view toggle */
+.image-view-toggle {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Image size controls */
+.image-size-controls {
+  display: flex;
+  flex-direction: column;
+}
+
+.image-size-controls select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  margin-left: 8px;
+}
+
+#custom-image-size {
+  margin-top: 8px;
+}
+
+#image-max-width {
+  width: 80px;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}

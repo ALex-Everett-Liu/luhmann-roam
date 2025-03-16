@@ -31,11 +31,29 @@ const MarkdownManager = (function() {
           <div class="modal-body">
             <textarea id="markdown-editor" class="markdown-editor" placeholder="Enter markdown content..."></textarea>
             <div id="markdown-preview" class="markdown-preview" style="display: none;">
-              <div class="image-view-toggle">
-                <label>
-                  <input type="checkbox" id="image-view-toggle" ${imageViewMode === 'newtab' ? 'checked' : ''}>
-                  Open images in new tab
-                </label>
+              <div class="preview-controls">
+                <div class="image-view-toggle">
+                  <label>
+                    <input type="checkbox" id="image-view-toggle" ${imageViewMode === 'newtab' ? 'checked' : ''}>
+                    Open images in new tab
+                  </label>
+                </div>
+                <div class="image-size-controls">
+                  <label>Image Size: 
+                    <select id="image-size-preset">
+                      <option value="100">100% (Original)</option>
+                      <option value="75">75%</option>
+                      <option value="50">50%</option>
+                      <option value="25">25%</option>
+                      <option value="custom">Custom...</option>
+                    </select>
+                  </label>
+                  <div id="custom-image-size" style="display: none; margin-top: 5px;">
+                    <label>Max width (px): 
+                      <input type="number" id="image-max-width" min="50" max="2000" value="800">
+                    </label>
+                  </div>
+                </div>
               </div>
               <div id="markdown-content"></div>
             </div>
@@ -52,12 +70,12 @@ const MarkdownManager = (function() {
     
     const modal = document.getElementById('markdown-modal');
     
-    // Set up event listeners
+    // Set up event listeners for markdown operations
     document.getElementById('close-markdown-modal').addEventListener('click', closeModal);
     document.getElementById('save-markdown').addEventListener('click', saveMarkdown);
     document.getElementById('delete-markdown').addEventListener('click', deleteMarkdown);
     
-    // Add new event listeners for mode toggle
+    // Add event listeners for mode toggle
     document.getElementById('edit-mode-btn').addEventListener('click', switchToEditMode);
     document.getElementById('read-mode-btn').addEventListener('click', switchToReadMode);
     
@@ -69,6 +87,21 @@ const MarkdownManager = (function() {
       // Re-render the markdown to apply the new image view mode
       const markdownContent = document.getElementById('markdown-editor').value;
       renderMarkdown(markdownContent);
+    });
+    
+    // Add event listeners for image size controls
+    document.getElementById('image-size-preset').addEventListener('change', function() {
+      const customSizeDiv = document.getElementById('custom-image-size');
+      if (this.value === 'custom') {
+        customSizeDiv.style.display = 'block';
+      } else {
+        customSizeDiv.style.display = 'none';
+        applyImageSize(parseInt(this.value));
+      }
+    });
+    
+    document.getElementById('image-max-width').addEventListener('change', function() {
+      applyImageSize('custom', parseInt(this.value));
     });
     
     return modal;
@@ -96,6 +129,25 @@ const MarkdownManager = (function() {
     // Get the markdown content and render it
     const markdownContent = document.getElementById('markdown-editor').value;
     renderMarkdown(markdownContent);
+    
+    // Apply saved image size preferences
+    const sizePreset = localStorage.getItem('markdownImageSizePreset') || '100';
+    const customWidth = parseInt(localStorage.getItem('markdownImageCustomWidth') || '800');
+    
+    const sizeSelector = document.getElementById('image-size-preset');
+    if (sizeSelector.querySelector(`option[value="${sizePreset}"]`)) {
+      sizeSelector.value = sizePreset;
+    }
+    
+    document.getElementById('image-max-width').value = customWidth;
+    
+    if (sizePreset === 'custom') {
+      document.getElementById('custom-image-size').style.display = 'block';
+      applyImageSize('custom', customWidth);
+    } else {
+      document.getElementById('custom-image-size').style.display = 'none';
+      applyImageSize(parseInt(sizePreset));
+    }
   }
   
   /**
@@ -117,6 +169,14 @@ const MarkdownManager = (function() {
   function simpleMarkdownToHtml(markdown) {
     if (!markdown) return '';
     
+    // First, preserve any existing HTML img tags (they'll be exempt from processing)
+    const htmlImgPlaceholders = [];
+    markdown = markdown.replace(/<img\s+[^>]*>/gi, match => {
+      const placeholder = `__HTML_IMG_${htmlImgPlaceholders.length}__`;
+      htmlImgPlaceholders.push(match);
+      return placeholder;
+    });
+    
     // Replace headers
     let html = markdown
       .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -126,22 +186,45 @@ const MarkdownManager = (function() {
       .replace(/^##### (.+)$/gm, '<h5>$1</h5>')
       .replace(/^###### (.+)$/gm, '<h6>$1</h6>');
     
-    // Replace images - handle based on current view mode
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, src) => {
+    // Replace images with custom size syntax ![alt](src){width=X height=Y}
+    html = html.replace(/!\[(.*?)\]\((.*?)\)(?:{([^}]*)})?/g, (match, alt, src, options) => {
       // Path handling - if it's a relative path without http/https, prefix with /attachment/
       if (!src.startsWith('http') && !src.startsWith('/')) {
         src = `/attachment/${src}`;
       }
       
+      // Parse options like width and height
+      let width = '';
+      let height = '';
+      
+      if (options) {
+        const widthMatch = options.match(/width=(\d+)/);
+        const heightMatch = options.match(/height=(\d+)/);
+        
+        if (widthMatch) width = widthMatch[1];
+        if (heightMatch) height = heightMatch[1];
+      }
+      
+      const sizeAttrs = [];
+      if (width) sizeAttrs.push(`width="${width}"`);
+      if (height) sizeAttrs.push(`height="${height}"`);
+      
+      const sizeAttrsStr = sizeAttrs.length > 0 ? ' ' + sizeAttrs.join(' ') : '';
+      
       if (imageViewMode === 'newtab') {
         // New tab mode - wrap image in a link that opens in a new tab
         return `<a href="${src}" target="_blank" rel="noopener noreferrer">
-                  <img src="${src}" alt="${alt}" class="markdown-image">
+                  <img src="${src}" alt="${alt}" class="markdown-image"${sizeAttrsStr}>
                 </a>`;
       } else {
         // Lightbox mode - make image clickable to open in lightbox
-        return `<img src="${src}" alt="${alt}" class="markdown-image" onclick="MarkdownManager.openImageViewer('${src}')">`;
+        return `<img src="${src}" alt="${alt}" class="markdown-image"${sizeAttrsStr} onclick="MarkdownManager.openImageViewer('${src}')">`;
       }
+    });
+    
+    // Restore HTML img tags
+    htmlImgPlaceholders.forEach((imgTag, index) => {
+      html = html.replace(`__HTML_IMG_${index}__`, imgTag);
     });
     
     // Replace bold and italic
@@ -369,6 +452,32 @@ const MarkdownManager = (function() {
     // Set the image source and show the viewer
     document.getElementById('image-viewer-img').src = imageSrc;
     viewer.style.display = 'flex';
+  }
+  
+  /**
+   * Applies size adjustments to all images in the preview
+   * @param {string|number} preset - Size preset (100, 75, 50, 25) or 'custom'
+   * @param {number} [customWidth] - Custom max width in pixels
+   */
+  function applyImageSize(preset, customWidth) {
+    const images = document.querySelectorAll('#markdown-content .markdown-image');
+    
+    images.forEach(img => {
+      // Remove any previously set inline styles
+      img.style.maxWidth = '';
+      
+      if (preset === 'custom' && customWidth) {
+        img.style.maxWidth = `${customWidth}px`;
+      } else if (preset !== 100) {
+        img.style.maxWidth = `${preset}%`;
+      }
+    });
+    
+    // Save preferences
+    localStorage.setItem('markdownImageSizePreset', preset);
+    if (customWidth) {
+      localStorage.setItem('markdownImageCustomWidth', customWidth);
+    }
   }
   
   // Public API

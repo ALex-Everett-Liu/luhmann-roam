@@ -14,6 +14,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Explicitly set up the attachment directory
+app.use('/attachment', express.static(path.join(__dirname, 'public/attachment')));
+
 // Add language preference middleware
 app.use((req, res, next) => {
   req.lang = req.query.lang || 'en'; // Default to English if not specified
