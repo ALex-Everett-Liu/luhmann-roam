@@ -382,8 +382,18 @@ const BreadcrumbManager = (function() {
     currentLanguage = language;
     
     // Update breadcrumb trail if there's a focused node
-    if (currentFocusedNodeId) {
-      updateBreadcrumbTrail(currentFocusedNodeId);
+    if (currentFocusedNodeId && isFocusMode) {
+      // Store the current focused node ID
+      const nodeToFocus = currentFocusedNodeId;
+      
+      // Update the breadcrumb trail with the new language
+      updateBreadcrumbTrail(nodeToFocus);
+      
+      // After the language switch and data refresh, reapply the focus
+      setTimeout(() => {
+        // Re-highlight the focused node
+        highlightFocusedNode(nodeToFocus);
+      }, 300);
     }
   }
   
@@ -404,6 +414,30 @@ const BreadcrumbManager = (function() {
     });
   }
   
+  /**
+   * Restores focus state after a data refresh
+   * Should be called after fetchNodes() completes
+   */
+  function restoreFocusState() {
+    if (isFocusMode && currentFocusedNodeId) {
+      console.log(`Restoring focus to node: ${currentFocusedNodeId}`);
+      
+      // Re-apply focus filtering and highlighting
+      setTimeout(() => {
+        filterToNodeAndDescendants(currentFocusedNodeId);
+        highlightFocusedNode(currentFocusedNodeId);
+      }, 100);
+    }
+  }
+  
+  /**
+   * Gets the currently focused node ID
+   * @returns {string|null} The ID of the focused node, or null if no node is focused
+   */
+  function getCurrentFocusedNodeId() {
+    return currentFocusedNodeId;
+  }
+  
   // Public API
   return {
     initialize: initialize,
@@ -411,6 +445,8 @@ const BreadcrumbManager = (function() {
     clearFocus: clearFocus,
     updateLanguage: updateLanguage,
     addNodeFocusHandler: addNodeFocusHandler,
+    restoreFocusState: restoreFocusState,
+    getCurrentFocusedNodeId: getCurrentFocusedNodeId,
     // Check if currently in focus mode
     isInFocusMode: function() { return isFocusMode; }
   };

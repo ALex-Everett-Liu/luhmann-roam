@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Toggle language
   function toggleLanguage() {
+    // Store focus state before language switch
+    const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
+    const focusedNodeId = wasInFocusMode && window.BreadcrumbManager ? 
+      window.BreadcrumbManager.getCurrentFocusedNodeId() : null;
+    
     currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
     localStorage.setItem('preferredLanguage', currentLanguage);
     updateLanguageToggle();
@@ -62,7 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
       TimestampManager.updateLanguage(currentLanguage);
     }
     
-    fetchNodes(true); // Pass true to force fresh data
+    // Fetch nodes with the new language
+    fetchNodes(true).then(() => {
+      // Restore focus state after data refresh if we were in focus mode
+      if (wasInFocusMode && focusedNodeId && window.BreadcrumbManager) {
+        console.log(`Restoring focus to node ${focusedNodeId} after language switch`);
+        window.BreadcrumbManager.focusOnNode(focusedNodeId);
+      }
+    });
   }
   
   
