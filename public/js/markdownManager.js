@@ -51,6 +51,7 @@ const MarkdownManager = (function() {
                   <div id="custom-image-size" style="display: none; margin-top: 5px;">
                     <label>Max width (px): 
                       <input type="number" id="image-max-width" min="50" max="2000" value="800">
+                      <button id="apply-custom-width" class="btn-small">Apply</button>
                     </label>
                   </div>
                 </div>
@@ -100,8 +101,16 @@ const MarkdownManager = (function() {
       }
     });
     
-    document.getElementById('image-max-width').addEventListener('change', function() {
-      applyImageSize('custom', parseInt(this.value));
+    document.getElementById('apply-custom-width').addEventListener('click', function() {
+      const width = parseInt(document.getElementById('image-max-width').value);
+      applyImageSize('custom', width);
+    });
+    
+    document.getElementById('image-max-width').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        const width = parseInt(this.value);
+        applyImageSize('custom', width);
+      }
     });
     
     return modal;
@@ -126,13 +135,27 @@ const MarkdownManager = (function() {
     document.getElementById('markdown-editor').style.display = 'none';
     document.getElementById('markdown-preview').style.display = 'block';
     
+    // First try to get node-specific preferences
+    let sizePreset = '100';
+    let customWidth = 800;
+    
+    if (currentNodeId) {
+      const nodePreferences = JSON.parse(localStorage.getItem('nodeImagePreferences') || '{}');
+      if (nodePreferences[currentNodeId]) {
+        sizePreset = nodePreferences[currentNodeId].preset;
+        customWidth = nodePreferences[currentNodeId].customWidth;
+      }
+    }
+    
+    // Fall back to global preferences if no node-specific ones exist
+    if (sizePreset === '100' && customWidth === 800) {
+      sizePreset = localStorage.getItem('markdownImageSizePreset') || '100';
+      customWidth = parseInt(localStorage.getItem('markdownImageCustomWidth') || '800');
+    }
+    
     // Get the markdown content and render it
     const markdownContent = document.getElementById('markdown-editor').value;
     renderMarkdown(markdownContent);
-    
-    // Apply saved image size preferences
-    const sizePreset = localStorage.getItem('markdownImageSizePreset') || '100';
-    const customWidth = parseInt(localStorage.getItem('markdownImageCustomWidth') || '800');
     
     const sizeSelector = document.getElementById('image-size-preset');
     if (sizeSelector.querySelector(`option[value="${sizePreset}"]`)) {
@@ -473,10 +496,26 @@ const MarkdownManager = (function() {
       }
     });
     
-    // Save preferences
+    // Save preferences globally
     localStorage.setItem('markdownImageSizePreset', preset);
+    
     if (customWidth) {
       localStorage.setItem('markdownImageCustomWidth', customWidth);
+    }
+    
+    // Also save node-specific preferences if we have a current node
+    if (currentNodeId) {
+      // Get existing node preferences or create a new object
+      let nodePreferences = JSON.parse(localStorage.getItem('nodeImagePreferences') || '{}');
+      
+      // Update preferences for this node
+      nodePreferences[currentNodeId] = {
+        preset: preset,
+        customWidth: customWidth || 800
+      };
+      
+      // Save back to localStorage
+      localStorage.setItem('nodeImagePreferences', JSON.stringify(nodePreferences));
     }
   }
   
