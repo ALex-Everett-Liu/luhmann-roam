@@ -8,6 +8,36 @@ const MarkdownManager = (function() {
   let currentNodeId = null;
   let imageViewMode = localStorage.getItem('markdownImageViewMode') || 'lightbox'; // Default to lightbox
   
+  // Add CSS styles for the wider markdown modal
+  function addModalStyles() {
+    // Check if our styles are already added
+    if (document.getElementById('markdown-modal-styles')) {
+      return;
+    }
+    
+    const styleElement = document.createElement('style');
+    styleElement.id = 'markdown-modal-styles';
+    styleElement.textContent = `
+      .markdown-modal-wide {
+        width: 80% !important;
+        max-width: 1500px !important;
+      }
+      
+      .markdown-editor, 
+      .markdown-preview {
+        min-height: 400px !important;
+      }
+      
+      @media (max-width: 768px) {
+        .markdown-modal-wide {
+          width: 95% !important;
+        }
+      }
+    `;
+    
+    document.head.appendChild(styleElement);
+  }
+  
   /**
    * Creates the markdown modal if it doesn't exist
    * @returns {HTMLElement} The modal element
@@ -19,7 +49,7 @@ const MarkdownManager = (function() {
     
     const modalHTML = `
       <div id="markdown-modal" class="modal-overlay" style="display: none;">
-        <div class="modal">
+        <div class="modal markdown-modal-wide">
           <div class="modal-header">
             <h3 class="modal-title">Edit Markdown Content</h3>
             <div class="markdown-mode-toggle">
@@ -273,6 +303,9 @@ const MarkdownManager = (function() {
    * @param {string} nodeId - The ID of the node
    */
   async function openMarkdownModal(nodeId) {
+    // Add the styles before opening the modal
+    addModalStyles();
+    
     currentNodeId = nodeId;
     modalElement = createModal();
     
