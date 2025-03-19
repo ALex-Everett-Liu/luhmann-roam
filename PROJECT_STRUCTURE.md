@@ -26,6 +26,10 @@ Luhmann-Roam is a knowledge management system inspired by Niklas Luhmann's Zette
 - **Visual Feedback**: Highlighting for focus and active branches
 - **Search Functionality**: Search for nodes quickly and navigate to them
 - **Filtering Options**: Filter nodes based on user-defined criteria
+- **Task Management**: Track and manage daily tasks with time tracking
+- **Timestamp Tracking**: View creation and update timestamps for nodes
+- **Position Management**: Precisely adjust node positions and relocate nodes
+- **Enhanced Markdown Support**: Rich content editing with image resizing capabilities
 
 ## Core Components
 
@@ -52,6 +56,9 @@ The frontend is organized into modular components:
 - **Markdown Modal**: Interface for editing rich content
 - **Content Storage**: Saving and retrieving markdown content
 - **Visual Indicators**: Showing which nodes have markdown content
+- **Image Handling**: Support for resizing images and viewing in lightbox mode
+- **Preview Mode**: Real-time preview of markdown content
+- **Content Manipulation**: Add, edit, and delete markdown content
 
 #### Link Manager (linkManager.js)
 - **Link Creation**: Interface for connecting nodes
@@ -68,6 +75,27 @@ The frontend is organized into modular components:
 - **Filter UI**: Interface for managing filters in the sidebar
 - **Active Filters**: Adding and removing filters based on user selection
 - **Bookmarking Filters**: Saving and loading filter configurations
+
+#### Task Manager (taskManager.js)
+- **Daily Task Tracking**: Interface for managing tasks by date
+- **Time Tracking**: Start, pause, and track time spent on tasks
+- **Task Statistics**: View completion rates and time spent
+- **Date Navigation**: Move between days to view different task sets
+- **Task Sorting**: Order tasks by creation time or duration
+- **Task Completion**: Mark tasks as completed and track progress
+
+#### Timestamp Manager (timestampManager.js)
+- **Creation Timestamps**: Display when nodes were created
+- **Update Timestamps**: Track the last modification time
+- **Timestamp Modal**: Interface for viewing node timestamps
+- **Language Support**: Multilingual timestamp display
+
+#### Position Manager (positionManager.js)
+- **Position Adjustment**: Fine-tune node positioning within siblings
+- **Node Relocation**: Move nodes to different parents or to root level
+- **Position Fixing**: Resolve duplicate positions in node hierarchies
+- **Parent Selection**: Search interface for selecting new parent nodes
+- **Visual Feedback**: Display current position and available positions
 
 ### 3. Database (database.js)
 
