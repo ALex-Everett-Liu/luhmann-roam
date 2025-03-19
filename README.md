@@ -1,6 +1,6 @@
 # Luhmann-Roam Knowledge Management System
 
-Luhmann-Roam is a powerful knowledge management system inspired by Niklas Luhmann's Zettelkasten method. It provides a hierarchical outliner interface with bidirectional linking capabilities, allowing users to create, organize, and connect notes in a networked structure.
+Luhmann-Roam is a powerful knowledge management system inspired by Roam Research and Niklas Luhmann's Zettelkasten method. It provides a hierarchical outliner interface with bidirectional linking capabilities, allowing users to create, organize, and connect notes in a networked structure.
 
 ## Features
 
@@ -19,27 +19,32 @@ Luhmann-Roam is a powerful knowledge management system inspired by Niklas Luhman
 
 ### Main Interface
 
-![Main Interface](placeholder_main_interface.png)
+![luhmann_roam_01](https://github.com/user-attachments/assets/b31e2dac-95e5-426d-a1f7-65b0611a373d)
+
 *The main outliner interface showing the hierarchical structure of notes*
 
 ### Markdown Editing
 
-![Markdown Editor](placeholder_markdown_editor.png)
+![markdown_preview_01](https://github.com/user-attachments/assets/b584c459-d23d-44b5-9a41-b5f1ca045016)
+
 *Rich content editing with markdown support and image handling*
 
 ### Bidirectional Linking
 
-![Link Management](placeholder_link_management.png)
+![manage_links_01](https://github.com/user-attachments/assets/55a9a94a-ef47-460e-a6d7-65229c080285)
+
 *Creating and managing connections between notes*
 
 ### Task Management
 
-![Task Manager](placeholder_task_manager.png)
+![image](https://github.com/user-attachments/assets/2ca40ad4-2904-4dcd-bb47-708677a4c1cf)
+
 *Daily task tracking with time management*
 
 ### Node Operations
 
-![Node Operations](placeholder_node_operations.png)
+![image](https://github.com/user-attachments/assets/f0fd4a70-ce3a-4dd6-b8c4-1d04caed159d)
+
 *Reorganizing the knowledge structure through various operations*
 
 ## Getting Started
