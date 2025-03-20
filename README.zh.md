@@ -1,6 +1,6 @@
 # Luhmann-Roam 知识管理系统
 
-Luhmann-Roam 是一个受 Niklas Luhmann 的 Zettelkasten 方法启发的强大知识管理系统。它提供了一个具有双向链接功能的层次化大纲界面，允许用户以网络结构创建、组织和连接笔记。
+Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方法启发的知识管理系统。它提供了一个具有双向链接功能的层次化大纲界面，允许用户以网络结构创建、组织和连接笔记。
 
 ## 功能特点
 
@@ -129,3 +129,44 @@ Luhmann-Roam 是一个受 Niklas Luhmann 的 Zettelkasten 方法启发的强大�
 ## 开发
 
 ### 项目结构 
+
+```text
+luhmann-roam/
+├── database.js        # Database configuration and initialization
+├── server.js          # Express server and API endpoints
+├── markdown/          # Markdown content storage
+├── public/            # Static assets and client-side code
+│   ├── index.html     # Main HTML file
+│   ├── css/           # Stylesheets
+│   ├── js/            # JavaScript modules
+│   │   ├── app.js             # Main application logic
+│   │   ├── markdownManager.js # Markdown editing functionality
+│   │   ├── linkManager.js     # Link management functionality
+│   │   ├── searchManager.js   # Search functionality
+│   │   ├── filterManager.js   # Filter functionality
+│   │   ├── taskManager.js     # Task management functionality
+│   │   ├── timestampManager.js # Timestamp display functionality
+│   │   └── positionManager.js  # Node positioning functionality
+│   └── attachment/    # Uploaded images and attachments
+└── README.md          # This file
+```
+
+## 贡献
+
+欢迎贡献！请随时提交 Pull Request。
+
+1. Fork 本仓库
+2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交您的更改 (`git commit -m '添加一些很棒的特性'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 开启一个 Pull Request
+
+## 许可证
+
+本项目采用 MIT 许可证 - 详情见 LICENSE 文件。
+
+## 致谢
+
+- 受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方法启发
+- 使用原生 JavaScript 构建以最小化依赖
+- 为个人知识管理和组织而设计
