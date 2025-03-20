@@ -351,6 +351,11 @@ const I18n = (function() {
     if (window.TaskManager && TaskManager.updateLanguage) {
       TaskManager.updateLanguage(currentLanguage);
     }
+    
+    // Add this line to notify BreadcrumbManager about language changes
+    if (window.BreadcrumbManager && BreadcrumbManager.updateLanguage) {
+      BreadcrumbManager.updateLanguage(currentLanguage);
+    }
   }
   
   /**

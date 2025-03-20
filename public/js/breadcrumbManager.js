@@ -453,6 +453,61 @@ const BreadcrumbManager = (function() {
     return currentFocusedNodeId;
   }
   
+  /**
+   * Updates the breadcrumb display
+   * This should be called whenever the focused node changes or language changes
+   */
+  function updateBreadcrumbs(nodeId) {
+    // Clear existing breadcrumbs
+    breadcrumbContainer.innerHTML = '';
+    
+    // Add home link
+    const homeLink = document.createElement('a');
+    homeLink.href = '#';
+    homeLink.innerHTML = '<span class="breadcrumb-home">🏠</span>';
+    homeLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      exitFocusMode();
+    });
+    breadcrumbContainer.appendChild(homeLink);
+    
+    if (!nodeId) return;
+    
+    // Get the node path and create breadcrumbs
+    getNodePath(nodeId).then(path => {
+      if (path.length === 0) return;
+      
+      path.forEach((node, index) => {
+        // Add separator
+        const separator = document.createElement('span');
+        separator.className = 'breadcrumb-separator';
+        separator.textContent = ' > ';
+        breadcrumbContainer.appendChild(separator);
+        
+        // Add node link
+        const nodeLink = document.createElement('a');
+        nodeLink.href = '#';
+        nodeLink.className = 'breadcrumb-node';
+        nodeLink.dataset.id = node.id;
+        
+        // Use appropriate language content based on current language
+        const currentLanguage = I18n.getCurrentLanguage();
+        const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+        
+        nodeLink.textContent = displayContent;
+        
+        if (index < path.length - 1) {
+          nodeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            focusOnNode(node.id);
+          });
+        }
+        
+        breadcrumbContainer.appendChild(nodeLink);
+      });
+    });
+  }
+  
   // Public API
   return {
     initialize: initialize,
