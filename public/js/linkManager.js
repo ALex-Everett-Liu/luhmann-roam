@@ -7,7 +7,20 @@ const LinkManager = (function() {
   let modalElement = null;
   let currentNodeId = null;
   let currentNodeLinks = { outgoing: [], incoming: [] };
-  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  let currentLanguage = 'en';
+  
+  /**
+   * Initialize the manager
+   */
+  function initialize() {
+    // Get the initial language setting from I18n if available
+    if (window.I18n) {
+      currentLanguage = I18n.getCurrentLanguage();
+    } else {
+      currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+    }
+    console.log('LinkManager initialized with language:', currentLanguage);
+  }
   
   /**
    * Creates the link modal
@@ -29,7 +42,7 @@ const LinkManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = 'Manage Links';
+    modalTitle.textContent = window.I18n ? I18n.t('manageLinks') : 'Manage Links';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -49,12 +62,12 @@ const LinkManager = (function() {
     
     const createTab = document.createElement('div');
     createTab.className = 'tab active';
-    createTab.textContent = 'Create Link';
+    createTab.textContent = window.I18n ? I18n.t('addLink') : 'Create Link';
     createTab.dataset.tab = 'create';
     
     const manageTab = document.createElement('div');
     manageTab.className = 'tab';
-    manageTab.textContent = 'Manage Links';
+    manageTab.textContent = window.I18n ? I18n.t('manageLinks') : 'Manage Links';
     manageTab.dataset.tab = 'manage';
     
     tabsContainer.appendChild(createTab);
@@ -76,7 +89,7 @@ const LinkManager = (function() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.className = 'node-search';
-    searchInput.placeholder = 'Type to search for nodes...';
+    searchInput.placeholder = window.I18n ? I18n.t('searchTarget') : 'Type to search for nodes...';
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results';
@@ -92,7 +105,7 @@ const LinkManager = (function() {
     // Selected node display
     const selectedNodeDisplay = document.createElement('div');
     selectedNodeDisplay.className = 'selected-node';
-    selectedNodeDisplay.innerHTML = '<span class="no-selection">No node selected</span>';
+    selectedNodeDisplay.innerHTML = `<span class="no-selection">${window.I18n ? I18n.t('noNodeSelected') : 'No node selected'}</span>`;
     
     // Add search functionality
     searchInput.addEventListener('input', debounce(async (e) => {
@@ -109,7 +122,7 @@ const LinkManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = '<div class="no-results">No matching nodes found</div>';
+          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
         }
         
@@ -133,7 +146,7 @@ const LinkManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = '<div class="search-error">Error searching nodes</div>';
+        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     
@@ -143,27 +156,27 @@ const LinkManager = (function() {
     weightInput.step = '0.1';
     weightInput.value = '1.0';
     weightInput.className = 'weight-input';
-    weightInput.placeholder = 'Link weight (0.1-10)';
+    weightInput.placeholder = window.I18n ? I18n.t('linkWeightPlaceholder') : 'Link weight (0.1-10)';
     
     const descriptionInput = document.createElement('textarea');
     descriptionInput.className = 'description-input';
-    descriptionInput.placeholder = 'Link description (optional)';
+    descriptionInput.placeholder = window.I18n ? I18n.t('linkDescriptionPlaceholder') : 'Link description (optional)';
     
     const createLinkButton = document.createElement('button');
     createLinkButton.className = 'btn btn-primary';
-    createLinkButton.textContent = 'Create Link';
+    createLinkButton.textContent = window.I18n ? I18n.t('createLink') : 'Create Link';
     createLinkButton.addEventListener('click', () => {
       createLink(nodeId, selectedNodeInput.value, parseFloat(weightInput.value), descriptionInput.value);
     });
     
-    createTabContent.appendChild(document.createElement('label')).textContent = 'Search for a node:';
+    createTabContent.appendChild(document.createElement('label')).textContent = window.I18n ? I18n.t('searchForNode') : 'Search for a node:';
     createTabContent.appendChild(searchContainer);
-    createTabContent.appendChild(document.createElement('label')).textContent = 'Selected node:';
+    createTabContent.appendChild(document.createElement('label')).textContent = window.I18n ? I18n.t('selectedNode') : 'Selected node:';
     createTabContent.appendChild(selectedNodeDisplay);
     createTabContent.appendChild(selectedNodeInput);
-    createTabContent.appendChild(document.createElement('label')).textContent = 'Link Weight:';
+    createTabContent.appendChild(document.createElement('label')).textContent = window.I18n ? I18n.t('weight') : 'Link Weight:';
     createTabContent.appendChild(weightInput);
-    createTabContent.appendChild(document.createElement('label')).textContent = 'Description:';
+    createTabContent.appendChild(document.createElement('label')).textContent = window.I18n ? I18n.t('description') : 'Description:';
     createTabContent.appendChild(descriptionInput);
     createTabContent.appendChild(createLinkButton);
     
@@ -178,7 +191,7 @@ const LinkManager = (function() {
     // Outgoing links section
     const outgoingLinksSection = document.createElement('div');
     outgoingLinksSection.className = 'links-section';
-    outgoingLinksSection.innerHTML = '<h3>Outgoing Links</h3>';
+    outgoingLinksSection.innerHTML = `<h3>${window.I18n ? I18n.t('outgoingLinks') : 'Outgoing Links'}</h3>`;
     
     const outgoingLinksList = document.createElement('ul');
     outgoingLinksList.className = 'links-list outgoing-links';
@@ -187,7 +200,7 @@ const LinkManager = (function() {
     // Incoming links section
     const incomingLinksSection = document.createElement('div');
     incomingLinksSection.className = 'links-section';
-    incomingLinksSection.innerHTML = '<h3>Incoming Links</h3>';
+    incomingLinksSection.innerHTML = `<h3>${window.I18n ? I18n.t('incomingLinks') : 'Incoming Links'}</h3>`;
     
     const incomingLinksList = document.createElement('ul');
     incomingLinksList.className = 'links-list incoming-links';
@@ -228,7 +241,7 @@ const LinkManager = (function() {
     
     const closeModalButton = document.createElement('button');
     closeModalButton.className = 'btn btn-secondary';
-    closeModalButton.textContent = 'Close';
+    closeModalButton.textContent = window.I18n ? I18n.t('close') : 'Close';
     closeModalButton.addEventListener('click', closeModal);
     
     modalFooter.appendChild(closeModalButton);
@@ -299,7 +312,7 @@ const LinkManager = (function() {
     
     // Add outgoing links
     if (currentNodeLinks.outgoing.length === 0) {
-      outgoingLinksList.innerHTML = '<li class="no-links">No outgoing links</li>';
+      outgoingLinksList.innerHTML = `<li class="no-links">${window.I18n ? I18n.t('noOutgoingLinks') : 'No outgoing links'}</li>`;
     } else {
       currentNodeLinks.outgoing.forEach(link => {
         const li = document.createElement('li');
@@ -310,12 +323,12 @@ const LinkManager = (function() {
         li.innerHTML = `
           <div class="link-info">
             <div class="link-target">${nodeContent}</div>
-            <div class="link-weight">Weight: ${link.weight}</div>
-            <div class="link-description">${link.description || 'No description'}</div>
+            <div class="link-weight">${window.I18n ? I18n.t('weightLabel', {weight: link.weight}) : `Weight: ${link.weight}`}</div>
+            <div class="link-description">${link.description || (window.I18n ? I18n.t('noDescription') : 'No description')}</div>
           </div>
           <div class="link-actions">
-            <button class="link-edit" data-id="${link.id}">Edit</button>
-            <button class="link-delete" data-id="${link.id}">Delete</button>
+            <button class="link-edit" data-id="${link.id}">${window.I18n ? I18n.t('edit') : 'Edit'}</button>
+            <button class="link-delete" data-id="${link.id}">${window.I18n ? I18n.t('delete') : 'Delete'}</button>
           </div>
         `;
         
@@ -334,7 +347,7 @@ const LinkManager = (function() {
     
     // Add incoming links
     if (currentNodeLinks.incoming.length === 0) {
-      incomingLinksList.innerHTML = '<li class="no-links">No incoming links</li>';
+      incomingLinksList.innerHTML = `<li class="no-links">${window.I18n ? I18n.t('noIncomingLinks') : 'No incoming links'}</li>`;
     } else {
       currentNodeLinks.incoming.forEach(link => {
         const li = document.createElement('li');
@@ -345,8 +358,8 @@ const LinkManager = (function() {
         li.innerHTML = `
           <div class="link-info">
             <div class="link-source">${nodeContent}</div>
-            <div class="link-weight">Weight: ${link.weight}</div>
-            <div class="link-description">${link.description || 'No description'}</div>
+            <div class="link-weight">${window.I18n ? I18n.t('weightLabel', {weight: link.weight}) : `Weight: ${link.weight}`}</div>
+            <div class="link-description">${link.description || (window.I18n ? I18n.t('noDescription') : 'No description')}</div>
           </div>
         `;
         
@@ -364,7 +377,7 @@ const LinkManager = (function() {
    */
   async function createLink(fromNodeId, toNodeId, weight, description) {
     if (!toNodeId) {
-      alert('Please select a target node');
+      alert(window.I18n ? I18n.t('selectTargetNode') : 'Please select a target node');
       return;
     }
     
@@ -384,7 +397,7 @@ const LinkManager = (function() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        alert(errorData.error || 'Error creating link');
+        alert(errorData.error || (window.I18n ? I18n.t('errorCreatingLink') : 'Error creating link'));
         return;
       }
       
@@ -429,7 +442,7 @@ const LinkManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = 'Edit Link';
+    modalTitle.textContent = window.I18n ? I18n.t('editLink') : 'Edit Link';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -447,7 +460,7 @@ const LinkManager = (function() {
     
     // Weight input
     const weightLabel = document.createElement('label');
-    weightLabel.textContent = 'Link Weight:';
+    weightLabel.textContent = window.I18n ? I18n.t('weight') : 'Link Weight:';
     modalBody.appendChild(weightLabel);
     
     const weightInput = document.createElement('input');
@@ -460,7 +473,7 @@ const LinkManager = (function() {
     
     // Description input
     const descriptionLabel = document.createElement('label');
-    descriptionLabel.textContent = 'Description:';
+    descriptionLabel.textContent = window.I18n ? I18n.t('description') : 'Description:';
     modalBody.appendChild(descriptionLabel);
     
     const descriptionInput = document.createElement('textarea');
@@ -474,14 +487,14 @@ const LinkManager = (function() {
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'btn btn-secondary';
-    cancelButton.textContent = 'Cancel';
+    cancelButton.textContent = window.I18n ? I18n.t('cancel') : 'Cancel';
     cancelButton.addEventListener('click', () => {
       document.body.removeChild(editModalOverlay);
     });
     
     const saveButton = document.createElement('button');
     saveButton.className = 'btn btn-primary';
-    saveButton.textContent = 'Save';
+    saveButton.textContent = window.I18n ? I18n.t('save') : 'Save';
     saveButton.addEventListener('click', async () => {
       try {
         const response = await fetch(`/api/links/${linkId}`, {
@@ -497,7 +510,7 @@ const LinkManager = (function() {
         
         if (!response.ok) {
           const errorData = await response.json();
-          alert(errorData.error || 'Error updating link');
+          alert(errorData.error || (window.I18n ? I18n.t('errorUpdatingLink') : 'Error updating link'));
           return;
         }
         
@@ -540,7 +553,7 @@ const LinkManager = (function() {
    * @param {string} linkId - The ID of the link
    */
   async function deleteLink(linkId) {
-    if (!confirm('Are you sure you want to delete this link?')) {
+    if (!confirm(window.I18n ? I18n.t('confirmDeleteLink') : 'Are you sure you want to delete this link?')) {
       return;
     }
     
@@ -551,7 +564,7 @@ const LinkManager = (function() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        alert(errorData.error || 'Error deleting link');
+        alert(errorData.error || (window.I18n ? I18n.t('errorDeletingLink') : 'Error deleting link'));
         return;
       }
       
@@ -589,13 +602,21 @@ const LinkManager = (function() {
    */
   function updateLanguage(language) {
     currentLanguage = language;
+    console.log('LinkManager language updated to:', language);
+    
+    // Update any open modals
+    if (modalElement && currentNodeId) {
+      closeModal();
+      openLinkModal(currentNodeId);
+    }
   }
   
   // Public API
   return {
     openModal: openLinkModal,
     closeModal: closeModal,
-    updateLanguage: updateLanguage
+    updateLanguage: updateLanguage,
+    initialize: initialize
   };
 })();
 

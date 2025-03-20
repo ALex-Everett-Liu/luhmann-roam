@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Variables and state
   let nodes = [];
-  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
   let currentModalNodeId = null;
   
   // Add this variable to track the currently focused node
@@ -17,64 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Application functions
   // Update language toggle button text
   function updateLanguageToggle() {
-    languageToggle.textContent = currentLanguage === 'en' ? 'Switch to Chinese' : '切换到英文';
+    const toggleButton = document.getElementById('language-toggle');
+    toggleButton.textContent = I18n.t('switchToLanguage');
   }
   
   // Toggle language
   function toggleLanguage() {
-    // Store focus state before language switch
-    const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
-    const focusedNodeId = wasInFocusMode && window.BreadcrumbManager ? 
-      window.BreadcrumbManager.getCurrentFocusedNodeId() : null;
-    
-    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
-    localStorage.setItem('preferredLanguage', currentLanguage);
-    updateLanguageToggle();
-    console.log(`Language switched to ${currentLanguage}, forcing fresh data load`);
-    
-    // Update language in LinkManager
-    if (window.LinkManager) {
-      LinkManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update FilterManager language
-    if (window.FilterManager) {
-      FilterManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update SearchManager language
-    if (window.SearchManager) {
-      SearchManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update breadcrumb language
-    if (window.BreadcrumbManager) {
-      BreadcrumbManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update PositionManager language
-    if (window.PositionManager) {
-      PositionManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update DragDropManager language
-    if (window.DragDropManager) {
-      DragDropManager.updateLanguage(currentLanguage);
-    }
-    
-    // Update TimestampManager language
-    if (window.TimestampManager) {
-      TimestampManager.updateLanguage(currentLanguage);
-    }
-    
-    // Fetch nodes with the new language
-    fetchNodes(true).then(() => {
-      // Restore focus state after data refresh if we were in focus mode
-      if (wasInFocusMode && focusedNodeId && window.BreadcrumbManager) {
-        console.log(`Restoring focus to node ${focusedNodeId} after language switch`);
-        window.BreadcrumbManager.focusOnNode(focusedNodeId);
-      }
-    });
+    I18n.toggleLanguage();
   }
   
   
@@ -87,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Add cache-busting parameter to prevent stale data
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
+      const currentLanguage = I18n.getCurrentLanguage();
       console.log(`Fetching nodes with lang=${currentLanguage}${forceFresh ? ' (forced fresh load)' : ''}`);
       const response = await fetch(`/api/nodes?lang=${currentLanguage}${cacheBuster}`);
       nodes = await response.json();
@@ -117,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Add cache-busting parameter to prevent stale data
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
+      const currentLanguage = I18n.getCurrentLanguage();
       const response = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}${cacheBuster}`);
       return await response.json();
     } catch (error) {
@@ -210,7 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
     nodeText.className = 'node-text';
     nodeText.contentEditable = true;
     
-    // Display content based on current language
+    // Display content based on current language from I18n
+    const currentLanguage = I18n.getCurrentLanguage();
     const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
     nodeText.textContent = displayContent;
     
@@ -235,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const nodeResponse = await fetch(`/api/nodes/${node.id}`);
       const currentNode = await nodeResponse.json();
       
+      const currentLanguage = I18n.getCurrentLanguage();
       let originalContent = currentLanguage === 'en' ? currentNode.content : currentNode.content_zh;
       let savedContent = nodeText.textContent;
       
@@ -401,7 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get the highest position
       const maxPosition = nodes.length > 0 ? Math.max(...nodes.map(n => n.position)) + 1 : 0;
       
-      const defaultContent = currentLanguage === 'en' ? 'New node' : '新节点';
+      // Use the I18n system for default content
+      const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
       
       const response = await fetch('/api/nodes', {
         method: 'POST',
@@ -439,8 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const children = await childrenResponse.json();
       const position = children.length;
       
-      // Use the same default content for both languages
-      const defaultContent = currentLanguage === 'en' ? 'New node' : '新节点';
+      // Use the I18n system for default content
+      const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
       
       // Create the new node
       const newNodeResponse = await fetch('/api/nodes', {
@@ -498,9 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       console.log(`Current node data:`, node);
       
-      // Define default content values
-      const defaultEnContent = 'New node';
-      const defaultZhContent = '新节点';
+      // Define default content values using I18n
+      const defaultEnContent = I18n.t('newNode');
+      const defaultZhContent = I18n.t('newNode');
       
       // Check if the node still has default content in either language field
       if ((node.content === defaultEnContent || node.content === defaultZhContent) && 
@@ -511,14 +464,16 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // For first edit, update both language fields with the same content
       if (isFirstEdit) {
-        // Determine which content to use based on current language
+        // Use I18n.getCurrentLanguage() instead of currentLanguage
+        const currentLanguage = I18n.getCurrentLanguage();
         const editedContent = currentLanguage === 'en' ? content : content_zh;
         console.log(`Using ${currentLanguage} content for both fields: "${editedContent}"`);
         
         updateData.content = editedContent;
         updateData.content_zh = editedContent;
       } else {
-        // For subsequent edits, only update the current language field
+        // Use I18n.getCurrentLanguage() instead of currentLanguage
+        const currentLanguage = I18n.getCurrentLanguage();
         console.log(`Not first edit, only updating ${currentLanguage} content`);
         if (content !== null) {
           updateData.content = content;
@@ -618,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Delete a node
   async function deleteNode(nodeId) {
-    if (confirm('Are you sure you want to delete this node and all its children?')) {
+    if (confirm(I18n.t('confirmDeleteNode'))) {
       try {
         await fetch(`/api/nodes/${nodeId}`, {
           method: 'DELETE'
@@ -766,8 +721,8 @@ document.addEventListener('DOMContentLoaded', () => {
           newPosition += 1;
         }
         
-        // Use the same default content for both languages
-        const defaultContent = currentLanguage === 'en' ? 'New node' : '新节点';
+        // Use the I18n system for default content
+        const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
         
         // Create the new node
         await fetch('/api/nodes', {
@@ -936,7 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Event listeners
   addRootNodeButton.addEventListener('click', addRootNode);
-  languageToggle.addEventListener('click', toggleLanguage);
+  languageToggle.addEventListener('click', I18n.toggleLanguage);
   
   // Add event listener for save changes button
   const saveChangesButton = document.getElementById('save-changes');
@@ -1012,5 +967,8 @@ document.addEventListener('DOMContentLoaded', () => {
       throw error;
     }
   }
+
+  // Initialize I18n before other components
+  I18n.initialize();
 
 }); 

@@ -7,6 +7,20 @@ const MarkdownManager = (function() {
   let modalElement = null;
   let currentNodeId = null;
   let imageViewMode = localStorage.getItem('markdownImageViewMode') || 'lightbox'; // Default to lightbox
+  let currentLanguage = 'en';
+  
+  /**
+   * Initialize the manager
+   */
+  function initialize() {
+    // Get the initial language setting from I18n if available
+    if (window.I18n) {
+      currentLanguage = I18n.getCurrentLanguage();
+    } else {
+      currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+    }
+    console.log('MarkdownManager initialized with language:', currentLanguage);
+  }
   
   // Add CSS styles for the wider markdown modal
   function addModalStyles() {
@@ -47,44 +61,57 @@ const MarkdownManager = (function() {
       return document.getElementById('markdown-modal');
     }
     
+    const modalTitle = window.I18n ? I18n.t('editMarkdown') : 'Edit Markdown Content';
+    const editMode = window.I18n ? I18n.t('editMode') : 'Edit';
+    const previewMode = window.I18n ? I18n.t('previewMode') : 'Preview';
+    const openImagesNewTab = window.I18n ? I18n.t('openImagesNewTab') : 'Open images in new tab';
+    const imgWidthLabel = window.I18n ? I18n.t('selectedImgWidth') : 'Selected Image Width (px):';
+    const applyText = window.I18n ? I18n.t('apply') : 'Apply';
+    const removeText = window.I18n ? I18n.t('remove') : 'Remove';
+    const selectImageMsg = window.I18n ? 
+      I18n.t('selectImgToResize', {method: imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'}) : 
+      `Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)`;
+    const deleteMarkdownText = window.I18n ? I18n.t('deleteMarkdown') : 'Delete Markdown';
+    const saveText = window.I18n ? I18n.t('saveMarkdown') : 'Save';
+    
     const modalHTML = `
       <div id="markdown-modal" class="modal-overlay" style="display: none;">
         <div class="modal markdown-modal-wide">
           <div class="modal-header">
-            <h3 class="modal-title">Edit Markdown Content</h3>
+            <h3 class="modal-title">${modalTitle}</h3>
             <div class="markdown-mode-toggle">
-              <button id="edit-mode-btn" class="mode-btn active">Edit</button>
-              <button id="read-mode-btn" class="mode-btn">Preview</button>
+              <button id="edit-mode-btn" class="mode-btn active">${editMode}</button>
+              <button id="read-mode-btn" class="mode-btn">${previewMode}</button>
             </div>
             <button class="modal-close" id="close-markdown-modal">&times;</button>
           </div>
           <div class="modal-body">
-            <textarea id="markdown-editor" class="markdown-editor" placeholder="Enter markdown content..."></textarea>
+            <textarea id="markdown-editor" class="markdown-editor" placeholder="${window.I18n ? I18n.t('enterMarkdownPlaceholder') : 'Enter markdown content...'}"></textarea>
             <div id="markdown-preview" class="markdown-preview" style="display: none;">
               <div class="preview-controls">
                 <div class="image-view-toggle">
                   <label>
                     <input type="checkbox" id="image-view-toggle" ${imageViewMode === 'newtab' ? 'checked' : ''}>
-                    Open images in new tab
+                    ${openImagesNewTab}
                   </label>
                 </div>
                 
                 <!-- Image size control for selected image -->
                 <div class="image-size-control">
-                  <label>Selected Image Width (px): 
+                  <label>${imgWidthLabel} 
                     <input type="number" id="image-width-input" min="50" max="2000" value="800" disabled>
-                    <button id="apply-image-width" class="btn-small" disabled>Apply</button>
-                    <button id="remove-image-width" class="btn-small btn-danger-small" disabled>Remove</button>
+                    <button id="apply-image-width" class="btn-small" disabled>${applyText}</button>
+                    <button id="remove-image-width" class="btn-small btn-danger-small" disabled>${removeText}</button>
                   </label>
-                  <span id="no-image-selected-msg">Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)</span>
+                  <span id="no-image-selected-msg">${selectImageMsg}</span>
                 </div>
               </div>
               <div id="markdown-content"></div>
             </div>
           </div>
           <div class="modal-footer">
-            <button id="delete-markdown" class="btn btn-danger">Delete Markdown</button>
-            <button id="save-markdown" class="btn btn-primary">Save</button>
+            <button id="delete-markdown" class="btn btn-danger">${deleteMarkdownText}</button>
+            <button id="save-markdown" class="btn btn-primary">${saveText}</button>
           </div>
         </div>
       </div>
@@ -111,7 +138,9 @@ const MarkdownManager = (function() {
       // Update the help message
       const helpMsg = document.getElementById('no-image-selected-msg');
       if (helpMsg) {
-        helpMsg.textContent = `Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)`;
+        helpMsg.textContent = window.I18n ? 
+          I18n.t('selectImgToResize', {method: imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'}) : 
+          `Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)`;
       }
       
       // Re-render the markdown to apply the new image view mode
@@ -135,6 +164,14 @@ const MarkdownManager = (function() {
         applySelectedImageWidth();
       }
     });
+    
+    // Update the help message for image resizing
+    const helpMsg = document.getElementById('no-image-selected-msg');
+    if (helpMsg) {
+      helpMsg.textContent = window.I18n ? 
+        I18n.t('selectImgToResize', {method: imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'}) : 
+        `Select an image to resize (${imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'} on image)`;
+    }
     
     return modal;
   }
@@ -183,11 +220,14 @@ const MarkdownManager = (function() {
     const contentDiv = document.getElementById('markdown-content');
     
     // Add help message
+    const tipText = window.I18n ? I18n.t('tip') : 'Tip:';
+    const resizeHelpText = window.I18n ? 
+      I18n.t('resizeImgHelp', {method: imageViewMode === 'lightbox' ? 'Ctrl+Click' : 'Right-Click'}) : 
+      `${imageViewMode === 'lightbox' ? 'Ctrl+Click (or Cmd+Click)' : 'Right-click'} on any image to resize it.`;
+    
     const helpMessage = `
       <div class="resize-help-message">
-        <p><strong>Tip:</strong> ${imageViewMode === 'lightbox' ? 
-          'Ctrl+Click (or Cmd+Click) on any image to resize it.' : 
-          'Right-click on any image to resize it.'}</p>
+        <p><strong>${tipText}</strong> ${resizeHelpText}</p>
       </div>
     `;
 
@@ -408,7 +448,7 @@ const MarkdownManager = (function() {
    * Deletes the markdown content for the current node
    */
   async function deleteMarkdown() {
-    if (!currentNodeId || !confirm('Are you sure you want to delete this markdown content?')) {
+    if (!currentNodeId || !confirm(window.I18n ? I18n.t('confirmDeleteMarkdown') : 'Are you sure you want to delete this markdown content?')) {
       return;
     }
     
@@ -428,7 +468,7 @@ const MarkdownManager = (function() {
         document.getElementById('markdown-editor').value = '';
         closeModal();
       } else {
-        alert('Failed to delete markdown content');
+        alert(window.I18n ? I18n.t('errorDeletingMarkdown') : 'Failed to delete markdown content');
       }
     } catch (error) {
       console.error('Error deleting markdown:', error);
@@ -700,12 +740,47 @@ const MarkdownManager = (function() {
     }, 1000);
   }
   
+  /**
+   * Updates the current language
+   * @param {string} language - The language code ('en' or 'zh')
+   */
+  function updateLanguage(language) {
+    currentLanguage = language;
+    console.log('MarkdownManager language updated to:', language);
+    
+    // Update any open modals
+    if (modalElement && modalElement.style.display !== 'none') {
+      // Get the current markdown content
+      const content = document.getElementById('markdown-editor').value;
+      
+      // Close and reopen the modal to update all text
+      const currentId = currentNodeId;
+      closeModal();
+      
+      // Create a new modal with updated translations
+      createModal();
+      
+      // Open the modal with the same content
+      currentNodeId = currentId;
+      document.getElementById('markdown-editor').value = content;
+      modalElement.style.display = 'flex';
+      
+      // If in preview mode, update the preview
+      if (document.getElementById('markdown-preview').style.display !== 'none') {
+        renderMarkdown(content);
+        setupImageResizeHandlers();
+      }
+    }
+  }
+  
   // Public API
   return {
     openModal: openMarkdownModal,
     closeModal: closeModal,
     updateIndicator: updateMarkdownIndicator,
-    openImageViewer: openImageViewer
+    openImageViewer: openImageViewer,
+    initialize: initialize,
+    updateLanguage: updateLanguage
   };
 })();
 

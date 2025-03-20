@@ -3,7 +3,7 @@
   // Create the DragDropManager object
   const DragDropManager = {
     // Private variables
-    currentLanguage: localStorage.getItem('preferredLanguage') || 'en',
+    currentLanguage: 'en',
     draggedNodeId: null,
     isInitialized: false,
     dragStartHandler: null,
@@ -21,7 +21,13 @@
       }
       
       console.log('DragDropManager initializing...');
-      this.currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+      
+      // Get the initial language setting from I18n if available
+      if (window.I18n) {
+        this.currentLanguage = I18n.getCurrentLanguage();
+      } else {
+        this.currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+      }
       
       // Create bound event handlers that we can reference for removal
       this.createBoundEventHandlers();
@@ -231,7 +237,7 @@
           }
         } catch (error) {
           console.error('Error reordering nodes:', error);
-          alert('Error moving node. Please try again.');
+          alert(window.I18n ? I18n.t('errorMovingNode') : 'Error moving node. Please try again.');
         } finally {
           // Reset the dragged node ID after the operation is complete
           self.draggedNodeId = null;

@@ -12,6 +12,10 @@ const TimestampManager = (function() {
     // Initialize the module
     function initialize() {
       console.log('TimestampManager initialized');
+      // Get the current language from I18n if available
+      if (window.I18n) {
+        currentLanguage = I18n.getCurrentLanguage();
+      }
       createModal();
     }
     
@@ -19,6 +23,11 @@ const TimestampManager = (function() {
     function updateLanguage(language) {
       currentLanguage = language;
       updateModalText();
+      
+      // Update any visible timestamp buttons' tooltips
+      document.querySelectorAll('.timestamp-button').forEach(button => {
+        button.title = I18n.t('nodeTimestamps');
+      });
     }
     
     // Create the timestamp modal
@@ -50,7 +59,7 @@ const TimestampManager = (function() {
         const modalTitle = document.createElement('h2');
         modalTitle.className = 'modal-title';
         modalTitle.id = 'timestamp-modal-title';
-        modalTitle.textContent = currentLanguage === 'en' ? 'Node Timestamps' : '节点时间戳';
+        modalTitle.textContent = window.I18n ? I18n.t('nodeTimestamps') : (currentLanguage === 'en' ? 'Node Timestamps' : '节点时间戳');
         
         const closeButton = document.createElement('button');
         closeButton.className = 'modal-close';
@@ -73,7 +82,7 @@ const TimestampManager = (function() {
         
         const createdLabel = document.createElement('h3');
         createdLabel.id = 'created-label';
-        createdLabel.textContent = currentLanguage === 'en' ? 'Created:' : '创建时间:';
+        createdLabel.textContent = window.I18n ? I18n.t('created') : (currentLanguage === 'en' ? 'Created:' : '创建时间:');
         
         const createdTime = document.createElement('p');
         createdTime.id = 'created-time';
@@ -88,7 +97,7 @@ const TimestampManager = (function() {
         
         const updatedLabel = document.createElement('h3');
         updatedLabel.id = 'updated-label';
-        updatedLabel.textContent = currentLanguage === 'en' ? 'Last Updated:' : '最后更新:';
+        updatedLabel.textContent = window.I18n ? I18n.t('lastUpdated') : (currentLanguage === 'en' ? 'Last Updated:' : '最后更新:');
         
         const updatedTime = document.createElement('p');
         updatedTime.id = 'updated-time';
@@ -111,12 +120,20 @@ const TimestampManager = (function() {
     
     // Update modal text based on language
     function updateModalText() {
-      document.getElementById('timestamp-modal-title').textContent = 
-        currentLanguage === 'en' ? 'Node Timestamps' : '节点时间戳';
-      document.getElementById('created-label').textContent = 
-        currentLanguage === 'en' ? 'Created:' : '创建时间:';
-      document.getElementById('updated-label').textContent = 
-        currentLanguage === 'en' ? 'Last Updated:' : '最后更新:';
+      if (document.getElementById('timestamp-modal-title')) {
+        document.getElementById('timestamp-modal-title').textContent = 
+          window.I18n ? I18n.t('nodeTimestamps') : (currentLanguage === 'en' ? 'Node Timestamps' : '节点时间戳');
+      }
+      
+      if (document.getElementById('created-label')) {
+        document.getElementById('created-label').textContent = 
+          window.I18n ? I18n.t('created') : (currentLanguage === 'en' ? 'Created:' : '创建时间:');
+      }
+      
+      if (document.getElementById('updated-label')) {
+        document.getElementById('updated-label').textContent = 
+          window.I18n ? I18n.t('lastUpdated') : (currentLanguage === 'en' ? 'Last Updated:' : '最后更新:');
+      }
     }
     
     // Format timestamp to readable date/time
@@ -170,7 +187,12 @@ const TimestampManager = (function() {
         const timestampButton = document.createElement('button');
         timestampButton.className = 'timestamp-button';
         timestampButton.innerHTML = '🕒';
-        timestampButton.title = currentLanguage === 'en' ? 'View timestamps' : '查看时间戳';
+        
+        // Use I18n if available, otherwise fallback to direct translation
+        timestampButton.title = window.I18n ? 
+          I18n.t('nodeTimestamps') : 
+          (currentLanguage === 'en' ? 'View timestamps' : '查看时间戳');
+          
         timestampButton.addEventListener('click', () => openModal(nodeId));
         
         // Insert the timestamp button after the position button

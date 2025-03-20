@@ -8,6 +8,7 @@ const TaskManager = (function() {
   let currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   let activeTaskTimer = null;
   let sortOrder = 'created'; // Default sort order, options: created, durationAsc, durationDesc
+  let currentLanguage = 'en'; // Default language
   
   /**
    * Initializes the Task Manager
@@ -28,31 +29,31 @@ const TaskManager = (function() {
     
     const taskManagerHTML = `
       <div class="task-manager">
-        <h2>Daily Tasks</h2>
+        <h2>${I18n.t('dailyTasks')}</h2>
         <div class="date-selector">
-          <button id="prev-date" title="Previous day">◀</button>
+          <button id="prev-date" title="${I18n.t('previousDay')}">◀</button>
           <input type="date" id="task-date" value="${currentDate}">
-          <button id="next-date" title="Next day">▶</button>
-          <button id="today-date" title="Today">Today</button>
+          <button id="next-date" title="${I18n.t('nextDay')}">▶</button>
+          <button id="today-date" title="${I18n.t('today')}">${I18n.t('today')}</button>
         </div>
         
         <div class="active-task-display">
-          <h3>Active Task</h3>
+          <h3>${I18n.t('activeTask')}</h3>
           <div id="active-task">
-            <span id="active-task-name">No active task</span>
+            <span id="active-task-name">${I18n.t('noActiveTask')}</span>
             <span id="active-task-timer">00:00:00</span>
           </div>
         </div>
         
         <div class="task-creator">
-          <input type="text" id="new-task-input" placeholder="Enter new task...">
-          <button id="add-task-btn">Add</button>
+          <input type="text" id="new-task-input" placeholder="${I18n.t('newTask')}">
+          <button id="add-task-btn">${I18n.t('add')}</button>
         </div>
         
         <div class="task-controls">
-          <button id="sort-by-created" class="active">By Creation</button>
-          <button id="sort-duration-asc">↑ Duration</button>
-          <button id="sort-duration-desc">↓ Duration</button>
+          <button id="sort-by-created" class="active">${I18n.t('byCreation')}</button>
+          <button id="sort-duration-asc">${I18n.t('durationAsc')}</button>
+          <button id="sort-duration-desc">${I18n.t('durationDesc')}</button>
         </div>
         
         <div class="tasks-container">
@@ -60,11 +61,11 @@ const TaskManager = (function() {
         </div>
         
         <div class="task-statistics">
-          <h3>Statistics</h3>
+          <h3>${I18n.t('statistics')}</h3>
           <div id="task-stats">
-            <div>Total Tasks: <span id="total-tasks-count">0</span></div>
-            <div>Completed: <span id="completed-tasks-count">0</span></div>
-            <div>Total Time: <span id="total-time-spent">00:00:00</span></div>
+            <div>${I18n.t('totalTasks')}: <span id="total-tasks-count">0</span></div>
+            <div>${I18n.t('completed')}: <span id="completed-tasks-count">0</span></div>
+            <div>${I18n.t('totalTime')}: <span id="total-time-spent">00:00:00</span></div>
           </div>
         </div>
       </div>
@@ -137,7 +138,7 @@ const TaskManager = (function() {
     tasksListElement.innerHTML = '';
     
     if (tasks.length === 0) {
-      tasksListElement.innerHTML = '<div class="no-tasks">No tasks for this day</div>';
+      tasksListElement.innerHTML = `<div class="no-tasks">${I18n.t('noTasksForDay')}</div>`;
       return;
     }
     
@@ -357,7 +358,7 @@ const TaskManager = (function() {
    * @param {string} taskId - The ID of the task to delete
    */
   async function deleteTask(taskId) {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    if (!confirm(I18n.t('confirmDeleteTask'))) return;
     
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
@@ -386,7 +387,7 @@ const TaskManager = (function() {
     const activeTaskTimerElement = document.getElementById('active-task-timer');
     
     if (!activeTask) {
-      activeTaskNameElement.textContent = 'No active task';
+      activeTaskNameElement.textContent = I18n.t('noActiveTask');
       activeTaskTimerElement.textContent = '00:00:00';
       return;
     }
@@ -500,9 +501,48 @@ const TaskManager = (function() {
     ].join(':');
   }
   
+  /**
+   * Updates the language for task manager UI
+   * @param {string} language - The language code ('en' or 'zh')
+   */
+  function updateLanguage(language) {
+    currentLanguage = language;
+    
+    // Update UI elements with translated text
+    const taskManagerElement = document.querySelector('.task-manager');
+    if (taskManagerElement) {
+      // Update headings
+      taskManagerElement.querySelector('h2').textContent = I18n.t('dailyTasks');
+      
+      // Update active task display
+      taskManagerElement.querySelector('.active-task-display h3').textContent = I18n.t('activeTask');
+      if (document.getElementById('active-task-name').textContent === 'No active task') {
+        document.getElementById('active-task-name').textContent = I18n.t('noActiveTask');
+      }
+      
+      // Update task controls
+      document.getElementById('new-task-input').placeholder = I18n.t('newTask');
+      document.getElementById('add-task-btn').textContent = I18n.t('add');
+      document.getElementById('today-date').textContent = I18n.t('today');
+      document.getElementById('sort-by-created').textContent = I18n.t('byCreation');
+      document.getElementById('sort-duration-asc').textContent = I18n.t('durationAsc');
+      document.getElementById('sort-duration-desc').textContent = I18n.t('durationDesc');
+      
+      // Update statistics section
+      taskManagerElement.querySelector('.task-statistics h3').textContent = I18n.t('statistics');
+      document.getElementById('task-stats').firstElementChild.innerHTML = 
+        `${I18n.t('totalTasks')}: <span id="total-tasks-count">${document.getElementById('total-tasks-count').textContent}</span>`;
+      document.getElementById('task-stats').children[1].innerHTML = 
+        `${I18n.t('completed')}: <span id="completed-tasks-count">${document.getElementById('completed-tasks-count').textContent}</span>`;
+      document.getElementById('task-stats').lastElementChild.innerHTML = 
+        `${I18n.t('totalTime')}: <span id="total-time-spent">${document.getElementById('total-time-spent').textContent}</span>`;
+    }
+  }
+  
   // Public API
   return {
-    initialize: initialize
+    initialize: initialize,
+    updateLanguage: updateLanguage
   };
 })();
 

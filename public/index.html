@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Outliner App</title>
+  <title>Luhmann-Roam</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="app-container">
     <div class="sidebar">
-      <h1>Outliner</h1>
+      <h1 id="app-title">Outliner</h1>
       <button id="add-root-node">Add Root Node</button>
       <button id="save-changes" class="save-button">Save Changes</button>
       <button id="language-toggle">Switch to Chinese</button>
@@ -19,7 +19,10 @@
     </div>
   </div>
 
-  <!-- Load the modules before app.js -->
+  <!-- Load the i18n module first -->
+  <script src="js/i18n.js"></script>
+  
+  <!-- Then load other modules -->
   <script src="js/markdownManager.js"></script>
   <script src="js/linkManager.js"></script>
   <script src="js/filterManager.js"></script>

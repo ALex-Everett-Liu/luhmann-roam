@@ -1,5 +1,7 @@
 # Luhmann-Roam Knowledge Management System
 
+[English](README.md) | [简体中文](README.zh.md)
+
 Luhmann-Roam is a powerful knowledge management system inspired by Roam Research and Niklas Luhmann's Zettelkasten method. It provides a hierarchical outliner interface with bidirectional linking capabilities, allowing users to create, organize, and connect notes in a networked structure.
 
 ## Features
@@ -37,13 +39,13 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 
 ### Task Management
 
-![image](https://github.com/user-attachments/assets/2ca40ad4-2904-4dcd-bb47-708677a4c1cf)
+![task_01](https://github.com/user-attachments/assets/2ca40ad4-2904-4dcd-bb47-708677a4c1cf)
 
 *Daily task tracking with time management*
 
 ### Node Operations
 
-![image](https://github.com/user-attachments/assets/f0fd4a70-ce3a-4dd6-b8c4-1d04caed159d)
+![move_node_01](https://github.com/user-attachments/assets/f0fd4a70-ce3a-4dd6-b8c4-1d04caed159d)
 
 *Reorganizing the knowledge structure through various operations*
 

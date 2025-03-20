@@ -6,7 +6,23 @@ const FilterManager = (function() {
   // Private variables
   let activeFilters = [];
   let filterBookmarks = JSON.parse(localStorage.getItem('filterBookmarks') || '[]');
-  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  let currentLanguage = 'en';
+  
+  /**
+   * Initialize the manager
+   */
+  function initialize() {
+    // Get the initial language setting from I18n if available
+    if (window.I18n) {
+      currentLanguage = I18n.getCurrentLanguage();
+    } else {
+      currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+    }
+    console.log('FilterManager initialized with language:', currentLanguage);
+    
+    // Create the UI
+    createFilterUI();
+  }
   
   /**
    * Creates the filter UI in the sidebar
@@ -19,7 +35,7 @@ const FilterManager = (function() {
     filterSection.className = 'filter-section';
     
     const filterTitle = document.createElement('h3');
-    filterTitle.textContent = 'Filters';
+    filterTitle.textContent = window.I18n ? I18n.t('filters') : 'Filters';
     filterSection.appendChild(filterTitle);
     
     // Add search functionality
@@ -29,7 +45,7 @@ const FilterManager = (function() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.className = 'node-search';
-    searchInput.placeholder = 'Search for nodes to filter...';
+    searchInput.placeholder = window.I18n ? I18n.t('searchNodesForFilter') : 'Search for nodes to filter...';
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results';
@@ -52,7 +68,7 @@ const FilterManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = '<div class="no-results">No matching nodes found</div>';
+          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
         }
         
@@ -80,7 +96,7 @@ const FilterManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = '<div class="search-error">Error searching nodes</div>';
+        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     
@@ -89,7 +105,7 @@ const FilterManager = (function() {
     // Active filters container
     const activeFiltersContainer = document.createElement('div');
     activeFiltersContainer.className = 'active-filters';
-    activeFiltersContainer.innerHTML = '<p class="no-filters">No active filters</p>';
+    activeFiltersContainer.innerHTML = `<p class="no-filters">${window.I18n ? I18n.t('noActiveFilters') : 'No active filters'}</p>`;
     filterSection.appendChild(activeFiltersContainer);
     
     // Create filter actions
@@ -98,12 +114,12 @@ const FilterManager = (function() {
     
     const clearFiltersButton = document.createElement('button');
     clearFiltersButton.className = 'btn-secondary filter-button';
-    clearFiltersButton.textContent = 'Clear Filters';
+    clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
     clearFiltersButton.addEventListener('click', clearFilters);
     
     const saveBookmarkButton = document.createElement('button');
     saveBookmarkButton.className = 'btn-secondary filter-button';
-    saveBookmarkButton.textContent = 'Save as Bookmark';
+    saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
     saveBookmarkButton.addEventListener('click', addFilterBookmark);
     
     filterActions.appendChild(clearFiltersButton);
@@ -115,7 +131,7 @@ const FilterManager = (function() {
     bookmarksContainer.className = 'filter-bookmarks';
     
     const bookmarksTitle = document.createElement('h4');
-    bookmarksTitle.textContent = 'Bookmarks';
+    bookmarksTitle.textContent = window.I18n ? I18n.t('bookmarks') : 'Bookmarks';
     bookmarksContainer.appendChild(bookmarksTitle);
     
     const bookmarksList = document.createElement('div');
@@ -241,7 +257,7 @@ const FilterManager = (function() {
     const activeFiltersContainer = document.querySelector('.active-filters');
     
     if (activeFilters.length === 0) {
-      activeFiltersContainer.innerHTML = '<p class="no-filters">No active filters</p>';
+      activeFiltersContainer.innerHTML = `<p class="no-filters">${window.I18n ? I18n.t('noActiveFilters') : 'No active filters'}</p>`;
       return;
     }
     
@@ -280,7 +296,7 @@ const FilterManager = (function() {
    */
   function addFilterBookmark() {
     if (activeFilters.length === 0) {
-      alert('No active filters to bookmark');
+      alert(window.I18n ? I18n.t('noFiltersToBookmark') : 'No active filters to bookmark');
       return;
     }
     
@@ -298,7 +314,7 @@ const FilterManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = 'Save Filter Bookmark';
+    modalTitle.textContent = window.I18n ? I18n.t('saveFilterBookmark') : 'Save Filter Bookmark';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -315,7 +331,7 @@ const FilterManager = (function() {
     modalBody.className = 'modal-body';
     
     const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'Enter a name for this filter bookmark:';
+    nameLabel.textContent = window.I18n ? I18n.t('enterBookmarkName') : 'Enter a name for this filter bookmark:';
     nameLabel.style.display = 'block';
     nameLabel.style.marginBottom = '8px';
     
@@ -323,7 +339,7 @@ const FilterManager = (function() {
     nameInput.type = 'text';
     nameInput.className = 'node-search';
     nameInput.style.width = '100%';
-    nameInput.placeholder = 'Bookmark name';
+    nameInput.placeholder = window.I18n ? I18n.t('bookmarkNamePlaceholder') : 'Bookmark name';
     
     modalBody.appendChild(nameLabel);
     modalBody.appendChild(nameInput);
@@ -334,14 +350,14 @@ const FilterManager = (function() {
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'btn btn-secondary';
-    cancelButton.textContent = 'Cancel';
+    cancelButton.textContent = window.I18n ? I18n.t('cancel') : 'Cancel';
     cancelButton.addEventListener('click', () => {
       document.body.removeChild(modalOverlay);
     });
     
     const saveButton = document.createElement('button');
     saveButton.className = 'btn btn-primary';
-    saveButton.textContent = 'Save';
+    saveButton.textContent = window.I18n ? I18n.t('save') : 'Save';
     saveButton.addEventListener('click', () => {
       const bookmarkName = nameInput.value.trim();
       if (!bookmarkName) {
@@ -402,7 +418,7 @@ const FilterManager = (function() {
     const bookmarksList = document.querySelector('.bookmarks-list');
     
     if (filterBookmarks.length === 0) {
-      bookmarksList.innerHTML = '<p class="no-bookmarks">No saved bookmarks</p>';
+      bookmarksList.innerHTML = `<p class="no-bookmarks">${window.I18n ? I18n.t('noSavedBookmarks') : 'No saved bookmarks'}</p>`;
       return;
     }
     
@@ -416,7 +432,7 @@ const FilterManager = (function() {
       bookmarkItem.innerHTML = `
         <span class="bookmark-name">${bookmark.name}</span>
         <div class="bookmark-actions">
-          <button class="bookmark-load" data-id="${bookmark.id}">Load</button>
+          <button class="bookmark-load" data-id="${bookmark.id}">${window.I18n ? I18n.t('load') : 'Load'}</button>
           <button class="bookmark-delete" data-id="${bookmark.id}">&times;</button>
         </div>
       `;
@@ -494,7 +510,7 @@ const FilterManager = (function() {
       const filterButton = document.createElement('button');
       filterButton.className = 'filter-button';
       filterButton.innerHTML = '🔍';
-      filterButton.title = 'Filter on this node';
+      filterButton.title = window.I18n ? I18n.t('filterOnNode') : 'Filter on this node';
       
       // Add click event listener
       filterButton.addEventListener('click', (e) => {
@@ -513,7 +529,45 @@ const FilterManager = (function() {
    */
   function updateLanguage(language) {
     currentLanguage = language;
+    console.log('FilterManager language updated to:', language);
+    
+    // Update UI elements with new language
+    const filterTitle = document.querySelector('.filter-section h3');
+    if (filterTitle) {
+      filterTitle.textContent = window.I18n ? I18n.t('filters') : 'Filters';
+    }
+    
+    const searchInput = document.querySelector('.filter-section .node-search');
+    if (searchInput) {
+      searchInput.placeholder = window.I18n ? I18n.t('searchNodesForFilter') : 'Search for nodes to filter...';
+    }
+    
+    const clearFiltersButton = document.querySelector('.filter-actions button:first-child');
+    if (clearFiltersButton) {
+      clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
+    }
+    
+    const saveBookmarkButton = document.querySelector('.filter-actions button:last-child');
+    if (saveBookmarkButton) {
+      saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
+    }
+    
+    const bookmarksTitle = document.querySelector('.filter-bookmarks h4');
+    if (bookmarksTitle) {
+      bookmarksTitle.textContent = window.I18n ? I18n.t('bookmarks') : 'Bookmarks';
+    }
+    
+    // Update active filters display with new language
     updateActiveFiltersDisplay();
+    
+    // Update bookmarks display with new language
+    updateBookmarksList();
+    
+    // Update filter buttons on nodes
+    const filterButtons = document.querySelectorAll('.filter-button');
+    filterButtons.forEach(button => {
+      button.title = window.I18n ? I18n.t('filterOnNode') : 'Filter on this node';
+    });
   }
   
   /**
@@ -533,7 +587,7 @@ const FilterManager = (function() {
   
   // Public API
   return {
-    initialize: createFilterUI,
+    initialize: initialize,
     addFilter: addFilter,
     removeFilter: removeFilter,
     applyFilters: applyFilters,

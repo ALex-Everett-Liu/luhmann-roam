@@ -7,13 +7,21 @@ const BreadcrumbManager = (function() {
   // Private variables
   let currentFocusedNodeId = null;
   let breadcrumbContainer = null;
-  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  let currentLanguage = 'en';
   let isFocusMode = false;
   
   /**
    * Initializes the breadcrumb manager
    */
   function initialize() {
+    // Get the initial language setting from I18n if available
+    if (window.I18n) {
+      currentLanguage = I18n.getCurrentLanguage();
+    } else {
+      currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+    }
+    console.log('BreadcrumbManager initialized with language:', currentLanguage);
+    
     createBreadcrumbContainer();
   }
   
@@ -171,7 +179,7 @@ const BreadcrumbManager = (function() {
       const homeItem = document.createElement('div');
       homeItem.className = 'breadcrumb-item breadcrumb-home';
       homeItem.innerHTML = '🏠';
-      homeItem.title = 'Return to root level';
+      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
       homeItem.addEventListener('click', () => {
         clearFocus();
       });
@@ -380,6 +388,13 @@ const BreadcrumbManager = (function() {
    */
   function updateLanguage(language) {
     currentLanguage = language;
+    console.log('BreadcrumbManager language updated to:', language);
+    
+    // Update the home icon tooltip
+    const homeItem = document.querySelector('.breadcrumb-home');
+    if (homeItem) {
+      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
+    }
     
     // Update breadcrumb trail if there's a focused node
     if (currentFocusedNodeId && isFocusMode) {

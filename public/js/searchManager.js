@@ -4,7 +4,7 @@
  */
 const SearchManager = (function() {
   // Private variables
-  let currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
+  let currentLanguage = 'en';
   let searchModalElement = null;
   
   /**
@@ -27,7 +27,7 @@ const SearchManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = 'Search Nodes';
+    modalTitle.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -49,7 +49,7 @@ const SearchManager = (function() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.className = 'node-search';
-    searchInput.placeholder = 'Type to search for nodes...';
+    searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
     searchInput.autofocus = true;
     
     const searchResults = document.createElement('div');
@@ -78,7 +78,7 @@ const SearchManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = '<div class="no-results">No matching nodes found</div>';
+          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
         }
         
@@ -109,7 +109,7 @@ const SearchManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = '<div class="search-error">Error searching nodes</div>';
+        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     
@@ -121,7 +121,7 @@ const SearchManager = (function() {
     
     const closeModalButton = document.createElement('button');
     closeModalButton.className = 'btn btn-secondary';
-    closeModalButton.textContent = 'Close';
+    closeModalButton.textContent = window.I18n ? I18n.t('close') : 'Close';
     closeModalButton.addEventListener('click', closeSearchModal);
     
     modalFooter.appendChild(closeModalButton);
@@ -167,7 +167,9 @@ const SearchManager = (function() {
   function getNodePath(node) {
     // This is a placeholder - in a real implementation, you would
     // fetch the parent chain and create a proper breadcrumb
-    return node.parent_id ? `Parent: ${node.parent_id.substring(0, 8)}...` : 'Root level';
+    return node.parent_id ? 
+      `${window.I18n ? I18n.t('parent') : 'Parent'}: ${node.parent_id.substring(0, 8)}...` : 
+      (window.I18n ? I18n.t('rootLevel') : 'Root level');
   }
   
   /**
@@ -252,6 +254,33 @@ const SearchManager = (function() {
    */
   function updateLanguage(language) {
     currentLanguage = language;
+    
+    // Update any open search modal
+    if (searchModalElement) {
+      const modalTitle = searchModalElement.querySelector('.modal-title');
+      if (modalTitle) {
+        modalTitle.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
+      }
+      
+      const searchInput = searchModalElement.querySelector('.node-search');
+      if (searchInput) {
+        searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
+      }
+      
+      const closeButton = searchModalElement.querySelector('.btn-secondary');
+      if (closeButton) {
+        closeButton.textContent = window.I18n ? I18n.t('close') : 'Close';
+      }
+    }
+    
+    // Update the search button text in the sidebar
+    const searchButton = document.getElementById('search-nodes-button');
+    if (searchButton) {
+      searchButton.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
+      searchButton.title = window.I18n ? 
+        I18n.t('searchShortcutHint') : 
+        'Search for nodes (Ctrl+F)';
+    }
   }
   
   /**
@@ -273,17 +302,24 @@ const SearchManager = (function() {
    * Adds a search button to the sidebar
    */
   function initialize() {
+    // Get the current language from I18n if available
+    if (window.I18n) {
+      currentLanguage = I18n.getCurrentLanguage();
+    }
+    
     const sidebar = document.querySelector('.sidebar');
     
     // Create search button
     const searchButton = document.createElement('button');
     searchButton.id = 'search-nodes-button';
     searchButton.className = 'search-button';
-    searchButton.textContent = 'Search Nodes';
+    searchButton.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
     searchButton.addEventListener('click', openSearchModal);
     
     // Add keyboard shortcut info
-    searchButton.title = 'Search for nodes (Ctrl+F)';
+    searchButton.title = window.I18n ? 
+      I18n.t('searchShortcutHint') : 
+      'Search for nodes (Ctrl+F)';
     
     // Insert the search button after the "Add Root Node" button
     const addRootNodeButton = document.getElementById('add-root-node');
