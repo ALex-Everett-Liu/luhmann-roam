@@ -396,21 +396,30 @@ const BreadcrumbManager = (function() {
       homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
     }
     
-    // Update breadcrumb trail if there's a focused node
-    if (currentFocusedNodeId && isFocusMode) {
-      // Store the current focused node ID
-      const nodeToFocus = currentFocusedNodeId;
-      
-      // Update the breadcrumb trail with the new language
-      updateBreadcrumbTrail(nodeToFocus);
-      
-      // After the language switch and data refresh, reapply the focus
-      setTimeout(() => {
-        // Re-highlight the focused node
-        highlightFocusedNode(nodeToFocus);
-      }, 300);
+  // Rebuild the breadcrumb trail with the new language
+  if (breadcrumbContainer && breadcrumbContainer.style.display !== 'none') {
+    // Get the currently displayed breadcrumbs
+    const breadcrumbItems = breadcrumbContainer.querySelectorAll('.breadcrumb-item');
+    if (breadcrumbItems.length > 0) {
+      // Get the ID of the last (current) node in the breadcrumb
+      const lastItem = breadcrumbItems[breadcrumbItems.length - 1];
+      if (lastItem && lastItem.dataset.id) {
+        // Update the breadcrumb trail with this node ID
+        updateBreadcrumbTrail(lastItem.dataset.id);
+      }
     }
   }
+  
+  // Also update if in focus mode (existing code)
+  if (currentFocusedNodeId && isFocusMode) {
+    const nodeToFocus = currentFocusedNodeId;
+    updateBreadcrumbTrail(nodeToFocus);
+    
+    setTimeout(() => {
+      highlightFocusedNode(nodeToFocus);
+    }, 300);
+  }
+}
   
   /**
    * Handles click events on nodes to focus them
@@ -456,6 +465,7 @@ const BreadcrumbManager = (function() {
   /**
    * Updates the breadcrumb display
    * This should be called whenever the focused node changes or language changes
+   * no use, just delete it
    */
   function updateBreadcrumbs(nodeId) {
     // Clear existing breadcrumbs
