@@ -1033,6 +1033,8 @@ app.delete('/api/node-attributes/:id', async (req, res) => {
 // Query nodes by attributes
 app.post('/api/nodes/query', async (req, res) => {
   try {
+    console.log("Received query request with raw body:", JSON.stringify(req.body));
+    console.log("Query string:", req.body.query);
     const { query, sortBy, sortOrder } = req.body;
     
     if (!query) {
@@ -1040,119 +1042,229 @@ app.post('/api/nodes/query', async (req, res) => {
     }
     
     // Parse the query to find nodes with matching attributes
-    // This is a simple implementation that can be expanded
-    const db = await getDb();
-    
-    // First get all nodes with their attributes
-    const nodes = await db.all(`
-      SELECT n.*, GROUP_CONCAT(a.key || ':' || a.value, ';') as attributes
-      FROM nodes n
-      LEFT JOIN node_attributes a ON n.id = a.node_id
-      GROUP BY n.id
-    `);
-    
-    // Get all node attributes for filtering logic
-    const allNodeAttributes = await db.all(`
-      SELECT node_id, key, value
-      FROM node_attributes
-    `);
-    
-    // Create a map of node_id to attributes for easier access
-    const nodeAttributesMap = {};
-    allNodeAttributes.forEach(attr => {
-      if (!nodeAttributesMap[attr.node_id]) {
-        nodeAttributesMap[attr.node_id] = [];
-      }
-      nodeAttributesMap[attr.node_id].push({ key: attr.key, value: attr.value });
-    });
-    
-    // Parse the query for conditions (simple implementation)
-    const conditions = query.split('AND').map(part => part.trim());
-    
-    // Filter nodes based on the query conditions
-    let matchingNodes = nodes.filter(node => {
-      if (!nodeAttributesMap[node.id]) return false;
+    try {
+      const db = await getDb();
       
-      return conditions.every(condition => {
-        // For each condition, check if node has matching attribute
-        const [key, operator, value] = parseCondition(condition);
-        const nodeAttrs = nodeAttributesMap[node.id];
-        
-        const attr = nodeAttrs.find(a => a.key === key);
-        if (!attr) return false;
-        
-        return compareValues(attr.value, operator, value);
+      // First get all nodes with their attributes
+      const nodes = await db.all(`
+        SELECT n.*, GROUP_CONCAT(a.key || ':' || a.value, ';') as attributes
+        FROM nodes n
+        LEFT JOIN node_attributes a ON n.id = a.node_id
+        GROUP BY n.id
+      `);
+      
+      // Get all node attributes for filtering logic
+      const allNodeAttributes = await db.all(`
+        SELECT node_id, key, value
+        FROM node_attributes
+      `);
+      
+      // Create a map of node_id to attributes for easier access
+      const nodeAttributesMap = {};
+      allNodeAttributes.forEach(attr => {
+        if (!nodeAttributesMap[attr.node_id]) {
+          nodeAttributesMap[attr.node_id] = [];
+        }
+        nodeAttributesMap[attr.node_id].push({ key: attr.key, value: attr.value });
       });
-    });
-    
-    // Apply sorting if a sort field is provided
-    if (sortBy) {
-      matchingNodes.sort((a, b) => {
-        const aAttrs = nodeAttributesMap[a.id] || [];
-        const bAttrs = nodeAttributesMap[b.id] || [];
+      
+      // Parse the query for conditions (simple implementation)
+      const conditions = query.split('AND').map(part => part.trim());
+      
+      console.log('Query received:', query);
+      console.log('Conditions:', conditions);
+      
+      // Filter nodes based on the query conditions
+      let matchingNodes = nodes.filter(node => {
+        const nodeId = node.id;
+        console.log(`\nEvaluating node: ${nodeId} (${node.content})`);
         
-        const aAttr = aAttrs.find(attr => attr.key === sortBy);
-        const bAttr = bAttrs.find(attr => attr.key === sortBy);
-        
-        const aValue = aAttr ? aAttr.value : '';
-        const bValue = bAttr ? bAttr.value : '';
-        
-        // Try to sort numerically if both values are numbers
-        if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
-          return sortOrder === 'desc' 
-            ? parseFloat(bValue) - parseFloat(aValue) 
-            : parseFloat(aValue) - parseFloat(bValue);
+        if (!nodeAttributesMap[node.id]) {
+          console.log(`  No attributes found for node ${nodeId}`);
+          return false;
         }
         
-        // Otherwise sort alphabetically
-        return sortOrder === 'desc'
-          ? bValue.localeCompare(aValue)
-          : aValue.localeCompare(bValue);
+        const nodeAttrs = nodeAttributesMap[node.id];
+        console.log(`  Node has ${nodeAttrs.length} attributes:`, 
+          nodeAttrs.map(a => `${a.key}:${a.value}`).join(', '));
+        
+        try {
+          const allConditionsMet = conditions.every(condition => {
+            console.log(`  Checking condition: ${condition}`);
+            
+            // For each condition, check if node has matching attribute
+            const parsedCondition = parseCondition(condition);
+            if (!parsedCondition || parsedCondition.length !== 3) {
+              console.error(`  Invalid parsed condition:`, parsedCondition);
+              return false;
+            }
+            
+            const [key, operator, value] = parsedCondition;
+            console.log(`  Parsed as: key="${key}", operator="${operator}", value="${value}"`);
+            
+            const attr = nodeAttrs.find(a => a.key === key);
+            if (!attr) {
+              console.log(`  Attribute "${key}" not found for node ${nodeId}`);
+              return false;
+            }
+            
+            const result = compareValues(attr.value, operator, value);
+            console.log(`  Comparing "${attr.value}" ${operator} "${value}" => ${result}`);
+            return result;
+          });
+          
+          console.log(`  Node ${nodeId} matches all conditions: ${allConditionsMet}`);
+          return allConditionsMet;
+        } catch (conditionError) {
+          console.error(`Error evaluating condition for node ${nodeId}:`, conditionError);
+          return false;
+        }
       });
+      
+      // Apply sorting if a sort field is provided
+      if (sortBy) {
+        matchingNodes.sort((a, b) => {
+          const aAttrs = nodeAttributesMap[a.id] || [];
+          const bAttrs = nodeAttributesMap[b.id] || [];
+          
+          const aAttr = aAttrs.find(attr => attr.key === sortBy);
+          const bAttr = bAttrs.find(attr => attr.key === sortBy);
+          
+          const aValue = aAttr ? aAttr.value : '';
+          const bValue = bAttr ? bAttr.value : '';
+          
+          // Try to sort numerically if both values are numbers
+          if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+            return sortOrder === 'desc' 
+              ? parseFloat(bValue) - parseFloat(aValue) 
+              : parseFloat(aValue) - parseFloat(bValue);
+          }
+          
+          // Otherwise sort alphabetically
+          return sortOrder === 'desc'
+            ? bValue.localeCompare(aValue)
+            : aValue.localeCompare(bValue);
+        });
+      }
+      
+      // Enhance the result with attribute details
+      const resultNodes = matchingNodes.map(node => {
+        return {
+          ...node,
+          attributes: nodeAttributesMap[node.id] || []
+        };
+      });
+      
+      console.log(`Query returned ${resultNodes.length} results`);
+      res.json(resultNodes);
+    } catch (dbError) {
+      console.error('Database operation error:', dbError);
+      return res.status(500).json({ error: `Database operation failed: ${dbError.message}` });
     }
-    
-    // Enhance the result with attribute details
-    const resultNodes = matchingNodes.map(node => {
-      return {
-        ...node,
-        attributesList: nodeAttributesMap[node.id] || []
-      };
-    });
-    
-    res.json(resultNodes);
   } catch (error) {
     console.error('Error executing query:', error);
-    res.status(500).json({ error: 'Failed to execute query' });
+    res.status(500).json({ error: `Failed to execute query: ${error.message}` });
   }
 });
 
 // Helper function to parse a condition
 function parseCondition(condition) {
-  // Simple parsing logic for conditions like "key = value"
-  const parts = condition.split(/\s*(=|!=|>|<|>=|<=)\s*/);
-  if (parts.length >= 3) {
-    return [parts[0], parts[1], parts[2]];
+  console.log('Parsing condition:', condition);
+  
+  try {
+    // Remove any escape characters that might have been added in JSON encoding
+    const cleanCondition = condition.replace(/\\"/g, '"').replace(/\\'/g, "'");
+    console.log('Cleaned condition:', cleanCondition);
+    
+    // Handle key:"value" format (with quotes)
+    const quotedMatch = cleanCondition.match(/([^:]+):\s*["']([^"']+)["']/);
+    if (quotedMatch) {
+      const key = quotedMatch[1].trim();
+      const value = quotedMatch[2].trim();
+      console.log('Parsed quoted value:', key, '=', value);
+      return [key, '=', value];
+    }
+    
+    // Handle colon format without quotes (key:value)
+    const colonMatch = cleanCondition.match(/([^:]+):\s*([^"'\s]+)/);
+    if (colonMatch) {
+      const key = colonMatch[1].trim();
+      const value = colonMatch[2].trim();
+      console.log('Parsed colon format:', key, '=', value);
+      return [key, '=', value];
+    }
+    
+    // Check for operators
+    const operatorMatch = cleanCondition.match(/\s*(=|!=|>|<|>=|<=)\s*/);
+    if (operatorMatch) {
+      const parts = cleanCondition.split(operatorMatch[0]);
+      const key = parts[0].trim();
+      const operator = operatorMatch[1].trim();
+      let value = parts[1].trim();
+      
+      // Remove quotes if present
+      if ((value.startsWith('"') && value.endsWith('"')) || 
+          (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.substring(1, value.length - 1);
+      }
+      
+      console.log('Parsed with operator:', key, operator, value);
+      return [key, operator, value];
+    }
+    
+    // Simple key=value case
+    const parts = cleanCondition.split(/\s+/);
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const operator = '=';
+      const value = parts.slice(1).join(' ').trim();
+      
+      // Remove quotes if present
+      let cleanValue = value;
+      if ((cleanValue.startsWith('"') && cleanValue.endsWith('"')) || 
+          (cleanValue.startsWith("'") && cleanValue.endsWith("'"))) {
+        cleanValue = cleanValue.substring(1, cleanValue.length - 1);
+      }
+      
+      console.log('Parsed simple case:', key, operator, cleanValue);
+      return [key, operator, cleanValue];
+    }
+    
+    console.error('Could not parse condition:', cleanCondition);
+    return null;
+  } catch (error) {
+    console.error('Error parsing condition:', condition, error);
+    return null;
   }
-  return [parts[0], '=', parts[1]]; // Default to equality if no operator
 }
 
 // Helper function to compare values based on operator
 function compareValues(attrValue, operator, queryValue) {
+  console.log(`Comparing: "${attrValue}" ${operator} "${queryValue}"`);
+  
+  // Handle numeric comparisons
+  if (['>', '<', '>=', '<='].includes(operator)) {
+    const numAttrValue = parseFloat(attrValue);
+    const numQueryValue = parseFloat(queryValue);
+    
+    if (!isNaN(numAttrValue) && !isNaN(numQueryValue)) {
+      switch(operator) {
+        case '>': return numAttrValue > numQueryValue;
+        case '<': return numAttrValue < numQueryValue;
+        case '>=': return numAttrValue >= numQueryValue;
+        case '<=': return numAttrValue <= numQueryValue;
+      }
+    }
+  }
+  
+  // Handle string comparisons - use case-insensitive comparison
   switch(operator) {
     case '=':
-      return attrValue === queryValue;
+      return attrValue.toLowerCase() === queryValue.toLowerCase();
     case '!=':
-      return attrValue !== queryValue;
-    case '>':
-      return parseFloat(attrValue) > parseFloat(queryValue);
-    case '<':
-      return parseFloat(attrValue) < parseFloat(queryValue);
-    case '>=':
-      return parseFloat(attrValue) >= parseFloat(queryValue);
-    case '<=':
-      return parseFloat(attrValue) <= parseFloat(queryValue);
+      return attrValue.toLowerCase() !== queryValue.toLowerCase();
     default:
-      return attrValue === queryValue;
+      return attrValue.toLowerCase() === queryValue.toLowerCase();
   }
 }
 

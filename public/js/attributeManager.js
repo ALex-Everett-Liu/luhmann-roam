@@ -836,16 +836,38 @@ const AttributeManager = (function() {
       return;
     }
     
+    // Check that sort fields exist
+    const sortByField = document.getElementById('sort-by-field');
+    const sortOrder = document.getElementById('sort-order');
+    
+    // Get sorting parameters
+    const sortByValue = sortByField ? sortByField.value.trim() : '';
+    const sortOrderValue = sortOrder ? sortOrder.value : 'asc';
+    
+    console.log("Sending query:", {
+      query: query,
+      sortBy: sortByValue,
+      sortOrder: sortOrderValue
+    });
+    
     try {
       // Add to recent queries
       addRecentQuery(query);
+
+      // Show loading indicator
+      const resultsContainer = document.getElementById('query-results');
+      resultsContainer.innerHTML = '<div class="loading-results">Loading results...</div>';
       
       const response = await fetch('/api/nodes/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ 
+          query: query,
+          sortBy: sortByValue,
+          sortOrder: sortOrderValue
+        })
       });
       
       if (!response.ok) {
@@ -854,10 +876,10 @@ const AttributeManager = (function() {
       }
       
       const results = await response.json();
+      console.log('Query results:', results);
       renderQueryResults(results);
     } catch (error) {
       console.error('Error executing query:', error);
-      alert(`Error executing query: ${error.message}`);
       
       // Show error in results
       const resultsContainer = document.getElementById('query-results');
