@@ -1667,7 +1667,7 @@ background-color: #2d9249;
 
 /* Query Modal Styles */
 .query-modal {
-  max-width: 800px;
+  max-width: 1500px;
   max-height: 90vh;
 }
 
@@ -1950,4 +1950,55 @@ background-color: #2d9249;
   padding: 20px;
   color: #666;
   font-style: italic;
+}
+
+/* Pagination styles */
+.pagination-info {
+  margin-bottom: 15px;
+  color: #555;
+  font-size: 14px;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.pagination-prev,
+.pagination-next {
+  min-width: 100px;
+}
+
+.pagination-prev {
+  margin-right: 10px;
+}
+
+.pagination-next {
+  margin-left: 10px;
+}
+
+.pagination-page-info {
+  display: flex;
+  align-items: center;
+  color: #555;
+  font-size: 14px;
+}
+
+.pagination-page-input {
+  width: 50px;
+  text-align: center;
+  margin: 0 5px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -1035,7 +1035,7 @@ app.post('/api/nodes/query', async (req, res) => {
   try {
     console.log("Received query request with raw body:", JSON.stringify(req.body));
     console.log("Query string:", req.body.query);
-    const { query, sortBy, sortOrder } = req.body;
+    const { query, sortBy, sortOrder, page = 1, pageSize = 20 } = req.body;
     
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
@@ -1068,7 +1068,7 @@ app.post('/api/nodes/query', async (req, res) => {
         nodeAttributesMap[attr.node_id].push({ key: attr.key, value: attr.value });
       });
       
-      // Parse the query for conditions (simple implementation)
+      // Parse the query for conditions
       const conditions = query.split('AND').map(part => part.trim());
       
       console.log('Query received:', query);
@@ -1077,43 +1077,32 @@ app.post('/api/nodes/query', async (req, res) => {
       // Filter nodes based on the query conditions
       let matchingNodes = nodes.filter(node => {
         const nodeId = node.id;
-        console.log(`\nEvaluating node: ${nodeId} (${node.content})`);
         
         if (!nodeAttributesMap[node.id]) {
-          console.log(`  No attributes found for node ${nodeId}`);
           return false;
         }
         
         const nodeAttrs = nodeAttributesMap[node.id];
-        console.log(`  Node has ${nodeAttrs.length} attributes:`, 
-          nodeAttrs.map(a => `${a.key}:${a.value}`).join(', '));
         
         try {
           const allConditionsMet = conditions.every(condition => {
-            console.log(`  Checking condition: ${condition}`);
-            
             // For each condition, check if node has matching attribute
             const parsedCondition = parseCondition(condition);
             if (!parsedCondition || parsedCondition.length !== 3) {
-              console.error(`  Invalid parsed condition:`, parsedCondition);
               return false;
             }
             
             const [key, operator, value] = parsedCondition;
-            console.log(`  Parsed as: key="${key}", operator="${operator}", value="${value}"`);
             
             const attr = nodeAttrs.find(a => a.key === key);
             if (!attr) {
-              console.log(`  Attribute "${key}" not found for node ${nodeId}`);
               return false;
             }
             
             const result = compareValues(attr.value, operator, value);
-            console.log(`  Comparing "${attr.value}" ${operator} "${value}" => ${result}`);
             return result;
           });
           
-          console.log(`  Node ${nodeId} matches all conditions: ${allConditionsMet}`);
           return allConditionsMet;
         } catch (conditionError) {
           console.error(`Error evaluating condition for node ${nodeId}:`, conditionError);
@@ -1147,16 +1136,36 @@ app.post('/api/nodes/query', async (req, res) => {
         });
       }
       
+      // Calculate pagination
+      const totalResults = matchingNodes.length;
+      const totalPages = Math.ceil(totalResults / pageSize);
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalResults);
+      
+      // Get the subset of nodes for the current page
+      const paginatedNodes = matchingNodes.slice(startIndex, endIndex);
+      
       // Enhance the result with attribute details
-      const resultNodes = matchingNodes.map(node => {
+      const resultNodes = paginatedNodes.map(node => {
         return {
           ...node,
           attributes: nodeAttributesMap[node.id] || []
         };
       });
       
-      console.log(`Query returned ${resultNodes.length} results`);
-      res.json(resultNodes);
+      // Send the results with pagination metadata
+      console.log(`Query returned ${totalResults} total results, ${resultNodes.length} on current page`);
+      res.json({
+        results: resultNodes,
+        pagination: {
+          page,
+          pageSize,
+          totalResults,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      });
     } catch (dbError) {
       console.error('Database operation error:', dbError);
       return res.status(500).json({ error: `Database operation failed: ${dbError.message}` });
@@ -1175,6 +1184,22 @@ function parseCondition(condition) {
     // Remove any escape characters that might have been added in JSON encoding
     const cleanCondition = condition.replace(/\\"/g, '"').replace(/\\'/g, "'");
     console.log('Cleaned condition:', cleanCondition);
+    
+    // Handle key:* format (wildcard/existence check)
+    const wildcardMatch = cleanCondition.match(/([^:]+):\s*\*/);
+    if (wildcardMatch) {
+      const key = wildcardMatch[1].trim();
+      console.log('Parsed wildcard check:', key, 'exists');
+      return [key, 'exists', '*'];
+    }
+    
+    // Handle key:"" format (empty value check)
+    const emptyMatch = cleanCondition.match(/([^:]+):\s*["']["']/);
+    if (emptyMatch) {
+      const key = emptyMatch[1].trim();
+      console.log('Parsed empty value check:', key, 'exists');
+      return [key, 'exists', ''];
+    }
     
     // Handle key:"value" format (with quotes)
     const quotedMatch = cleanCondition.match(/([^:]+):\s*["']([^"']+)["']/);
@@ -1241,6 +1266,12 @@ function parseCondition(condition) {
 // Helper function to compare values based on operator
 function compareValues(attrValue, operator, queryValue) {
   console.log(`Comparing: "${attrValue}" ${operator} "${queryValue}"`);
+  
+  // Special case for existence check
+  if (operator === 'exists') {
+    // If we get here, the attribute exists (since we found it in the node's attributes)
+    return true;
+  }
   
   // Handle numeric comparisons
   if (['>', '<', '>=', '<='].includes(operator)) {

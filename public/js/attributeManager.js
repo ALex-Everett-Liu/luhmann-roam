@@ -175,6 +175,7 @@ const AttributeManager = (function() {
       closeButton.innerHTML = '&times;';
       closeButton.addEventListener('click', () => {
         queryModal.style.display = 'none';
+        modalOverlay.style.display = 'none';
       });
       
       modalHeader.appendChild(modalTitle);
@@ -836,6 +837,9 @@ const AttributeManager = (function() {
       return;
     }
     
+    // Get the pagination parameters (default to page 1)
+    const currentPage = parseInt(document.getElementById('current-page')?.value || 1);
+    
     // Check that sort fields exist
     const sortByField = document.getElementById('sort-by-field');
     const sortOrder = document.getElementById('sort-order');
@@ -847,7 +851,9 @@ const AttributeManager = (function() {
     console.log("Sending query:", {
       query: query,
       sortBy: sortByValue,
-      sortOrder: sortOrderValue
+      sortOrder: sortOrderValue,
+      page: currentPage,
+      pageSize: 30 // Default page size
     });
     
     try {
@@ -866,7 +872,9 @@ const AttributeManager = (function() {
         body: JSON.stringify({ 
           query: query,
           sortBy: sortByValue,
-          sortOrder: sortOrderValue
+          sortOrder: sortOrderValue,
+          page: currentPage,
+          pageSize: 30
         })
       });
       
@@ -875,9 +883,9 @@ const AttributeManager = (function() {
         throw new Error(errorData.error || 'Query execution failed');
       }
       
-      const results = await response.json();
-      console.log('Query results:', results);
-      renderQueryResults(results);
+      const data = await response.json();
+      console.log('Query results:', data);
+      renderQueryResults(data.results, data.pagination, query, sortByValue, sortOrderValue);
     } catch (error) {
       console.error('Error executing query:', error);
       
@@ -892,12 +900,17 @@ const AttributeManager = (function() {
     }
   }
   
-  // Render query results
-  function renderQueryResults(results) {
+  // Render query results with pagination
+  function renderQueryResults(results, pagination, query, sortBy, sortOrder) {
     const resultsContainer = document.getElementById('query-results');
     resultsContainer.innerHTML = '';
     
-    if (results.length === 0) {
+    // Display pagination info at the top
+    const paginationInfo = document.createElement('div');
+    paginationInfo.className = 'pagination-info';
+    
+    if (pagination.totalResults === 0) {
+      // No results case
       const noResults = document.createElement('div');
       noResults.className = 'no-query-results';
       noResults.textContent = 'No nodes match this query.';
@@ -905,6 +918,10 @@ const AttributeManager = (function() {
       return;
     }
     
+    paginationInfo.textContent = `Showing ${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.totalResults)} of ${pagination.totalResults} results`;
+    resultsContainer.appendChild(paginationInfo);
+    
+    // Create the results table
     const table = document.createElement('table');
     table.className = 'query-results-table';
     
@@ -992,6 +1009,88 @@ const AttributeManager = (function() {
     
     table.appendChild(tbody);
     resultsContainer.appendChild(table);
+    
+    // Add pagination controls at the bottom
+    const paginationControls = document.createElement('div');
+    paginationControls.className = 'pagination-controls';
+    
+    // Previous page button
+    const prevButton = document.createElement('button');
+    prevButton.className = 'btn-small pagination-prev';
+    prevButton.textContent = '← Previous';
+    prevButton.disabled = !pagination.hasPrevPage;
+    prevButton.addEventListener('click', () => {
+      changePage(pagination.page - 1, query, sortBy, sortOrder);
+    });
+    
+    // Page number display and input
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'pagination-page-info';
+    
+    const pageInput = document.createElement('input');
+    pageInput.type = 'number';
+    pageInput.min = 1;
+    pageInput.max = pagination.totalPages;
+    pageInput.value = pagination.page;
+    pageInput.id = 'current-page';
+    pageInput.className = 'pagination-page-input';
+    pageInput.addEventListener('change', (e) => {
+      const newPage = parseInt(e.target.value);
+      if (newPage >= 1 && newPage <= pagination.totalPages) {
+        changePage(newPage, query, sortBy, sortOrder);
+      } else {
+        e.target.value = pagination.page; // Reset to current page if invalid
+      }
+    });
+    
+    pageInfo.innerHTML = `Page `;
+    pageInfo.appendChild(pageInput);
+    pageInfo.innerHTML += ` of ${pagination.totalPages}`;
+    
+    // Next page button
+    const nextButton = document.createElement('button');
+    nextButton.className = 'btn-small pagination-next';
+    nextButton.textContent = 'Next →';
+    nextButton.disabled = !pagination.hasNextPage;
+    nextButton.addEventListener('click', () => {
+      changePage(pagination.page + 1, query, sortBy, sortOrder);
+    });
+    
+    paginationControls.appendChild(prevButton);
+    paginationControls.appendChild(pageInfo);
+    paginationControls.appendChild(nextButton);
+    
+    resultsContainer.appendChild(paginationControls);
+  }
+  
+  // Helper function to change the page
+  function changePage(page, query, sortBy, sortOrder) {
+    // Update the page input value
+    const pageInput = document.getElementById('current-page');
+    if (pageInput) {
+      pageInput.value = page;
+    }
+    
+    // Re-execute the query with the new page
+    const queryInput = document.getElementById('query-input');
+    if (queryInput) {
+      queryInput.value = query;
+    }
+    
+    // Make sure sorting is maintained
+    const sortByField = document.getElementById('sort-by-field');
+    const sortOrderSelect = document.getElementById('sort-order');
+    
+    if (sortByField && sortBy) {
+      sortByField.value = sortBy;
+    }
+    
+    if (sortOrderSelect && sortOrder) {
+      sortOrderSelect.value = sortOrder;
+    }
+    
+    // Execute the query with updated pagination
+    executeQuery();
   }
   
   // Add attribute button to node actions
