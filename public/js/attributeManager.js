@@ -205,6 +205,57 @@ const AttributeManager = (function() {
         </ul>
       `;
       
+      // Add sorting options section
+      const sortingSection = document.createElement('div');
+      sortingSection.className = 'sorting-section';
+      
+      const sortingTitle = document.createElement('h4');
+      sortingTitle.textContent = 'Sort Results';
+      
+      const sortingControls = document.createElement('div');
+      sortingControls.className = 'sorting-controls';
+      
+      // Sort by field input
+      const sortByLabel = document.createElement('label');
+      sortByLabel.textContent = 'Sort by:';
+      
+      const sortByInput = document.createElement('input');
+      sortByInput.type = 'text';
+      sortByInput.id = 'sort-by-field';
+      sortByInput.className = 'sort-by-field';
+      sortByInput.placeholder = 'Attribute key (e.g. ranking)';
+      
+      // Sort order select
+      const sortOrderLabel = document.createElement('label');
+      sortOrderLabel.textContent = 'Order:';
+      
+      const sortOrderSelect = document.createElement('select');
+      sortOrderSelect.id = 'sort-order';
+      sortOrderSelect.className = 'sort-order';
+      
+      const ascOption = document.createElement('option');
+      ascOption.value = 'asc';
+      ascOption.textContent = 'Ascending';
+      
+      const descOption = document.createElement('option');
+      descOption.value = 'desc';
+      descOption.textContent = 'Descending';
+      
+      sortOrderSelect.appendChild(ascOption);
+      sortOrderSelect.appendChild(descOption);
+      
+      // Assemble sorting controls
+      sortingControls.appendChild(sortByLabel);
+      sortingControls.appendChild(sortByInput);
+      sortingControls.appendChild(sortOrderLabel);
+      sortingControls.appendChild(sortOrderSelect);
+      
+      sortingSection.appendChild(sortingTitle);
+      sortingSection.appendChild(sortingControls);
+      
+      // Add sorting section before the execute button
+      queryBuilder.appendChild(sortingSection);
+      
       // Recent queries section
       const recentQueriesSection = document.createElement('div');
       recentQueriesSection.className = 'recent-queries';

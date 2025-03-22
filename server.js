@@ -1033,110 +1033,128 @@ app.delete('/api/node-attributes/:id', async (req, res) => {
 // Query nodes by attributes
 app.post('/api/nodes/query', async (req, res) => {
   try {
-    const { query } = req.body;
+    const { query, sortBy, sortOrder } = req.body;
     
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
     }
     
-    // This is a simplified query processor that supports basic operations
-    // It handles the format: key:value, key=value, key>value, key<value
-    // With AND/OR operators between conditions
+    // Parse the query to find nodes with matching attributes
+    // This is a simple implementation that can be expanded
+    const db = await getDb();
     
-    // Split query into conditions
-    const conditions = [];
-    let params = [];
+    // First get all nodes with their attributes
+    const nodes = await db.all(`
+      SELECT n.*, GROUP_CONCAT(a.key || ':' || a.value, ';') as attributes
+      FROM nodes n
+      LEFT JOIN node_attributes a ON n.id = a.node_id
+      GROUP BY n.id
+    `);
     
-    // Break query into AND parts first (higher precedence)
-    const andParts = query.split(/\s+AND\s+/i);
+    // Get all node attributes for filtering logic
+    const allNodeAttributes = await db.all(`
+      SELECT node_id, key, value
+      FROM node_attributes
+    `);
     
-    // For each AND part, check if it contains OR parts
-    for (const andPart of andParts) {
-      const orParts = andPart.split(/\s+OR\s+/i);
-      const orConditions = [];
+    // Create a map of node_id to attributes for easier access
+    const nodeAttributesMap = {};
+    allNodeAttributes.forEach(attr => {
+      if (!nodeAttributesMap[attr.node_id]) {
+        nodeAttributesMap[attr.node_id] = [];
+      }
+      nodeAttributesMap[attr.node_id].push({ key: attr.key, value: attr.value });
+    });
+    
+    // Parse the query for conditions (simple implementation)
+    const conditions = query.split('AND').map(part => part.trim());
+    
+    // Filter nodes based on the query conditions
+    let matchingNodes = nodes.filter(node => {
+      if (!nodeAttributesMap[node.id]) return false;
       
-      // Parse each individual condition
-      for (const part of orParts) {
-        // Match patterns like key:"value", key=value, key>value, etc.
-        const match = part.match(/(\w+)\s*([:<>=!]+)\s*"?([^"]*)"?/);
+      return conditions.every(condition => {
+        // For each condition, check if node has matching attribute
+        const [key, operator, value] = parseCondition(condition);
+        const nodeAttrs = nodeAttributesMap[node.id];
         
-        if (match) {
-          const [, key, operator, value] = match;
-          let condition;
-          
-          // Map operator to SQL
-          switch(operator) {
-            case ':':
-            case '=':
-            case '==':
-              condition = `key = ? AND value = ?`;
-              params.push(key, value);
-              break;
-            case '>':
-              condition = `key = ? AND value > ?`;
-              params.push(key, value);
-              break;
-            case '<':
-              condition = `key = ? AND value < ?`;
-              params.push(key, value);
-              break;
-            case '>=':
-              condition = `key = ? AND value >= ?`;
-              params.push(key, value);
-              break;
-            case '<=':
-              condition = `key = ? AND value <= ?`;
-              params.push(key, value);
-              break;
-            case '!=':
-            case '<>':
-              condition = `key = ? AND value != ?`;
-              params.push(key, value);
-              break;
-            default:
-              condition = `key = ? AND value LIKE ?`;
-              params.push(key, `%${value}%`);
-          }
-          
-          orConditions.push(`(${condition})`);
+        const attr = nodeAttrs.find(a => a.key === key);
+        if (!attr) return false;
+        
+        return compareValues(attr.value, operator, value);
+      });
+    });
+    
+    // Apply sorting if a sort field is provided
+    if (sortBy) {
+      matchingNodes.sort((a, b) => {
+        const aAttrs = nodeAttributesMap[a.id] || [];
+        const bAttrs = nodeAttributesMap[b.id] || [];
+        
+        const aAttr = aAttrs.find(attr => attr.key === sortBy);
+        const bAttr = bAttrs.find(attr => attr.key === sortBy);
+        
+        const aValue = aAttr ? aAttr.value : '';
+        const bValue = bAttr ? bAttr.value : '';
+        
+        // Try to sort numerically if both values are numbers
+        if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+          return sortOrder === 'desc' 
+            ? parseFloat(bValue) - parseFloat(aValue) 
+            : parseFloat(aValue) - parseFloat(bValue);
         }
-      }
-      
-      if (orConditions.length > 0) {
-        conditions.push(`(${orConditions.join(' OR ')})`);
-      }
+        
+        // Otherwise sort alphabetically
+        return sortOrder === 'desc'
+          ? bValue.localeCompare(aValue)
+          : aValue.localeCompare(bValue);
+      });
     }
     
-    // No valid conditions found
-    if (conditions.length === 0) {
-      return res.json([]);
-    }
+    // Enhance the result with attribute details
+    const resultNodes = matchingNodes.map(node => {
+      return {
+        ...node,
+        attributesList: nodeAttributesMap[node.id] || []
+      };
+    });
     
-    // Build the final SQL query to find nodes with matching attributes
-    const sql = `
-      SELECT DISTINCT n.* 
-      FROM nodes n 
-      JOIN node_attributes a ON n.id = a.node_id 
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY n.content
-    `;
-    
-    const nodes = await db.all(sql, params);
-    
-    // For each matching node, fetch all its attributes
-    for (const node of nodes) {
-      node.attributes = await db.all(
-        'SELECT * FROM node_attributes WHERE node_id = ? ORDER BY key',
-        node.id
-      );
-    }
-    
-    res.json(nodes);
+    res.json(resultNodes);
   } catch (error) {
-    console.error('Query error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error executing query:', error);
+    res.status(500).json({ error: 'Failed to execute query' });
   }
 });
+
+// Helper function to parse a condition
+function parseCondition(condition) {
+  // Simple parsing logic for conditions like "key = value"
+  const parts = condition.split(/\s*(=|!=|>|<|>=|<=)\s*/);
+  if (parts.length >= 3) {
+    return [parts[0], parts[1], parts[2]];
+  }
+  return [parts[0], '=', parts[1]]; // Default to equality if no operator
+}
+
+// Helper function to compare values based on operator
+function compareValues(attrValue, operator, queryValue) {
+  switch(operator) {
+    case '=':
+      return attrValue === queryValue;
+    case '!=':
+      return attrValue !== queryValue;
+    case '>':
+      return parseFloat(attrValue) > parseFloat(queryValue);
+    case '<':
+      return parseFloat(attrValue) < parseFloat(queryValue);
+    case '>=':
+      return parseFloat(attrValue) >= parseFloat(queryValue);
+    case '<=':
+      return parseFloat(attrValue) <= parseFloat(queryValue);
+    default:
+      return attrValue === queryValue;
+  }
+}
 
 // Start the server
 app.listen(PORT, () => {
