@@ -6,11 +6,19 @@ const SearchManager = (function() {
   // Private variables
   let currentLanguage = 'en';
   let searchModalElement = null;
+  let recentSearches = [];
+  
+  // Define constant for localStorage key
+  const STORAGE_KEY = 'luhmann_roam_recent_searches';
   
   /**
    * Creates and opens the search modal
    */
   function openSearchModal() {
+    // Load the latest searches from localStorage first
+    loadRecentSearches();
+    console.log("Opening search modal with recent searches:", recentSearches);
+    
     // Create overlay
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay';
@@ -52,6 +60,24 @@ const SearchManager = (function() {
     searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
     searchInput.autofocus = true;
     
+    // Add recent searches section
+    const recentSearchesSection = document.createElement('div');
+    recentSearchesSection.className = 'recent-searches';
+    recentSearchesSection.style.margin = '10px 0';
+    
+    const recentSearchesTitle = document.createElement('h4');
+    recentSearchesTitle.textContent = window.I18n ? I18n.t('recentSearches') : 'Recent Searches';
+    recentSearchesTitle.style.marginBottom = '5px';
+    
+    const recentSearchesList = document.createElement('div');
+    recentSearchesList.className = 'recent-searches-list';
+    recentSearchesList.id = 'recent-searches-list';
+    recentSearchesList.style.maxHeight = '100px';
+    recentSearchesList.style.overflowY = 'auto';
+    
+    recentSearchesSection.appendChild(recentSearchesTitle);
+    recentSearchesSection.appendChild(recentSearchesList);
+    
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results search-results-scrollable';
     searchResults.style.maxHeight = '50vh';
@@ -61,6 +87,7 @@ const SearchManager = (function() {
     searchResults.style.borderRadius = '4px';
     
     searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(recentSearchesSection);
     searchContainer.appendChild(searchResults);
     
     // Add search functionality
@@ -72,6 +99,9 @@ const SearchManager = (function() {
       }
       
       try {
+        // Add to recent searches if query is executed
+        addRecentSearch(query);
+        
         const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}`);
         const results = await response.json();
         
@@ -147,6 +177,11 @@ const SearchManager = (function() {
         closeSearchModal();
       }
     });
+    
+    // Render the recent searches right away
+    setTimeout(() => {
+      renderRecentSearches();
+    }, 0);
   }
   
   /**
@@ -299,6 +334,123 @@ const SearchManager = (function() {
   }
   
   /**
+   * Loads recent searches from localStorage
+   */
+  function loadRecentSearches() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    console.log("Loading recent searches from localStorage:", saved);
+    
+    if (saved) {
+      try {
+        recentSearches = JSON.parse(saved);
+        console.log("Parsed recent searches:", recentSearches);
+      } catch (e) {
+        console.error('Error parsing recent searches:', e);
+        recentSearches = [];
+      }
+    } else {
+      console.log("No recent searches found in localStorage");
+      recentSearches = [];
+    }
+  }
+  
+  /**
+   * Saves recent searches to localStorage
+   */
+  function saveRecentSearches() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(recentSearches));
+      console.log("Saved recent searches to localStorage:", JSON.stringify(recentSearches));
+    } catch (e) {
+      console.error('Error saving recent searches:', e);
+    }
+  }
+  
+  /**
+   * Adds a search query to recent searches
+   * @param {string} query - The search query
+   */
+  function addRecentSearch(query) {
+    // Don't add empty queries
+    if (!query.trim()) return;
+    
+    // Remove if already exists
+    const existingIndex = recentSearches.indexOf(query);
+    if (existingIndex !== -1) {
+      recentSearches.splice(existingIndex, 1);
+    }
+    
+    // Add to beginning
+    recentSearches.unshift(query);
+    
+    // Limit to 10 recent searches
+    if (recentSearches.length > 10) {
+      recentSearches.pop();
+    }
+    
+    saveRecentSearches();
+    renderRecentSearches();
+  }
+  
+  /**
+   * Removes a search from recent searches
+   * @param {number} index - The index of the search to remove
+   */
+  function removeRecentSearch(index) {
+    recentSearches.splice(index, 1);
+    saveRecentSearches();
+    renderRecentSearches();
+  }
+  
+  /**
+   * Renders recent searches in the UI
+   */
+  function renderRecentSearches() {
+    const container = document.getElementById('recent-searches-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (recentSearches.length === 0) {
+      const noSearches = document.createElement('div');
+      noSearches.className = 'no-searches';
+      noSearches.textContent = window.I18n ? I18n.t('noRecentSearches') : 'No recent searches';
+      container.appendChild(noSearches);
+      return;
+    }
+    
+    recentSearches.forEach((search, index) => {
+      const item = document.createElement('div');
+      item.className = 'recent-search-item';
+      
+      const searchText = document.createElement('span');
+      searchText.className = 'recent-search-text';
+      searchText.textContent = search;
+      searchText.title = 'Click to use this search';
+      searchText.addEventListener('click', () => {
+        const searchInput = document.querySelector('.node-search');
+        if (searchInput) {
+          searchInput.value = search;
+          searchInput.dispatchEvent(new Event('input'));
+        }
+      });
+      
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'recent-search-delete';
+      deleteButton.innerHTML = '×';
+      deleteButton.title = 'Delete this search';
+      deleteButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeRecentSearch(index);
+      });
+      
+      item.appendChild(searchText);
+      item.appendChild(deleteButton);
+      container.appendChild(item);
+    });
+  }
+  
+  /**
    * Adds a search button to the sidebar
    */
   function initialize() {
@@ -306,6 +458,9 @@ const SearchManager = (function() {
     if (window.I18n) {
       currentLanguage = I18n.getCurrentLanguage();
     }
+    
+    // Load recent searches
+    loadRecentSearches();
     
     const sidebar = document.querySelector('.sidebar');
     
@@ -342,7 +497,9 @@ const SearchManager = (function() {
     initialize: initialize,
     openSearchModal: openSearchModal,
     closeSearchModal: closeSearchModal,
-    updateLanguage: updateLanguage
+    updateLanguage: updateLanguage,
+    addRecentSearch: addRecentSearch,
+    removeRecentSearch: removeRecentSearch
   };
 })();
 

@@ -1837,3 +1837,65 @@ background-color: #2d9249;
   margin-top: 0;
   margin-bottom: 10px;
 }
+
+.recent-searches {
+  margin: 10px 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.recent-searches h4 {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+.recent-searches-list {
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.recent-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.recent-search-item:hover {
+  background-color: #e9ecef;
+}
+
+.recent-search-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #1a73e8;
+}
+
+.recent-search-delete {
+  background-color: transparent;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 8px;
+  padding: 0 4px;
+}
+
+.recent-search-delete:hover {
+  background-color: #f8d7da;
+  border-radius: 3px;
+}
+
+.no-searches {
+  color: #6c757d;
+  font-style: italic;
+  padding: 5px;
+  text-align: center;
+}
