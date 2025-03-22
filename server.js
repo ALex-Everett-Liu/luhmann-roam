@@ -925,6 +925,219 @@ app.get('/api/tasks/dates', async (req, res) => {
   }
 });
 
+// Get attributes for a node
+app.get('/api/nodes/:id/attributes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const attributes = await db.all(
+      'SELECT * FROM node_attributes WHERE node_id = ? ORDER BY key',
+      id
+    );
+    
+    res.json(attributes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new attribute
+app.post('/api/node-attributes', async (req, res) => {
+  try {
+    const { node_id, key, value } = req.body;
+    
+    // Validate input
+    if (!node_id || !key) {
+      return res.status(400).json({ error: 'Node ID and attribute key are required' });
+    }
+    
+    // Check if node exists
+    const node = await db.get('SELECT id FROM nodes WHERE id = ?', node_id);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Check if attribute already exists for this node
+    const existingAttr = await db.get(
+      'SELECT id FROM node_attributes WHERE node_id = ? AND key = ?',
+      [node_id, key]
+    );
+    
+    const now = Date.now();
+    let attribute;
+    
+    if (existingAttr) {
+      // Update existing attribute
+      await db.run(
+        'UPDATE node_attributes SET value = ?, updated_at = ? WHERE id = ?',
+        [value, now, existingAttr.id]
+      );
+      attribute = await db.get('SELECT * FROM node_attributes WHERE id = ?', existingAttr.id);
+    } else {
+      // Create new attribute
+      const id = uuidv4();
+      await db.run(
+        'INSERT INTO node_attributes (id, node_id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [id, node_id, key, value, now, now]
+      );
+      attribute = await db.get('SELECT * FROM node_attributes WHERE id = ?', id);
+    }
+    
+    res.status(201).json(attribute);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update an attribute
+app.put('/api/node-attributes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { value } = req.body;
+    const now = Date.now();
+    
+    await db.run(
+      'UPDATE node_attributes SET value = ?, updated_at = ? WHERE id = ?',
+      [value, now, id]
+    );
+    
+    const attribute = await db.get('SELECT * FROM node_attributes WHERE id = ?', id);
+    
+    if (!attribute) {
+      return res.status(404).json({ error: 'Attribute not found' });
+    }
+    
+    res.json(attribute);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete an attribute
+app.delete('/api/node-attributes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const attribute = await db.get('SELECT * FROM node_attributes WHERE id = ?', id);
+    if (!attribute) {
+      return res.status(404).json({ error: 'Attribute not found' });
+    }
+    
+    await db.run('DELETE FROM node_attributes WHERE id = ?', id);
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Query nodes by attributes
+app.post('/api/nodes/query', async (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+    
+    // This is a simplified query processor that supports basic operations
+    // It handles the format: key:value, key=value, key>value, key<value
+    // With AND/OR operators between conditions
+    
+    // Split query into conditions
+    const conditions = [];
+    let params = [];
+    
+    // Break query into AND parts first (higher precedence)
+    const andParts = query.split(/\s+AND\s+/i);
+    
+    // For each AND part, check if it contains OR parts
+    for (const andPart of andParts) {
+      const orParts = andPart.split(/\s+OR\s+/i);
+      const orConditions = [];
+      
+      // Parse each individual condition
+      for (const part of orParts) {
+        // Match patterns like key:"value", key=value, key>value, etc.
+        const match = part.match(/(\w+)\s*([:<>=!]+)\s*"?([^"]*)"?/);
+        
+        if (match) {
+          const [, key, operator, value] = match;
+          let condition;
+          
+          // Map operator to SQL
+          switch(operator) {
+            case ':':
+            case '=':
+            case '==':
+              condition = `key = ? AND value = ?`;
+              params.push(key, value);
+              break;
+            case '>':
+              condition = `key = ? AND value > ?`;
+              params.push(key, value);
+              break;
+            case '<':
+              condition = `key = ? AND value < ?`;
+              params.push(key, value);
+              break;
+            case '>=':
+              condition = `key = ? AND value >= ?`;
+              params.push(key, value);
+              break;
+            case '<=':
+              condition = `key = ? AND value <= ?`;
+              params.push(key, value);
+              break;
+            case '!=':
+            case '<>':
+              condition = `key = ? AND value != ?`;
+              params.push(key, value);
+              break;
+            default:
+              condition = `key = ? AND value LIKE ?`;
+              params.push(key, `%${value}%`);
+          }
+          
+          orConditions.push(`(${condition})`);
+        }
+      }
+      
+      if (orConditions.length > 0) {
+        conditions.push(`(${orConditions.join(' OR ')})`);
+      }
+    }
+    
+    // No valid conditions found
+    if (conditions.length === 0) {
+      return res.json([]);
+    }
+    
+    // Build the final SQL query to find nodes with matching attributes
+    const sql = `
+      SELECT DISTINCT n.* 
+      FROM nodes n 
+      JOIN node_attributes a ON n.id = a.node_id 
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY n.content
+    `;
+    
+    const nodes = await db.all(sql, params);
+    
+    // For each matching node, fetch all its attributes
+    for (const node of nodes) {
+      node.attributes = await db.all(
+        'SELECT * FROM node_attributes WHERE node_id = ? ORDER BY key',
+        node.id
+      );
+    }
+    
+    res.json(nodes);
+  } catch (error) {
+    console.error('Query error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

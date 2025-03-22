@@ -1565,3 +1565,271 @@ background-color: #2d9249;
 .resize-help-message p {
   margin: 0;
 }
+
+/* Attribute Manager Styles */
+.attribute-button {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #555;
+}
+
+.attribute-button:hover {
+  background-color: #e9ecef;
+  color: #1a73e8;
+}
+
+.attribute-modal {
+  max-width: 600px;
+  max-height: 80vh;
+}
+
+.attributes-container {
+  margin-bottom: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.attributes-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attributes-table th,
+.attributes-table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.attributes-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.attribute-key {
+  width: 30%;
+  font-weight: bold;
+}
+
+.attribute-value {
+  width: 50%;
+}
+
+.attribute-actions {
+  width: 20%;
+  text-align: center;
+}
+
+.add-attribute-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.attribute-key-input,
+.attribute-value-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.attribute-value-edit {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.attribute-value-edit:focus {
+  border-color: #1a73e8;
+  outline: none;
+}
+
+.no-attributes {
+  padding: 20px;
+  text-align: center;
+  color: #777;
+  font-style: italic;
+}
+
+/* Query Modal Styles */
+.query-modal {
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.query-builder {
+  margin-bottom: 20px;
+}
+
+.query-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-family: monospace;
+}
+
+.query-help {
+  background-color: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.query-help ul {
+  margin: 5px 0 0 20px;
+  padding: 0;
+}
+
+.query-help li {
+  margin-bottom: 5px;
+}
+
+.recent-queries {
+  margin-bottom: 20px;
+}
+
+.recent-queries h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.recent-queries-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.recent-query-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.recent-query-item:last-child {
+  border-bottom: none;
+}
+
+.recent-query-item:hover {
+  background-color: #f5f5f5;
+}
+
+.recent-query-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-query-delete {
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 5px;
+}
+
+.recent-query-delete:hover {
+  color: #d32f2f;
+}
+
+.no-queries {
+  padding: 10px;
+  text-align: center;
+  color: #777;
+  font-style: italic;
+}
+
+/* Query Results Styles */
+.query-results-section {
+  margin-top: 20px;
+}
+
+.query-results {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.query-results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.query-results-table th,
+.query-results-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.query-results-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.result-node-content {
+  font-weight: bold;
+}
+
+.result-node-attributes {
+  font-size: 14px;
+}
+
+.attribute-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.attribute-list li {
+  margin-bottom: 5px;
+}
+
+.result-node-actions {
+  white-space: nowrap;
+}
+
+.result-node-actions button {
+  margin-right: 5px;
+}
+
+.no-query-results,
+.query-error {
+  padding: 20px;
+  text-align: center;
+  color: #777;
+  font-style: italic;
+}
+
+.query-error {
+  color: #d32f2f;
+}
+
+.query-error h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}

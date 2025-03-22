@@ -60,6 +60,20 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create node_attributes table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS node_attributes (
+      id TEXT PRIMARY KEY,
+      node_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE,
+      UNIQUE(node_id, key)
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }

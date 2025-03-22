@@ -318,10 +318,15 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteButton.addEventListener('click', () => deleteNode(node.id));
     nodeActions.appendChild(deleteButton);
     
-    // In the createNodeElement function, after creating all the node actions
-    // and before appending nodeActions to nodeContent:
-    // Add the filter button to node actions
-    FilterManager.addFilterButtonToNode(nodeDiv, node.id);
+    // Add attribute button directly in the action buttons creation flow
+    if (window.AttributeManager) {
+      const attributeButton = document.createElement('button');
+      attributeButton.className = 'attribute-button';
+      attributeButton.innerHTML = '📊';
+      attributeButton.title = 'Manage attributes';
+      attributeButton.addEventListener('click', () => AttributeManager.openModal(node.id));
+      nodeActions.appendChild(attributeButton);
+    }
     
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
@@ -935,6 +940,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the DragDropManager
   if (window.DragDropManager) {
     DragDropManager.initialize();
+  }
+
+  // Initialize the AttributeManager
+  if (window.AttributeManager) {
+    AttributeManager.initialize();
   }
 
   // Make fetchNodes available globally for the SearchManager

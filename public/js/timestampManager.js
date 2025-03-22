@@ -156,6 +156,11 @@ const TimestampManager = (function() {
     // Open the timestamp modal for a specific node
     async function openModal(nodeId) {
       try {
+        // Make sure the modal is created if it doesn't exist
+        if (!timestampModal) {
+          createModal();
+        }
+
         // Fetch node data
         const response = await fetch(`/api/nodes/${nodeId}`);
         if (!response.ok) {
@@ -165,8 +170,16 @@ const TimestampManager = (function() {
         const node = await response.json();
         
         // Update modal with timestamp information
-        document.getElementById('created-time').textContent = formatTimestamp(node.created_at);
-        document.getElementById('updated-time').textContent = formatTimestamp(node.updated_at);
+        const createdTimeElement = document.getElementById('created-time');
+        const updatedTimeElement = document.getElementById('updated-time');
+        
+        if (createdTimeElement) {
+          createdTimeElement.textContent = formatTimestamp(node.created_at);
+        }
+        
+        if (updatedTimeElement) {
+          updatedTimeElement.textContent = formatTimestamp(node.updated_at);
+        }
         
         // Show the modal
         modalOverlay.style.display = 'flex';
