@@ -349,6 +349,11 @@ document.addEventListener('DOMContentLoaded', () => {
       BreadcrumbManager.addNodeFocusHandler(nodeDiv, node.id);
     }
     
+    // Add attribute button to node actions
+    if (window.AttributeManager) {
+      AttributeManager.addAttributeButtonToNode(nodeDiv, node.id);
+    }
+    
     return nodeDiv;
   }
   

@@ -25,7 +25,7 @@ const AttributeManager = (function() {
       currentLanguage = I18n.getCurrentLanguage();
     }
     
-    createModals();
+    ensureModalsExist(); // Use this instead of createModals()
     loadRecentQueries();
   }
   
@@ -267,6 +267,36 @@ const AttributeManager = (function() {
         window.I18n ? I18n.t('queryByAttributes') : 'Query Nodes by Attributes';
     }
   }
+
+  function ensureModalsExist() {
+    // Check if modalOverlay is in the document
+    if (!modalOverlay || !document.body.contains(modalOverlay)) {
+      console.log('Modal overlay not found in DOM, creating new one');
+      modalOverlay = document.createElement('div');
+      modalOverlay.className = 'modal-overlay';
+      modalOverlay.style.display = 'none';
+      document.body.appendChild(modalOverlay);
+      
+      // Close modal when clicking outside
+      modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) {
+          closeModal();
+        }
+      });
+    }
+    
+    // Recreate attribute modal if needed
+    if (!attributeModal || !modalOverlay.contains(attributeModal)) {
+      console.log('Attribute modal not found in DOM, creating new one');
+      createAttributeModal();
+    }
+    
+    // Recreate query modal if needed
+    if (!queryModal || !modalOverlay.contains(queryModal)) {
+      console.log('Query modal not found in DOM, creating new one');
+      createQueryModal();
+    }
+  }
   
   // Load attributes for a node
   async function loadAttributes(nodeId) {
@@ -366,10 +396,114 @@ const AttributeManager = (function() {
   async function openModal(nodeId) {
     try {
       currentNodeId = nodeId;
+
+      // Ensure modals exist before trying to use them
+      ensureModalsExist();
       
       // Make sure the modal is created if it doesn't exist
-      if (!attributeModal) {
-        createAttributeModal();
+      // if (!attributeModal) {
+      //   createAttributeModal();
+      // }
+      
+      // Ensure the modal overlay is in the document
+      // if (!document.body.contains(modalOverlay)) {
+      //   document.body.appendChild(modalOverlay);
+      // }
+      
+      // Ensure the attribute modal is in the overlay
+      // if (!modalOverlay.contains(attributeModal)) {
+      //   modalOverlay.appendChild(attributeModal);
+      // }
+      
+      // Check if the modal title element exists, recreate if not
+      let modalTitle = document.getElementById('attribute-modal-title');
+      if (!modalTitle) {
+        console.log('Modal title element not found, recreating modal structure');
+        
+        // Clear the modal and recreate it
+        attributeModal.innerHTML = '';
+        
+        // Modal header
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'modal-header';
+        
+        modalTitle = document.createElement('h2');
+        modalTitle.className = 'modal-title';
+        modalTitle.id = 'attribute-modal-title';
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'modal-close';
+        closeButton.innerHTML = '&times;';
+        closeButton.addEventListener('click', closeModal);
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeButton);
+        
+        // Modal body
+        const modalBody = document.createElement('div');
+        modalBody.className = 'modal-body';
+        
+        // Attributes container
+        const attributesContainer = document.createElement('div');
+        attributesContainer.className = 'attributes-container';
+        attributesContainer.id = 'attributes-container';
+        
+        // Add attribute form
+        const addAttributeForm = document.createElement('div');
+        addAttributeForm.className = 'add-attribute-form';
+        
+        const keyInput = document.createElement('input');
+        keyInput.type = 'text';
+        keyInput.className = 'attribute-key-input';
+        keyInput.placeholder = 'Attribute Key';
+        keyInput.id = 'new-attribute-key';
+        keyInput.setAttribute('list', 'attribute-key-suggestions');
+        
+        // Add datalist for attribute key suggestions
+        const keySuggestions = document.createElement('datalist');
+        keySuggestions.id = 'attribute-key-suggestions';
+        
+        // Add common attribute keys as options
+        commonAttributes.forEach(attr => {
+          const option = document.createElement('option');
+          option.value = attr;
+          keySuggestions.appendChild(option);
+        });
+        
+        addAttributeForm.appendChild(keySuggestions);
+        
+        const valueInput = document.createElement('input');
+        valueInput.type = 'text';
+        valueInput.className = 'attribute-value-input';
+        valueInput.placeholder = 'Attribute Value';
+        valueInput.id = 'new-attribute-value';
+        
+        const addButton = document.createElement('button');
+        addButton.className = 'btn btn-primary';
+        addButton.textContent = 'Add';
+        addButton.addEventListener('click', addAttribute);
+        
+        addAttributeForm.appendChild(keyInput);
+        addAttributeForm.appendChild(valueInput);
+        addAttributeForm.appendChild(addButton);
+        
+        modalBody.appendChild(attributesContainer);
+        modalBody.appendChild(addAttributeForm);
+        
+        // Add query button
+        const queryButton = document.createElement('button');
+        queryButton.className = 'btn btn-secondary query-button';
+        queryButton.textContent = 'Query Nodes by Attributes';
+        queryButton.addEventListener('click', openQueryModal);
+        
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'modal-footer';
+        modalFooter.appendChild(queryButton);
+        
+        // Assemble modal
+        attributeModal.appendChild(modalHeader);
+        attributeModal.appendChild(modalBody);
+        attributeModal.appendChild(modalFooter);
       }
       
       // Fetch node data
@@ -385,17 +519,28 @@ const AttributeManager = (function() {
       const node = await nodeResponse.json();
       const attributes = await attributesResponse.json();
       
-      // Show the node name in the modal title
-      const modalTitle = document.getElementById('attribute-modal-title');
-      const content = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-      modalTitle.textContent = `${window.I18n ? I18n.t('nodeAttributes') : 'Node Attributes'}: ${content}`;
+      // Get a fresh reference to the modal title in case it was recreated
+      modalTitle = document.getElementById('attribute-modal-title');
+      if (modalTitle) {
+        const content = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+        modalTitle.textContent = `${window.I18n ? I18n.t('nodeAttributes') : 'Node Attributes'}: ${content}`;
+      } else {
+        console.error('Modal title element still not available after recreation attempt');
+      }
       
-      // Render the attributes
-      renderAttributes(attributes);
+      // Get a fresh reference to the attributes container
+      const container = document.getElementById('attributes-container');
+      if (container) {
+        renderAttributes(attributes);
+      } else {
+        console.error('Attributes container not available');
+      }
       
       // Reset the add form
-      document.getElementById('new-attribute-key').value = '';
-      document.getElementById('new-attribute-value').value = '';
+      const keyInput = document.getElementById('new-attribute-key');
+      const valueInput = document.getElementById('new-attribute-value');
+      if (keyInput) keyInput.value = '';
+      if (valueInput) valueInput.value = '';
       
       // Show the attribute modal, hide the query modal
       attributeModal.style.display = 'block';
@@ -403,6 +548,7 @@ const AttributeManager = (function() {
       modalOverlay.style.display = 'flex';
     } catch (error) {
       console.error('Error opening attribute modal:', error);
+      alert('There was an error opening the attributes modal. Please try again.');
     }
   }
   
@@ -525,6 +671,9 @@ const AttributeManager = (function() {
   
   // Open the query modal
   function openQueryModal() {
+    // Ensure modals exist before trying to use them
+    ensureModalsExist();
+    
     if (queryModal) {
       // Refresh recent queries
       renderRecentQueries();
