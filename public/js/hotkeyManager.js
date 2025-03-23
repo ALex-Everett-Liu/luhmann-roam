@@ -15,14 +15,22 @@ const HotkeyManager = (function() {
     let mutationObserver = null;
     let isRefreshingHints = false;
     
+    // Track whether Alt is down and if other keys were pressed with it
+    let isAltDown = false;
+    let otherKeyPressedWithAlt = false;
+    
     /**
      * Initialize the Hotkey Manager
      */
     function initialize() {
       if (isInitialized) return;
       
-      // Set up event listeners
+      // Set up event listeners differently
       document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keyup', handleKeyUp);
+      
+      // Track Alt key and other keys pressed with Alt
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       
       // Register built-in hotkeys
       registerGlobalHotkeys();
@@ -202,16 +210,7 @@ const HotkeyManager = (function() {
       // Don't process if a modal is already open
       if (isModalOpen) return;
       
-      // Check if Alt key was pressed to enter hotkey mode
-      if (e.key === 'Alt' && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
-        if (!isHotkeyModeActive) {
-          enterHotkeyMode();
-          e.preventDefault(); // Prevent default Alt behavior
-        }
-        return;
-      }
-      
-      // In hotkey mode, check if a valid hotkey was pressed
+      // If we're in hotkey mode, handle hotkey actions
       if (isHotkeyModeActive) {
         const key = e.key.toLowerCase();
         
@@ -236,6 +235,51 @@ const HotkeyManager = (function() {
           exitHotkeyMode();
           e.preventDefault();
         }
+        
+        return;
+      }
+      
+      // Not in hotkey mode yet, track Alt key state
+      if (e.key === 'Alt') {
+        isAltDown = true;
+        otherKeyPressedWithAlt = false;
+      } else if (isAltDown) {
+        // If any other key is pressed while Alt is down, we're not doing a "clean" Alt press
+        otherKeyPressedWithAlt = true;
+      }
+    }
+    
+    /**
+     * Handle keyup events
+     * @param {KeyboardEvent} e - The keyboard event
+     */
+    function handleKeyUp(e) {
+      // If Alt key is released
+      if (e.key === 'Alt') {
+        // Only enter hotkey mode if:
+        // 1. Alt was pressed down
+        // 2. No other keys were pressed while Alt was down
+        // 3. We're not already in hotkey mode
+        if (isAltDown && !otherKeyPressedWithAlt && !isHotkeyModeActive) {
+          enterHotkeyMode();
+          e.preventDefault();
+        }
+        
+        // Reset Alt tracking state
+        isAltDown = false;
+        otherKeyPressedWithAlt = false;
+      }
+    }
+    
+    /**
+     * Handle when the tab/window visibility changes
+     * This prevents hotkey mode from activating when switching back to the app
+     */
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        // Reset Alt tracking state when switching away from the app
+        isAltDown = false;
+        otherKeyPressedWithAlt = false;
       }
     }
     
