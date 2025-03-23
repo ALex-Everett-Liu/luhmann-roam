@@ -13,6 +13,7 @@ const HotkeyManager = (function() {
     let isInitialized = false;
     let isModalOpen = false;
     let mutationObserver = null;
+    let isRefreshingHints = false;
     
     /**
      * Initialize the Hotkey Manager
@@ -33,6 +34,46 @@ const HotkeyManager = (function() {
       
       // Add status indicator to the page
       createStatusIndicator();
+      
+      // Add stylesheet for hints
+      addHintStyles();
+    }
+    
+    /**
+     * Add stylesheet for hint elements to avoid inline styles which can cause reflows
+     */
+    function addHintStyles() {
+      const style = document.createElement('style');
+      style.textContent = `
+        .hotkey-hint {
+          position: fixed;
+          background-color: #ff5722;
+          color: white;
+          border-radius: 3px;
+          padding: 2px 4px;
+          font-size: 12px;
+          font-weight: bold;
+          z-index: 10000;
+          pointer-events: none;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        #hotkey-mode-indicator {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          background-color: rgba(255, 87, 34, 0.9);
+          color: white;
+          padding: 5px 10px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: bold;
+          z-index: 10001;
+          pointer-events: none;
+          display: none;
+        }
+      `;
+      document.head.appendChild(style);
     }
     
     /**
@@ -42,20 +83,6 @@ const HotkeyManager = (function() {
       const indicator = document.createElement('div');
       indicator.id = 'hotkey-mode-indicator';
       indicator.textContent = 'HOTKEY MODE';
-      indicator.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background-color: rgba(255, 87, 34, 0.8);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-        z-index: 10000;
-        display: none;
-        pointer-events: none;
-      `;
       document.body.appendChild(indicator);
     }
     
@@ -77,34 +104,45 @@ const HotkeyManager = (function() {
       if (mutationObserver) return; // Don't create multiple observers
       
       mutationObserver = new MutationObserver((mutations) => {
+        // If we're already in the process of refreshing hints, ignore mutations
+        if (isRefreshingHints) return;
+        
+        // Check only for node additions that may need a hint
         let shouldRefresh = false;
         
-        // Only check for specific mutations to avoid feedback loops
         mutations.forEach(mutation => {
-          // Ignore mutations from our own hint elements
-          if (mutation.target && mutation.target.classList && 
-              (mutation.target.classList.contains('hotkey-hint') || 
-               mutation.target.closest('.hotkey-hint'))) {
+          // Ignore mutations from hint elements completely
+          if (mutation.target.classList && mutation.target.classList.contains('hotkey-hint')) {
+            return;
+          }
+          
+          if (mutation.target.closest('.hotkey-hint')) {
             return;
           }
           
           // Also ignore mutations inside modal content
-          if (mutation.target && mutation.target.closest('.modal-body, .modal-header, .modal-footer')) {
+          if (mutation.target.closest && mutation.target.closest('.modal-body, .modal-header, .modal-footer')) {
             return;
           }
           
+          // Only care about added nodes that could be buttons or actionable elements
           if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            shouldRefresh = true;
+            for (let i = 0; i < mutation.addedNodes.length; i++) {
+              const node = mutation.addedNodes[i];
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                // Check if the added node is a button or contains buttons
+                if (node.tagName === 'BUTTON' || node.querySelector('button')) {
+                  shouldRefresh = true;
+                  break;
+                }
+              }
+            }
           }
         });
         
         if (shouldRefresh && isHotkeyModeActive && !isModalOpen) {
-          // If hotkey mode is active and DOM changed, refresh hints
-          // Use setTimeout to break potential recursion
-          setTimeout(() => {
-            removeHints();
-            showHints();
-          }, 0);
+          // Use a flag to prevent recursive mutations
+          refreshHintsWithDebounce();
         }
       });
       
@@ -117,6 +155,29 @@ const HotkeyManager = (function() {
       });
     }
     
+    // Debounce the hint refresh to avoid excessive updates
+    let refreshHintsTimeout = null;
+    function refreshHintsWithDebounce() {
+      if (refreshHintsTimeout) {
+        clearTimeout(refreshHintsTimeout);
+      }
+      
+      refreshHintsTimeout = setTimeout(() => {
+        isRefreshingHints = true;
+        
+        // First remove all hints
+        removeHints();
+        
+        // Then add them again
+        showHints();
+        
+        // Reset the flag when done
+        setTimeout(() => {
+          isRefreshingHints = false;
+        }, 100);
+      }, 200); // Debounce time of 200ms
+    }
+    
     /**
      * Stop and disconnect the MutationObserver
      */
@@ -124,6 +185,12 @@ const HotkeyManager = (function() {
       if (mutationObserver) {
         mutationObserver.disconnect();
         mutationObserver = null;
+      }
+      
+      // Also clear any pending refresh
+      if (refreshHintsTimeout) {
+        clearTimeout(refreshHintsTimeout);
+        refreshHintsTimeout = null;
       }
     }
     
@@ -177,9 +244,24 @@ const HotkeyManager = (function() {
      */
     function enterHotkeyMode() {
       isHotkeyModeActive = true;
-      setupMutationObserver();
+      
+      // Prepare to track hint refreshes
+      isRefreshingHints = true;
+      
+      // Show hints first before setting up observer
       showHints();
+      
+      // Now set up the observer
+      setupMutationObserver();
+      
+      // Show the indicator
       toggleHotkeyModeIndicator(true);
+      
+      // Reset the refresh tracking flag
+      setTimeout(() => {
+        isRefreshingHints = false;
+      }, 100);
+      
       console.log('Entered hotkey mode');
     }
     
@@ -223,13 +305,46 @@ const HotkeyManager = (function() {
       registerStaticHotkeys();
       registerNodeActionHotkeys();
       
+      // First, create a document fragment to batch DOM operations
+      const fragment = document.createDocumentFragment();
+      const hintPositions = [];
+      
       // Create hints for all registered hotkeys
       Object.keys(hotkeys).forEach(key => {
         const element = hotkeys[key].element;
         if (element && isElementVisible(element)) {
-          createHintElement(element, key);
+          const rect = element.getBoundingClientRect();
+          
+          // Skip elements that are off-screen or have zero size
+          if (rect.top < 0 || rect.bottom > window.innerHeight || 
+              rect.left < 0 || rect.right > window.innerWidth || 
+              rect.width <= 0 || rect.height <= 0) {
+            return;
+          }
+          
+          // Store position for hint placement
+          hintPositions.push({
+            key: key,
+            top: rect.top - 5,
+            left: rect.left - 5
+          });
         }
       });
+      
+      // Now create all hints at once and add to fragment
+      hintPositions.forEach(pos => {
+        const hint = document.createElement('div');
+        hint.className = 'hotkey-hint';
+        hint.textContent = pos.key.toUpperCase();
+        hint.style.top = `${pos.top}px`;
+        hint.style.left = `${pos.left}px`;
+        
+        fragment.appendChild(hint);
+        hintElements.push(hint);
+      });
+      
+      // Append all hints to document in one operation
+      document.body.appendChild(fragment);
     }
     
     /**
@@ -267,46 +382,6 @@ const HotkeyManager = (function() {
         }
       });
       hintElements = [];
-    }
-    
-    /**
-     * Create a hint element for a given target element
-     * @param {HTMLElement} element - The target element
-     * @param {string} key - The hotkey
-     */
-    function createHintElement(element, key) {
-      // Safety check - don't create hints for invalid elements
-      if (!element || !document.body.contains(element)) return;
-      
-      const rect = element.getBoundingClientRect();
-      
-      // Skip elements that are off-screen or have zero size
-      if (rect.top < 0 || rect.bottom > window.innerHeight || 
-          rect.left < 0 || rect.right > window.innerWidth || 
-          rect.width <= 0 || rect.height <= 0) {
-        return;
-      }
-      
-      const hint = document.createElement('div');
-      hint.className = 'hotkey-hint';
-      hint.textContent = key.toUpperCase();
-      hint.style.cssText = `
-        position: fixed;
-        top: ${rect.top - 5}px;
-        left: ${rect.left - 5}px;
-        background-color: #ff5722;
-        color: white;
-        border-radius: 3px;
-        padding: 2px 4px;
-        font-size: 12px;
-        font-weight: bold;
-        z-index: 10000;
-        pointer-events: none;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      `;
-      
-      document.body.appendChild(hint);
-      hintElements.push(hint);
     }
     
     /**
