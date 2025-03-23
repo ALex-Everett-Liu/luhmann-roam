@@ -72,7 +72,7 @@ const SearchManager = (function() {
     const recentSearchesList = document.createElement('div');
     recentSearchesList.className = 'recent-searches-list';
     recentSearchesList.id = 'recent-searches-list';
-    recentSearchesList.style.maxHeight = '100px';
+    recentSearchesList.style.maxHeight = '300px';
     recentSearchesList.style.overflowY = 'auto';
     
     recentSearchesSection.appendChild(recentSearchesTitle);
@@ -80,7 +80,7 @@ const SearchManager = (function() {
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results search-results-scrollable';
-    searchResults.style.maxHeight = '50vh';
+    searchResults.style.maxHeight = '80vh';
     searchResults.style.position = 'static';
     searchResults.style.border = '1px solid #ddd';
     searchResults.style.marginTop = '8px';

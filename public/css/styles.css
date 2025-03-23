@@ -248,7 +248,7 @@ button:hover {
   border-radius: 8px;
   width: 80%;
   max-width: 800px;
-  max-height: 90vh;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -1365,7 +1365,7 @@ background-color: #2d9249;
 
 .image-viewer-img {
   max-width: 100%;
-  max-height: 90vh;
+  max-height: 95vh;
   border: 2px solid white;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
 }
@@ -1668,7 +1668,16 @@ background-color: #2d9249;
 /* Query Modal Styles */
 .query-modal {
   max-width: 1500px;
-  max-height: 90vh;
+  min-height: 850px;  /* Add this to enforce minimum height */
+  max-height: 95vh;   /* Keep this to prevent overflow on smaller screens */
+}
+
+/* Ensure the modal body can expand */
+.query-modal .modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .query-builder {
@@ -1770,9 +1779,11 @@ background-color: #2d9249;
   margin-top: 20px;
 }
 
+/* Make the query results fill more space */
 .query-results {
-  max-height: 300px;
-  overflow-y: auto;
+  height: 700px;      /* Add a fixed height to make results take more space */
+  max-height: 75vh;   /* But constrain on small screens */
+  overflow-y: auto;   /* Make sure scrolling works */
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 10px;
