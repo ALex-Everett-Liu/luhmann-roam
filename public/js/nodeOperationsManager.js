@@ -70,7 +70,7 @@ const NodeOperationsManager = (function() {
       }
     }
     
-    // Add a child node
+    // Add a child node with optimized DOM update
     async function addChildNode(parentId) {
       try {
         // Get the current parent node data
@@ -106,13 +106,48 @@ const NodeOperationsManager = (function() {
         const newNode = await newNodeResponse.json();
         
         // Make sure parent is expanded
-        if (!parentNode.is_expanded) {
+        let parentWasExpanded = parentNode.is_expanded;
+        if (!parentWasExpanded) {
           await fetch(`/api/nodes/${parentId}/toggle`, {
             method: 'POST'
           });
+          
+          // Update the parent node's expanded state locally
+          const parentElement = document.querySelector(`.node[data-id="${parentId}"]`);
+          if (parentElement) {
+            const collapseIcon = parentElement.querySelector('.collapse-icon');
+            if (collapseIcon) {
+              collapseIcon.innerHTML = '▼'; // Update the collapse icon
+            }
+          }
         }
         
-        // Refresh the outliner
+        // OPTIMIZATION: Instead of refreshing the entire DOM, just add the new node
+        if (window.createNodeElement) {
+          const parentElement = document.querySelector(`.node[data-id="${parentId}"]`);
+          if (parentElement) {
+            // Find or create the children container
+            let childrenContainer = parentElement.querySelector('.children');
+            if (!childrenContainer) {
+              childrenContainer = document.createElement('div');
+              childrenContainer.className = 'children';
+              parentElement.appendChild(childrenContainer);
+            }
+            
+            // Create the new node element and append it to the children container
+            const newNodeElement = await window.createNodeElement(newNode);
+            childrenContainer.appendChild(newNodeElement);
+            
+            // Setup drag and drop for the new node
+            if (window.DragDropManager) {
+              window.DragDropManager.setupDragAndDrop();
+            }
+            
+            return newNode;
+          }
+        }
+        
+        // Fallback to full refresh if direct DOM manipulation isn't possible
         if (window.fetchNodes) {
           await window.fetchNodes(true);
         }

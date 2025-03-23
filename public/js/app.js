@@ -853,4 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
     NodeExpansionManager.initialize();
   }
 
+  // Make createNodeElement available globally for direct DOM manipulation
+  window.createNodeElement = createNodeElement;
+
 }); 

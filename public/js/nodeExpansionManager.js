@@ -28,9 +28,15 @@ const NodeExpansionManager = (function() {
       console.log('NodeExpansionManager language updated to:', currentLanguage);
     }
     
-    // Toggle node expansion
+    // Toggle node expansion with optimized DOM update
     async function toggleNode(nodeId) {
       try {
+        // Get the current node data before toggle
+        const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+        const node = await nodeResponse.json();
+        const wasExpanded = node.is_expanded;
+        
+        // Toggle on the server
         const response = await fetch(`/api/nodes/${nodeId}/toggle`, {
           method: 'POST'
         });
@@ -41,20 +47,88 @@ const NodeExpansionManager = (function() {
           return false;
         }
         
-        // Refresh the outliner
-        if (window.fetchNodes) {
-          await window.fetchNodes();
+        // OPTIMIZATION: Update the DOM directly instead of a full refresh
+        const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+        if (nodeElement) {
+          const collapseIcon = nodeElement.querySelector('.collapse-icon');
+          if (collapseIcon) {
+            // Toggle the icon
+            collapseIcon.innerHTML = wasExpanded ? '►' : '▼';
+          }
+          
+          if (wasExpanded) {
+            // Node was expanded, now collapse it - remove children container
+            const childrenContainer = nodeElement.querySelector('.children');
+            if (childrenContainer) {
+              nodeElement.removeChild(childrenContainer);
+            }
+          } else {
+            // Node was collapsed, now expand it - fetch children and add them
+            fetchAndAppendChildren(nodeId, nodeElement);
+          }
+          
+          // Reapply filters after the nodes are updated
+          if (window.FilterManager) {
+            FilterManager.applyFilters();
+          }
+          
+          return true;
         }
         
-        // Reapply filters after the nodes are refreshed
-        if (window.FilterManager) {
-          FilterManager.applyFilters();
+        // Fallback to full refresh if direct DOM manipulation isn't possible
+        if (window.fetchNodes) {
+          await window.fetchNodes();
         }
         
         return true;
       } catch (error) {
         console.error(`Error toggling node ${nodeId}:`, error);
         return false;
+      }
+    }
+    
+    // Helper function to fetch children and append them to the node element
+    async function fetchAndAppendChildren(nodeId, nodeElement) {
+      try {
+        // Use the existing fetchChildren function if available in the global scope
+        let children;
+        if (window.fetchChildren) {
+          children = await window.fetchChildren(nodeId, true);
+        } else {
+          // Fallback if fetchChildren is not available
+          const currentLanguage = I18n.getCurrentLanguage();
+          const childrenResponse = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}&_=${Date.now()}`);
+          children = await childrenResponse.json();
+        }
+        
+        if (children.length > 0) {
+          // Create children container
+          const childrenContainer = document.createElement('div');
+          childrenContainer.className = 'children';
+          
+          // Create and append child elements
+          if (window.createNodeElement) {
+            for (const child of children) {
+              const childElement = await window.createNodeElement(child);
+              childrenContainer.appendChild(childElement);
+            }
+            
+            nodeElement.appendChild(childrenContainer);
+            
+            // Setup drag and drop for the new nodes
+            if (window.DragDropManager) {
+              window.DragDropManager.setupDragAndDrop();
+            }
+          } else {
+            // If createNodeElement is not available, we can't add children this way
+            // Fall back to full refresh
+            if (window.fetchNodes) {
+              await window.fetchNodes();
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching and appending children for node ${nodeId}:`, error);
       }
     }
     
