@@ -6,7 +6,7 @@
  */
 const HotkeyManager = (function() {
     // Private variables
-    let isAltPressed = false;
+    let isHotkeyModeActive = false;
     let hintElements = [];
     let hotkeys = {};
     let globalHotkeys = {};
@@ -22,7 +22,6 @@ const HotkeyManager = (function() {
       
       // Set up event listeners
       document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('keyup', handleKeyUp);
       
       // Register built-in hotkeys
       registerGlobalHotkeys();
@@ -31,6 +30,44 @@ const HotkeyManager = (function() {
       
       isInitialized = true;
       console.log('HotkeyManager initialized');
+      
+      // Add status indicator to the page
+      createStatusIndicator();
+    }
+    
+    /**
+     * Create a status indicator element to show when hotkey mode is active
+     */
+    function createStatusIndicator() {
+      const indicator = document.createElement('div');
+      indicator.id = 'hotkey-mode-indicator';
+      indicator.textContent = 'HOTKEY MODE';
+      indicator.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(255, 87, 34, 0.8);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 10000;
+        display: none;
+        pointer-events: none;
+      `;
+      document.body.appendChild(indicator);
+    }
+    
+    /**
+     * Show or hide the hotkey mode indicator
+     * @param {boolean} show - Whether to show the indicator
+     */
+    function toggleHotkeyModeIndicator(show) {
+      const indicator = document.getElementById('hotkey-mode-indicator');
+      if (indicator) {
+        indicator.style.display = show ? 'block' : 'none';
+      }
     }
     
     /**
@@ -61,8 +98,8 @@ const HotkeyManager = (function() {
           }
         });
         
-        if (shouldRefresh && isAltPressed && !isModalOpen) {
-          // If Alt is pressed and DOM changed, refresh hints
+        if (shouldRefresh && isHotkeyModeActive && !isModalOpen) {
+          // If hotkey mode is active and DOM changed, refresh hints
           // Use setTimeout to break potential recursion
           setTimeout(() => {
             removeHints();
@@ -98,64 +135,81 @@ const HotkeyManager = (function() {
       // Don't process if a modal is already open
       if (isModalOpen) return;
       
-      // Only track Alt key press without other modifiers
+      // Check if Alt key was pressed to enter hotkey mode
       if (e.key === 'Alt' && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
-        if (!isAltPressed) {
-          isAltPressed = true;
-          // Set up observer only when needed
-          setupMutationObserver();
-          showHints();
+        if (!isHotkeyModeActive) {
+          enterHotkeyMode();
+          e.preventDefault(); // Prevent default Alt behavior
         }
         return;
       }
       
-      // Handle Alt + key combinations
-      if (isAltPressed && e.altKey) {
+      // In hotkey mode, check if a valid hotkey was pressed
+      if (isHotkeyModeActive) {
         const key = e.key.toLowerCase();
         
         // Check if this key combination is registered
         if (hotkeys[key]) {
           e.preventDefault();
-          // Clean up before executing action
-          cleanUpHotkeyState();
-          hotkeys[key].action();
+          // Execute the action and exit hotkey mode
+          executeHotkeyAction(hotkeys[key].action);
           return;
         }
         
         // Check global hotkeys
         if (globalHotkeys[key]) {
           e.preventDefault();
-          // Clean up before executing action
-          cleanUpHotkeyState();
-          globalHotkeys[key].action();
+          // Execute the action and exit hotkey mode
+          executeHotkeyAction(globalHotkeys[key].action);
           return;
         }
-      }
-      
-      // If any other key is pressed while Alt is down, clean up
-      if (isAltPressed && e.key !== 'Alt') {
-        cleanUpHotkeyState();
-      }
-    }
-    
-    /**
-     * Handle keyup events
-     * @param {KeyboardEvent} e - The keyboard event
-     */
-    function handleKeyUp(e) {
-      if (e.key === 'Alt' && isAltPressed && !isModalOpen) {
-        // Don't use setTimeout here - clean up immediately when Alt is released
-        cleanUpHotkeyState();
+        
+        // If Escape is pressed, exit hotkey mode without doing anything
+        if (e.key === 'Escape') {
+          exitHotkeyMode();
+          e.preventDefault();
+        }
       }
     }
     
     /**
-     * Clean up the hotkey state (remove hints, reset flags, stop observer)
+     * Enter hotkey mode
      */
-    function cleanUpHotkeyState() {
+    function enterHotkeyMode() {
+      isHotkeyModeActive = true;
+      setupMutationObserver();
+      showHints();
+      toggleHotkeyModeIndicator(true);
+      console.log('Entered hotkey mode');
+    }
+    
+    /**
+     * Exit hotkey mode
+     */
+    function exitHotkeyMode() {
+      isHotkeyModeActive = false;
       removeHints();
-      isAltPressed = false;
       stopMutationObserver();
+      toggleHotkeyModeIndicator(false);
+      console.log('Exited hotkey mode');
+    }
+    
+    /**
+     * Execute a hotkey action and exit hotkey mode
+     * @param {Function} action - The action to execute
+     */
+    function executeHotkeyAction(action) {
+      // First exit hotkey mode
+      exitHotkeyMode();
+      
+      // Then execute the action
+      if (typeof action === 'function') {
+        try {
+          action();
+        } catch (error) {
+          console.error('Error executing hotkey action:', error);
+        }
+      }
     }
     
     /**
@@ -398,6 +452,12 @@ const HotkeyManager = (function() {
           }
         }
       };
+      
+      // Add an Escape hotkey that can be used to exit hotkey mode
+      globalHotkeys['escape'] = {
+        description: 'Exit Hotkey Mode',
+        action: exitHotkeyMode
+      };
     }
     
     /**
@@ -442,8 +502,9 @@ const HotkeyManager = (function() {
       modalBody.innerHTML = `
         <div style="margin-bottom: 20px;">
           <h3>Using Keyboard Shortcuts</h3>
-          <p>Press and hold the <kbd>Alt</kbd> key to see available shortcuts. While holding <kbd>Alt</kbd>, 
-          press the highlighted letter to activate the corresponding action.</p>
+          <p>Press the <kbd>Alt</kbd> key once to enter hotkey mode. The "HOTKEY MODE" indicator will appear
+          in the top-right corner. Then press a key to activate the corresponding action.</p>
+          <p>Press <kbd>Esc</kbd> to exit hotkey mode without performing any action.</p>
         </div>
         
         <div style="margin-bottom: 20px;">
@@ -456,12 +517,15 @@ const HotkeyManager = (function() {
               </tr>
             </thead>
             <tbody>
-              ${Object.keys(globalHotkeys).map(key => `
-                <tr>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><kbd>Alt</kbd> + <kbd>${key.toUpperCase()}</kbd></td>
-                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${globalHotkeys[key].description}</td>
-                </tr>
-              `).join('')}
+              ${Object.keys(globalHotkeys).map(key => {
+                if (key === 'escape') return ''; // Skip escape in the list
+                return `
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;"><kbd>${key.toUpperCase()}</kbd></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${globalHotkeys[key].description}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -551,7 +615,7 @@ const HotkeyManager = (function() {
      */
     function updateLanguage(language) {
       // If hints are currently showing, refresh them
-      if (isAltPressed) {
+      if (isHotkeyModeActive) {
         removeHints();
         showHints();
       }
@@ -560,7 +624,9 @@ const HotkeyManager = (function() {
     // Public API
     return {
       initialize: initialize,
-      updateLanguage: updateLanguage
+      updateLanguage: updateLanguage,
+      enterHotkeyMode: enterHotkeyMode,
+      exitHotkeyMode: exitHotkeyMode
     };
   })();
   
