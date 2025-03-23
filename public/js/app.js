@@ -359,31 +359,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Add a root node
   async function addRootNode() {
-    try {
-      // Get the highest position
-      const maxPosition = nodes.length > 0 ? Math.max(...nodes.map(n => n.position)) + 1 : 0;
-      
-      // Use the I18n system for default content
-      const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
-      
-      const response = await fetch('/api/nodes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: defaultContent,
-          content_zh: defaultContent,
-          parent_id: null,
-          position: maxPosition
-        })
-      });
-      
-      const newNode = await response.json();
-      nodes.push(newNode);
-      renderOutliner();
-    } catch (error) {
-      console.error('Error adding root node:', error);
+    if (window.NodeOperationsManager) {
+      const newNode = await NodeOperationsManager.addRootNode(nodes);
+      if (newNode) {
+        // Add to local nodes array if it's not refreshed already
+        nodes.push(newNode);
+        renderOutliner();
+      }
+    } else {
+      console.error('NodeOperationsManager not available');
     }
   }
   
@@ -393,53 +377,19 @@ document.addEventListener('DOMContentLoaded', () => {
       // Store whether we're in focus mode before the operation
       const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
       
-      // Get the current parent node data
-      const response = await fetch(`/api/nodes/${parentId}`);
-      const parentNode = await response.json();
-      
-      // Get count of existing children to determine position
-      const childrenResponse = await fetch(`/api/nodes/${parentId}/children`);
-      const children = await childrenResponse.json();
-      const position = children.length;
-      
-      // Use the I18n system for default content
-      const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
-      
-      // Create the new node
-      const newNodeResponse = await fetch('/api/nodes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: defaultContent,
-          content_zh: defaultContent,
-          parent_id: parentId,
-          position: position
-        }),
-      });
-      
-      if (!newNodeResponse.ok) {
-        throw new Error('Failed to create child node');
+      if (window.NodeOperationsManager) {
+        await NodeOperationsManager.addChildNode(parentId);
+        
+        // Restore focus state if we were in focus mode
+        if (wasInFocusMode && window.BreadcrumbManager) {
+          window.BreadcrumbManager.focusOnNode(parentId);
+        }
+        
+        // Set this as the last focused node
+        lastFocusedNodeId = parentId;
+      } else {
+        console.error('NodeOperationsManager not available');
       }
-      
-      // Make sure parent is expanded
-      if (!parentNode.is_expanded) {
-        await fetch(`/api/nodes/${parentId}/toggle`, {
-          method: 'POST'
-        });
-      }
-      
-      // Refresh the outliner
-      await fetchNodes(true);
-      
-      // Restore focus state if we were in focus mode
-      if (wasInFocusMode && window.BreadcrumbManager) {
-        window.BreadcrumbManager.focusOnNode(parentId);
-      }
-      
-      // Set this as the last focused node
-      lastFocusedNodeId = parentId;
     } catch (error) {
       console.error('Error adding child node:', error);
     }
@@ -583,176 +533,83 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Delete a node
   async function deleteNode(nodeId) {
-    if (confirm(I18n.t('confirmDeleteNode'))) {
-      try {
-        await fetch(`/api/nodes/${nodeId}`, {
-          method: 'DELETE'
-        });
-        
-        // Refresh the outliner
-        fetchNodes();
-      } catch (error) {
-        console.error(`Error deleting node ${nodeId}:`, error);
-      }
+    if (window.NodeOperationsManager) {
+      return NodeOperationsManager.deleteNode(nodeId);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
   }
   
   // Toggle node expansion
   async function toggleNode(nodeId) {
-    try {
+    if (window.NodeExpansionManager) {
       await preserveFocusState(async () => {
-        await fetch(`/api/nodes/${nodeId}/toggle`, {
-          method: 'POST'
-        });
-        
-        // Refresh the outliner
-        await fetchNodes();
-        
-        // Reapply filters after the nodes are refreshed
-        if (window.FilterManager) {
-          FilterManager.applyFilters();
-        }
+        return NodeExpansionManager.toggleNode(nodeId);
       });
-    } catch (error) {
-      console.error(`Error toggling node ${nodeId}:`, error);
+    } else {
+      console.error('NodeExpansionManager not available');
+      return false;
     }
   }
   
   // Indent a node (make it a child of the node above)
   async function indentNode(nodeId) {
-    try {
+    if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
-        const response = await fetch(`/api/nodes/${nodeId}/indent`, {
-          method: 'POST'
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(errorData.error);
-          return;
-        }
-        
-        // Refresh the outliner
-        await fetchNodes();
+        return NodeOperationsManager.indentNode(nodeId);
       });
-    } catch (error) {
-      console.error(`Error indenting node ${nodeId}:`, error);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
   }
   
   // Outdent a node (make it a sibling of its parent)
   async function outdentNode(nodeId) {
-    try {
+    if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
-        const response = await fetch(`/api/nodes/${nodeId}/outdent`, {
-          method: 'POST'
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(errorData.error);
-          return;
-        }
-        
-        // Refresh the outliner
-        await fetchNodes();
+        return NodeOperationsManager.outdentNode(nodeId);
       });
-    } catch (error) {
-      console.error(`Error outdenting node ${nodeId}:`, error);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
   }
   
   // Move node up
   async function moveNodeUp(nodeId) {
-    try {
+    if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
-        const response = await fetch(`/api/nodes/${nodeId}/move-up`, {
-          method: 'POST'
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(errorData.error);
-          return;
-        }
-        
-        // Refresh the outliner
-        await fetchNodes();
+        return NodeOperationsManager.moveNodeUp(nodeId);
       });
-    } catch (error) {
-      console.error(`Error moving node ${nodeId} up:`, error);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
   }
   
   // Move node down
   async function moveNodeDown(nodeId) {
-    try {
+    if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
-        const response = await fetch(`/api/nodes/${nodeId}/move-down`, {
-          method: 'POST'
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(errorData.error);
-          return;
-        }
-        
-        // Refresh the outliner
-        await fetchNodes();
+        return NodeOperationsManager.moveNodeDown(nodeId);
       });
-    } catch (error) {
-      console.error(`Error moving node ${nodeId} down:`, error);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
-  }
-  
-  
-  // Simple debounce function to prevent too many API calls
-  function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-      const context = this;
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), wait);
-    };
   }
   
   // Add a sibling node
   async function addSiblingNode(nodeId, position) {
-    try {
+    if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
-        // Get the node to find its parent and position
-        const response = await fetch(`/api/nodes/${nodeId}`);
-        const node = await response.json();
-        
-        // Calculate new position
-        let newPosition = node.position;
-        if (position === 'after') {
-          newPosition += 1;
-        }
-        
-        // Use the I18n system for default content
-        const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
-        
-        // Create the new node
-        await fetch('/api/nodes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            content: defaultContent,
-            content_zh: defaultContent,
-            parent_id: node.parent_id,
-            position: newPosition
-          })
-        });
-        
-        // Refresh the outliner
-        await fetchNodes();
+        return NodeOperationsManager.addSiblingNode(nodeId, position);
       });
-    } catch (error) {
-      console.error(`Error adding sibling node to ${nodeId}:`, error);
+    } else {
+      console.error('NodeOperationsManager not available');
+      return false;
     }
   }
   
@@ -990,5 +847,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize I18n before other components
   I18n.initialize();
+
+  // Initialize the NodeExpansionManager
+  if (window.NodeExpansionManager) {
+    NodeExpansionManager.initialize();
+  }
 
 }); 
