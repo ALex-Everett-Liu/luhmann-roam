@@ -952,6 +952,11 @@ document.addEventListener('DOMContentLoaded', () => {
     AttributeManager.initialize();
   }
 
+  // Initialize the HotkeyManager
+  if (window.HotkeyManager) {
+    HotkeyManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
