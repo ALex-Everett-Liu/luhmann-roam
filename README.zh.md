@@ -58,7 +58,7 @@ Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方�
 
 1. 克隆仓库:
    ```bash
-   git clone https://github.com/yourusername/luhmann-roam.git
+   git clone https://github.com/ALex-Everett-Liu/luhmann-roam.git
    cd luhmann-roam
    ```
 

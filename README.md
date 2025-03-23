@@ -60,7 +60,7 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/luhmann-roam.git
+   git clone https://github.com/ALex-Everett-Liu/luhmann-roam.git
    cd luhmann-roam
    ```
 
