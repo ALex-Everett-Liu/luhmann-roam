@@ -442,10 +442,29 @@ const NodeOperationsManager = (function() {
           newPosition += 1;
         }
         
+        // First update positions of existing nodes to make room for the new node
+        // For 'before', shift all nodes at or after this position
+        // For 'after', shift all nodes after this position
+        const shiftPositionResponse = await fetch('/api/nodes/reorder/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            parentId: node.parent_id,
+            position: newPosition,
+            shift: 1  // Shift positions by +1
+          })
+        });
+        
+        if (!shiftPositionResponse.ok) {
+          throw new Error('Failed to update node positions');
+        }
+        
         // Use the I18n system for default content
         const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
         
-        // Create the new node
+        // Create the new node at the desired position
         const newNodeResponse = await fetch('/api/nodes', {
           method: 'POST',
           headers: {
@@ -467,37 +486,33 @@ const NodeOperationsManager = (function() {
         
         // OPTIMIZATION: Add the new sibling directly to the DOM
         if (window.createNodeElement) {
-          const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-          if (nodeElement) {
-            const parentElement = nodeElement.parentElement;
-            if (parentElement) {
-              const newNodeElement = await window.createNodeElement(newNode);
-              
-              if (position === 'before') {
-                parentElement.insertBefore(newNodeElement, nodeElement);
-              } else { // after
-                const nextSibling = nodeElement.nextSibling;
-                if (nextSibling) {
-                  parentElement.insertBefore(newNodeElement, nextSibling);
-                } else {
-                  parentElement.appendChild(newNodeElement);
-                }
-              }
-              
-              // Setup drag and drop for the new node
-              if (window.DragDropManager) {
-                window.DragDropManager.setupDragAndDrop();
-              }
-              
-              return true;
+          // Refresh subtree to ensure correct ordering
+          if (node.parent_id) {
+            await refreshSubtree(node.parent_id);
+          } else {
+            // For root level nodes, do a full refresh
+            if (window.fetchNodes) {
+              await window.fetchNodes();
             }
+          }
+          
+          // Focus on the newly created node after refresh
+          setTimeout(() => {
+            const newNodeElement = document.querySelector(`.node[data-id="${newNode.id}"]`);
+            if (newNodeElement) {
+              const nodeText = newNodeElement.querySelector('.node-text');
+              if (nodeText) {
+                nodeText.focus();
+              }
+            }
+          }, 100);
+        } else {
+          // Fallback to full refresh if direct DOM manipulation isn't possible
+          if (window.fetchNodes) {
+            await window.fetchNodes();
           }
         }
         
-        // Fallback to full refresh if direct DOM manipulation isn't possible
-        if (window.fetchNodes) {
-          await window.fetchNodes();
-        }
         return true;
       } catch (error) {
         console.error(`Error adding sibling node to ${nodeId}:`, error);

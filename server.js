@@ -1193,6 +1193,57 @@ app.get('/proxy/fonts/:filename', async (req, res) => {
   }
 });
 
+// Add this to your existing routes in server.js
+app.post('/api/nodes/reorder/shift', async (req, res) => {
+  try {
+    const { parentId, position, shift } = req.body;
+    
+    // Input validation
+    if (shift === undefined || position === undefined) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    const db = await getDb();
+    
+    // Get all nodes at the same level that need their positions updated
+    let nodesToUpdate;
+    if (parentId) {
+      // For child nodes under a parent
+      nodesToUpdate = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id = ? AND position >= ? ORDER BY position',
+        [parentId, position]
+      );
+    } else {
+      // For root level nodes
+      nodesToUpdate = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id IS NULL AND position >= ? ORDER BY position',
+        [position]
+      );
+    }
+    
+    // Update positions in a transaction to ensure consistency
+    await db.run('BEGIN TRANSACTION');
+    
+    for (const node of nodesToUpdate) {
+      const newPosition = node.position + shift;
+      await db.run(
+        'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+        [newPosition, Date.now(), node.id]
+      );
+    }
+    
+    await db.run('COMMIT');
+    
+    res.json({ success: true, nodesUpdated: nodesToUpdate.length });
+  } catch (error) {
+    console.error('Error in shift reorder:', error);
+    // Rollback transaction if an error occurred
+    const db = await getDb();
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: 'Failed to update node positions' });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
