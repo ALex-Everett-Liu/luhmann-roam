@@ -16,6 +16,11 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Task Management**: Track daily tasks with time tracking functionality
 - **Timestamp Tracking**: View creation and modification times for nodes
 - **Position Management**: Precisely adjust node positions and hierarchy
+- **Node Attributes**: Add, edit, and query custom attributes for nodes
+- **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails
+- **Code Analysis**: Visualize and analyze the codebase structure
+- **Keyboard Shortcuts**: Comprehensive hotkey system for efficient workflows
+- **Optimized Performance**: Smart DOM updates for improved responsiveness
 
 ## Screenshots
 
@@ -108,6 +113,24 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Add weight and description to the link
 - View both incoming and outgoing links
 
+### Managing Attributes
+- Click the attribute button on a node
+- Add, edit, or delete custom attributes
+- Use the query interface to find nodes with specific attributes
+- Browse recent queries or save complex queries for future use
+
+### Using Breadcrumbs
+- Double-click on a node to focus on it and its descendants
+- Use the breadcrumb trail to navigate up the hierarchy
+- Click the home icon to return to the full view
+- Focus mode helps concentrate on specific branches of your hierarchy
+
+### Using Keyboard Shortcuts
+- Press ? to view all available shortcuts
+- Use arrow keys to navigate between nodes
+- Press specific letter keys to trigger actions when in hotkey mode
+- Combine keys for advanced operations
+
 ### Task Management
 - Create daily tasks in the sidebar
 - Track time spent on tasks
@@ -116,6 +139,8 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 
 ## System Architecture
 
+Luhmann-Roam follows a modular architecture with specialized managers handling different aspects of functionality:
+
 ### Backend
 - Node.js with Express
 - SQLite database for data storage
@@ -123,14 +148,14 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - File-based storage for markdown content
 
 ### Frontend
-- Vanilla JavaScript for core functionality
-- Modular design with specialized managers
+- Vanilla JavaScript with modular design
+- Specialized managers for different functionality
+- Optimized DOM manipulations for performance
 - Responsive UI with custom CSS
-- No external UI frameworks or dependencies
 
-## Development
+For a detailed explanation of the system's architecture, components, and data models, please see the [Project Structure Documentation](PROJECT_STRUCTURE.md).
 
-### Project Structure
+## Project Structure Overview
 
 ```text
 luhmann-roam/
@@ -141,14 +166,22 @@ luhmann-roam/
 │   ├── index.html     # Main HTML file
 │   ├── css/           # Stylesheets
 │   ├── js/            # JavaScript modules
-│   │   ├── app.js             # Main application logic
-│   │   ├── markdownManager.js # Markdown editing functionality
-│   │   ├── linkManager.js     # Link management functionality
-│   │   ├── searchManager.js   # Search functionality
-│   │   ├── filterManager.js   # Filter functionality
-│   │   ├── taskManager.js     # Task management functionality
-│   │   ├── timestampManager.js # Timestamp display functionality
-│   │   └── positionManager.js  # Node positioning functionality
+│   │   ├── app.js                 # Main application logic
+│   │   ├── markdownManager.js     # Markdown editing functionality
+│   │   ├── linkManager.js         # Link management functionality
+│   │   ├── searchManager.js       # Search functionality
+│   │   ├── filterManager.js       # Filter functionality
+│   │   ├── taskManager.js         # Task management functionality
+│   │   ├── timestampManager.js    # Timestamp display functionality
+│   │   ├── positionManager.js     # Node positioning functionality
+│   │   ├── attributeManager.js    # Node attributes functionality
+│   │   ├── breadcrumbManager.js   # Node navigation functionality
+│   │   ├── codeAnalyzerManager.js # Code structure analysis
+│   │   ├── hotkeyManager.js       # Keyboard shortcuts functionality
+│   │   ├── i18n.js                # Internationalization support
+│   │   ├── nodeExpansionManager.js # Node expansion functionality
+│   │   ├── nodeOperationsManager.js # Core node operations
+│   │   └── dragDropManager.js     # Drag and drop functionality
 │   └── attachment/    # Uploaded images and attachments
 └── README.md          # This file
 ```
@@ -169,6 +202,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgements
 
-- Inspired by Niklas Luhmann's Zettelkasten method
+- Inspired by Niklas Luhmann's Zettelkasten method and Roam Research
 - Built with vanilla JavaScript to minimize dependencies
 - Designed for personal knowledge management and organization

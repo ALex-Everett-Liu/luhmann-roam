@@ -1,5 +1,7 @@
 # Luhmann-Roam 知识管理系统
 
+[English](README.md) | [简体中文](README.zh.md)
+
 Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方法启发的知识管理系统。它提供了一个具有双向链接功能的层次化大纲界面，允许用户以网络结构创建、组织和连接笔记。
 
 ## 功能特点
@@ -14,6 +16,11 @@ Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方�
 - **任务管理**：通过时间跟踪功能管理日常任务
 - **时间戳跟踪**：查看节点的创建和修改时间
 - **位置管理**：精确调整节点位置和层次结构
+- **节点属性**：为节点添加、编辑和查询自定义属性
+- **面包屑导航**：通过面包屑路径导航节点层次结构
+- **代码分析**：可视化和分析代码库结构
+- **键盘快捷键**：全面的快捷键系统提升工作效率
+- **优化性能**：智能 DOM 更新提高响应速度
 
 ## 界面截图
 
@@ -106,6 +113,24 @@ Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方�
 - 添加链接权重和描述
 - 查看入站和出站链接
 
+### 管理属性
+- 点击节点上的属性按钮
+- 添加、编辑或删除自定义属性
+- 使用查询界面查找具有特定属性的节点
+- 浏览最近查询或保存复杂查询以备将来使用
+
+### 使用面包屑导航
+- 双击节点聚焦于它及其子节点
+- 使用面包屑路径导航到上级层次结构
+- 点击主页图标返回完整视图
+- 焦点模式帮助集中注意力在特定分支
+
+### 使用键盘快捷键
+- 按 ? 查看所有可用快捷键
+- 使用箭头键在节点间导航
+- 在快捷键模式下按特定字母键触发操作
+- 组合按键执行高级操作
+
 ### 任务管理
 - 在侧边栏创建每日任务
 - 跟踪任务所花费的时间
@@ -114,6 +139,8 @@ Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方�
 
 ## 系统架构
 
+Luhmann-Roam 采用模块化架构，使用专门的管理器处理不同功能方面：
+
 ### 后端
 - 使用 Express 的 Node.js
 - 用于数据存储的 SQLite 数据库
@@ -121,34 +148,42 @@ Luhmann-Roam 是一个受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方�
 - 基于文件的 Markdown 内容存储
 
 ### 前端
-- 核心功能使用原生 JavaScript
-- 采用专业管理器的模块化设计
+- 采用模块化设计的原生 JavaScript
+- 针对不同功能的专业管理器
+- 优化的 DOM 操作提高性能
 - 使用自定义 CSS 的响应式 UI
-- 没有外部 UI 框架或依赖项
 
-## 开发
+有关系统架构、组件和数据模型的详细说明，请参阅[项目结构文档](PROJECT_STRUCTURE.md)。
 
-### 项目结构 
+## 项目结构概览
 
 ```text
 luhmann-roam/
-├── database.js        # Database configuration and initialization
-├── server.js          # Express server and API endpoints
-├── markdown/          # Markdown content storage
-├── public/            # Static assets and client-side code
-│   ├── index.html     # Main HTML file
-│   ├── css/           # Stylesheets
-│   ├── js/            # JavaScript modules
-│   │   ├── app.js             # Main application logic
-│   │   ├── markdownManager.js # Markdown editing functionality
-│   │   ├── linkManager.js     # Link management functionality
-│   │   ├── searchManager.js   # Search functionality
-│   │   ├── filterManager.js   # Filter functionality
-│   │   ├── taskManager.js     # Task management functionality
-│   │   ├── timestampManager.js # Timestamp display functionality
-│   │   └── positionManager.js  # Node positioning functionality
-│   └── attachment/    # Uploaded images and attachments
-└── README.md          # This file
+├── database.js        # 数据库配置和初始化
+├── server.js          # Express 服务器和 API 端点
+├── markdown/          # Markdown 内容存储
+├── public/            # 静态资源和客户端代码
+│   ├── index.html     # 主 HTML 文件
+│   ├── css/           # 样式表
+│   ├── js/            # JavaScript 模块
+│   │   ├── app.js                 # 主应用逻辑
+│   │   ├── markdownManager.js     # Markdown 编辑功能
+│   │   ├── linkManager.js         # 链接管理功能
+│   │   ├── searchManager.js       # 搜索功能
+│   │   ├── filterManager.js       # 过滤功能
+│   │   ├── taskManager.js         # 任务管理功能
+│   │   ├── timestampManager.js    # 时间戳显示功能
+│   │   ├── positionManager.js     # 节点定位功能
+│   │   ├── attributeManager.js    # 节点属性功能
+│   │   ├── breadcrumbManager.js   # 节点导航功能
+│   │   ├── codeAnalyzerManager.js # 代码结构分析
+│   │   ├── hotkeyManager.js       # 键盘快捷键功能
+│   │   ├── i18n.js                # 国际化支持
+│   │   ├── nodeExpansionManager.js # 节点展开功能
+│   │   ├── nodeOperationsManager.js # 核心节点操作
+│   │   └── dragDropManager.js     # 拖放功能
+│   └── attachment/    # 上传的图像和附件
+└── README.md          # 本文件
 ```
 
 ## 贡献
@@ -167,6 +202,6 @@ luhmann-roam/
 
 ## 致谢
 
-- 受 Roam Research 和 Niklas Luhmann 的 Zettelkasten 方法启发
+- 受 Niklas Luhmann 的 Zettelkasten 方法和 Roam Research 启发
 - 使用原生 JavaScript 构建以最小化依赖
 - 为个人知识管理和组织而设计
