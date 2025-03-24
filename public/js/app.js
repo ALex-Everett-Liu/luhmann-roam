@@ -814,6 +814,11 @@ document.addEventListener('DOMContentLoaded', () => {
     HotkeyManager.initialize();
   }
 
+  // Initialize the CodeAnalyzerManager
+  if (window.CodeAnalyzerManager) {
+    CodeAnalyzerManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
