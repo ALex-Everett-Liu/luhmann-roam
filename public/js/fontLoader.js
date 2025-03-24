@@ -1,8 +1,8 @@
 // Add this to a new file or to an existing file that runs after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  // Improved font detection
-  const checkLXGWFont = () => {
-    console.log('Checking LXGW WenKai Screen font availability...');
+  // Improved font detection - update to check for Noto Serif SC
+  const checkChineseFont = () => {
+    console.log('Checking Noto Serif SC font availability...');
     
     // Create test elements for comparison
     const testContainer = document.createElement('div');
@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Test element with target font
     const testElement = document.createElement('span');
-    testElement.style.fontFamily = '"LXGW WenKai Screen", sans-serif';
-    testElement.style.fontSize = '40px'; // Larger size for better comparison
+    testElement.style.fontFamily = '"Noto Serif SC", serif';
+    testElement.style.fontSize = '40px';
     testElement.textContent = '汉字测试';
     
     // Control element with fallback font
     const controlElement = document.createElement('span');
-    controlElement.style.fontFamily = 'sans-serif';
+    controlElement.style.fontFamily = 'serif';
     controlElement.style.fontSize = '40px';
     controlElement.textContent = '汉字测试';
     
@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const heightDifference = Math.abs(testRect.height - controlRect.height);
     
     if (widthDifference > 1 || heightDifference > 1) {
-      console.log('✅ LXGW WenKai Screen font is loaded!', {
+      console.log('✅ Noto Serif SC font is loaded!', {
         widthDifference,
         heightDifference
       });
       document.body.classList.add('chinese-font-loaded');
       return true;
     } else {
-      console.warn('❌ LXGW WenKai Screen font not loaded, using fallback...', {
+      console.warn('❌ Noto Serif SC font not loaded, using fallback...', {
         widthDifference,
         heightDifference
       });
@@ -82,17 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
   fontStatus.appendChild(retryButton);
   document.body.appendChild(fontStatus);
   
-  // Function to load font with web font loader
+  // Function to load font
   const loadFont = () => {
-    // Create a stylesheet link
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = '/css/utilities/language.css';
-    document.head.appendChild(link);
-
-    // Set timeout to check if font loaded
+    // Check if the font is loaded after a delay to allow font loading
     setTimeout(() => {
-      const fontLoaded = checkLXGWFont();
+      const fontLoaded = checkChineseFont();
       
       if (fontLoaded) {
         statusText.textContent = 'Chinese font loaded successfully!';
@@ -113,6 +107,13 @@ document.addEventListener('DOMContentLoaded', () => {
   retryButton.addEventListener('click', () => {
     statusText.textContent = 'Retrying font load...';
     retryButton.style.display = 'none';
+    
+    // Try to force font reload
+    const linkElement = document.createElement('link');
+    linkElement.rel = 'stylesheet';
+    linkElement.href = 'https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@500;700&display=swap';
+    document.head.appendChild(linkElement);
+    
     loadFont();
   });
   

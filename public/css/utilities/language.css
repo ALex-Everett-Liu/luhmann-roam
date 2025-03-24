@@ -1,22 +1,40 @@
-/* Define local font face */
+/* Define font fallback for Chinese text */
 @font-face {
-    font-family: 'LXGW WenKai Screen';
-    src: url('/proxy/fonts/lxgwwenkaiscreen.woff2') format('woff2');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-  }
-  
-  /* Apply Chinese font to elements with lang="zh" */
-  :lang(zh),
-  [lang="zh"],
-  .chinese-text {
-    font-family: "LXGW WenKai Screen", "Microsoft YaHei", "SimHei", sans-serif !important;
-    font-size: 17px;
-  }
-  
-  /* Apply when Chinese font is loaded */
-  .chinese-font-loaded .node-text[lang="zh"] {
-    /* Apply any additional styles once font is confirmed loaded */
-    color: #000;
-  }
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('Noto Serif SC Medium'), local('NotoSerifSC-Medium'),
+       url('https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@500&display=swap') format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Serif SC';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Noto Serif SC Bold'), local('NotoSerifSC-Bold'),
+       url('https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@700&display=swap') format('woff2');
+}
+
+/* Apply Chinese font to elements with lang="zh" */
+:lang(zh),
+[lang="zh"],
+.chinese-text {
+  font-family: "Noto Serif SC", "SimSun", "STSong", serif !important;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+/* Add style for bold Chinese text */
+:lang(zh) strong,
+[lang="zh"] strong,
+.chinese-text strong {
+  font-weight: 700;
+}
+
+/* Apply when Chinese font is loaded */
+.chinese-font-loaded .node-text[lang="zh"] {
+  /* Any additional styles when font is confirmed loaded */
+  color: #000;
+}

@@ -38,7 +38,7 @@
   min-height: 24px;
   outline: none;
   border: 1px solid transparent;
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .node-text:focus {
@@ -146,8 +146,9 @@ button:hover {
 }
 
 .node-text[lang="zh"] {
-  font-family: "LXGW WenKai Screen", "Microsoft YaHei", "SimHei", sans-serif !important;
+  font-family: "Noto Serif SC", "SimSun", "STSong", serif !important;
   font-size: 17px;
+  font-weight: 500;
 }
 
 /* Modal styles */
