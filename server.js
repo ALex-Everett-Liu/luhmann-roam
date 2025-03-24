@@ -30,6 +30,15 @@ initializeDatabase().then(database => {
   db = database;
 });
 
+// Add this middleware to provide the database connection to all routes
+app.use((req, res, next) => {
+  req.db = db;
+  next();
+});
+
+// Make sure this middleware is placed BEFORE your routes are defined
+// but AFTER the database is initialized
+
 // Create markdown directory if it doesn't exist
 const markdownDir = path.join(__dirname, 'markdown');
 if (!fs.existsSync(markdownDir)) {

@@ -382,6 +382,13 @@ const TaskManager = (function() {
    * Updates the timer for the active task
    */
   function updateActiveTaskTimer() {
+    // Ensure tasks is always an array
+    if (!Array.isArray(tasks)) {
+      console.error('Error: tasks is not an array', tasks);
+      tasks = []; // Reset to empty array to prevent further errors
+      return;
+    }
+
     const activeTask = tasks.find(task => task.is_active);
     const activeTaskNameElement = document.getElementById('active-task-name');
     const activeTaskTimerElement = document.getElementById('active-task-timer');
