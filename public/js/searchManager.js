@@ -48,18 +48,19 @@ const SearchManager = (function() {
     modalHeader.appendChild(modalTitle);
     modalHeader.appendChild(closeButton);
     
-    // Create modal body
+    // Create modal body with revised styling
     const modalBody = document.createElement('div');
     modalBody.className = 'modal-body';
     modalBody.style.flex = '1';
     modalBody.style.display = 'flex';
     modalBody.style.flexDirection = 'column';
-    modalBody.style.overflow = 'hidden';
+    modalBody.style.overflow = 'auto';
     
     // Search container
     const searchContainer = document.createElement('div');
     searchContainer.className = 'search-container';
     searchContainer.style.marginBottom = '0';
+    searchContainer.style.flex = '0 0 auto';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -67,32 +68,39 @@ const SearchManager = (function() {
     searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
     searchInput.autofocus = true;
     
-    // Add recent searches section
+    // Add recent searches section with revised styling
     const recentSearchesSection = document.createElement('div');
     recentSearchesSection.className = 'recent-searches';
     recentSearchesSection.style.margin = '10px 0';
+    recentSearchesSection.style.flex = '1 1 auto';
+    recentSearchesSection.style.display = 'flex';
+    recentSearchesSection.style.flexDirection = 'column';
+    recentSearchesSection.style.minHeight = '0';
     
     const recentSearchesTitle = document.createElement('h4');
     recentSearchesTitle.textContent = window.I18n ? I18n.t('recentSearches') : 'Recent Searches';
     recentSearchesTitle.style.marginBottom = '5px';
+    recentSearchesTitle.style.flex = '0 0 auto';
     
     const recentSearchesList = document.createElement('div');
     recentSearchesList.className = 'recent-searches-list';
     recentSearchesList.id = 'recent-searches-list';
-    recentSearchesList.style.maxHeight = '800px';
+    recentSearchesList.style.flex = '1 1 auto';
     recentSearchesList.style.overflowY = 'auto';
-    recentSearchesList.style.flex = '1';
+    recentSearchesList.style.maxHeight = 'none';
     
     recentSearchesSection.appendChild(recentSearchesTitle);
     recentSearchesSection.appendChild(recentSearchesList);
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results search-results-scrollable';
-    searchResults.style.maxHeight = '80vh';
     searchResults.style.position = 'static';
     searchResults.style.border = '1px solid #ddd';
     searchResults.style.marginTop = '8px';
     searchResults.style.borderRadius = '4px';
+    searchResults.style.flex = '0 0 auto';
+    searchResults.style.maxHeight = '40vh';
+    searchResults.style.overflowY = 'auto';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(recentSearchesSection);
@@ -153,9 +161,14 @@ const SearchManager = (function() {
     
     modalBody.appendChild(searchContainer);
     
-    // Create modal footer
+    // Create modal footer with sticky position
     const modalFooter = document.createElement('div');
     modalFooter.className = 'modal-footer';
+    modalFooter.style.position = 'sticky';
+    modalFooter.style.bottom = '0';
+    modalFooter.style.backgroundColor = 'white';
+    modalFooter.style.zIndex = '10';
+    modalFooter.style.flex = '0 0 auto';
     
     const closeModalButton = document.createElement('button');
     closeModalButton.className = 'btn btn-secondary';
@@ -163,13 +176,6 @@ const SearchManager = (function() {
     closeModalButton.addEventListener('click', closeSearchModal);
     
     modalFooter.appendChild(closeModalButton);
-    
-    // Make sure the footer stays at bottom
-    modalFooter.style.position = 'sticky';
-    modalFooter.style.bottom = '0';
-    modalFooter.style.backgroundColor = 'white';
-    modalFooter.style.zIndex = '10';
-    modalFooter.style.marginTop = 'auto';
     
     // Assemble the modal
     modal.appendChild(modalHeader);
