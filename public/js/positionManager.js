@@ -202,9 +202,21 @@ const PositionManager = (function() {
         })
       });
       
-      // Refresh the outliner
-      if (window.fetchNodes) {
-        await window.fetchNodes();
+      // OPTIMIZATION: Use refreshSubtree or refresh relevant parent subtree
+      if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+        if (node.parent_id) {
+          // Refresh the parent's subtree if node has a parent
+          await window.NodeOperationsManager.refreshSubtree(node.parent_id);
+        } else {
+          // For root nodes, we need to refresh the whole tree
+          // since there's no single parent to refresh
+          await window.fetchNodes();
+        }
+      } else {
+        // Fallback to full refresh
+        if (window.fetchNodes) {
+          await window.fetchNodes();
+        }
       }
       closeModal();
     } catch (error) {
@@ -410,6 +422,11 @@ const PositionManager = (function() {
   // Move node to new parent
   async function moveNodeToParent(nodeId, parentId, position) {
     try {
+      // Get the original node data before moving
+      const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+      const originalNode = await nodeResponse.json();
+      const originalParentId = originalNode.parent_id;
+      
       await fetch('/api/nodes/reorder', {
         method: 'POST',
         headers: {
@@ -435,9 +452,32 @@ const PositionManager = (function() {
         });
       }
       
-      // Refresh the outliner
-      if (window.fetchNodes) {
-        await window.fetchNodes();
+      // OPTIMIZATION: Use refreshSubtree for affected subtrees
+      if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+        const refreshPromises = [];
+        
+        // Refresh original parent's subtree if it exists
+        if (originalParentId) {
+          refreshPromises.push(window.NodeOperationsManager.refreshSubtree(originalParentId));
+        }
+        
+        // Refresh new parent's subtree if it exists and is different
+        if (parentId && parentId !== originalParentId) {
+          refreshPromises.push(window.NodeOperationsManager.refreshSubtree(parentId));
+        }
+        
+        // If both parents are null (moving between root nodes), refresh everything
+        if (!originalParentId && !parentId) {
+          await window.fetchNodes();
+        } else {
+          // Wait for all refreshes to complete
+          await Promise.all(refreshPromises);
+        }
+      } else {
+        // Fallback to full refresh
+        if (window.fetchNodes) {
+          await window.fetchNodes();
+        }
       }
       closeModal();
     } catch (error) {
@@ -502,9 +542,16 @@ const PositionManager = (function() {
         }
         
         console.log('Position fix completed, refreshing data...');
-        if (window.fetchNodes) {
+        
+        // OPTIMIZATION: Use refreshSubtree if possible
+        if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree && node.parent_id) {
+          // If node has a parent, refresh that parent's subtree
+          await window.NodeOperationsManager.refreshSubtree(node.parent_id);
+        } else if (window.fetchNodes) {
+          // Otherwise refresh all nodes with forced cache bust
           await window.fetchNodes(true);
         }
+        
         return { fixed: true, siblings };
       } else {
         console.log('No duplicate positions found, no fix needed');

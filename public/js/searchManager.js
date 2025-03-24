@@ -272,8 +272,11 @@ const SearchManager = (function() {
             method: 'POST'
           });
           
-          // Refresh the outliner to reflect the expanded state
-          if (window.fetchNodes) {
+          // OPTIMIZATION: Use refreshSubtree instead of full DOM refresh
+          if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+            await window.NodeOperationsManager.refreshSubtree(node.parent_id);
+          } else if (window.fetchNodes) {
+            // Fallback to full refresh if refreshSubtree is not available
             await window.fetchNodes();
           }
         }

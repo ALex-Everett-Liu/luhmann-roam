@@ -368,9 +368,52 @@ const I18n = (function() {
     // Update the UI with the new language
     updateUI();
     
-    // Trigger a refresh of the outliner to update node content
-    if (window.fetchNodes) {
-      window.fetchNodes();
+    // Check if we can use optimized refresh methods
+    if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+      console.log('Using optimized partial DOM updates for language change');
+      
+      // Save current scroll position
+      const scrollPosition = window.scrollY;
+      
+      // Get all root nodes (top-level nodes)
+      const outlinerContainer = document.getElementById('outliner-container');
+      if (outlinerContainer) {
+        const rootNodes = outlinerContainer.querySelectorAll(':scope > .node');
+        
+        // Create a promise for each root node refresh
+        const refreshPromises = Array.from(rootNodes).map(node => {
+          const nodeId = node.dataset.id;
+          if (nodeId) {
+            return window.NodeOperationsManager.refreshSubtree(nodeId);
+          }
+          return Promise.resolve();
+        });
+        
+        // Execute all refreshes and restore scroll position when done
+        Promise.all(refreshPromises).then(() => {
+          // Apply filters if they exist
+          if (window.FilterManager) {
+            window.FilterManager.applyFilters();
+          }
+          
+          // Restore scroll position
+          setTimeout(() => {
+            window.scrollTo(0, scrollPosition);
+          }, 10);
+        });
+      } else {
+        // Fallback to full refresh if outliner container not found
+        console.log('Using full DOM refresh for language change');
+        if (window.fetchNodes) {
+          window.fetchNodes();
+        }
+      }
+    } else {
+      // Fallback to old method if optimized approach not available
+      console.log('Using full DOM refresh for language change');
+      if (window.fetchNodes) {
+        window.fetchNodes();
+      }
     }
   }
   
