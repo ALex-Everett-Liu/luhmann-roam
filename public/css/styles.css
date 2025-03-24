@@ -279,7 +279,7 @@ button:hover {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
-  max-height: 60vh;
+  max-height: none;
 }
 
 .modal-footer {
@@ -287,6 +287,11 @@ button:hover {
   border-top: 1px solid #e0e0e0;
   display: flex;
   justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  z-index: 10;
+  margin-top: auto;
 }
 
 .markdown-editor {
@@ -1727,7 +1732,7 @@ background-color: #2d9249;
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 150px;
+  max-height: 800px !important;
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 4px;

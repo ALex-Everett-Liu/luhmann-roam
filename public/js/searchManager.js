@@ -23,11 +23,14 @@ const SearchManager = (function() {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay';
     
-    // Create modal container
+    // Create modal container with better height handling
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.maxWidth = '600px';
-    modal.style.maxHeight = '80vh';
+    modal.style.maxHeight = '95vh';
+    modal.style.minHeight = '900px';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
     
     // Create modal header
     const modalHeader = document.createElement('div');
@@ -48,6 +51,10 @@ const SearchManager = (function() {
     // Create modal body
     const modalBody = document.createElement('div');
     modalBody.className = 'modal-body';
+    modalBody.style.flex = '1';
+    modalBody.style.display = 'flex';
+    modalBody.style.flexDirection = 'column';
+    modalBody.style.overflow = 'hidden';
     
     // Search container
     const searchContainer = document.createElement('div');
@@ -72,8 +79,9 @@ const SearchManager = (function() {
     const recentSearchesList = document.createElement('div');
     recentSearchesList.className = 'recent-searches-list';
     recentSearchesList.id = 'recent-searches-list';
-    recentSearchesList.style.maxHeight = '300px';
+    recentSearchesList.style.maxHeight = '800px';
     recentSearchesList.style.overflowY = 'auto';
+    recentSearchesList.style.flex = '1';
     
     recentSearchesSection.appendChild(recentSearchesTitle);
     recentSearchesSection.appendChild(recentSearchesList);
@@ -155,6 +163,13 @@ const SearchManager = (function() {
     closeModalButton.addEventListener('click', closeSearchModal);
     
     modalFooter.appendChild(closeModalButton);
+    
+    // Make sure the footer stays at bottom
+    modalFooter.style.position = 'sticky';
+    modalFooter.style.bottom = '0';
+    modalFooter.style.backgroundColor = 'white';
+    modalFooter.style.zIndex = '10';
+    modalFooter.style.marginTop = 'auto';
     
     // Assemble the modal
     modal.appendChild(modalHeader);
@@ -386,8 +401,8 @@ const SearchManager = (function() {
     // Add to beginning
     recentSearches.unshift(query);
     
-    // Limit to 10 recent searches
-    if (recentSearches.length > 10) {
+    // Limit to 30 recent searches
+    if (recentSearches.length > 30) {
       recentSearches.pop();
     }
     
