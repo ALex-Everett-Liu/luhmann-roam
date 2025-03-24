@@ -360,12 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add a root node
   async function addRootNode() {
     if (window.NodeOperationsManager) {
-      const newNode = await NodeOperationsManager.addRootNode(nodes);
-      if (newNode) {
-        // Add to local nodes array if it's not refreshed already
-        nodes.push(newNode);
-        renderOutliner();
-      }
+      // Just call the manager function and let it handle the refresh
+      await NodeOperationsManager.addRootNode(nodes);
     } else {
       console.error('NodeOperationsManager not available');
     }
@@ -823,6 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.fetchNodes = fetchNodes;
 
   fetchNodes();
+
 
   // ================================================================
   // END OF APPLICATION CODE - DO NOT ADD FUNCTIONS BELOW THIS LINE
