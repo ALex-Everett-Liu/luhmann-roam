@@ -282,13 +282,163 @@ const CodeAnalyzerManager = (function() {
         
         <div id="complexity-chart" class="chart-container">
           <h3>Module Complexity</h3>
-          <div class="chart-placeholder">
-            <p>Module complexity chart would be displayed here.</p>
+          <div class="chart-wrapper">
+            <canvas id="complexity-canvas"></canvas>
           </div>
         </div>
       `;
       
       summaryPane.innerHTML = html;
+      
+      // After HTML is added, create the chart
+      renderComplexityChart();
+    }
+    
+    /**
+     * Renders the module complexity chart using Chart.js
+     */
+    function renderComplexityChart() {
+      // Check if Chart.js is available
+      if (typeof Chart === 'undefined') {
+        // Load Chart.js dynamically if not already available
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = createComplexityChart;
+        document.head.appendChild(script);
+      } else {
+        createComplexityChart();
+      }
+    }
+    
+    /**
+     * Creates the actual complexity chart
+     */
+    function createComplexityChart() {
+      const canvas = document.getElementById('complexity-canvas');
+      if (!canvas) return;
+      
+      // Extract data for chart
+      const modules = codeStructure.modules || {};
+      const moduleNames = [];
+      const complexityValues = [];
+      const locValues = [];
+      const backgroundColors = [];
+      
+      // Get top 10 modules by complexity
+      const sortedModules = Object.entries(modules)
+        .sort((a, b) => (b[1].complexity || 0) - (a[1].complexity || 0))
+        .slice(0, 10);
+      
+      // Generate colors
+      const getColor = (index) => {
+        const colors = [
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+          'rgba(255, 159, 64, 0.7)',
+          'rgba(199, 199, 199, 0.7)',
+          'rgba(83, 102, 255, 0.7)',
+          'rgba(40, 167, 69, 0.7)',
+          'rgba(220, 53, 69, 0.7)'
+        ];
+        return colors[index % colors.length];
+      };
+      
+      // Prepare data - use shortened module names to save space
+      sortedModules.forEach(([path, data], index) => {
+        // Get only the filename part (truncate paths to save horizontal space)
+        let fileName = getFileNameFromPath(path);
+        // Truncate very long filenames
+        if (fileName.length > 20) {
+          fileName = fileName.substring(0, 18) + '...';
+        }
+        moduleNames.push(fileName);
+        complexityValues.push(data.complexity || 0);
+        locValues.push(data.loc || 0);
+        backgroundColors.push(getColor(index));
+      });
+      
+      // Set canvas size to maximize available space
+      canvas.parentNode.style.height = '400px';
+      canvas.parentNode.style.width = '100%';
+      
+      // Create chart with adjusted options for better horizontal space utilization
+      const ctx = canvas.getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: moduleNames,
+          datasets: [{
+            label: 'Complexity Score',
+            data: complexityValues,
+            backgroundColor: backgroundColors,
+            borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              bottom: 20 // Add padding to ensure labels aren't cut off
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Complexity Score'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Module'
+              },
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45,
+                autoSkip: false, // Prevent auto-skipping labels
+                font: {
+                  size: 11 // Smaller font size for better fit
+                }
+              }
+            }
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Module Complexity (Top 10)',
+              font: {
+                size: 16
+              },
+              padding: {
+                bottom: 10
+              }
+            },
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  const index = context.dataIndex;
+                  return `Lines of code: ${locValues[index]}`;
+                },
+                title: function(context) {
+                  // Get the original file path to show in tooltip
+                  return sortedModules[context[0].dataIndex][0];
+                }
+              }
+            },
+            legend: {
+              position: 'top',
+              display: false // Hide legend to save vertical space
+            }
+          }
+        }
+      });
     }
     
     /**

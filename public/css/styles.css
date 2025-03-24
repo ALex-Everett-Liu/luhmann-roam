@@ -1670,6 +1670,7 @@ background-color: #2d9249;
   max-width: 1500px;
   min-height: 850px;  /* Add this to enforce minimum height */
   max-height: 95vh;   /* Keep this to prevent overflow on smaller screens */
+  width: 90%;
 }
 
 /* Ensure the modal body can expand */
@@ -1678,6 +1679,8 @@ background-color: #2d9249;
   flex-direction: column;
   flex: 1;
   overflow-y: auto;
+  padding: 16px;
+  max-height: calc(95vh - 120px); /* Adjust to ensure enough vertical space */
 }
 
 .query-builder {
@@ -2049,7 +2052,7 @@ kbd {
 }
 
 /* Code Analyzer Styles */
-.summary-card, .chart-container {
+.summary-card {
   margin-bottom: 20px;
   padding: 15px;
   border-radius: 6px;
@@ -2079,6 +2082,7 @@ kbd {
   padding: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  width: 100%; /* Ensure it uses full width of container */
 }
 
 .chart-placeholder {
@@ -2183,7 +2187,7 @@ kbd {
 }
 
 .query-modal .tab-content {
-  max-height: 60vh;
+  max-height: 80vh;
   overflow-y: auto;
   padding: 15px;
 }
@@ -2200,4 +2204,33 @@ kbd {
 
 .error-card .btn {
   margin-top: 10px;
+}
+
+/* Make the chart wrapper take full width and have better proportions */
+.chart-wrapper {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  margin: 0 auto;
+  margin-bottom: 60px; /* Add bottom margin to make room for button */
+}
+
+/* Position the refresh button at the bottom of the modal */
+.query-modal .btn-primary {
+  margin-top: 20px;
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  z-index: 10;
+}
+
+/* Fix label rotation to prevent overlapping */
+#complexity-chart .chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Make the summary tab use the full width */
+#summary-tab {
+  width: 100%;
 }
