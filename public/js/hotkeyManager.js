@@ -339,6 +339,46 @@ const HotkeyManager = (function() {
     }
     
     /**
+     * Register hotkeys for node navigation using numbers
+     * Adds numbered hints to navigate directly to nodes
+     */
+    function registerNodeNavigationHotkeys() {
+      // Check if we're in a focused view by looking for visible breadcrumbs
+      const isFocusedView = document.querySelector('.breadcrumb-container') && 
+                            document.querySelector('.breadcrumb-container').style.display !== 'none';
+      
+      let nodesToNumber = [];
+      
+      if (isFocusedView) {
+        // In focused view: number all visible nodes under the current focus
+        nodesToNumber = Array.from(document.querySelectorAll('.node[style*="display: "]'));
+      } else {
+        // At root level: only number root nodes to prevent too many hints
+        nodesToNumber = Array.from(document.querySelectorAll('#outliner-container > .node'));
+      }
+      
+      // Limit to 9 nodes (for single digit keys 1-9)
+      const maxNodes = Math.min(nodesToNumber.length, 9);
+      
+      for (let i = 0; i < maxNodes; i++) {
+        const node = nodesToNumber[i];
+        const nodeId = node.dataset.id;
+        const key = (i + 1).toString(); // Use 1-9 keys
+        
+        // Find the node text to get its content
+        const nodeText = node.querySelector('.node-text');
+        const content = nodeText ? nodeText.textContent.trim() : `Node ${nodeId}`;
+        
+        // Register a hotkey that will navigate to this node when pressed
+        registerHotkey(key, node, () => {
+          if (window.BreadcrumbManager) {
+            window.BreadcrumbManager.focusOnNode(nodeId);
+          }
+        }, `Focus on: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`);
+      }
+    }
+    
+    /**
      * Show hotkey hints for all registered elements
      */
     function showHints() {
@@ -348,6 +388,9 @@ const HotkeyManager = (function() {
       // Register hotkeys for visible elements
       registerStaticHotkeys();
       registerNodeActionHotkeys();
+      
+      // Add number hotkeys for node navigation
+      registerNodeNavigationHotkeys();
       
       // First, create a document fragment to batch DOM operations
       const fragment = document.createDocumentFragment();

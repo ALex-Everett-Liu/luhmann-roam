@@ -20,7 +20,7 @@ function createWindow() {
   mainWindow.loadURL('http://localhost:3003');
   
   // Uncomment to open DevTools automatically
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', function () {
     mainWindow = null;
