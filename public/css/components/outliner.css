@@ -224,5 +224,56 @@ button:hover {
   color: #dc3545;
 }
 
+/* Position conflict modal styles */
+.position-conflict-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.conflict-list {
+  margin: 20px 0;
+}
+
+.conflict-item {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.conflict-node-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  margin: 5px 0;
+  background-color: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.conflict-node-content {
+  flex: 1;
+  padding-right: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conflict-resolve-btn {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.conflict-resolve-btn:hover {
+  background-color: #3367d6;
+}
+
 
 

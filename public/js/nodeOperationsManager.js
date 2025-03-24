@@ -634,40 +634,19 @@ const NodeOperationsManager = (function() {
           if (positions[sibling.position] === undefined) {
             positions[sibling.position] = sibling.id;
           } else {
-            conflicts.push({
-              position: sibling.position,
-              nodes: siblings.filter(s => s.position === sibling.position)
-            });
+            // Check if this conflict is already tracked
+            if (!conflicts.some(c => c.position === sibling.position)) {
+              conflicts.push({
+                position: sibling.position,
+                nodes: siblings.filter(s => s.position === sibling.position)
+              });
+            }
           }
         });
         
         if (conflicts.length > 0) {
-          // Found conflicts, let's fix them by reassigning positions
-          const result = await fetch('/api/nodes/fix-positions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              parentId: node.parent_id,
-              conflicts
-            })
-          });
-          
-          if (!result.ok) {
-            throw new Error('Failed to fix position conflicts');
-          }
-          
-          // Refresh the subtree to show the fixed positions
-          if (node.parent_id) {
-            await refreshSubtree(node.parent_id);
-          } else {
-            if (window.fetchNodes) {
-              await window.fetchNodes();
-            }
-          }
-          
-          return { fixed: true, conflicts };
+          // Found conflicts, ask user to resolve them
+          return showPositionConflictModal(node.parent_id, conflicts, siblings);
         }
         
         return { fixed: false, conflicts: [] };
@@ -675,6 +654,184 @@ const NodeOperationsManager = (function() {
         console.error('Error fixing node positions:', error);
         return { error: error.message };
       }
+    }
+    
+    // Show modal to let user resolve position conflicts
+    async function showPositionConflictModal(parentId, conflicts, allSiblings) {
+      return new Promise((resolve) => {
+        // Create modal container
+        const modalContainer = document.createElement('div');
+        modalContainer.className = 'modal-container';
+        modalContainer.style.display = 'flex';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content position-conflict-modal';
+        
+        // Add header
+        const header = document.createElement('h2');
+        header.textContent = 'Position Conflicts Found';
+        modalContent.appendChild(header);
+        
+        // Add description
+        const description = document.createElement('p');
+        description.textContent = `Found ${conflicts.length} position conflicts. Please resolve them by selecting which node should take precedence at each position.`;
+        modalContent.appendChild(description);
+        
+        // Create conflict list
+        const conflictList = document.createElement('div');
+        conflictList.className = 'conflict-list';
+        
+        conflicts.forEach(conflict => {
+          const conflictItem = document.createElement('div');
+          conflictItem.className = 'conflict-item';
+          
+          const conflictHeader = document.createElement('h3');
+          conflictHeader.textContent = `Position ${conflict.position} - ${conflict.nodes.length} nodes`;
+          conflictItem.appendChild(conflictHeader);
+          
+          conflict.nodes.forEach(node => {
+            const nodeRow = document.createElement('div');
+            nodeRow.className = 'conflict-node-row';
+            
+            const nodeContent = document.createElement('div');
+            nodeContent.className = 'conflict-node-content';
+            nodeContent.textContent = node.content;
+            
+            const prioritizeButton = document.createElement('button');
+            prioritizeButton.className = 'conflict-resolve-btn';
+            prioritizeButton.textContent = 'Keep at this position';
+            prioritizeButton.dataset.nodeId = node.id;
+            prioritizeButton.dataset.position = conflict.position;
+            
+            // When clicked, this node keeps its position, others are shifted
+            prioritizeButton.addEventListener('click', async () => {
+              try {
+                const result = await fetch('/api/nodes/fix-position-conflict', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    parentId: parentId,
+                    nodeId: node.id,
+                    position: conflict.position,
+                    conflictingNodes: conflict.nodes.filter(n => n.id !== node.id).map(n => n.id)
+                  })
+                });
+                
+                if (!result.ok) {
+                  throw new Error('Failed to resolve conflict');
+                }
+                
+                // Remove this conflict from list after it's resolved
+                conflictItem.innerHTML = `<p>Resolved: ${node.content} kept at position ${conflict.position}</p>`;
+                conflicts = conflicts.filter(c => c.position !== conflict.position);
+                
+                // If all conflicts resolved, close modal and refresh
+                if (conflicts.length === 0) {
+                  closeModal();
+                  
+                  // Refresh the view
+                  if (parentId) {
+                    await refreshSubtree(parentId);
+                  } else {
+                    if (window.fetchNodes) {
+                      await window.fetchNodes();
+                    }
+                  }
+                  
+                  resolve({ fixed: true, conflicts: [] });
+                }
+              } catch (error) {
+                console.error('Error resolving conflict:', error);
+                alert(`Failed to resolve conflict: ${error.message}`);
+              }
+            });
+            
+            nodeRow.appendChild(nodeContent);
+            nodeRow.appendChild(prioritizeButton);
+            conflictItem.appendChild(nodeRow);
+          });
+          
+          conflictList.appendChild(conflictItem);
+        });
+        
+        modalContent.appendChild(conflictList);
+        
+        // Add buttons
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'modal-buttons';
+        
+        const autoFixButton = document.createElement('button');
+        autoFixButton.textContent = 'Auto-fix All';
+        autoFixButton.className = 'btn btn-primary';
+        autoFixButton.addEventListener('click', async () => {
+          try {
+            const result = await fetch('/api/nodes/fix-positions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                parentId: parentId,
+                conflicts: conflicts
+              })
+            });
+            
+            if (!result.ok) {
+              throw new Error('Failed to auto-fix positions');
+            }
+            
+            closeModal();
+            
+            // Refresh the view
+            if (parentId) {
+              await refreshSubtree(parentId);
+            } else {
+              if (window.fetchNodes) {
+                await window.fetchNodes();
+              }
+            }
+            
+            resolve({ fixed: true, conflicts });
+          } catch (error) {
+            console.error('Error auto-fixing positions:', error);
+            alert(`Failed to auto-fix positions: ${error.message}`);
+          }
+        });
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.className = 'btn btn-secondary';
+        cancelButton.addEventListener('click', () => {
+          closeModal();
+          resolve({ fixed: false, conflicts: [] });
+        });
+        
+        buttonsContainer.appendChild(autoFixButton);
+        buttonsContainer.appendChild(cancelButton);
+        modalContent.appendChild(buttonsContainer);
+        
+        // Add modal content to container
+        modalContainer.appendChild(modalContent);
+        
+        // Add modal to document
+        document.body.appendChild(modalContainer);
+        
+        // Function to close modal
+        function closeModal() {
+          document.body.removeChild(modalContainer);
+        }
+        
+        // Handle clicking outside modal to close it
+        modalContainer.addEventListener('click', event => {
+          if (event.target === modalContainer) {
+            closeModal();
+            resolve({ fixed: false, conflicts: [] });
+          }
+        });
+      });
     }
     
     // Public API

@@ -1286,6 +1286,72 @@ app.post('/api/nodes/fix-positions', async (req, res) => {
   }
 });
 
+// Add this endpoint to fix specific position conflicts
+app.post('/api/nodes/fix-position-conflict', async (req, res) => {
+  try {
+    const { parentId, nodeId, position, conflictingNodes } = req.body;
+    
+    // Start a transaction to ensure all updates succeed or fail together
+    await db.run('BEGIN TRANSACTION');
+    
+    // Keep the chosen node at its position
+    // For all conflicting nodes, find empty positions and assign them
+    
+    // Get all siblings to find available positions
+    let siblings;
+    if (parentId) {
+      siblings = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id = ? ORDER BY position',
+        parentId
+      );
+    } else {
+      siblings = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id IS NULL ORDER BY position'
+      );
+    }
+    
+    // Get all used positions
+    const usedPositions = new Set(siblings.map(s => s.position));
+    
+    // Find the highest position
+    const maxPosition = Math.max(...usedPositions) + 1;
+    
+    // For each conflicting node, find a new position
+    // Start by trying position + 1, position + 2, etc.
+    let nextPosition = position + 1;
+    
+    for (const cNodeId of conflictingNodes) {
+      // Find the next unused position
+      while (usedPositions.has(nextPosition)) {
+        nextPosition++;
+      }
+      
+      // Update the node with the new position
+      await db.run(
+        'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+        [nextPosition, Date.now(), cNodeId]
+      );
+      
+      // Mark this position as used
+      usedPositions.add(nextPosition);
+      
+      // Increment to the next potential position
+      nextPosition++;
+    }
+    
+    await db.run('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: `Resolved conflict at position ${position}` 
+    });
+  } catch (error) {
+    console.error('Error fixing position conflict:', error);
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: 'Failed to fix position conflict' });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
