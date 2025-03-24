@@ -17,7 +17,15 @@
   z-index: 10;
 }
 
+/* Make sidebar headings larger */
+.sidebar h1 {
+  font-size: var(--font-size-xlarge, 20px);
+  margin-bottom: 15px;
+}
 
+.sidebar button {
+  font-size: var(--font-size-small, 14px);
+}
 
 .content {
   flex: 1;
