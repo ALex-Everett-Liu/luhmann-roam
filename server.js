@@ -1244,6 +1244,48 @@ app.post('/api/nodes/reorder/shift', async (req, res) => {
   }
 });
 
+// Add this endpoint to fix position conflicts
+app.post('/api/nodes/fix-positions', async (req, res) => {
+  try {
+    const { parentId, conflicts } = req.body;
+    
+    // Start a transaction to ensure all updates succeed or fail together
+    await db.run('BEGIN TRANSACTION');
+    
+    // First, get all nodes at this level
+    let siblings;
+    if (parentId) {
+      siblings = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id = ? ORDER BY position, id',
+        parentId
+      );
+    } else {
+      siblings = await db.all(
+        'SELECT id, position FROM nodes WHERE parent_id IS NULL ORDER BY position, id'
+      );
+    }
+    
+    // Assign new sequential positions
+    for (let i = 0; i < siblings.length; i++) {
+      await db.run(
+        'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
+        [i, Date.now(), siblings[i].id]
+      );
+    }
+    
+    await db.run('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: `Fixed ${conflicts.length} position conflicts` 
+    });
+  } catch (error) {
+    console.error('Error fixing positions:', error);
+    await db.run('ROLLBACK');
+    res.status(500).json({ error: 'Failed to fix positions' });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

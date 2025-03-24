@@ -608,6 +608,75 @@ const NodeOperationsManager = (function() {
       }
     }
     
+    // Add a function to the NodeOperationsManager to fix node positions
+    async function fixNodePositions(nodeId) {
+      try {
+        const response = await fetch(`/api/nodes/${nodeId}`);
+        const node = await response.json();
+        
+        // Get all siblings at the same level
+        let siblings;
+        if (node.parent_id) {
+          // Get nodes with the same parent
+          const siblingsResponse = await fetch(`/api/nodes/${node.parent_id}/children`);
+          siblings = await siblingsResponse.json();
+        } else {
+          // Get all root nodes
+          const rootResponse = await fetch('/api/nodes');
+          siblings = await rootResponse.json();
+        }
+        
+        // Check for position conflicts
+        const positions = {};
+        const conflicts = [];
+        
+        siblings.forEach(sibling => {
+          if (positions[sibling.position] === undefined) {
+            positions[sibling.position] = sibling.id;
+          } else {
+            conflicts.push({
+              position: sibling.position,
+              nodes: siblings.filter(s => s.position === sibling.position)
+            });
+          }
+        });
+        
+        if (conflicts.length > 0) {
+          // Found conflicts, let's fix them by reassigning positions
+          const result = await fetch('/api/nodes/fix-positions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              parentId: node.parent_id,
+              conflicts
+            })
+          });
+          
+          if (!result.ok) {
+            throw new Error('Failed to fix position conflicts');
+          }
+          
+          // Refresh the subtree to show the fixed positions
+          if (node.parent_id) {
+            await refreshSubtree(node.parent_id);
+          } else {
+            if (window.fetchNodes) {
+              await window.fetchNodes();
+            }
+          }
+          
+          return { fixed: true, conflicts };
+        }
+        
+        return { fixed: false, conflicts: [] };
+      } catch (error) {
+        console.error('Error fixing node positions:', error);
+        return { error: error.message };
+      }
+    }
+    
     // Public API
     return {
       initialize,
@@ -620,7 +689,8 @@ const NodeOperationsManager = (function() {
       moveNodeUp,
       moveNodeDown,
       addSiblingNode,
-      refreshSubtree
+      refreshSubtree,
+      fixNodePositions
     };
   })();
   

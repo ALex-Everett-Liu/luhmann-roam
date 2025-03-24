@@ -340,6 +340,28 @@ document.addEventListener('DOMContentLoaded', () => {
       nodeActions.appendChild(attributeButton);
     }
     
+    // Position fixer button
+    const positionFixerButton = document.createElement('button');
+    positionFixerButton.className = 'position-fixer-button';
+    positionFixerButton.innerHTML = '🛠️';
+    positionFixerButton.title = 'Check/fix position conflicts';
+    positionFixerButton.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const result = await NodeOperationsManager.fixNodePositions(node.id);
+      
+      if (result.error) {
+        alert(`Error checking positions: ${result.error}`);
+        return;
+      }
+      
+      if (result.fixed) {
+        alert(`Fixed ${result.conflicts.length} position conflicts!`);
+      } else {
+        alert('No position conflicts found at this level.');
+      }
+    });
+    nodeActions.appendChild(positionFixerButton);
+    
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
     
