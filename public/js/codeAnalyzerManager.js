@@ -190,20 +190,39 @@ const CodeAnalyzerManager = (function() {
     async function analyzeCodebase() {
       try {
         // Show loading state
-        const summaryStats = document.getElementById('summary-stats');
+        const summaryStats = document.getElementById('summary-tab');
         if (summaryStats) {
           summaryStats.innerHTML = '<p>Loading analysis...</p>';
         }
         
         const response = await fetch('/api/code-structure');
+        
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        
+        // Make sure we have a valid response
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid data format returned from server');
+        }
+        
         codeStructure = data;
         renderCodeStructure();
       } catch (error) {
         console.error('Error analyzing codebase:', error);
-        const summaryStats = document.getElementById('summary-stats');
+        const summaryStats = document.getElementById('summary-tab');
         if (summaryStats) {
-          summaryStats.innerHTML = `<p>Error analyzing codebase: ${error.message}</p>`;
+          summaryStats.innerHTML = `
+            <div class="summary-card error-card">
+              <h3>Error Analyzing Codebase</h3>
+              <p>${error.message}</p>
+              <button class="btn btn-primary" onclick="CodeAnalyzerManager.analyzeCodebase()">
+                Retry Analysis
+              </button>
+            </div>
+          `;
         }
       }
     }
@@ -212,6 +231,26 @@ const CodeAnalyzerManager = (function() {
      * Renders the code structure visualization
      */
     function renderCodeStructure() {
+      // Check if data is valid before rendering
+      if (!codeStructure || !codeStructure.modules) {
+        console.error('Invalid code structure data received');
+        
+        // Update UI to show error
+        const summaryPane = document.getElementById('summary-tab');
+        if (summaryPane) {
+          summaryPane.innerHTML = `
+            <div class="summary-card">
+              <h3>Error Analyzing Code</h3>
+              <p>Unable to retrieve code structure data. Please try again later.</p>
+              <button class="btn btn-primary" onclick="CodeAnalyzerManager.analyzeCodebase()">
+                Retry Analysis
+              </button>
+            </div>
+          `;
+        }
+        return;
+      }
+      
       renderSummary();
       renderModules();
       renderFunctions();
@@ -225,16 +264,17 @@ const CodeAnalyzerManager = (function() {
       const summaryPane = document.getElementById('summary-tab');
       if (!summaryPane) return;
       
-      const moduleCount = Object.keys(codeStructure.modules).length;
+      // Make sure codeStructure.modules exists to avoid errors
+      const moduleCount = codeStructure.modules ? Object.keys(codeStructure.modules).length : 0;
       
       let html = `
         <div class="summary-card">
           <h3>Code Statistics</h3>
           <ul>
             <li><strong>Modules:</strong> ${moduleCount}</li>
-            <li><strong>Functions:</strong> ${codeStructure.functionCount}</li>
-            <li><strong>Variables:</strong> ${codeStructure.variableCount}</li>
-            <li><strong>Dependencies:</strong> ${codeStructure.relationships.length}</li>
+            <li><strong>Functions:</strong> ${codeStructure.functionCount || 0}</li>
+            <li><strong>Variables:</strong> ${codeStructure.variableCount || 0}</li>
+            <li><strong>Dependencies:</strong> ${codeStructure.relationships ? codeStructure.relationships.length : 0}</li>
             <li><strong>Total Files:</strong> ${moduleCount}</li>
             <li><strong>Total LOC:</strong> ${calculateTotalLOC()}</li>
           </ul>
@@ -243,7 +283,6 @@ const CodeAnalyzerManager = (function() {
         <div id="complexity-chart" class="chart-container">
           <h3>Module Complexity</h3>
           <div class="chart-placeholder">
-            <!-- Charts would be rendered here with a library like d3.js -->
             <p>Module complexity chart would be displayed here.</p>
           </div>
         </div>
@@ -259,6 +298,11 @@ const CodeAnalyzerManager = (function() {
       const modulesPane = document.getElementById('modules-tab');
       if (!modulesPane) return;
       
+      if (!codeStructure.modules || Object.keys(codeStructure.modules).length === 0) {
+        modulesPane.innerHTML = '<h3>Modules</h3><p>No modules found.</p>';
+        return;
+      }
+      
       let html = '<h3>Modules</h3><ul class="modules-list">';
       
       Object.entries(codeStructure.modules).forEach(([filePath, moduleData]) => {
@@ -267,8 +311,8 @@ const CodeAnalyzerManager = (function() {
             <div class="module-header">
               <span class="module-name">${getFileNameFromPath(filePath)}</span>
               <span class="module-stats">
-                <span class="module-metric">${moduleData.functions.length} functions</span>
-                <span class="module-metric">${moduleData.loc} lines</span>
+                <span class="module-metric">${moduleData.functions ? moduleData.functions.length : 0} functions</span>
+                <span class="module-metric">${moduleData.loc || 0} lines</span>
               </span>
             </div>
             <div class="module-path">${filePath}</div>
@@ -287,35 +331,47 @@ const CodeAnalyzerManager = (function() {
       const functionsPane = document.getElementById('functions-tab');
       if (!functionsPane) return;
       
+      if (!codeStructure.modules || Object.keys(codeStructure.modules).length === 0) {
+        functionsPane.innerHTML = '<h3>Functions</h3><p>No functions found.</p>';
+        return;
+      }
+      
       let html = '<h3>Functions</h3><ul class="functions-list">';
       
       // Collect all functions from all modules
       const allFunctions = [];
       
       Object.entries(codeStructure.modules).forEach(([filePath, moduleData]) => {
-        moduleData.functions.forEach(func => {
-          allFunctions.push({
-            name: func.name,
-            filePath: filePath,
-            position: func.position,
-            fileName: getFileNameFromPath(filePath)
+        if (moduleData.functions && Array.isArray(moduleData.functions)) {
+          moduleData.functions.forEach(func => {
+            allFunctions.push({
+              name: func.name,
+              filePath: filePath,
+              position: func.position,
+              fileName: getFileNameFromPath(filePath)
+            });
           });
+        }
+      });
+      
+      if (allFunctions.length === 0) {
+        html = '<h3>Functions</h3><p>No functions found in codebase.</p>';
+      } else {
+        // Sort functions by name
+        allFunctions.sort((a, b) => a.name.localeCompare(b.name));
+        
+        allFunctions.forEach(func => {
+          html += `
+            <li class="function-item">
+              <span class="function-name">${func.name}</span>
+              <span class="function-file">${func.fileName}</span>
+            </li>
+          `;
         });
-      });
+        
+        html += '</ul>';
+      }
       
-      // Sort functions by name
-      allFunctions.sort((a, b) => a.name.localeCompare(b.name));
-      
-      allFunctions.forEach(func => {
-        html += `
-          <li class="function-item">
-            <span class="function-name">${func.name}</span>
-            <span class="function-file">${func.fileName}</span>
-          </li>
-        `;
-      });
-      
-      html += '</ul>';
       functionsPane.innerHTML = html;
     }
     
@@ -325,6 +381,11 @@ const CodeAnalyzerManager = (function() {
     function renderRelationships() {
       const relationshipsPane = document.getElementById('relationships-tab');
       if (!relationshipsPane) return;
+      
+      if (!codeStructure.relationships || codeStructure.relationships.length === 0) {
+        relationshipsPane.innerHTML = '<h3>Module Dependencies</h3><p>No dependencies found between modules.</p>';
+        return;
+      }
       
       let html = `
         <h3>Module Dependencies</h3>
@@ -340,9 +401,9 @@ const CodeAnalyzerManager = (function() {
       codeStructure.relationships.forEach(rel => {
         html += `
           <li class="relationship-item">
-            <span class="relationship-from">${getFileNameFromPath(rel.from)}</span>
+            <span class="relationship-from">${getFileNameFromPath(rel.from || '')}</span>
             <span class="relationship-arrow">→</span>
-            <span class="relationship-to">${getFileNameFromPath(rel.to)}</span>
+            <span class="relationship-to">${getFileNameFromPath(rel.to || '')}</span>
           </li>
         `;
       });
@@ -355,13 +416,15 @@ const CodeAnalyzerManager = (function() {
      * Helper to calculate total lines of code
      */
     function calculateTotalLOC() {
-      return Object.values(codeStructure.modules).reduce((total, module) => total + module.loc, 0);
+      if (!codeStructure.modules) return 0;
+      return Object.values(codeStructure.modules).reduce((total, module) => total + (module.loc || 0), 0);
     }
     
     /**
      * Helper to extract filename from path
      */
     function getFileNameFromPath(path) {
+      if (!path) return 'unknown';
       const parts = path.split('/');
       return parts[parts.length - 1];
     }
