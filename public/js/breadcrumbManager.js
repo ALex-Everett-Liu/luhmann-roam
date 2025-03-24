@@ -128,8 +128,13 @@ const BreadcrumbManager = (function() {
           method: 'POST'
         });
         
-        // Refresh the outliner
-        if (window.fetchNodes) {
+        // OPTIMIZATION: Use refreshSubtree instead of full DOM refresh
+        if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+          await window.NodeOperationsManager.refreshSubtree(nodeId);
+          // Re-apply our focus filter after refresh
+          setTimeout(() => filterToNodeAndDescendants(nodeId), 50);
+        } else if (window.fetchNodes) {
+          // Fallback to full refresh if refreshSubtree is not available
           await window.fetchNodes();
           // Re-apply our focus filter after fetch
           setTimeout(() => filterToNodeAndDescendants(nodeId), 100);
@@ -333,8 +338,11 @@ const BreadcrumbManager = (function() {
             method: 'POST'
           });
           
-          // Refresh the outliner to reflect the expanded state
-          if (window.fetchNodes) {
+          // OPTIMIZATION: Use refreshSubtree instead of full DOM refresh
+          if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+            await window.NodeOperationsManager.refreshSubtree(node.parent_id);
+          } else if (window.fetchNodes) {
+            // Fallback to full refresh
             await window.fetchNodes();
           }
         }
@@ -518,6 +526,34 @@ const BreadcrumbManager = (function() {
     });
   }
   
+  // Add a new direct node expansion function that doesn't require full DOM refresh
+  async function expandNodeDirectly(nodeId) {
+    try {
+      const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+      if (!nodeElement) return false;
+      
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const node = await response.json();
+      
+      if (!node.is_expanded) {
+        // Toggle the node on the server
+        await fetch(`/api/nodes/${nodeId}/toggle`, {
+          method: 'POST'
+        });
+        
+        // Use refreshSubtree for efficient DOM update
+        if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+          return await window.NodeOperationsManager.refreshSubtree(nodeId);
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Error expanding node ${nodeId} directly:`, error);
+      return false;
+    }
+  }
+  
   // Public API
   return {
     initialize: initialize,
@@ -527,7 +563,7 @@ const BreadcrumbManager = (function() {
     addNodeFocusHandler: addNodeFocusHandler,
     restoreFocusState: restoreFocusState,
     getCurrentFocusedNodeId: getCurrentFocusedNodeId,
-    // Check if currently in focus mode
+    expandNodeDirectly: expandNodeDirectly,
     isInFocusMode: function() { return isFocusMode; }
   };
 })();

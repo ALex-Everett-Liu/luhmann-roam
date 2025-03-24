@@ -858,4 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make createNodeElement available globally for direct DOM manipulation
   window.createNodeElement = createNodeElement;
 
+  // Make toggleNode available globally for direct DOM manipulation
+  window.toggleNode = toggleNode;
+
 }); 
