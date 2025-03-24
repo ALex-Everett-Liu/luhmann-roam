@@ -1,0 +1,81 @@
+/* Layout Styles */
+
+.app-container {
+  display: flex;
+  height: 100vh;
+  position: relative;
+}
+
+
+
+.sidebar {
+  width: 250px;
+  background-color: #f5f5f5;
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+
+
+.content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 60px);
+}
+
+/* Resize handle styling */
+
+
+.resize-handle {
+  width: 8px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 250px; /* Default sidebar width */
+  cursor: col-resize;
+  z-index: 100;
+  background-color: #e0e0e0;
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+}
+
+/* Add a visible grip to the handle */
+.resize-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 30px;
+  background-color: #999;
+  box-shadow: -2px 0 0 #999, 2px 0 0 #999;
+}
+
+.resize-handle:hover {
+  background-color: #4285f4;
+}
+
+.resize-handle:hover .resize-grip {
+  background-color: white;
+  box-shadow: -2px 0 0 white, 2px 0 0 white;
+}
+
+.resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.resizing .resize-handle {
+  background-color: #4285f4;
+}
+
+.resizing .resize-grip {
+  background-color: white;
+  box-shadow: -2px 0 0 white, 2px 0 0 white;
+}
+
+
+

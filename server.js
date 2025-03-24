@@ -1161,6 +1161,11 @@ function compareValues(attrValue, operator, queryValue) {
   }
 }
 
+// Add this middleware to ensure correct MIME types for CSS files
+app.use('*.css', (req, res, next) => {
+  res.header('Content-Type', 'text/css');
+  next();
+});
 
 // Start the server
 app.listen(PORT, () => {

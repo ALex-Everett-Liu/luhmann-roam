@@ -1,0 +1,453 @@
+/* Attribute Manager Styles */
+.attribute-button {
+    background-color: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #555;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .attribute-button:hover {
+    background-color: #e9ecef;
+    color: #1a73e8;
+    border-color: #1a73e8;
+  }
+  
+  .attribute-modal {
+    max-width: 600px;
+    max-height: 80vh;
+  }
+  
+  .attributes-container {
+    margin-bottom: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+  }
+  
+  .attributes-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .attributes-table th,
+  .attributes-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .attributes-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+  }
+  
+  .attribute-key {
+    width: 30%;
+    font-weight: bold;
+  }
+  
+  .attribute-value {
+    width: 50%;
+  }
+  
+  .attribute-actions {
+    width: 20%;
+    text-align: center;
+  }
+  
+  .add-attribute-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .attribute-key-input,
+  .attribute-value-input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .attribute-value-edit {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .attribute-value-edit:focus {
+    border-color: #1a73e8;
+    outline: none;
+  }
+  
+  .no-attributes {
+    padding: 20px;
+    text-align: center;
+    color: #777;
+    font-style: italic;
+  }
+  
+  /* Query Modal Styles */
+  .query-modal {
+    max-width: 1500px;
+    min-height: 850px;  /* Add this to enforce minimum height */
+    max-height: 95vh;   /* Keep this to prevent overflow on smaller screens */
+    width: 90%;
+  }
+  
+  /* Ensure the modal body can expand */
+  .query-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    max-height: calc(95vh - 120px); /* Adjust to ensure enough vertical space */
+  }
+  
+  .query-builder {
+    margin-bottom: 20px;
+  }
+  
+  .query-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: monospace;
+  }
+  
+  .query-help {
+    background-color: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  .query-help ul {
+    margin: 5px 0 0 20px;
+    padding: 0;
+  }
+  
+  .query-help li {
+    margin-bottom: 5px;
+  }
+  
+  .recent-queries {
+    margin-bottom: 20px;
+  }
+  
+  .recent-queries h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .recent-queries-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 800px !important;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0; /* Critical for nested flexbox scrolling */
+  }
+  
+  .recent-query-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .recent-query-item:last-child {
+    border-bottom: none;
+  }
+  
+  .recent-query-item:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .recent-query-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .recent-query-delete {
+    background: none;
+    border: none;
+    color: #777;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 5px;
+  }
+  
+  .recent-query-delete:hover {
+    color: #d32f2f;
+  }
+  
+  .no-queries {
+    padding: 10px;
+    text-align: center;
+    color: #777;
+    font-style: italic;
+  }
+  
+  /* Query Results Styles */
+  .query-results-section {
+    margin-top: 20px;
+  }
+  
+  /* Make the query results fill more space */
+  .query-results {
+    height: 700px;      /* Add a fixed height to make results take more space */
+    max-height: 75vh;   /* But constrain on small screens */
+    overflow-y: auto;   /* Make sure scrolling works */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+  }
+  
+  .query-results-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .query-results-table th,
+  .query-results-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .query-results-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+  }
+  
+  .result-node-content {
+    font-weight: bold;
+  }
+  
+  .result-node-attributes {
+    font-size: 14px;
+  }
+  
+  .attribute-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .attribute-list li {
+    margin-bottom: 5px;
+  }
+  
+  .result-node-actions {
+    white-space: nowrap;
+  }
+  
+  .result-node-actions button {
+    margin-right: 5px;
+  }
+  
+  .no-query-results,
+  .query-error {
+    padding: 20px;
+    text-align: center;
+    color: #777;
+    font-style: italic;
+  }
+  
+  .query-error {
+    color: #d32f2f;
+  }
+  
+  .query-error h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+  
+  .recent-searches {
+    margin: 10px 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+  }
+  
+  .recent-searches h4 {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+  }
+  
+  .recent-searches-list {
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  
+  .recent-search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .recent-search-item:hover {
+    background-color: #e9ecef;
+  }
+  
+  .recent-search-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #1a73e8;
+  }
+  
+  .recent-search-delete {
+    background-color: transparent;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 8px;
+    padding: 0 4px;
+  }
+  
+  .recent-search-delete:hover {
+    background-color: #f8d7da;
+    border-radius: 3px;
+  }
+  
+  .no-searches {
+    color: #6c757d;
+    font-style: italic;
+    padding: 5px;
+    text-align: center;
+  }
+  
+  .sorting-section {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .sorting-section h4 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #555;
+  }
+  
+  .sorting-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .sorting-controls label {
+    margin-right: 5px;
+    font-size: 13px;
+    color: #555;
+  }
+  
+  .sort-by-field {
+    flex: 1;
+    min-width: 150px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  
+  .sort-order {
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: white;
+  }
+  
+  /* Add a style for loading state */
+  .loading-results {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+  }
+  
+  /* Pagination styles */
+  .pagination-info {
+    margin-bottom: 15px;
+    color: #555;
+    font-size: 14px;
+  }
+  
+  .pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+  }
+  
+  .pagination-prev,
+  .pagination-next {
+    min-width: 100px;
+  }
+  
+  .pagination-prev {
+    margin-right: 10px;
+  }
+  
+  .pagination-next {
+    margin-left: 10px;
+  }
+  
+  .pagination-page-info {
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 14px;
+  }
+  
+  .pagination-page-input {
+    width: 50px;
+    text-align: center;
+    margin: 0 5px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }

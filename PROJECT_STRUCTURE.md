@@ -8,9 +8,11 @@
 5. [Technical Stack](#technical-stack)
 6. [API Endpoints](#api-endpoints)
 7. [User Interface Components](#user-interface-components)
-8. [Future Extensions](#future-extensions)
-9. [Installation and Setup](#installation-and-setup)
-10. [Usage Guide](#usage-guide)
+8. [System Architecture](#system-architecture)
+9. [Future Extensions](#future-extensions)
+10. [Installation and Setup](#installation-and-setup)
+11. [Usage Guide](#usage-guide)
+12. [CSS Architecture](#css-architecture)
 
 ## Project Overview
 
@@ -46,9 +48,9 @@ The Express-based backend provides a RESTful API for managing notes and their re
 - **API Endpoints**: CRUD operations for nodes and links
 - **Markdown Storage**: File-based storage for markdown content
 - **Node Operations**: Support for hierarchical operations (indent, outdent, reorder)
-- **Code Analysis**: Functions to analyze JavaScript codebase structure and complexity
 - **Advanced Querying**: Parse and execute complex attribute-based queries
 - **Recursive Operations**: Handle operations that affect node hierarchies
+- **Modular Architecture**: Organized into routes, controllers, and services for maintainability
 
 ### 2. Client-Side Application (app.js)
 
@@ -190,15 +192,26 @@ The frontend is organized into modular components:
 - `id`: TEXT (Primary Key) - Unique identifier
 - `from_node_id`: TEXT - Source node reference
 - `to_node_id`: TEXT - Target node reference
-- `weight`: REAL - Link strength/importance
+- **Weight**: REAL - Link strength/importance
 - `description`: TEXT - Link description
+- `created_at`: INTEGER - Creation timestamp
+- `updated_at`: INTEGER - Last update timestamp
+
+### Tasks Model
+- `id`: TEXT (Primary Key) - Unique identifier
+- `name`: TEXT - Task description
+- `date`: TEXT - Associated date (YYYY-MM-DD)
+- `is_completed`: BOOLEAN - Completion status
+- `is_active`: BOOLEAN - Currently tracking status
+- `start_time`: INTEGER - Last start timestamp
+- `total_duration`: INTEGER - Total tracked duration
 - `created_at`: INTEGER - Creation timestamp
 - `updated_at`: INTEGER - Last update timestamp
 
 ### Attributes Model
 - `id`: TEXT (Primary Key) - Unique identifier
 - `node_id`: TEXT - Associated node reference
-- `name`: TEXT - Attribute name
+- `key`: TEXT - Attribute name
 - `value`: TEXT - Attribute value
 - `created_at`: INTEGER - Creation timestamp
 - `updated_at`: INTEGER - Last update timestamp
@@ -235,6 +248,7 @@ The frontend is organized into modular components:
 - **File System**: Node.js fs module for markdown storage
 - **UUID Generation**: uuid package for unique identifiers
 - **Middleware**: CORS, body-parser
+- **Architecture**: MVC-inspired with routes, controllers, and services
 
 ### Frontend
 - **UI**: Custom HTML/CSS/JavaScript
@@ -273,15 +287,24 @@ The frontend is organized into modular components:
 ### Search
 - `GET /api/nodes/search`: Search for nodes
 
+### Tasks
+- `GET /api/tasks/dates`: Get all dates with tasks
+- `GET /api/tasks/:date`: Get tasks for a specific date
+- `POST /api/tasks`: Create a new task
+- `PUT /api/tasks/:id`: Update a task
+- `DELETE /api/tasks/:id`: Delete a task
+- `POST /api/tasks/:id/start`: Start timing a task
+- `POST /api/tasks/:id/pause`: Pause timing a task
+
 ### Attributes
 - `GET /api/nodes/:id/attributes`: Get all attributes for a node
-- `POST /api/attributes`: Create a new attribute
-- `PUT /api/attributes/:id`: Update an attribute
-- `DELETE /api/attributes/:id`: Delete an attribute
-- `GET /api/attributes/query`: Query nodes by attributes
+- `POST /api/node-attributes`: Create a new attribute
+- `PUT /api/node-attributes/:id`: Update an attribute
+- `DELETE /api/node-attributes/:id`: Delete an attribute
+- `POST /api/nodes/query`: Query nodes by attributes
 
 ### Code Analysis
-- `GET /api/code-structure`: Get code structure statistics
+- `GET /api/code-analysis/structure`: Get code structure statistics
 
 ## User Interface Components
 
@@ -323,7 +346,81 @@ The frontend is organized into modular components:
 - **Breadcrumb Trail**: Path display for focused nodes
 - **Hotkey Hints**: Visual indicators for available keyboard shortcuts
 
-## Module Architecture
+## System Architecture
+
+### Modular Backend Architecture
+
+The project uses a modular backend architecture with clear separation of concerns:
+
+1. **Routes Layer**: 
+   - Defines API endpoints
+   - Maps HTTP methods to controller functions
+   - Organizes related endpoints into separate route files
+   - Example: `taskRoutes.js`, `codeAnalysisRoutes.js`
+
+2. **Controller Layer**:
+   - Handles HTTP requests and responses
+   - Validates input data
+   - Calls appropriate service functions
+   - Formats responses to clients
+   - Example: `taskController.js`, `codeAnalysisController.js`
+
+3. **Service Layer**:
+   - Contains core business logic
+   - Performs complex operations
+   - Interacts with the database
+   - Remains independent of HTTP specifics
+   - Example: `codeAnalysisService.js`
+
+4. **Database Layer**:
+   - Manages database connections
+   - Provides abstraction for data access
+   - Handles database schema and migrations
+   - Example: `database.js`
+
+5. **Main Application**:
+   - Configures middleware
+   - Registers routes
+   - Sets up error handling
+   - Manages application lifecycle
+   - Example: `server.js`
+
+Each module is organized into this layered architecture, with the following implemented so far:
+
+#### Task Management Module
+- **Routes**: `routes/taskRoutes.js`
+  - Endpoint definitions for task operations
+  - HTTP method mapping
+
+- **Controller**: `controllers/taskController.js`
+  - Input validation
+  - Database interaction through middleware
+  - Structured error handling
+  - Response formatting
+
+#### Code Analysis Module
+- **Routes**: `routes/codeAnalysisRoutes.js`
+  - Structure analysis endpoint
+
+- **Controller**: `controllers/codeAnalysisController.js`
+  - Request handling
+  - Error management
+
+- **Service**: `services/codeAnalysisService.js`
+  - Core analysis functions
+  - File system operations
+  - Code parsing and complexity calculations
+
+### Frontend Module Architecture
+
+The frontend uses a modular pattern with self-contained manager objects:
+
+- **IIFE Module Pattern**: Each component is wrapped in an immediately-invoked function expression
+- **Public/Private API**: Clear separation between public and private functions
+- **Event-Based Communication**: Components communicate through events rather than direct dependencies
+- **Language Support**: Each module handles its own language updates
+
+## Module Architecture (remaining parts)
 
 ### App.js (Main Application)
 - **Initialization**: Sets up the application and event listeners
@@ -439,29 +536,38 @@ The frontend is organized into modular components:
 
 ## Future Extensions
 
-1. **Visualization**:
+1. **Further Modularization**:
+   - Extend the modular architecture to all server components
+   - Refactor remaining API endpoints into routes/controllers/services
+
+2. **Visualization**:
    - Graph view of connected nodes
    - Mind map visualization
 
-2. **Advanced Search**:
+3. **Advanced Search**:
    - Full-text search across nodes and markdown
    - Filter by link type or weight
 
-3. **Export/Import**:
+4. **Export/Import**:
    - Support for various formats (JSON, Markdown, etc.)
    - Integration with other knowledge management systems
 
-4. **Collaboration**:
+5. **Collaboration**:
    - Multi-user support
    - Real-time editing
 
-5. **Mobile Support**:
+6. **Mobile Support**:
    - Responsive design for mobile devices
    - Touch-friendly interactions
 
-6. **AI Integration**:
+7. **AI Integration**:
    - Automatic content categorization
    - Suggested links between related content
+
+8. **Test Coverage**:
+   - Comprehensive unit tests for each module
+   - Integration tests for API endpoints
+   - End-to-end tests for user flows
 
 ## Installation and Setup
 
@@ -522,3 +628,22 @@ The frontend is organized into modular components:
 - Drag nodes to reorder them within the hierarchy
 - Drop nodes above, below, or as children of other nodes
 - Visual indicators will show valid drop targets
+
+### Managing Tasks
+- Navigate between dates using the date selector
+- Add tasks with the input field
+- Track time spent on tasks using start/pause buttons
+- Mark tasks as complete using checkboxes
+- Sort tasks by creation time or duration
+- View time statistics for the selected day
+
+## CSS Architecture
+
+The CSS is organized in a modular structure:
+
+- **Core**: Basic styling elements (variables, reset, layout)
+- **Components**: Reusable UI elements (buttons, modals, forms)
+- **Features**: Feature-specific styling (tasks, markdown, etc.)
+- **Utilities**: Helper classes and animations
+
+For development, each module is loaded separately. For production, they are combined into a single minified file.

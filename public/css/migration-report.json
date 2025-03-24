@@ -1,0 +1,51 @@
+{
+  "originalStats": {
+    "totalSize": 38200,
+    "classes": 228,
+    "ids": 10,
+    "elements": 0
+  },
+  "newStats": {
+    "totalFiles": 16,
+    "totalSize": 32396,
+    "classes": 224,
+    "ids": 10,
+    "elements": 1
+  },
+  "missing": {
+    "classes": [],
+    "ids": [],
+    "elements": []
+  },
+  "duplicates": [
+    ".node-actions {",
+    ".node {",
+    ".node-content {",
+    ".resize-grip {",
+    ".resize-handle {",
+    ".resize-grip {",
+    ".modal-body {",
+    ".query-error {",
+    ".pagination-next {",
+    ".node-content {",
+    ".relationship-item {",
+    ".btn {",
+    ".btn-primary {",
+    ".description-input {",
+    ".link-delete {",
+    ".active {",
+    ".bookmark-delete {",
+    ".filter-button {",
+    ".tabs-container {",
+    ".active {",
+    ".tab-content {",
+    ".active {",
+    ".search-container {",
+    ".node-search {",
+    ".search-results {",
+    ".search-result-item {",
+    ".highlight-focus {",
+    ".active {",
+    ".active {"
+  ]
+}

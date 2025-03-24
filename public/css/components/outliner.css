@@ -1,0 +1,168 @@
+/* Outliner Styles */
+
+#outliner-container {
+  margin-top: 20px;
+}
+
+.node {
+  margin: 5px 0;
+  padding: 5px 0;
+}
+
+.node-content {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.bullet {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+
+.bullet:hover {
+  background-color: #f0f0f0;
+  border-radius: 50%;
+}
+
+.node-text {
+  flex: 1;
+  padding: 5px;
+  min-height: 24px;
+  outline: none;
+  border: 1px solid transparent;
+}
+
+.node-text:focus {
+  border: 1px solid #ccc;
+  background-color: #fff;
+}
+
+.children {
+  margin-left: 24px;
+  position: relative;
+}
+
+/* Add indentation indicator lines */
+.children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 2px;
+  height: 100%;
+  background-color: #e0e0e0;
+  z-index: 0;
+}
+
+/* Add horizontal connector lines to each node */
+.node-content::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -12px;
+  width: 10px;
+  height: 2px;
+  background-color: #e0e0e0;
+  z-index: 0;
+}
+
+/* Don't show horizontal connector for root nodes */
+.app-container > .content > #outliner-container > .node > .node-content::before {
+  display: none;
+}
+
+/* Hover effect for the indentation lines */
+.children:hover::before {
+  background-color: #bbb;
+}
+
+/* Highlight active branch when a node is focused */
+.node:has(.node-text:focus) > .children::before,
+.node:has(.node-text:focus) > .node-content::before {
+  background-color: #4285f4;
+}
+
+button {
+  padding: 8px 12px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #3367d6;
+}
+
+.collapse-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.drag-handle {
+  cursor: move;
+  opacity: 0.3;
+  margin-right: 5px;
+}
+
+.drag-handle:hover {
+  opacity: 0.8;
+}
+
+.node-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.node-content:hover .node-actions {
+  opacity: 1;
+}
+
+.language-toggle {
+  margin-top: 10px;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.language-toggle:hover {
+  background-color: #e0e0e0;
+}
+
+.node-text[lang="zh"] {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* Modal styles */
+
+
+.node {
+  margin: 5px 0;
+  padding: 5px 0;
+}
+
+
+
+.node-content {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+
+
