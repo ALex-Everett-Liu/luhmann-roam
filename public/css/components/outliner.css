@@ -128,11 +128,53 @@ button:hover {
 
 .node-actions {
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.2s;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 150px;
+  pointer-events: none;
 }
 
 .node-content:hover .node-actions {
   opacity: 1;
+  pointer-events: auto;
+}
+
+/* Fix for hotkey hints positioning for node action buttons */
+.node-content:hover .hotkey-hint {
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Ensure hotkey hints are visible even when attached to node action buttons */
+.node-actions .hotkey-hint {
+  z-index: 10001;
+  position: absolute;
+}
+
+/* Make buttons in the tooltip smaller and more compact */
+.node-actions button {
+  padding: 4px;
+  margin: 2px;
+  font-size: 14px;
+  background-color: transparent;
+  color: #555;
+  border: none;
+}
+
+.node-actions button:hover {
+  background-color: #f0f0f0;
+  color: #000;
 }
 
 .language-toggle {
