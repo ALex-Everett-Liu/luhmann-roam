@@ -87,6 +87,15 @@ const HotkeyManager = (function() {
           text-align: center;
         }
         
+        .breadcrumb-hint {
+          background-color: #FF9800 !important;
+          color: white;
+          font-size: 12px;
+          padding: 3px 6px;
+          border-radius: 4px;
+          z-index: 10003; /* Higher than node number hints */
+        }
+        
         #hotkey-mode-indicator {
           position: fixed;
           top: 10px;
@@ -235,8 +244,38 @@ const HotkeyManager = (function() {
       if (isHotkeyModeActive) {
         const key = e.key.toLowerCase();
         
-        // Check if we're in the middle of a two-digit sequence
-        if (firstDigitPressed !== null) {
+        // Track if we've entered the "b" prefix for breadcrumb navigation
+        if (key === 'b') {
+          // Set a state to indicate we're waiting for a digit to complete the breadcrumb command
+          firstDigitPressed = 'b';
+          firstDigitTimeout = setTimeout(() => {
+            firstDigitPressed = null;
+          }, 2500); // Wait 2.5 seconds for the second part
+          e.preventDefault();
+          return;
+        }
+        
+        // Check if we're in the middle of a breadcrumb sequence (b + number)
+        if (firstDigitPressed === 'b' && /^[0-9]$/.test(key)) {
+          e.preventDefault();
+          
+          // Combine to make the breadcrumb key (b + digit)
+          const combinedKey = 'b' + key;
+          
+          // Clear the first part state
+          clearTimeout(firstDigitTimeout);
+          firstDigitPressed = null;
+          
+          // Check if we have a hotkey for this combination
+          if (hotkeys[combinedKey]) {
+            // Execute the action and exit hotkey mode
+            executeHotkeyAction(hotkeys[combinedKey].action);
+          }
+          return;
+        }
+        
+        // Check if we're in the middle of a two-digit sequence for node navigation
+        if (firstDigitPressed !== null && firstDigitPressed !== 'b') {
           // If the second key is a digit
           if (/^[0-9]$/.test(key)) {
             e.preventDefault();
@@ -274,7 +313,7 @@ const HotkeyManager = (function() {
             firstDigitPressed = key;
             firstDigitTimeout = setTimeout(() => {
               firstDigitPressed = null;
-            }, 1500); // Wait 1.5 seconds for the second digit
+            }, 2500); // Wait 2.5 seconds for the second digit
             
             // Don't execute anything yet, wait for the second digit
             return;
@@ -466,6 +505,46 @@ const HotkeyManager = (function() {
     }
     
     /**
+     * Register hotkeys for breadcrumb navigation
+     * Adds numbered hints to breadcrumb items for quick navigation to previous focus levels
+     */
+    function registerBreadcrumbHotkeys() {
+      // Get all breadcrumb items except the home icon (we'll handle that separately)
+      const breadcrumbItems = Array.from(document.querySelectorAll('.breadcrumb-item:not(.breadcrumb-home):not(.breadcrumb-active)'));
+      
+      if (breadcrumbItems.length === 0) return;
+      
+      console.log(`Found ${breadcrumbItems.length} breadcrumb items for hotkeys`);
+      
+      // Use B+number for breadcrumb navigation (B for Breadcrumb)
+      // This avoids conflicts with the regular node numbering
+      breadcrumbItems.forEach((item, index) => {
+        const key = `b${index + 1}`;
+        const nodeId = item.dataset.id;
+        
+        if (!nodeId) return;
+        
+        const content = item.textContent.trim();
+        
+        registerHotkey(key, item, () => {
+          if (window.BreadcrumbManager) {
+            window.BreadcrumbManager.focusOnNode(nodeId);
+          }
+        }, `Navigate to: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`);
+      });
+      
+      // Register the home icon with 'b0' (breadcrumb level 0)
+      const homeIcon = document.querySelector('.breadcrumb-home');
+      if (homeIcon) {
+        registerHotkey('b0', homeIcon, () => {
+          if (window.BreadcrumbManager) {
+            window.BreadcrumbManager.clearFocus();
+          }
+        }, 'Return to root level');
+      }
+    }
+    
+    /**
      * Show hotkey hints for all registered elements
      */
     function showHints() {
@@ -478,6 +557,9 @@ const HotkeyManager = (function() {
       
       // Add number hotkeys for node navigation
       registerNodeNavigationHotkeys();
+      
+      // Add hotkeys for breadcrumb navigation
+      registerBreadcrumbHotkeys();
       
       // First, create a document fragment to batch DOM operations
       const fragment = document.createDocumentFragment();
@@ -501,7 +583,8 @@ const HotkeyManager = (function() {
           // Special handling for node navigation hints (numbered keys)
           let left = rect.left - 5;
           let top = rect.top - 5;
-          let isNodeNumber = /^\d+$/.test(key); // Changed regex to match any digit sequence
+          let isNodeNumber = /^\d+$/.test(key); // Matches any digit sequence
+          let isBreadcrumb = /^b\d+$/.test(key); // Matches 'b' followed by digits
           
           // If this is a number key, position the hint differently
           if (isNodeNumber) {
@@ -510,13 +593,20 @@ const HotkeyManager = (function() {
             top = rect.top + (rect.height / 2) - 8; // Center vertically
           }
           
+          // If this is a breadcrumb key, position it over the breadcrumb item
+          if (isBreadcrumb) {
+            left = rect.left + (rect.width / 2) - 10; // Center horizontally
+            top = rect.top + (rect.height / 2) - 10; // Center vertically
+          }
+          
           // Store position for hint placement
           hintPositions.push({
             key: key,
             top: top,
             left: left,
             isNodeNumber: isNodeNumber,
-            isTwoDigit: isTwoDigit
+            isTwoDigit: isTwoDigit,
+            isBreadcrumb: isBreadcrumb
           });
         }
       });
@@ -541,6 +631,14 @@ const HotkeyManager = (function() {
             hint.style.fontSize = '12px';
             hint.style.padding = '3px 4px';
           }
+        }
+        
+        // Add special class for breadcrumb hints
+        if (pos.isBreadcrumb) {
+          hint.className += ' breadcrumb-hint';
+          hint.style.backgroundColor = '#FF9800'; // Orange color for breadcrumb hints
+          hint.style.borderRadius = '4px';
+          hint.style.zIndex = '10003'; // Higher than node hints
         }
         
         hint.textContent = pos.key.toUpperCase();
