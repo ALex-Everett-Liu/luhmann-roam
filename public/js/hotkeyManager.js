@@ -19,6 +19,10 @@ const HotkeyManager = (function() {
     let isAltDown = false;
     let otherKeyPressedWithAlt = false;
     
+    // Add a variable to track the first digit in a two-digit sequence
+    let firstDigitPressed = null;
+    let firstDigitTimeout = null;
+    
     /**
      * Initialize the Hotkey Manager
      */
@@ -73,6 +77,14 @@ const HotkeyManager = (function() {
           padding: 3px 6px;
           border-radius: 50%;
           z-index: 10002; /* Higher than other hints */
+        }
+        
+        .two-digit-hint {
+          background-color: #2196F3 !important;
+          border-radius: 3px !important;
+          font-size: 12px !important;
+          min-width: 18px;
+          text-align: center;
         }
         
         #hotkey-mode-indicator {
@@ -223,6 +235,52 @@ const HotkeyManager = (function() {
       if (isHotkeyModeActive) {
         const key = e.key.toLowerCase();
         
+        // Check if we're in the middle of a two-digit sequence
+        if (firstDigitPressed !== null) {
+          // If the second key is a digit
+          if (/^[0-9]$/.test(key)) {
+            e.preventDefault();
+            
+            // Combine the two digits
+            const combinedKey = firstDigitPressed + key;
+            
+            // Clear the first digit state
+            clearTimeout(firstDigitTimeout);
+            firstDigitPressed = null;
+            
+            // Check if we have a hotkey for this combination
+            if (hotkeys[combinedKey]) {
+              // Execute the action and exit hotkey mode
+              executeHotkeyAction(hotkeys[combinedKey].action);
+            }
+            return;
+          } else {
+            // If the second key is not a digit, clear the first digit
+            clearTimeout(firstDigitTimeout);
+            firstDigitPressed = null;
+          }
+        }
+        
+        // Handle single-digit numbers: if key is 1-9, we might be starting a two-digit sequence
+        if (/^[1-9]$/.test(key)) {
+          // Check if there are any two-digit hotkeys that start with this digit
+          const hasTwoDigitHotkeys = Object.keys(hotkeys).some(k => 
+            k.length === 2 && k.startsWith(key) && hotkeys[k].isTwoDigit
+          );
+          
+          if (hasTwoDigitHotkeys) {
+            e.preventDefault();
+            // Store the first digit and set a timeout to clear it
+            firstDigitPressed = key;
+            firstDigitTimeout = setTimeout(() => {
+              firstDigitPressed = null;
+            }, 1500); // Wait 1.5 seconds for the second digit
+            
+            // Don't execute anything yet, wait for the second digit
+            return;
+          }
+        }
+        
         // Check if this key combination is registered
         if (hotkeys[key]) {
           e.preventDefault();
@@ -369,19 +427,24 @@ const HotkeyManager = (function() {
         
         console.log(`Found ${nodesToNumber.length} visible nodes in focused view`);
       } else {
-        // At root level: only number root nodes
+        // At root level: only show first node
         nodesToNumber = Array.from(document.querySelectorAll('#outliner-container > .node'));
-        console.log(`Found ${nodesToNumber.length} root nodes`);
+        // For root level, just show the first node (per user request)
+        if (!isFocusedView) {
+          nodesToNumber = nodesToNumber.slice(0, 1);
+        }
+        console.log(`Found ${nodesToNumber.length} root nodes, showing ${nodesToNumber.length} numbered hints`);
       }
       
-      // Limit to 9 nodes (for single digit keys 1-9)
-      const maxNodes = Math.min(nodesToNumber.length, 9);
+      // Limit to 99 nodes (for single and double digit keys 1-99)
+      const maxNodes = Math.min(nodesToNumber.length, 99);
       console.log(`Registering ${maxNodes} nodes for number hotkeys`);
       
       for (let i = 0; i < maxNodes; i++) {
         const node = nodesToNumber[i];
         const nodeId = node.dataset.id;
-        const key = (i + 1).toString(); // Use 1-9 keys
+        // Use 1-99 keys (as strings)
+        const key = (i + 1).toString(); 
         
         // Find the node text to get its content
         const nodeText = node.querySelector('.node-text');
@@ -390,12 +453,15 @@ const HotkeyManager = (function() {
         // Use the bullet or collapse icon as the anchor point for the hint
         const bulletOrIcon = node.querySelector('.bullet, .collapse-icon');
         
+        // For nodes > 9, we need special handling in the UI and keypress handling
+        const isTwoDigit = i >= 9;
+        
         // Register a hotkey that will navigate to this node when pressed
         registerHotkey(key, bulletOrIcon || node, () => {
           if (window.BreadcrumbManager) {
             window.BreadcrumbManager.focusOnNode(nodeId);
           }
-        }, `Focus on: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`);
+        }, `Focus on: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`, isTwoDigit);
       }
     }
     
@@ -420,6 +486,8 @@ const HotkeyManager = (function() {
       // Create hints for all registered hotkeys
       Object.keys(hotkeys).forEach(key => {
         const element = hotkeys[key].element;
+        const isTwoDigit = hotkeys[key].isTwoDigit;
+        
         if (element && isElementVisible(element)) {
           const rect = element.getBoundingClientRect();
           
@@ -433,9 +501,9 @@ const HotkeyManager = (function() {
           // Special handling for node navigation hints (numbered keys)
           let left = rect.left - 5;
           let top = rect.top - 5;
-          let isNodeNumber = /^[1-9]$/.test(key);
+          let isNodeNumber = /^\d+$/.test(key); // Changed regex to match any digit sequence
           
-          // If this is a number key (1-9), position the hint differently
+          // If this is a number key, position the hint differently
           if (isNodeNumber) {
             // Position to the left of the bullet/collapse icon
             left = Math.max(5, rect.left - 20);
@@ -447,7 +515,8 @@ const HotkeyManager = (function() {
             key: key,
             top: top,
             left: left,
-            isNodeNumber: isNodeNumber
+            isNodeNumber: isNodeNumber,
+            isTwoDigit: isTwoDigit
           });
         }
       });
@@ -463,6 +532,15 @@ const HotkeyManager = (function() {
           // Make node number hints more visible
           hint.style.backgroundColor = '#4CAF50';
           hint.style.fontWeight = 'bold';
+          
+          // For two-digit numbers, add a special class
+          if (pos.isTwoDigit) {
+            hint.className += ' two-digit-hint';
+            // Make two-digit hints a bit wider and different color
+            hint.style.backgroundColor = '#2196F3';
+            hint.style.fontSize = '12px';
+            hint.style.padding = '3px 4px';
+          }
         }
         
         hint.textContent = pos.key.toUpperCase();
@@ -604,12 +682,13 @@ const HotkeyManager = (function() {
      * @param {Function} action - The function to call when the hotkey is pressed
      * @param {string} description - Description of what the hotkey does
      */
-    function registerHotkey(key, element, action, description) {
+    function registerHotkey(key, element, action, description, isTwoDigit = false) {
       key = key.toLowerCase();
       hotkeys[key] = {
         element: element,
         action: action,
-        description: description
+        description: description,
+        isTwoDigit: isTwoDigit
       };
     }
     
