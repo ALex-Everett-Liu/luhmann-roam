@@ -195,7 +195,7 @@ const CodeAnalyzerManager = (function() {
           summaryStats.innerHTML = '<p>Loading analysis...</p>';
         }
         
-        const response = await fetch('/api/code-structure');
+        const response = await fetch('/api/code-analysis/structure');
         
         if (!response.ok) {
           throw new Error(`Server returned ${response.status}: ${response.statusText}`);
