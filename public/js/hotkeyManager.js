@@ -66,6 +66,15 @@ const HotkeyManager = (function() {
           box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
         
+        .node-number-hint {
+          background-color: #4CAF50 !important;
+          color: white;
+          font-size: 14px;
+          padding: 3px 6px;
+          border-radius: 50%;
+          z-index: 10002; /* Higher than other hints */
+        }
+        
         #hotkey-mode-indicator {
           position: fixed;
           top: 10px;
@@ -350,15 +359,24 @@ const HotkeyManager = (function() {
       let nodesToNumber = [];
       
       if (isFocusedView) {
-        // In focused view: number all visible nodes under the current focus
-        nodesToNumber = Array.from(document.querySelectorAll('.node[style*="display: "]'));
+        // In focused view: find all visible nodes
+        // Use a more specific selector to ensure we're getting the correct visible nodes
+        nodesToNumber = Array.from(document.querySelectorAll('.node')).filter(node => {
+          // Check if the node is actually visible (not hidden by CSS or parent nodes)
+          const style = window.getComputedStyle(node);
+          return style.display !== 'none';
+        });
+        
+        console.log(`Found ${nodesToNumber.length} visible nodes in focused view`);
       } else {
-        // At root level: only number root nodes to prevent too many hints
+        // At root level: only number root nodes
         nodesToNumber = Array.from(document.querySelectorAll('#outliner-container > .node'));
+        console.log(`Found ${nodesToNumber.length} root nodes`);
       }
       
       // Limit to 9 nodes (for single digit keys 1-9)
       const maxNodes = Math.min(nodesToNumber.length, 9);
+      console.log(`Registering ${maxNodes} nodes for number hotkeys`);
       
       for (let i = 0; i < maxNodes; i++) {
         const node = nodesToNumber[i];
@@ -369,8 +387,11 @@ const HotkeyManager = (function() {
         const nodeText = node.querySelector('.node-text');
         const content = nodeText ? nodeText.textContent.trim() : `Node ${nodeId}`;
         
+        // Use the bullet or collapse icon as the anchor point for the hint
+        const bulletOrIcon = node.querySelector('.bullet, .collapse-icon');
+        
         // Register a hotkey that will navigate to this node when pressed
-        registerHotkey(key, node, () => {
+        registerHotkey(key, bulletOrIcon || node, () => {
           if (window.BreadcrumbManager) {
             window.BreadcrumbManager.focusOnNode(nodeId);
           }
@@ -409,11 +430,24 @@ const HotkeyManager = (function() {
             return;
           }
           
+          // Special handling for node navigation hints (numbered keys)
+          let left = rect.left - 5;
+          let top = rect.top - 5;
+          let isNodeNumber = /^[1-9]$/.test(key);
+          
+          // If this is a number key (1-9), position the hint differently
+          if (isNodeNumber) {
+            // Position to the left of the bullet/collapse icon
+            left = Math.max(5, rect.left - 20);
+            top = rect.top + (rect.height / 2) - 8; // Center vertically
+          }
+          
           // Store position for hint placement
           hintPositions.push({
             key: key,
-            top: rect.top - 5,
-            left: rect.left - 5
+            top: top,
+            left: left,
+            isNodeNumber: isNodeNumber
           });
         }
       });
@@ -422,6 +456,15 @@ const HotkeyManager = (function() {
       hintPositions.forEach(pos => {
         const hint = document.createElement('div');
         hint.className = 'hotkey-hint';
+        
+        // Add special class for node number hints
+        if (pos.isNodeNumber) {
+          hint.className += ' node-number-hint';
+          // Make node number hints more visible
+          hint.style.backgroundColor = '#4CAF50';
+          hint.style.fontWeight = 'bold';
+        }
+        
         hint.textContent = pos.key.toUpperCase();
         hint.style.top = `${pos.top}px`;
         hint.style.left = `${pos.left}px`;
