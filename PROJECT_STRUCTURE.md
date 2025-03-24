@@ -46,6 +46,9 @@ The Express-based backend provides a RESTful API for managing notes and their re
 - **API Endpoints**: CRUD operations for nodes and links
 - **Markdown Storage**: File-based storage for markdown content
 - **Node Operations**: Support for hierarchical operations (indent, outdent, reorder)
+- **Code Analysis**: Functions to analyze JavaScript codebase structure and complexity
+- **Advanced Querying**: Parse and execute complex attribute-based queries
+- **Recursive Operations**: Handle operations that affect node hierarchies
 
 ### 2. Client-Side Application (app.js)
 
@@ -56,6 +59,11 @@ The frontend is organized into modular components:
 - **Node Manipulation**: UI for creating, editing, and organizing nodes
 - **Drag and Drop**: Intuitive reorganization of the hierarchy
 - **Language Toggle**: Support for switching between English and Chinese
+- **Component Initialization**: Coordinated initialization of all manager modules
+- **Optimized DOM Updates**: Selective DOM refreshing for better performance
+- **Focus Tracking**: Remember and restore focus positions across operations
+- **Resizable UI**: Adjustable sidebar width with persistent settings
+- **State Preservation**: Maintain application state across operations
 
 #### Markdown Manager (markdownManager.js)
 - **Markdown Modal**: Interface for editing rich content
@@ -137,11 +145,33 @@ The frontend is organized into modular components:
 - **Persistent Settings**: Remember language preference between sessions
 - **Smart UI Updates**: Update the UI efficiently after language changes
 
+#### Node Expansion Manager (nodeExpansionManager.js)
+- **Node Toggle**: Expand or collapse nodes with optimized DOM updates
+- **Fetch Children**: Retrieve and display child nodes dynamically
+- **Expand/Collapse All**: Expand or collapse all nodes in the hierarchy
+- **Language Support**: Update language settings for display
+
+#### Node Operations Manager (nodeOperationsManager.js)
+- **Node CRUD**: Create, read, update, and delete nodes with optimized DOM updates
+- **Indent/Outdent**: Change the hierarchical level of nodes
+- **Move Nodes**: Move nodes up or down within the hierarchy
+- **Sibling Management**: Add sibling nodes efficiently
+- **Refresh Subtree**: Refresh specific node subtrees without full DOM refresh
+
+#### Drag Drop Manager (dragDropManager.js)
+- **Drag and Drop Functionality**: Enable drag and drop for node reordering
+- **Visual Indicators**: Show where nodes can be dropped
+- **Node Reordering**: Handle the logic for moving nodes within the hierarchy
+- **Language Support**: Update language settings for drag and drop hints
+
 ### 3. Database (database.js)
 
 - **Connection Management**: Setup and maintenance of SQLite connection
 - **Schema Initialization**: Creation of required tables
 - **Query Interface**: Methods for database operations
+- **Task Storage**: Database structure for task management
+- **Attribute Storage**: Storage for custom node attributes
+- **Relationship Tables**: Tables for managing node links and relationships
 
 ## Data Models
 
@@ -364,6 +394,49 @@ The frontend is organized into modular components:
   - Custom hotkey registration and storage
   - Focused node navigation with keyboard
 
+### NodeExpansionManager.js
+- **Public API**:
+  - `initialize()`: Sets up the node expansion system
+  - `updateLanguage(language)`: Updates the language for display
+  - `toggleNode(nodeId)`: Toggles the expansion state of a node
+  - `expandNode(nodeId)`: Expands a node if it is not already expanded
+  - `collapseNode(nodeId)`: Collapses a node if it is expanded
+  - `expandAll()`: Expands all nodes in the hierarchy
+  - `collapseAll()`: Collapses all nodes to root level
+- **Private Functions**:
+  - Fetching and appending child nodes to the DOM
+  - Optimized DOM updates for node expansion and collapse
+
+### NodeOperationsManager.js
+- **Public API**:
+  - `initialize()`: Sets up the node operations system
+  - `updateLanguage(language)`: Updates the language for display
+  - `addRootNode(nodesArray)`: Adds a new root node
+  - `addChildNode(parentId)`: Adds a new child node to a specified parent
+  - `deleteNode(nodeId)`: Deletes a specified node
+  - `indentNode(nodeId)`: Indents a specified node
+  - `outdentNode(nodeId)`: Outdents a specified node
+  - `moveNodeUp(nodeId)`: Moves a specified node up in the hierarchy
+  - `moveNodeDown(nodeId)`: Moves a specified node down in the hierarchy
+  - `addSiblingNode(nodeId, position)`: Adds a sibling node to a specified node
+  - `refreshSubtree(nodeId)`: Refreshes a specific subtree of nodes
+- **Private Functions**:
+  - Optimized DOM updates for node operations
+  - Handling of node position calculations and updates
+
+### DragDropManager.js
+- **Public API**:
+  - `initialize()`: Sets up the drag and drop functionality
+  - `updateLanguage(language)`: Updates the language for display
+  - `setupDragAndDrop()`: Initializes drag and drop event handlers
+  - `manualSetup()`: Manually triggers drag and drop setup for debugging
+  - `reset()`: Resets the drag and drop manager for debugging
+  - `debugServerAPI()`: Tests the server API for drag and drop operations
+- **Private Functions**:
+  - Event handling for drag and drop operations
+  - Visual indicators for drop targets
+  - Fetching child nodes for drag and drop operations
+
 ## Future Extensions
 
 1. **Visualization**:
@@ -444,3 +517,8 @@ The frontend is organized into modular components:
 - Use arrow keys to navigate between nodes
 - Press specific letter keys to trigger actions when in hotkey mode
 - Combine keys for advanced operations
+
+### Using Drag and Drop
+- Drag nodes to reorder them within the hierarchy
+- Drop nodes above, below, or as children of other nodes
+- Visual indicators will show valid drop targets
