@@ -1167,6 +1167,32 @@ app.use('*.css', (req, res, next) => {
   next();
 });
 
+// Add this route to proxy font requests and avoid CORS issues
+app.get('/proxy/fonts/:filename', async (req, res) => {
+  const { filename } = req.params;
+  const fontUrl = `https://cdn.staticfile.org/lxgw-wenkai-screen-webfont/1.6.0/${filename}`;
+  
+  try {
+    const fontResponse = await fetch(fontUrl);
+    if (!fontResponse.ok) {
+      return res.status(fontResponse.status).send('Font not found');
+    }
+    
+    // Get the binary font data
+    const fontData = await fontResponse.arrayBuffer();
+    
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'font/woff2');
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for a year
+    
+    // Send the font data
+    res.send(Buffer.from(fontData));
+  } catch (error) {
+    console.error('Error proxying font:', error);
+    res.status(500).send('Error fetching font');
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

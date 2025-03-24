@@ -117,7 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 10);
   }
   
-  // Create a node element
+  // Add this function to detect Chinese text
+  function hasChineseText(text) {
+    return /[\u4E00-\u9FFF]/.test(text);
+  }
+  
+  // Modify your createNodeElement function to set the lang attribute correctly
   async function createNodeElement(node) {
     const nodeDiv = document.createElement('div');
     nodeDiv.className = 'node';
@@ -164,6 +169,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentLanguage = I18n.getCurrentLanguage();
     const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
     nodeText.textContent = displayContent;
+    
+    // Set language attribute for proper font application
+    if (currentLanguage === 'zh' || hasChineseText(displayContent)) {
+      nodeText.setAttribute('lang', 'zh');
+    } else {
+      nodeText.removeAttribute('lang');
+    }
     
     // Add link count if the node has links
     if (node.link_count && node.link_count > 0) {

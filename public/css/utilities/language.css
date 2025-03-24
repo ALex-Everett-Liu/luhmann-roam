@@ -1,0 +1,22 @@
+/* Define local font face */
+@font-face {
+    font-family: 'LXGW WenKai Screen';
+    src: url('/proxy/fonts/lxgwwenkaiscreen.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  /* Apply Chinese font to elements with lang="zh" */
+  :lang(zh),
+  [lang="zh"],
+  .chinese-text {
+    font-family: "LXGW WenKai Screen", "Microsoft YaHei", "SimHei", sans-serif !important;
+    font-size: 17px;
+  }
+  
+  /* Apply when Chinese font is loaded */
+  .chinese-font-loaded .node-text[lang="zh"] {
+    /* Apply any additional styles once font is confirmed loaded */
+    color: #000;
+  }
