@@ -899,6 +899,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make toggleNode available globally for direct DOM manipulation
   window.toggleNode = toggleNode;
 
+  // Make fetchChildren available globally for the NodeGridVisualizer
+  window.fetchChildren = fetchChildren;
+
   // Initialize the NodeGridVisualizer
   if (window.NodeGridVisualizer) {
     NodeGridVisualizer.initialize();

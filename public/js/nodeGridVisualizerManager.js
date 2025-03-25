@@ -276,19 +276,19 @@ const NodeGridVisualizer = (function() {
       // Assign coordinates to this node
       nodeMap.set(node.id, { x, y, canvasX: x * gridSpacing, canvasY: y * gridSpacing });
       
+      let nextY = y + 1;
+      
       // Process children if available and node is expanded
       if (node.children && node.is_expanded) {
-        // Use fetchChildren to get children if not already loaded
-        getNodeChildren(node).then(children => {
-          let childY = y + 1;
-          for (const child of children) {
-            childY = processNode(child, x + 1, childY);
-          }
-        });
-        return y + (node.children.length || 0);
+        // This is not working correctly because it's using an async operation 
+        // but not waiting for it to complete before returning
+        for (const child of node.children) {
+          processNode(child, x + 1, nextY);
+          nextY++;
+        }
       }
       
-      return y;
+      return nextY;
     }
     
     /**
@@ -474,47 +474,78 @@ const NodeGridVisualizer = (function() {
      */
     async function loadAndVisualizeAllNodes() {
       try {
+        console.log('Loading all nodes for grid visualization...');
         const response = await fetch(`/api/nodes?lang=${currentLanguage}`);
         const rootNodes = await response.json();
         
-        // Load complete nodes with children
-        const completeNodes = await loadNodesWithChildren(rootNodes);
+        // Fully flatten the node hierarchy with proper child relationships
+        console.log(`Loaded ${rootNodes.length} root nodes, now loading children...`);
+        nodes = [];
+        let nextY = 1;
         
-        // Visualize the loaded nodes
-        visualizeNodes(completeNodes);
+        // Process each root node and its children
+        for (const rootNode of rootNodes) {
+          // Add the root node
+          nodes.push(rootNode);
+          nodeMap.set(rootNode.id, { x: 1, y: nextY, canvasX: 1 * gridSpacing, canvasY: nextY * gridSpacing });
+          nextY++;
+          
+          // Process children recursively 
+          await processNodeAndChildrenFlat(rootNode, 2, nextY);
+        }
+        
+        console.log(`Total nodes processed: ${nodes.length}`);
+        
+        // Adjust canvas size
+        adjustCanvasSize();
+        
+        // Render all nodes
+        renderNodes();
       } catch (error) {
         console.error('Error loading nodes for visualization:', error);
       }
     }
     
     /**
-     * Load nodes with their children recursively
+     * Process a node and all its children, flattening the hierarchy
      */
-    async function loadNodesWithChildren(nodes) {
-      const result = [];
+    async function processNodeAndChildrenFlat(node, depth, startY) {
+      let nextY = startY;
       
-      for (const node of nodes) {
-        const children = await loadChildren(node.id);
-        const nodeWithChildren = {
-          ...node,
-          children: children.length > 0 ? await loadNodesWithChildren(children) : []
-        };
-        result.push(nodeWithChildren);
-      }
-      
-      return result;
-    }
-    
-    /**
-     * Load children for a specific node
-     */
-    async function loadChildren(nodeId) {
+      // Fetch the node's children
       try {
-        const response = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}`);
-        return await response.json();
+        console.log(`Fetching children for node ${node.id}`);
+        
+        // Use the fetchChildren function appropriately
+        let children = [];
+        if (typeof window.fetchChildren === 'function') {
+          // Use global function if available
+          children = await window.fetchChildren(node.id);
+        } else {
+          // Direct API call as fallback
+          const response = await fetch(`/api/nodes/${node.id}/children?lang=${currentLanguage}`);
+          children = await response.json();
+        }
+        
+        console.log(`Node ${node.id} has ${children.length} children`);
+        
+        // Process each child
+        for (const child of children) {
+          // Add the child node
+          nodes.push(child);
+          nodeMap.set(child.id, { x: depth, y: nextY, canvasX: depth * gridSpacing, canvasY: nextY * gridSpacing });
+          nextY++;
+          
+          // If the child is expanded, process its children too
+          if (child.is_expanded) {
+            nextY = await processNodeAndChildrenFlat(child, depth + 1, nextY);
+          }
+        }
+        
+        return nextY;
       } catch (error) {
-        console.error(`Error loading children for node ${nodeId}:`, error);
-        return [];
+        console.error(`Error processing children for node ${node.id}:`, error);
+        return nextY;
       }
     }
     
