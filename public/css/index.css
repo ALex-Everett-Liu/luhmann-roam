@@ -21,6 +21,7 @@
 @import './features/code-analyzer.css';
 @import './features/node.css';
 @import './features/timestamp.css';
+@import './features/node-grid-visualizer.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */
