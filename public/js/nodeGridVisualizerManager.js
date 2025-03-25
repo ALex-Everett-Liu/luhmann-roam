@@ -40,15 +40,52 @@ const NodeGridVisualizer = (function() {
       container.id = 'node-grid-container';
       container.className = 'node-grid-container';
       
+      // Create controls
+      const controls = document.createElement('div');
+      controls.className = 'node-grid-controls';
+      
+      // Fullscreen button
+      const fullscreenButton = document.createElement('button');
+      fullscreenButton.innerHTML = '🔍';
+      fullscreenButton.title = 'Toggle fullscreen';
+      fullscreenButton.addEventListener('click', toggleFullscreen);
+      controls.appendChild(fullscreenButton);
+      
+      // Zoom in button
+      const zoomInButton = document.createElement('button');
+      zoomInButton.innerHTML = '➕';
+      zoomInButton.title = 'Zoom in';
+      zoomInButton.addEventListener('click', () => adjustZoom(1.2));
+      controls.appendChild(zoomInButton);
+      
+      // Zoom out button
+      const zoomOutButton = document.createElement('button');
+      zoomOutButton.innerHTML = '➖';
+      zoomOutButton.title = 'Zoom out';
+      zoomOutButton.addEventListener('click', () => adjustZoom(0.8));
+      controls.appendChild(zoomOutButton);
+      
+      // Scroll to bottom button
+      const scrollBottomButton = document.createElement('button');
+      scrollBottomButton.innerHTML = '⬇️';
+      scrollBottomButton.title = 'Scroll to bottom';
+      scrollBottomButton.addEventListener('click', scrollToBottom);
+      controls.appendChild(scrollBottomButton);
+      
       // Create canvas
       canvas = document.createElement('canvas');
       canvas.id = 'node-grid-canvas';
       canvas.className = 'node-grid-canvas';
-      canvas.width = 800;
-      canvas.height = 600;
+      canvas.width = 1200; // Larger initial size
+      canvas.height = 800;
+      
+      // Add legend
+      const legend = createLegend();
       
       // Add to container
       container.appendChild(canvas);
+      container.appendChild(controls);
+      container.appendChild(legend);
       
       // Find the sidebar and add the container after it
       const sidebar = document.querySelector('.sidebar');
@@ -121,13 +158,13 @@ const NodeGridVisualizer = (function() {
       
       const container = document.getElementById('node-grid-container');
       if (container) {
-        // Set canvas size to match container
-        canvas.width = container.clientWidth;
-        canvas.height = Math.max(600, nodes.length * 20); // Ensure enough height for all nodes
+        // Don't resize canvas to container dimensions
+        // Instead, call adjustCanvasSize to ensure all nodes are visible
+        adjustCanvasSize();
         
         // Redraw
         if (nodes.length > 0) {
-          renderNodes(nodes);
+          renderNodes();
         }
       }
     }
@@ -324,17 +361,14 @@ const NodeGridVisualizer = (function() {
       }
       
       // Add padding
-      const width = (maxX + 1) * gridSpacing;
-      const height = (maxY + 1) * gridSpacing;
+      const width = (maxX + 1) * gridSpacing + 100; // Add extra padding for right edge
+      const height = (maxY + 1) * gridSpacing + 100; // Add extra padding for bottom edge
       
-      // Only resize if needed
-      if (canvas.width < width) {
-        canvas.width = width;
-      }
+      // Set canvas size to accommodate all nodes
+      canvas.width = Math.max(width, 1200); // Ensure minimum width
+      canvas.height = Math.max(height, 800); // Ensure minimum height
       
-      if (canvas.height < height) {
-        canvas.height = height;
-      }
+      console.log(`Canvas resized to ${canvas.width} × ${canvas.height} to fit nodes with max coordinates [${maxX}, ${maxY}]`);
     }
     
     /**
@@ -397,7 +431,7 @@ const NodeGridVisualizer = (function() {
     }
     
     /**
-     * Draw a dot representing a node
+     * Draw a dot representing a node (improved for better visibility)
      */
     function drawNodeDot(nodeId, x, y) {
       const node = nodes.find(n => n.id === nodeId);
@@ -411,22 +445,30 @@ const NodeGridVisualizer = (function() {
         fillColor = '#0F9D58'; // Green
       }
       
-      // Draw dot
+      // Make dots slightly larger
+      const radius = dotRadius * 1.2;
+      
+      // Draw dot with a subtle glow effect
       ctx.beginPath();
-      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+      ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fillStyle = fillColor;
       ctx.fill();
       
       // Draw outline
       ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       
       // Add node coordinates as tiny labels
       const coords = nodeMap.get(nodeId);
       if (coords) {
         ctx.fillStyle = '#333';
-        ctx.font = '8px Arial';
+        ctx.font = '10px Arial';
         ctx.fillText(`${coords.x},${coords.y}`, x + 8, y + 8);
       }
     }
@@ -583,6 +625,91 @@ const NodeGridVisualizer = (function() {
           container.style.display = 'none';
           hideTooltip();
         }
+      }
+    }
+    
+    /**
+     * Create a legend for the visualization
+     */
+    function createLegend() {
+      const legend = document.createElement('div');
+      legend.className = 'node-grid-legend';
+      
+      // Regular node
+      const regularNode = document.createElement('div');
+      regularNode.className = 'node-grid-legend-item';
+      
+      const regularColor = document.createElement('div');
+      regularColor.className = 'node-grid-legend-color';
+      regularColor.style.backgroundColor = '#4285F4';
+      
+      regularNode.appendChild(regularColor);
+      regularNode.appendChild(document.createTextNode('Regular node'));
+      
+      // Markdown node
+      const markdownNode = document.createElement('div');
+      markdownNode.className = 'node-grid-legend-item';
+      
+      const markdownColor = document.createElement('div');
+      markdownColor.className = 'node-grid-legend-color';
+      markdownColor.style.backgroundColor = '#0F9D58';
+      
+      markdownNode.appendChild(markdownColor);
+      markdownNode.appendChild(document.createTextNode('Node with markdown'));
+      
+      legend.appendChild(regularNode);
+      legend.appendChild(markdownNode);
+      
+      return legend;
+    }
+    
+    /**
+     * Toggle fullscreen mode
+     */
+    function toggleFullscreen() {
+      const container = document.getElementById('node-grid-container');
+      if (!container) return;
+      
+      if (container.classList.contains('node-grid-fullscreen')) {
+        // Exit fullscreen
+        container.classList.remove('node-grid-fullscreen');
+        document.body.style.overflow = '';
+      } else {
+        // Enter fullscreen
+        container.classList.add('node-grid-fullscreen');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      // Adjust canvas size and redraw
+      handleResize();
+    }
+    
+    /**
+     * Adjust zoom level
+     */
+    function adjustZoom(factor) {
+      // Change grid spacing to zoom in/out
+      gridSpacing = Math.max(20, Math.min(100, gridSpacing * factor));
+      
+      // Recalculate node positions based on new grid spacing
+      for (const [nodeId, coords] of nodeMap.entries()) {
+        coords.canvasX = coords.x * gridSpacing;
+        coords.canvasY = coords.y * gridSpacing;
+      }
+      
+      // Adjust canvas size and redraw
+      adjustCanvasSize();
+      renderNodes();
+    }
+    
+    // Add this function to scroll to the bottom of the graph
+    function scrollToBottom() {
+      const container = document.getElementById('node-grid-container');
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
       }
     }
     

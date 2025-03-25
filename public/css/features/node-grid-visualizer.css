@@ -1,18 +1,79 @@
 /* Node Grid Visualizer Styles */
 .node-grid-container {
     width: 100%;
-    height: 400px;
+    height: 800px;
     margin: 20px 0;
     padding: 10px;
     background-color: #f9f9f9;
     border: 1px solid #ddd;
     border-radius: 4px;
     overflow: auto;
+    position: relative;
   }
   
   .node-grid-canvas {
     background-color: #fff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: block;
+  }
+  
+  /* Scroll indicators to show when content extends beyond view */
+  .node-grid-container::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to top, rgba(0,0,0,0.05), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .node-grid-container:not(.at-bottom):hover::after {
+    opacity: 1;
+  }
+  
+  /* Fullscreen option */
+  .node-grid-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2000;
+    background-color: white;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow: auto;
+  }
+  
+  /* Controls for the grid view */
+  .node-grid-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 5px;
+  }
+  
+  .node-grid-controls button {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+  }
+  
+  .node-grid-controls button:hover {
+    background-color: #f0f0f0;
   }
   
   .node-grid-tooltip {
@@ -49,7 +110,43 @@
     font-family: monospace;
   }
   
+  /* Make dots slightly larger for better visibility */
+  .node-dot {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .node-dot:hover {
+    transform: scale(1.5);
+  }
+  
   /* For nodes with Chinese text */
   .node-grid-tooltip [lang="zh"] {
     font-family: "Noto Serif SC", "SimSun", "STSong", serif;
+  }
+  
+  /* Add a legend */
+  .node-grid-legend {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 12px;
+    z-index: 1001;
+  }
+  
+  .node-grid-legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  
+  .node-grid-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
   }
