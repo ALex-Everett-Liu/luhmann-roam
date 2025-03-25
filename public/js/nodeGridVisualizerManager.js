@@ -478,28 +478,48 @@ const NodeGridVisualizer = (function() {
         const response = await fetch(`/api/nodes?lang=${currentLanguage}`);
         const rootNodes = await response.json();
         
-        // Fully flatten the node hierarchy with proper child relationships
-        console.log(`Loaded ${rootNodes.length} root nodes, now loading children...`);
-        nodes = [];
-        let nextY = 1;
+        console.log(`Loaded ${rootNodes.length} root nodes, starting sequential coordinate assignment`);
         
-        // Process each root node and its children
+        // Clear previous data
+        nodes = [];
+        nodeMap.clear();
+        
+        // Create a flat array for all visible nodes with their hierarchy info
+        let allNodes = [];
+        let flattenedIndex = 1; // Start Y at 1
+        
+        // First, collect all visible nodes in a flat structure
         for (const rootNode of rootNodes) {
-          // Add the root node
-          nodes.push(rootNode);
-          nodeMap.set(rootNode.id, { x: 1, y: nextY, canvasX: 1 * gridSpacing, canvasY: nextY * gridSpacing });
-          nextY++;
-          
-          // Process children recursively 
-          await processNodeAndChildrenFlat(rootNode, 2, nextY);
+          await collectNodesRecursively(rootNode, 1, null, allNodes);
         }
+        
+        console.log(`Collected ${allNodes.length} total nodes for visualization`);
+        
+        // Then assign sequential y-coordinates
+        allNodes.forEach((nodeInfo, index) => {
+          const y = index + 1; // Sequential y-coordinate starting from 1
+          const { node, depth, parentId } = nodeInfo;
+          
+          // Add to our nodes collection
+          nodes.push(node);
+          
+          // Set coordinates in the map
+          nodeMap.set(node.id, { 
+            x: depth, 
+            y: y, 
+            canvasX: depth * gridSpacing, 
+            canvasY: y * gridSpacing 
+          });
+          
+          console.log(`Node ${node.id} assigned coordinates [${depth},${y}] (content: ${node.content.substring(0, 20)}...)`);
+        });
         
         console.log(`Total nodes processed: ${nodes.length}`);
         
         // Adjust canvas size
         adjustCanvasSize();
         
-        // Render all nodes
+        // Render nodes
         renderNodes();
       } catch (error) {
         console.error('Error loading nodes for visualization:', error);
@@ -507,45 +527,34 @@ const NodeGridVisualizer = (function() {
     }
     
     /**
-     * Process a node and all its children, flattening the hierarchy
+     * Helper function to collect all nodes recursively
      */
-    async function processNodeAndChildrenFlat(node, depth, startY) {
-      let nextY = startY;
+    async function collectNodesRecursively(node, depth, parentId, allNodes) {
+      // Add this node to our collection
+      allNodes.push({ node, depth, parentId });
       
-      // Fetch the node's children
-      try {
-        console.log(`Fetching children for node ${node.id}`);
-        
-        // Use the fetchChildren function appropriately
-        let children = [];
-        if (typeof window.fetchChildren === 'function') {
-          // Use global function if available
-          children = await window.fetchChildren(node.id);
-        } else {
-          // Direct API call as fallback
-          const response = await fetch(`/api/nodes/${node.id}/children?lang=${currentLanguage}`);
-          children = await response.json();
-        }
-        
-        console.log(`Node ${node.id} has ${children.length} children`);
-        
-        // Process each child
-        for (const child of children) {
-          // Add the child node
-          nodes.push(child);
-          nodeMap.set(child.id, { x: depth, y: nextY, canvasX: depth * gridSpacing, canvasY: nextY * gridSpacing });
-          nextY++;
-          
-          // If the child is expanded, process its children too
-          if (child.is_expanded) {
-            nextY = await processNodeAndChildrenFlat(child, depth + 1, nextY);
+      // If the node is expanded, collect its children
+      if (node.is_expanded) {
+        try {
+          // Fetch the node's children
+          let children = [];
+          try {
+            // Use direct API call for consistency
+            const response = await fetch(`/api/nodes/${node.id}/children?lang=${currentLanguage}`);
+            children = await response.json();
+            console.log(`Fetched ${children.length} children for node ${node.id}`);
+          } catch (error) {
+            console.error(`Error fetching children for node ${node.id}:`, error);
+            children = [];
           }
+          
+          // Process each child
+          for (const child of children) {
+            await collectNodesRecursively(child, depth + 1, node.id, allNodes);
+          }
+        } catch (error) {
+          console.error(`Error processing children for node ${node.id}:`, error);
         }
-        
-        return nextY;
-      } catch (error) {
-        console.error(`Error processing children for node ${node.id}:`, error);
-        return nextY;
       }
     }
     
