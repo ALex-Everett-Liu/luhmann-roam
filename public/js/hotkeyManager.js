@@ -730,6 +730,7 @@ const HotkeyManager = (function() {
           'sibling-button': 'b',       // Before/after sibling
           'markdown-button': 'd',      // Markdown (using d for "document")
           'attribute-button': 'u',     // Attributes
+          'size-button': 'g',          // Node size (using g for "grid size")
           '+': 'c',                    // Add child
           '×': 'x'                     // Delete
         };

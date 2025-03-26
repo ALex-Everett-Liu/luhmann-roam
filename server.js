@@ -1372,6 +1372,26 @@ app.post('/api/nodes/reset-sizes', async (req, res) => {
   }
 });
 
+// Add a debug endpoint to get full node info
+app.get('/api/debug/node/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', req.params.id);
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    res.json({
+      node,
+      message: 'This is the complete node data, including node_size field',
+      has_node_size_field: node.hasOwnProperty('node_size')
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

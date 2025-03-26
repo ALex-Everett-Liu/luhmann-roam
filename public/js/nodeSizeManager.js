@@ -10,17 +10,27 @@ const NodeSizeManager = (function() {
         return;
       }
       
-      console.log('NodeSizeManager initialized');
+      console.log('NodeSizeManager initialized successfully');
       isInitialized = true;
     }
     
     // Open modal to adjust node size
     function openNodeSizeModal(nodeId) {
+      console.log('Opening node size modal for node:', nodeId);
+      
       return new Promise(async (resolve) => {
         try {
           // Fetch the current node to get its current size
+          console.log('Fetching node data...');
           const response = await fetch(`/api/nodes/${nodeId}`);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch node: ${response.status} ${response.statusText}`);
+          }
+          
           const node = await response.json();
+          console.log('Node data received:', node);
+          console.log('Current node size:', node.node_size);
           
           // Create modal container
           const modalContainer = document.createElement('div');
@@ -53,6 +63,16 @@ const NodeSizeManager = (function() {
           sizeValue.id = 'node-size-value';
           sizeValue.textContent = node.node_size || 20;
           
+          // Add a direct input box for the size value
+          const sizeInput = document.createElement('input');
+          sizeInput.type = 'number';
+          sizeInput.id = 'node-size-input-text';
+          sizeInput.min = 1;
+          sizeInput.max = 100;
+          sizeInput.value = node.node_size || 20;
+          sizeInput.style.width = '50px';
+          sizeInput.style.marginLeft = '10px';
+          
           const sizeSlider = document.createElement('input');
           sizeSlider.type = 'range';
           sizeSlider.id = 'node-size-input';
@@ -76,16 +96,28 @@ const NodeSizeManager = (function() {
           previewDot.style.backgroundColor = '#4285F4';
           previewDot.style.transition = 'all 0.2s';
           
-          // Update preview and value display when slider changes
+          // Synchronize the slider and the text input
           sizeSlider.addEventListener('input', () => {
             sizeValue.textContent = sizeSlider.value;
+            sizeInput.value = sizeSlider.value;
             previewDot.style.width = `${sizeSlider.value}px`;
             previewDot.style.height = `${sizeSlider.value}px`;
+          });
+          
+          // Also update when direct input changes
+          sizeInput.addEventListener('input', () => {
+            const value = Math.min(100, Math.max(1, parseInt(sizeInput.value) || 20));
+            sizeInput.value = value;
+            sizeSlider.value = value;
+            sizeValue.textContent = value;
+            previewDot.style.width = `${value}px`;
+            previewDot.style.height = `${value}px`;
           });
           
           sizeContainer.appendChild(sizeLabel);
           sizeContainer.appendChild(sizeSlider);
           sizeContainer.appendChild(sizeValue);
+          sizeContainer.appendChild(sizeInput);
           
           previewContainer.appendChild(previewDot);
           
@@ -101,7 +133,10 @@ const NodeSizeManager = (function() {
           saveButton.className = 'btn btn-primary';
           saveButton.addEventListener('click', async () => {
             try {
-              const newSize = parseInt(sizeSlider.value);
+              console.log('Save button clicked');
+              // Use the direct input value for more reliability
+              const newSize = parseInt(sizeInput.value);
+              console.log('About to save new node size:', newSize);
               
               // Update the node size in the database
               const updateResponse = await fetch(`/api/nodes/${nodeId}`, {
@@ -115,14 +150,21 @@ const NodeSizeManager = (function() {
               });
               
               if (!updateResponse.ok) {
-                throw new Error('Failed to update node size');
+                console.error('Response not OK:', updateResponse.status, updateResponse.statusText);
+                const responseText = await updateResponse.text();
+                console.error('Response body:', responseText);
+                throw new Error(`Failed to update node size: ${updateResponse.status} ${updateResponse.statusText}`);
               }
+              
+              const updatedNode = await updateResponse.json();
+              console.log('Node updated successfully:', updatedNode);
               
               closeModal();
               
               // Redraw the grid visualization if it's visible
               if (window.NodeGridVisualizer) {
-                NodeGridVisualizer.loadAndVisualizeAllNodes();
+                console.log('Refreshing grid visualization');
+                window.NodeGridVisualizer.loadAndVisualizeAllNodes();
               }
               
               resolve(true);
@@ -165,6 +207,7 @@ const NodeSizeManager = (function() {
           });
         } catch (error) {
           console.error('Error opening node size modal:', error);
+          alert(`Error opening size modal: ${error.message}`);
           resolve(false);
         }
       });
@@ -209,3 +252,6 @@ const NodeSizeManager = (function() {
     console.log('DOM ready, initializing NodeSizeManager');
     NodeSizeManager.initialize();
   });
+
+  // Add this to make sure it's properly loaded
+  console.log('NodeSizeManager script loaded and registered on window object');
