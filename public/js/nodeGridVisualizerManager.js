@@ -254,10 +254,13 @@ const NodeGridVisualizer = (function() {
         const nodeContent = currentLanguage === 'en' ? 
           node.content : (node.content_zh || node.content);
         
+        // Add node size information to the tooltip
+        const nodeSize = node.node_size || 20; // Default to 20 if not set
         tooltip.innerHTML = `
           <div class="tooltip-title">${nodeContent}</div>
           <div class="tooltip-coords">Coordinates: [${coords.x}, ${coords.y}]</div>
           <div class="tooltip-id">ID: ${node.id}</div>
+          <div class="tooltip-size">Node Size: ${nodeSize}</div>
         `;
       }
       
@@ -480,11 +483,6 @@ const NodeGridVisualizer = (function() {
         ctx.fillStyle = '#333';
         ctx.font = '10px Arial';
         ctx.fillText(`${coords.x},${coords.y}`, x + radius + 3, y + 3);
-        
-        // If node has custom size, indicate it with a small indicator
-        if (nodeSize !== 20) {
-          ctx.fillText(`◉${nodeSize}`, x - radius - 15, y - radius - 5);
-        }
       }
     }
     
