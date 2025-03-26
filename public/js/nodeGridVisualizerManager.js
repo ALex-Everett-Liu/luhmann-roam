@@ -401,6 +401,9 @@ const NodeGridVisualizer = (function() {
       
       // Draw connections between parent and child nodes
       drawConnections();
+      
+      // Draw connections for links between nodes
+      drawLinkConnections();
     }
     
     /**
@@ -525,6 +528,73 @@ const NodeGridVisualizer = (function() {
     }
     
     /**
+     * Draw connections between linked nodes (separate from parent-child relationships)
+     */
+    function drawLinkConnections() {
+      // Set styling for link connections - make them distinct from parent-child connections
+      ctx.strokeStyle = '#e74c3c'; // Red color for links
+      ctx.lineWidth = 1.5;
+      
+      // Use dashed lines for links to differentiate from parent-child solid lines
+      ctx.setLineDash([4, 3]);
+      
+      // Create a map to store all links we'll draw
+      const linkMap = new Map();
+      
+      // Collect all node IDs in the visualization
+      const nodeIds = Array.from(nodeMap.keys());
+      
+      // Process each node to find its links
+      for (const node of nodes) {
+        // Skip nodes without links
+        if (!node.links || (!node.links.outgoing && !node.links.incoming)) {
+          continue;
+        }
+        
+        // Process outgoing links
+        if (node.links.outgoing) {
+          for (const link of node.links.outgoing) {
+            // Only draw the link if both nodes are in the visualization
+            if (nodeMap.has(link.to_node_id)) {
+              // Create a unique key for this link to avoid drawing duplicates
+              const linkKey = `${node.id}-${link.to_node_id}`;
+              
+              // Store the link data with its weight
+              linkMap.set(linkKey, {
+                fromId: node.id,
+                toId: link.to_node_id,
+                weight: link.weight || 1
+              });
+            }
+          }
+        }
+        
+        // We don't need to process incoming links as they would be covered by other nodes' outgoing links
+      }
+      
+      // Draw all the links
+      for (const [key, link] of linkMap.entries()) {
+        const fromCoords = nodeMap.get(link.fromId);
+        const toCoords = nodeMap.get(link.toId);
+        
+        if (!fromCoords || !toCoords) continue;
+        
+        // Draw line from source to target
+        ctx.beginPath();
+        ctx.moveTo(fromCoords.canvasX, fromCoords.canvasY);
+        ctx.lineTo(toCoords.canvasX, toCoords.canvasY);
+        
+        // Optional: Adjust line width based on link weight
+        ctx.lineWidth = Math.max(0.5, Math.min(3, link.weight));
+        
+        ctx.stroke();
+      }
+      
+      // Reset line dash to solid lines for other drawing operations
+      ctx.setLineDash([]);
+    }
+    
+    /**
      * Load and visualize all nodes
      */
     async function loadAndVisualizeAllNodes() {
@@ -571,6 +641,9 @@ const NodeGridVisualizer = (function() {
         
         console.log(`Total nodes processed: ${nodes.length}`);
         
+        // Fetch links for all nodes in the visualization
+        await fetchNodesLinks();
+        
         // Adjust canvas size
         adjustCanvasSize();
         
@@ -610,6 +683,29 @@ const NodeGridVisualizer = (function() {
         } catch (error) {
           console.error(`Error processing children for node ${node.id}:`, error);
         }
+      }
+    }
+    
+    /**
+     * Fetch links for all nodes in the visualization
+     */
+    async function fetchNodesLinks() {
+      try {
+        // Create a map of node IDs in our visualization
+        const nodeIdsInVisualization = new Set(nodes.map(node => node.id));
+        
+        // Fetch links for each node
+        for (const node of nodes) {
+          const response = await fetch(`/api/nodes/${node.id}/links`);
+          const linkData = await response.json();
+          
+          // Store the links with the node
+          node.links = linkData;
+        }
+        
+        console.log('Fetched links for all nodes in visualization');
+      } catch (error) {
+        console.error('Error fetching node links:', error);
       }
     }
     
@@ -670,8 +766,31 @@ const NodeGridVisualizer = (function() {
       markdownNode.appendChild(markdownColor);
       markdownNode.appendChild(document.createTextNode('Node with markdown'));
       
+      // Add connection types to the legend
+      const parentChildConn = document.createElement('div');
+      parentChildConn.className = 'node-grid-legend-item';
+      
+      const parentChildLine = document.createElement('div');
+      parentChildLine.className = 'node-grid-legend-line';
+      parentChildLine.style.backgroundColor = '#bbb';
+      
+      parentChildConn.appendChild(parentChildLine);
+      parentChildConn.appendChild(document.createTextNode('Parent-child connection'));
+      
+      const linkConn = document.createElement('div');
+      linkConn.className = 'node-grid-legend-item';
+      
+      const linkLine = document.createElement('div');
+      linkLine.className = 'node-grid-legend-line link-line';
+      linkLine.style.backgroundColor = '#e74c3c';
+      
+      linkConn.appendChild(linkLine);
+      linkConn.appendChild(document.createTextNode('Link connection'));
+      
       legend.appendChild(regularNode);
       legend.appendChild(markdownNode);
+      legend.appendChild(parentChildConn);
+      legend.appendChild(linkConn);
       
       return legend;
     }

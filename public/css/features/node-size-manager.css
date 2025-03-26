@@ -49,3 +49,17 @@
   .size-button:hover {
     background-color: #f0f0f0;
   }
+
+/* Add these styles for the link connection legend */
+.node-grid-legend-line {
+  width: 25px;
+  height: 2px;
+  margin-right: 8px;
+}
+
+.node-grid-legend-line.link-line {
+  height: 2px;
+  background-image: linear-gradient(to right, #e74c3c 66%, transparent 34%);
+  background-size: 6px 1px;
+  background-repeat: repeat-x;
+}
