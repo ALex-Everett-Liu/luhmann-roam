@@ -24,15 +24,24 @@ async function initializeDatabase() {
       position INTEGER,
       is_expanded BOOLEAN DEFAULT 1,
       has_markdown BOOLEAN DEFAULT 0,
+      node_size INTEGER DEFAULT 20,
       created_at INTEGER,
       updated_at INTEGER,
       FOREIGN KEY (parent_id) REFERENCES nodes (id)
     )
   `);
+
+    // Add node_size column to existing tables if it doesn't exist
+    try {
+      await db.exec(`ALTER TABLE nodes ADD COLUMN node_size INTEGER DEFAULT 20`);
+      console.log('Added node_size column to nodes table');
+    } catch (error) {
+      // Column likely already exists, which is fine
+      console.log('node_size column already exists or other error:', error.message);
+    }
   
   // Create links table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS links (
+  await db.exec(`    CREATE TABLE IF NOT EXISTS links (
       id TEXT PRIMARY KEY,
       from_node_id TEXT NOT NULL,
       to_node_id TEXT NOT NULL,

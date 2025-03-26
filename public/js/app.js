@@ -318,6 +318,20 @@ document.addEventListener('DOMContentLoaded', () => {
     markdownButton.addEventListener('click', () => MarkdownManager.openModal(node.id));
     nodeActions.appendChild(markdownButton);
     
+    // Size button
+    const sizeButton = document.createElement('button');
+    sizeButton.className = 'size-button';
+    sizeButton.innerHTML = '⚙️';
+    sizeButton.title = 'Adjust node size in grid view';
+    sizeButton.addEventListener('click', () => {
+      if (window.NodeSizeManager) {
+        NodeSizeManager.openNodeSizeModal(node.id);
+      } else {
+        console.error('NodeSizeManager not available');
+      }
+    });
+    nodeActions.appendChild(sizeButton);
+    
     const addButton = document.createElement('button');
     addButton.innerHTML = '+';
     addButton.title = 'Add child node';

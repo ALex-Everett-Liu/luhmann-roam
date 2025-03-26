@@ -1,0 +1,51 @@
+/* Node Size Manager Styles */
+.node-size-modal {
+    width: 400px;
+    max-width: 90vw;
+  }
+  
+  .size-input-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .size-input-container label {
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  
+  .size-input-container input[type="range"] {
+    flex: 1;
+    margin: 0 10px;
+  }
+  
+  .size-input-container span {
+    width: 30px;
+    text-align: center;
+  }
+  
+  .node-size-preview {
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+  
+  .node-size-preview-dot {
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  }
+  
+  .size-button {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    color: #666;
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: 2px;
+    padding: 2px 4px;
+  }
+  
+  .size-button:hover {
+    background-color: #f0f0f0;
+  }

@@ -186,9 +186,17 @@ const NodeGridVisualizer = (function() {
         const dotX = coords.canvasX;
         const dotY = coords.canvasY;
         
+        // Get the node to check its size
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) continue;
+        
+        // Calculate radius based on node_size
+        const nodeSize = node.node_size || 20;
+        const radius = (nodeSize / 20) * dotRadius * 1.2;
+        
         const distance = Math.sqrt(Math.pow(x - dotX, 2) + Math.pow(y - dotY, 2));
         
-        if (distance <= dotRadius + 2) { // +2 for better hover detection
+        if (distance <= radius + 2) { // +2 for better hover detection
           hoverNodeId = nodeId;
           break;
         }
@@ -445,8 +453,10 @@ const NodeGridVisualizer = (function() {
         fillColor = '#0F9D58'; // Green
       }
       
-      // Make dots slightly larger
-      const radius = dotRadius * 1.2;
+      // Use node_size to determine dot radius, or fall back to default
+      const nodeSize = node.node_size || 20;
+      // Scale the radius based on node_size and grid spacing
+      const radius = (nodeSize / 20) * dotRadius * 1.2;
       
       // Draw dot with a subtle glow effect
       ctx.beginPath();
@@ -469,7 +479,12 @@ const NodeGridVisualizer = (function() {
       if (coords) {
         ctx.fillStyle = '#333';
         ctx.font = '10px Arial';
-        ctx.fillText(`${coords.x},${coords.y}`, x + 8, y + 8);
+        ctx.fillText(`${coords.x},${coords.y}`, x + radius + 3, y + 3);
+        
+        // If node has custom size, indicate it with a small indicator
+        if (nodeSize !== 20) {
+          ctx.fillText(`◉${nodeSize}`, x - radius - 15, y - radius - 5);
+        }
       }
     }
     

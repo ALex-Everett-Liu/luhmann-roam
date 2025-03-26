@@ -109,7 +109,7 @@ app.post('/api/nodes', async (req, res) => {
 app.put('/api/nodes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { content, content_zh, parent_id, position, is_expanded } = req.body;
+    const { content, content_zh, parent_id, position, is_expanded, node_size } = req.body;
     const now = Date.now();
     
     let query = 'UPDATE nodes SET updated_at = ?';
@@ -138,6 +138,11 @@ app.put('/api/nodes/:id', async (req, res) => {
     if (is_expanded !== undefined) {
       query += ', is_expanded = ?';
       params.push(is_expanded);
+    }
+    
+    if (node_size !== undefined) {
+      query += ', node_size = ?';
+      params.push(node_size);
     }
     
     query += ' WHERE id = ?';
@@ -1349,6 +1354,21 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
     console.error('Error fixing position conflict:', error);
     await db.run('ROLLBACK');
     res.status(500).json({ error: 'Failed to fix position conflict' });
+  }
+});
+
+// Add endpoint to reset all node sizes to default
+app.post('/api/nodes/reset-sizes', async (req, res) => {
+  try {
+    const db = await getDb();
+    
+    // Update all nodes to default size
+    await db.run('UPDATE nodes SET node_size = 20, updated_at = ?', Date.now());
+    
+    res.json({ success: true, message: 'All node sizes have been reset to default' });
+  } catch (error) {
+    console.error('Error resetting node sizes:', error);
+    res.status(500).json({ error: 'Failed to reset node sizes' });
   }
 });
 
