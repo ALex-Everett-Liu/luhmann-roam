@@ -579,15 +579,82 @@ const NodeGridVisualizer = (function() {
         
         if (!fromCoords || !toCoords) continue;
         
-        // Draw line from source to target
+        // Calculate start and end points
+        const startX = fromCoords.canvasX;
+        const startY = fromCoords.canvasY;
+        const endX = toCoords.canvasX;
+        const endY = toCoords.canvasY;
+        
+        // Draw the main line from source to target
         ctx.beginPath();
-        ctx.moveTo(fromCoords.canvasX, fromCoords.canvasY);
-        ctx.lineTo(toCoords.canvasX, toCoords.canvasY);
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
         
         // Optional: Adjust line width based on link weight
-        ctx.lineWidth = Math.max(0.5, Math.min(3, link.weight));
-        
+        const linkWidth = Math.max(0.5, Math.min(3, link.weight));
+        ctx.lineWidth = linkWidth;
         ctx.stroke();
+        
+        // Calculate the direction of the line
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const angle = Math.atan2(dy, dx);
+        
+        // Calculate a point before the end for the arrowhead
+        // Move the arrow slightly back from the endpoint so it doesn't overlap with the node
+        const arrowLength = 15;
+        const arrowX = endX - Math.cos(angle) * arrowLength;
+        const arrowY = endY - Math.sin(angle) * arrowLength;
+        
+        // Draw the arrowhead
+        const arrowSize = 8 + (link.weight * 0.5); // Scale arrow with link weight
+        
+        // Draw solid arrowhead (no dash pattern)
+        ctx.setLineDash([]); // Remove dash pattern for the arrowhead
+        ctx.beginPath();
+        ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(
+          arrowX - arrowSize * Math.cos(angle - Math.PI/6),
+          arrowY - arrowSize * Math.sin(angle - Math.PI/6)
+        );
+        ctx.lineTo(
+          arrowX - arrowSize * Math.cos(angle + Math.PI/6),
+          arrowY - arrowSize * Math.sin(angle + Math.PI/6)
+        );
+        ctx.closePath();
+        ctx.fillStyle = '#e74c3c';
+        ctx.fill();
+        
+        // Draw the weight label near the middle of the line
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+        
+        // Offset the weight label slightly to not overlap with the line
+        const perpAngle = angle + Math.PI/2;
+        const labelOffset = 12;
+        const labelX = midX + Math.cos(perpAngle) * labelOffset;
+        const labelY = midY + Math.sin(perpAngle) * labelOffset;
+        
+        // Add weight label
+        ctx.font = '10px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw white background to make text readable
+        const weightText = link.weight.toString();
+        const textWidth = ctx.measureText(weightText).width;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.fillRect(
+          labelX - textWidth/2 - 2, 
+          labelY - 7, 
+          textWidth + 4, 
+          14
+        );
+        
+        // Draw text
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillText(weightText, labelX, labelY);
       }
       
       // Reset line dash to solid lines for other drawing operations
@@ -785,7 +852,7 @@ const NodeGridVisualizer = (function() {
       linkLine.style.backgroundColor = '#e74c3c';
       
       linkConn.appendChild(linkLine);
-      linkConn.appendChild(document.createTextNode('Link connection'));
+      linkConn.appendChild(document.createTextNode('Link connection (→ shows direction, number = weight)'));
       
       legend.appendChild(regularNode);
       legend.appendChild(markdownNode);
