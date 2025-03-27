@@ -308,3 +308,42 @@ kbd {
 .tab-pane.active {
   display: block;
 }
+
+/* Add this CSS to make bookmark buttons visible */
+.bookmark-button {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.bookmark-button:hover {
+  background-color: #e9ecef;
+}
+
+/* Enhanced bookmark container */
+.bookmarks-container {
+  max-height: 500px !important;
+  overflow-y: auto !important;
+  height: auto;
+  margin-bottom: 15px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.bookmarks-section {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+/* Make bookmark items more compact */
+.bookmark-item {
+  padding: 4px 0 !important;
+  margin: 2px 0;
+}

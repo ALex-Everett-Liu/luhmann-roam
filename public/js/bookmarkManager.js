@@ -22,6 +22,25 @@ const BookmarkManager = (function() {
           toggleBookmarkForFocusedNode();
         }
       });
+      
+      // Verify initialization is complete
+      console.log('BookmarkManager initialized, current bookmarks:', bookmarks);
+
+      // Run a storage test to verify localStorage is working
+      try {
+        const testKey = 'bookmark_storage_test';
+        localStorage.setItem(testKey, 'test');
+        const testValue = localStorage.getItem(testKey);
+        localStorage.removeItem(testKey);
+        
+        if (testValue === 'test') {
+          console.log('LocalStorage test passed - storage is working correctly');
+        } else {
+          console.error('LocalStorage test failed - storage is not working correctly');
+        }
+      } catch (e) {
+        console.error('LocalStorage test failed with exception:', e);
+      }
     }
     
     /**
@@ -30,6 +49,9 @@ const BookmarkManager = (function() {
     function createBookmarksSection() {
       const sidebar = document.querySelector('.sidebar');
       if (!sidebar) return;
+      
+      // Set initial collapsed state
+      const isCollapsed = localStorage.getItem('bookmarks_collapsed') === 'true';
       
       // Create bookmarks section container
       const section = document.createElement('div');
@@ -60,11 +82,15 @@ const BookmarkManager = (function() {
       header.appendChild(title);
       header.appendChild(toggleIcon);
       
-      // Create bookmarks list container
+      // Create bookmarks list container with fixed dimensions and attributes
       bookmarksContainer = document.createElement('div');
       bookmarksContainer.className = 'bookmarks-container';
       bookmarksContainer.style.maxHeight = '500px';
       bookmarksContainer.style.overflowY = 'auto';
+      bookmarksContainer.style.display = 'block'; // Ensure it's visible
+      bookmarksContainer.style.border = '1px solid #eee'; // Optional: add a border to see the container
+      bookmarksContainer.style.padding = '4px'; // Add some padding
+      bookmarksContainer.setAttribute('data-height', '500px'); // Add an attribute for debugging
       
       section.appendChild(header);
       section.appendChild(bookmarksContainer);
@@ -75,6 +101,15 @@ const BookmarkManager = (function() {
         sidebar.insertBefore(section, searchButton.nextSibling);
       } else {
         sidebar.appendChild(section);
+      }
+      
+      // Apply initial collapsed state
+      if (isCollapsed) {
+        bookmarksContainer.style.display = 'none';
+        toggleIcon.innerHTML = '►';
+      } else {
+        bookmarksContainer.style.display = 'block';
+        toggleIcon.innerHTML = '▼';
       }
       
       renderBookmarks();
@@ -102,16 +137,33 @@ const BookmarkManager = (function() {
      * Loads bookmarks from localStorage
      */
     function loadBookmarks() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      
-      if (saved) {
-        try {
-          bookmarks = JSON.parse(saved);
-        } catch (e) {
-          console.error('Error parsing bookmarks:', e);
+      try {
+        // Log localStorage keys for debugging
+        console.log('All localStorage keys:', Object.keys(localStorage));
+        const saved = localStorage.getItem(STORAGE_KEY);
+        console.log(`Raw localStorage data for ${STORAGE_KEY}:`, saved);
+        
+        if (saved && saved !== 'undefined' && saved !== 'null') {
+          try {
+            bookmarks = JSON.parse(saved);
+            console.log('Successfully loaded bookmarks from localStorage:', bookmarks);
+          } catch (e) {
+            console.error('Error parsing bookmarks JSON:', e);
+            console.error('Raw bookmark data that failed to parse:', saved);
+            bookmarks = [];
+          }
+        } else {
+          console.log(`No bookmarks found in localStorage with key ${STORAGE_KEY}`);
           bookmarks = [];
         }
-      } else {
+      } catch (e) {
+        console.error('Error accessing localStorage:', e);
+        bookmarks = [];
+      }
+      
+      // Validate bookmarks format
+      if (!Array.isArray(bookmarks)) {
+        console.error('Bookmarks is not an array, resetting to empty array');
         bookmarks = [];
       }
     }
@@ -121,9 +173,28 @@ const BookmarkManager = (function() {
      */
     function saveBookmarks() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
+        if (!Array.isArray(bookmarks)) {
+          console.error('Cannot save bookmarks: not an array');
+          return false;
+        }
+        
+        const bookmarksJson = JSON.stringify(bookmarks);
+        localStorage.setItem(STORAGE_KEY, bookmarksJson);
+        console.log('Saved bookmarks to localStorage:', bookmarks);
+        console.log('Raw saved data:', bookmarksJson);
+        
+        // Verify save was successful
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData !== bookmarksJson) {
+          console.error('Verification failed! Saved data does not match:', savedData);
+        } else {
+          console.log('Verification successful - localStorage contains the correct data');
+        }
+        
+        return true;
       } catch (e) {
         console.error('Error saving bookmarks:', e);
+        return false;
       }
     }
     
@@ -131,11 +202,27 @@ const BookmarkManager = (function() {
      * Renders the bookmarks in the sidebar
      */
     function renderBookmarks() {
-      if (!bookmarksContainer) return;
+      if (!bookmarksContainer) {
+        console.error('bookmarksContainer is null, cannot render bookmarks');
+        return;
+      }
       
+      console.log('Rendering bookmarks container:', bookmarksContainer);
+      console.log('Bookmarks to render:', bookmarks);
+      console.log('Is bookmarks an array?', Array.isArray(bookmarks));
+      console.log('Bookmarks length:', bookmarks.length);
+      
+      // Clear the container
       bookmarksContainer.innerHTML = '';
       
+      // Debug check to ensure we don't incorrectly show "no bookmarks"
+      if (!Array.isArray(bookmarks)) {
+        console.error('Bookmarks is not an array, converting to empty array');
+        bookmarks = [];
+      }
+      
       if (bookmarks.length === 0) {
+        console.log('No bookmarks to display, showing empty message');
         const noBookmarks = document.createElement('div');
         noBookmarks.className = 'no-bookmarks';
         noBookmarks.textContent = window.I18n ? I18n.t('noBookmarks') : 'No bookmarked nodes';
@@ -146,6 +233,8 @@ const BookmarkManager = (function() {
         return;
       }
       
+      console.log('Creating bookmarks list with', bookmarks.length, 'items');
+      
       // Create a list for the bookmarks
       const list = document.createElement('ul');
       list.className = 'bookmarks-list';
@@ -153,62 +242,76 @@ const BookmarkManager = (function() {
       list.style.padding = '0';
       list.style.margin = '0';
       
+      // Add a special debug message
+      const debugItem = document.createElement('li');
+      debugItem.textContent = `Debug: Found ${bookmarks.length} bookmarks`;
+      debugItem.style.color = 'blue';
+      debugItem.style.fontWeight = 'bold';
+      list.appendChild(debugItem);
+      
       bookmarks.forEach((bookmark, index) => {
-        const item = document.createElement('li');
-        item.className = 'bookmark-item';
-        item.style.display = 'flex';
-        item.style.alignItems = 'center';
-        item.style.padding = '6px 0';
-        item.style.borderBottom = '1px solid #f0f0f0';
-        
-        // Create icon
-        const icon = document.createElement('span');
-        icon.className = 'bookmark-icon';
-        icon.innerHTML = '📌';
-        icon.style.marginRight = '8px';
-        
-        // Create the bookmark text
-        const text = document.createElement('span');
-        text.className = 'bookmark-text';
-        text.textContent = bookmark.title;
-        text.style.flex = '1';
-        text.style.overflow = 'hidden';
-        text.style.textOverflow = 'ellipsis';
-        text.style.whiteSpace = 'nowrap';
-        text.style.cursor = 'pointer';
-        text.title = 'Click to focus on this node';
-        
-        // Add click handler to focus on the node
-        text.addEventListener('click', () => {
-          focusOnNode(bookmark.id);
-        });
-        
-        // Create delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'bookmark-delete';
-        deleteBtn.innerHTML = '×';
-        deleteBtn.title = 'Remove bookmark';
-        deleteBtn.style.background = 'none';
-        deleteBtn.style.border = 'none';
-        deleteBtn.style.color = '#999';
-        deleteBtn.style.cursor = 'pointer';
-        deleteBtn.style.fontSize = '16px';
-        deleteBtn.style.padding = '0 4px';
-        
-        // Add delete handler
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          removeBookmark(index);
-        });
-        
-        // Assemble the item
-        item.appendChild(icon);
-        item.appendChild(text);
-        item.appendChild(deleteBtn);
-        list.appendChild(item);
+        try {
+          console.log(`Rendering bookmark ${index}:`, bookmark);
+          
+          const item = document.createElement('li');
+          item.className = 'bookmark-item';
+          item.style.display = 'flex';
+          item.style.alignItems = 'center';
+          item.style.padding = '6px 0';
+          item.style.borderBottom = '1px solid #f0f0f0';
+          
+          // Create icon
+          const icon = document.createElement('span');
+          icon.className = 'bookmark-icon';
+          icon.innerHTML = '📌';
+          icon.style.marginRight = '8px';
+          
+          // Create the bookmark text
+          const text = document.createElement('span');
+          text.className = 'bookmark-text';
+          text.textContent = bookmark.title || `Bookmark ${index}`;
+          text.style.flex = '1';
+          text.style.overflow = 'hidden';
+          text.style.textOverflow = 'ellipsis';
+          text.style.whiteSpace = 'nowrap';
+          text.style.cursor = 'pointer';
+          text.title = 'Click to focus on this node';
+          
+          // Add click handler to focus on the node
+          text.addEventListener('click', () => {
+            focusOnNode(bookmark.id);
+          });
+          
+          // Create delete button
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'bookmark-delete';
+          deleteBtn.innerHTML = '×';
+          deleteBtn.title = 'Remove bookmark';
+          deleteBtn.style.background = 'none';
+          deleteBtn.style.border = 'none';
+          deleteBtn.style.color = '#999';
+          deleteBtn.style.cursor = 'pointer';
+          deleteBtn.style.fontSize = '16px';
+          deleteBtn.style.padding = '0 4px';
+          
+          // Add delete handler
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeBookmark(index);
+          });
+          
+          // Assemble the item
+          item.appendChild(icon);
+          item.appendChild(text);
+          item.appendChild(deleteBtn);
+          list.appendChild(item);
+        } catch (error) {
+          console.error(`Error rendering bookmark ${index}:`, error);
+        }
       });
       
       bookmarksContainer.appendChild(list);
+      console.log('Finished rendering bookmarks list');
     }
     
     /**
@@ -217,6 +320,8 @@ const BookmarkManager = (function() {
      */
     async function addBookmark(nodeId) {
       try {
+        console.log(`Adding bookmark for node ${nodeId}`);
+        
         // Fetch the node data to get the title
         const response = await fetch(`/api/nodes/${nodeId}`);
         if (!response.ok) {
@@ -230,17 +335,25 @@ const BookmarkManager = (function() {
         // Check if this node is already bookmarked
         const existingIndex = bookmarks.findIndex(b => b.id === nodeId);
         if (existingIndex !== -1) {
+          console.log(`Node ${nodeId} is already bookmarked`);
           return false; // Already bookmarked
         }
         
+        console.log(`Creating bookmark with title "${nodeTitle}"`);
+        
         // Add to bookmarks
-        bookmarks.push({
+        const newBookmark = {
           id: nodeId,
           title: nodeTitle,
           addedAt: Date.now()
-        });
+        };
         
-        saveBookmarks();
+        bookmarks.push(newBookmark);
+        console.log('Updated bookmarks array:', bookmarks);
+        
+        const success = saveBookmarks();
+        console.log('Save result:', success);
+        
         renderBookmarks();
         
         return true;
@@ -375,9 +488,29 @@ const BookmarkManager = (function() {
       if (isNodeBookmarked(focusedNodeId)) {
         removeBookmarkByNodeId(focusedNodeId);
         console.log(`Removed bookmark for node ${focusedNodeId}`);
+        
+        // Update the bookmark button for this node if it exists
+        const nodeElement = document.querySelector(`.node[data-id="${focusedNodeId}"]`);
+        if (nodeElement) {
+          const bookmarkButton = nodeElement.querySelector('.bookmark-button');
+          if (bookmarkButton) {
+            bookmarkButton.innerHTML = '📎';
+            bookmarkButton.title = 'Add bookmark';
+          }
+        }
       } else {
         addBookmark(focusedNodeId);
         console.log(`Added bookmark for node ${focusedNodeId}`);
+        
+        // Update the bookmark button for this node if it exists
+        const nodeElement = document.querySelector(`.node[data-id="${focusedNodeId}"]`);
+        if (nodeElement) {
+          const bookmarkButton = nodeElement.querySelector('.bookmark-button');
+          if (bookmarkButton) {
+            bookmarkButton.innerHTML = '📌';
+            bookmarkButton.title = 'Remove bookmark';
+          }
+        }
       }
     }
     
