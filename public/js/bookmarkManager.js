@@ -199,7 +199,7 @@ const BookmarkManager = (function() {
     }
     
     /**
-     * Renders the bookmarks in the sidebar
+     * Renders the bookmarks in the sidebar - final version
      */
     function renderBookmarks() {
       if (!bookmarksContainer) {
@@ -207,22 +207,10 @@ const BookmarkManager = (function() {
         return;
       }
       
-      console.log('Rendering bookmarks container:', bookmarksContainer);
-      console.log('Bookmarks to render:', bookmarks);
-      console.log('Is bookmarks an array?', Array.isArray(bookmarks));
-      console.log('Bookmarks length:', bookmarks.length);
-      
       // Clear the container
       bookmarksContainer.innerHTML = '';
       
-      // Debug check to ensure we don't incorrectly show "no bookmarks"
-      if (!Array.isArray(bookmarks)) {
-        console.error('Bookmarks is not an array, converting to empty array');
-        bookmarks = [];
-      }
-      
-      if (bookmarks.length === 0) {
-        console.log('No bookmarks to display, showing empty message');
+      if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
         const noBookmarks = document.createElement('div');
         noBookmarks.className = 'no-bookmarks';
         noBookmarks.textContent = window.I18n ? I18n.t('noBookmarks') : 'No bookmarked nodes';
@@ -233,8 +221,6 @@ const BookmarkManager = (function() {
         return;
       }
       
-      console.log('Creating bookmarks list with', bookmarks.length, 'items');
-      
       // Create a list for the bookmarks
       const list = document.createElement('ul');
       list.className = 'bookmarks-list';
@@ -242,76 +228,63 @@ const BookmarkManager = (function() {
       list.style.padding = '0';
       list.style.margin = '0';
       
-      // Add a special debug message
-      const debugItem = document.createElement('li');
-      debugItem.textContent = `Debug: Found ${bookmarks.length} bookmarks`;
-      debugItem.style.color = 'blue';
-      debugItem.style.fontWeight = 'bold';
-      list.appendChild(debugItem);
-      
       bookmarks.forEach((bookmark, index) => {
-        try {
-          console.log(`Rendering bookmark ${index}:`, bookmark);
-          
-          const item = document.createElement('li');
-          item.className = 'bookmark-item';
-          item.style.display = 'flex';
-          item.style.alignItems = 'center';
-          item.style.padding = '6px 0';
-          item.style.borderBottom = '1px solid #f0f0f0';
-          
-          // Create icon
-          const icon = document.createElement('span');
-          icon.className = 'bookmark-icon';
-          icon.innerHTML = '📌';
-          icon.style.marginRight = '8px';
-          
-          // Create the bookmark text
-          const text = document.createElement('span');
-          text.className = 'bookmark-text';
-          text.textContent = bookmark.title || `Bookmark ${index}`;
-          text.style.flex = '1';
-          text.style.overflow = 'hidden';
-          text.style.textOverflow = 'ellipsis';
-          text.style.whiteSpace = 'nowrap';
-          text.style.cursor = 'pointer';
-          text.title = 'Click to focus on this node';
-          
-          // Add click handler to focus on the node
-          text.addEventListener('click', () => {
-            focusOnNode(bookmark.id);
-          });
-          
-          // Create delete button
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'bookmark-delete';
-          deleteBtn.innerHTML = '×';
-          deleteBtn.title = 'Remove bookmark';
-          deleteBtn.style.background = 'none';
-          deleteBtn.style.border = 'none';
-          deleteBtn.style.color = '#999';
-          deleteBtn.style.cursor = 'pointer';
-          deleteBtn.style.fontSize = '16px';
-          deleteBtn.style.padding = '0 4px';
-          
-          // Add delete handler
-          deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            removeBookmark(index);
-          });
-          
-          // Assemble the item
-          item.appendChild(icon);
-          item.appendChild(text);
-          item.appendChild(deleteBtn);
-          list.appendChild(item);
-        } catch (error) {
-          console.error(`Error rendering bookmark ${index}:`, error);
-        }
+        // Create bookmark item
+        const item = document.createElement('li');
+        item.className = 'bookmark-item';
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.padding = '6px 0';
+        item.style.borderBottom = '1px solid #f0f0f0';
+        
+        // Create icon
+        const icon = document.createElement('span');
+        icon.className = 'bookmark-icon';
+        icon.innerHTML = '📌';
+        icon.style.marginRight = '8px';
+        
+        // Create the bookmark text
+        const text = document.createElement('span');
+        text.className = 'bookmark-text';
+        text.textContent = bookmark.title || `Bookmark ${index}`;
+        text.style.flex = '1';
+        text.style.overflow = 'hidden';
+        text.style.textOverflow = 'ellipsis';
+        text.style.whiteSpace = 'nowrap';
+        text.style.cursor = 'pointer';
+        text.title = 'Click to focus on this node';
+        
+        // Add click handler to focus on the node
+        text.addEventListener('click', () => {
+          focusOnNode(bookmark.id);
+        });
+        
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'bookmark-delete';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Remove bookmark';
+        deleteBtn.style.background = 'none';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.color = '#999';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.fontSize = '16px';
+        deleteBtn.style.padding = '0 4px';
+        
+        // Add delete handler
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeBookmark(index);
+        });
+        
+        // Assemble the item
+        item.appendChild(icon);
+        item.appendChild(text);
+        item.appendChild(deleteBtn);
+        list.appendChild(item);
       });
       
       bookmarksContainer.appendChild(list);
-      console.log('Finished rendering bookmarks list');
     }
     
     /**
@@ -608,7 +581,13 @@ const BookmarkManager = (function() {
       focusOnNode,
       addBookmarkButtonToNode,
       updateLanguage,
-      toggleBookmarkForFocusedNode
+      toggleBookmarkForFocusedNode,
+      // Add these debug methods
+      debug: {
+        forceRender: renderBookmarks,
+        getBookmarks: () => bookmarks,
+        getContainer: () => bookmarksContainer
+      }
     };
   })();
   

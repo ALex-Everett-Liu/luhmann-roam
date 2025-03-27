@@ -830,7 +830,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the BookmarkManager
   if (window.BookmarkManager) {
-    BookmarkManager.initialize();
+    console.log('Initializing BookmarkManager from app.js');
+    // Ensure BookmarkManager initializes after the DOM is fully loaded
+    if (document.readyState === 'complete') {
+      BookmarkManager.initialize();
+    } else {
+      window.addEventListener('load', () => {
+        console.log('Window loaded, now initializing BookmarkManager');
+        BookmarkManager.initialize();
+      });
+    }
+    
+    // Add event listener to save bookmarks when page is about to unload
+    window.addEventListener('beforeunload', function() {
+      console.log('Page unloading, ensuring bookmarks are saved');
+      if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
+        const currentBookmarks = BookmarkManager.debug.getBookmarks();
+        console.log('Current bookmarks before unload:', currentBookmarks);
+        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(currentBookmarks));
+      }
+    });
   }
 
   // Initialize the BreadcrumbManager
