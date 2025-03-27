@@ -82,18 +82,15 @@ const BookmarkManager = (function() {
       header.appendChild(title);
       header.appendChild(toggleIcon);
       
-      // Create bookmarks list container with explicit height settings
+      // Create bookmarks list container with fixed height
       bookmarksContainer = document.createElement('div');
       bookmarksContainer.className = 'bookmarks-container';
-      bookmarksContainer.style.maxHeight = '500px';
-      bookmarksContainer.style.height = 'auto';  // Let it grow with content, up to maxHeight
-      bookmarksContainer.style.minHeight = '100px'; // Ensure a minimum height even when few bookmarks
+      bookmarksContainer.style.height = '500px'; // Fixed height instead of maxHeight
       bookmarksContainer.style.overflowY = 'auto';
       bookmarksContainer.style.display = 'block';
-      bookmarksContainer.style.border = '1px solid #44f'; // Use a more visible border to debug
+      bookmarksContainer.style.border = '1px solid #44f';
       bookmarksContainer.style.padding = '8px';
-      bookmarksContainer.style.boxSizing = 'border-box'; // Ensure padding doesn't affect size
-      bookmarksContainer.setAttribute('data-height', '500px');
+      bookmarksContainer.style.boxSizing = 'border-box';
       
       section.appendChild(header);
       section.appendChild(bookmarksContainer);
@@ -230,6 +227,9 @@ const BookmarkManager = (function() {
       list.style.listStyle = 'none';
       list.style.padding = '0';
       list.style.margin = '0';
+      list.style.maxHeight = 'none'; // Remove any height limit
+      list.style.height = 'auto';    // Let it grow with content
+      list.style.overflowY = 'visible'; // No scrolling in the list itself
       
       bookmarks.forEach((bookmark, index) => {
         // Create bookmark item

@@ -156,8 +156,11 @@ background-color: #2d9249;
 }
 
 .bookmarks-list {
-  max-height: 150px;
-  overflow-y: auto;
+  max-height: none !important;
+  height: auto !important;
+  overflow-y: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .bookmark-item {
@@ -326,15 +329,13 @@ kbd {
 
 /* Enhanced bookmark container */
 .bookmarks-container {
-  max-height: 500px !important;
-  min-height: 100px !important;
-  height: auto !important;
+  height: 500px !important;
   overflow-y: auto !important;
   margin-bottom: 15px !important;
-  border: 2px solid #44f !important; /* Very visible border for debugging */
+  border: 1px solid #4466ff !important;
   border-radius: 4px !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-  flex-grow: 1 !important; /* Allow to grow within the parent container */
+  padding: 8px !important;
 }
 
 .bookmarks-section {
