@@ -82,15 +82,18 @@ const BookmarkManager = (function() {
       header.appendChild(title);
       header.appendChild(toggleIcon);
       
-      // Create bookmarks list container with fixed dimensions and attributes
+      // Create bookmarks list container with explicit height settings
       bookmarksContainer = document.createElement('div');
       bookmarksContainer.className = 'bookmarks-container';
       bookmarksContainer.style.maxHeight = '500px';
+      bookmarksContainer.style.height = 'auto';  // Let it grow with content, up to maxHeight
+      bookmarksContainer.style.minHeight = '100px'; // Ensure a minimum height even when few bookmarks
       bookmarksContainer.style.overflowY = 'auto';
-      bookmarksContainer.style.display = 'block'; // Ensure it's visible
-      bookmarksContainer.style.border = '1px solid #eee'; // Optional: add a border to see the container
-      bookmarksContainer.style.padding = '4px'; // Add some padding
-      bookmarksContainer.setAttribute('data-height', '500px'); // Add an attribute for debugging
+      bookmarksContainer.style.display = 'block';
+      bookmarksContainer.style.border = '1px solid #44f'; // Use a more visible border to debug
+      bookmarksContainer.style.padding = '8px';
+      bookmarksContainer.style.boxSizing = 'border-box'; // Ensure padding doesn't affect size
+      bookmarksContainer.setAttribute('data-height', '500px');
       
       section.appendChild(header);
       section.appendChild(bookmarksContainer);
@@ -572,6 +575,54 @@ const BookmarkManager = (function() {
       renderBookmarks();
     }
     
+    // Add this function to the public API's debug object
+    function testContainerHeight() {
+      if (!bookmarksContainer) {
+        console.error('Bookmarks container not found');
+        return;
+      }
+      
+      console.log('Bookmarks container properties:');
+      console.log('- offsetHeight:', bookmarksContainer.offsetHeight);
+      console.log('- clientHeight:', bookmarksContainer.clientHeight);
+      console.log('- scrollHeight:', bookmarksContainer.scrollHeight);
+      console.log('- style.maxHeight:', bookmarksContainer.style.maxHeight);
+      console.log('- computed maxHeight:', window.getComputedStyle(bookmarksContainer).maxHeight);
+      
+      // Add a visual indicator of the container dimensions
+      const dimensions = document.createElement('div');
+      dimensions.textContent = `Container: ${bookmarksContainer.offsetWidth}×${bookmarksContainer.offsetHeight}px | Content: ${bookmarksContainer.scrollHeight}px`;
+      dimensions.style.backgroundColor = '#f44336';
+      dimensions.style.color = 'white';
+      dimensions.style.padding = '4px';
+      dimensions.style.fontSize = '12px';
+      dimensions.style.marginBottom = '8px';
+      
+      // Insert at the top of the container
+      bookmarksContainer.insertBefore(dimensions, bookmarksContainer.firstChild);
+      
+      // Add dummy items to test scrolling
+      if (bookmarksContainer.scrollHeight < 500) {
+        const dummies = document.createElement('div');
+        dummies.style.backgroundColor = '#e0e0e0';
+        dummies.style.padding = '8px';
+        dummies.style.marginTop = '16px';
+        dummies.innerHTML = '<h4>Test Items (500px)</h4>';
+        
+        for (let i = 0; i < 20; i++) {
+          const item = document.createElement('div');
+          item.style.padding = '10px';
+          item.style.margin = '5px 0';
+          item.style.backgroundColor = '#f0f0f0';
+          item.style.border = '1px solid #ddd';
+          item.textContent = `Test item ${i+1} to verify scrolling`;
+          dummies.appendChild(item);
+        }
+        
+        bookmarksContainer.appendChild(dummies);
+      }
+    }
+    
     // Public API
     return {
       initialize,
@@ -586,7 +637,8 @@ const BookmarkManager = (function() {
       debug: {
         forceRender: renderBookmarks,
         getBookmarks: () => bookmarks,
-        getContainer: () => bookmarksContainer
+        getContainer: () => bookmarksContainer,
+        testContainerHeight: testContainerHeight
       }
     };
   })();

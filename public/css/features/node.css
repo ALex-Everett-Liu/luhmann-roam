@@ -327,12 +327,14 @@ kbd {
 /* Enhanced bookmark container */
 .bookmarks-container {
   max-height: 500px !important;
+  min-height: 100px !important;
+  height: auto !important;
   overflow-y: auto !important;
-  height: auto;
-  margin-bottom: 15px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 15px !important;
+  border: 2px solid #44f !important; /* Very visible border for debugging */
+  border-radius: 4px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  flex-grow: 1 !important; /* Allow to grow within the parent container */
 }
 
 .bookmarks-section {
@@ -340,10 +342,24 @@ kbd {
   flex-direction: column;
   margin-top: 20px !important;
   margin-bottom: 20px !important;
+  max-height: 600px; /* Allow container to grow within this limit */
+  min-height: 150px; /* Ensure a minimum height */
 }
 
-/* Make bookmark items more compact */
+/* Make bookmark items more visible for testing */
 .bookmark-item {
-  padding: 4px 0 !important;
-  margin: 2px 0;
+  padding: 8px !important;
+  margin: 4px 0 !important;
+  background-color: #f5f8ff !important;
+  border-radius: 4px !important;
+}
+
+/* Ensure the bookmark items are visible with nice spacing */
+.bookmark-icon {
+  font-size: 16px !important;
+}
+
+.bookmark-text {
+  font-size: 14px !important;
+  margin: 0 8px !important;
 }
