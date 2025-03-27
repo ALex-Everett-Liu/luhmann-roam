@@ -376,6 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     nodeActions.appendChild(positionFixerButton);
     
+    // Add bookmark button to node actions
+    if (window.BookmarkManager) {
+      BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
+    }
+    
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
     
@@ -822,6 +827,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the SearchManager
   SearchManager.initialize();
+
+  // Initialize the BookmarkManager
+  if (window.BookmarkManager) {
+    BookmarkManager.initialize();
+  }
 
   // Initialize the BreadcrumbManager
   if (window.BreadcrumbManager) {

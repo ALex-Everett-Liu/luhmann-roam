@@ -727,10 +727,11 @@ const HotkeyManager = (function() {
           'timestamp-button': 't',     // Timestamp
           'link-button': 'k',          // Link (using k for "link")
           'move-button': 'm',          // Move
-          'sibling-button': 'b',       // Before/after sibling
+          'sibling-button': 'i',       // Before/after sibling
           'markdown-button': 'd',      // Markdown (using d for "document")
           'attribute-button': 'u',     // Attributes
           'size-button': 'g',          // Node size (using g for "grid size")
+          'bookmark-button': 'b',      // Bookmark (using b for "bookmark")
           '+': 'c',                    // Add child
           '×': 'x'                     // Delete
         };
@@ -840,6 +841,16 @@ const HotkeyManager = (function() {
       globalHotkeys['escape'] = {
         description: 'Exit Hotkey Mode',
         action: exitHotkeyMode
+      };
+      
+      // Add bookmark hotkey
+      globalHotkeys['b'] = {
+        description: 'Bookmark Current Node',
+        action: () => {
+          if (window.BookmarkManager) {
+            window.BookmarkManager.toggleBookmarkForFocusedNode();
+          }
+        }
       };
     }
     
