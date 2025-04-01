@@ -308,25 +308,18 @@ const BookmarkManager = (function() {
     }
     
     /**
-     * Focuses on a bookmarked node
-     * @param {string} bookmarkId - The ID of the bookmark to focus on
+     * Focuses on a node
+     * @param {string} nodeId - The ID of the node to focus on
      */
-    async function focusOnNode(bookmarkId) {
+    async function focusOnNode(nodeId) {
       try {
-        // First, find the bookmark in our local cache to get the node_id
-        const bookmark = bookmarks.find(b => b.id === bookmarkId);
-        if (!bookmark) {
-          console.error(`Bookmark with ID ${bookmarkId} not found in local cache`);
-          return;
-        }
-        
-        const nodeId = bookmark.node_id;
+        console.log(`Focusing on node: ${nodeId}`);
         
         // Verify the node exists before attempting to focus on it
         try {
           const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
           if (nodeResponse.status === 404) {
-            console.error(`Node ${nodeId} referenced by bookmark no longer exists`);
+            console.error(`Node ${nodeId} no longer exists`);
             
             // Show error to user
             alert(`The bookmarked node no longer exists. The bookmark will be removed.`);
@@ -371,7 +364,6 @@ const BookmarkManager = (function() {
                 }
               } else {
                 console.error(`Node element for ${nodeId} not found in DOM after expanding parents`);
-                // Stop trying further focus attempts if node not found
               }
             }, 300);
           }
