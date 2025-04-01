@@ -552,14 +552,17 @@ const BookmarkManager = (function() {
           console.log('Attempting to recreate bookmarks container');
           createBookmarksSection();
           
-          // Check if container was created successfully
-          const containerElement = document.querySelector('.bookmarks-container');
-          if (containerElement && !bookmarksContainer) {
-            console.log('Container exists in DOM but reference is missing, restoring reference');
-            bookmarksContainer = containerElement;
-          } else if (!bookmarksContainer) {
-            console.error('Failed to recreate bookmarks container');
-            return;
+          // Double check that bookmarksContainer is now set
+          if (!bookmarksContainer) {
+            // Try to find it in the DOM as a last resort
+            const containerInDOM = document.querySelector('.bookmarks-container');
+            if (containerInDOM) {
+              console.log('Found container in DOM, using it');
+              bookmarksContainer = containerInDOM;
+            } else {
+              console.error('Failed to recreate bookmarks container');
+              return;
+            }
           }
         } else {
           return;

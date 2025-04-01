@@ -82,35 +82,10 @@ const BreadcrumbManager = (function() {
       // Get the node's ancestry path
       const ancestors = await getNodeAncestry(nodeId);
       
-      // Show all ancestor nodes but collapse their children
-      // (except for the direct path to our focused node)
-      for (let i = 0; i < ancestors.length - 1; i++) {
-        const ancestorId = ancestors[i].id;
-        const ancestorNode = document.querySelector(`.node[data-id="${ancestorId}"]`);
-        
-        if (ancestorNode) {
-          // Show this ancestor
-          ancestorNode.style.display = '';
-          
-          // Find all its immediate children
-          const childrenContainer = ancestorNode.querySelector('.children');
-          if (childrenContainer) {
-            // Hide all immediate children except the next node in our path
-            const nextPathNodeId = ancestors[i + 1].id;
-            const immediateChildren = childrenContainer.querySelectorAll(':scope > .node');
-            
-            immediateChildren.forEach(child => {
-              if (child.dataset.id === nextPathNodeId) {
-                child.style.display = '';
-              } else {
-                child.style.display = 'none';
-              }
-            });
-          }
-        }
-      }
+      // CHANGE: Don't show ancestors in the main view anymore
+      // Instead, only show the focused node and its descendants
       
-      // Now show the focused node and all its descendants
+      // Show the focused node
       const focusedNode = document.querySelector(`.node[data-id="${nodeId}"]`);
       if (focusedNode) {
         // Show the focused node
