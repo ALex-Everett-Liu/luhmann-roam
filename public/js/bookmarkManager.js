@@ -23,6 +23,13 @@ const BookmarkManager = (function() {
         return;
       }
       
+      // IMPORTANT: First, remove any existing bookmark sections to prevent duplicates
+      const existingBookmarkSections = document.querySelectorAll('.bookmarks-section');
+      console.log(`Found ${existingBookmarkSections.length} existing bookmark sections, cleaning up`);
+      existingBookmarkSections.forEach(section => {
+        section.remove();
+      });
+      
       // Load bookmarks from DB first
       loadBookmarks().then(() => {
         // Then create UI
@@ -302,41 +309,74 @@ const BookmarkManager = (function() {
     
     /**
      * Focuses on a bookmarked node
-     * @param {string} nodeId - The ID of the node to focus on
+     * @param {string} bookmarkId - The ID of the bookmark to focus on
      */
-    async function focusOnNode(nodeId) {
+    async function focusOnNode(bookmarkId) {
       try {
-        // Use BreadcrumbManager if available
-        if (window.BreadcrumbManager) {
-          await window.BreadcrumbManager.focusOnNode(nodeId);
-        } else {
-          // Fallback to manual navigation
-          await expandParentNodes(nodeId);
+        // First, find the bookmark in our local cache to get the node_id
+        const bookmark = bookmarks.find(b => b.id === bookmarkId);
+        if (!bookmark) {
+          console.error(`Bookmark with ID ${bookmarkId} not found in local cache`);
+          return;
+        }
+        
+        const nodeId = bookmark.node_id;
+        
+        // Verify the node exists before attempting to focus on it
+        try {
+          const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+          if (nodeResponse.status === 404) {
+            console.error(`Node ${nodeId} referenced by bookmark no longer exists`);
+            
+            // Show error to user
+            alert(`The bookmarked node no longer exists. The bookmark will be removed.`);
+            
+            // Remove the stale bookmark
+            await removeBookmarkByNodeId(nodeId);
+            return;
+          }
           
-          setTimeout(() => {
-            const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-            if (nodeElement) {
-              // Scroll the node into view
-              nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              
-              // Add a highlight effect
-              nodeElement.classList.add('highlight-focus');
-              setTimeout(() => {
-                nodeElement.classList.remove('highlight-focus');
-              }, 2000);
-              
-              // Set focus to the node text
-              const nodeText = nodeElement.querySelector('.node-text');
-              if (nodeText) {
-                nodeText.focus();
+          if (!nodeResponse.ok) {
+            throw new Error(`Failed to fetch node ${nodeId}: ${nodeResponse.statusText}`);
+          }
+          
+          // Node exists, now focus on it
+          if (window.BreadcrumbManager) {
+            await window.BreadcrumbManager.focusOnNode(nodeId);
+          } else {
+            // Fallback to manual navigation
+            await expandParentNodes(nodeId);
+            
+            setTimeout(() => {
+              const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+              if (nodeElement) {
+                // Scroll the node into view
+                nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add a highlight effect
+                nodeElement.classList.add('highlight-focus');
+                setTimeout(() => {
+                  nodeElement.classList.remove('highlight-focus');
+                }, 2000);
+                
+                // Set focus to the node text
+                const nodeText = nodeElement.querySelector('.node-text');
+                if (nodeText) {
+                  nodeText.focus();
+                }
+                
+                // Track this as the last focused node
+                if (window.lastFocusedNodeId !== undefined) {
+                  window.lastFocusedNodeId = nodeId;
+                }
+              } else {
+                console.error(`Node element for ${nodeId} not found in DOM after expanding parents`);
+                // Stop trying further focus attempts if node not found
               }
-              
-              // Track this as the last focused node
-              if (window.lastFocusedNodeId !== undefined) {
-                window.lastFocusedNodeId = nodeId;
-              }
-            }
-          }, 300);
+            }, 300);
+          }
+        } catch (error) {
+          console.error(`Error checking if node ${nodeId} exists:`, error);
         }
       } catch (error) {
         console.error('Error focusing on node:', error);
@@ -350,28 +390,58 @@ const BookmarkManager = (function() {
     async function expandParentNodes(nodeId) {
       try {
         const response = await fetch(`/api/nodes/${nodeId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.error(`Node ${nodeId} not found, cannot expand its parents`);
+            return false;
+          }
+          throw new Error(`Failed to fetch node ${nodeId}: ${response.statusText}`);
+        }
+        
         const node = await response.json();
         
         if (node.parent_id) {
           // First expand the parent's parents recursively
-          await expandParentNodes(node.parent_id);
+          const parentExpanded = await expandParentNodes(node.parent_id);
+          
+          // If parent expansion failed, stop here
+          if (parentExpanded === false) {
+            return false;
+          }
           
           // Then expand the parent itself if it's not already expanded
-          const parentNode = await fetch(`/api/nodes/${node.parent_id}`).then(res => res.json());
-          if (!parentNode.is_expanded) {
-            await fetch(`/api/nodes/${node.parent_id}/toggle`, {
-              method: 'POST'
-            });
-            
-            if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
-              await window.NodeOperationsManager.refreshSubtree(node.parent_id);
-            } else if (window.fetchNodes) {
-              await window.fetchNodes();
+          try {
+            const parentResponse = await fetch(`/api/nodes/${node.parent_id}`);
+            if (!parentResponse.ok) {
+              throw new Error(`Failed to fetch parent node ${node.parent_id}`);
             }
+            
+            const parentNode = await parentResponse.json();
+            if (!parentNode.is_expanded) {
+              const toggleResponse = await fetch(`/api/nodes/${node.parent_id}/toggle`, {
+                method: 'POST'
+              });
+              
+              if (!toggleResponse.ok) {
+                throw new Error(`Failed to toggle parent node ${node.parent_id}`);
+              }
+              
+              if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
+                await window.NodeOperationsManager.refreshSubtree(node.parent_id);
+              } else if (window.fetchNodes) {
+                await window.fetchNodes();
+              }
+            }
+          } catch (error) {
+            console.error('Error expanding parent node:', error);
+            return false;
           }
         }
+        
+        return true;
       } catch (error) {
         console.error('Error expanding parent nodes:', error);
+        return false;
       }
     }
     
@@ -549,7 +619,7 @@ const BookmarkManager = (function() {
         
         // Add click handler to focus on the node
         text.addEventListener('click', () => {
-          focusOnNode(bookmark.id);
+          focusOnNode(bookmark.node_id);
         });
         
         // Create delete button

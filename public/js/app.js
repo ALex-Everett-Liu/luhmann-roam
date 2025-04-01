@@ -832,53 +832,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.BookmarkManager) {
     console.log('Setting up BookmarkManager initialization from app.js');
     
-    // First, let's check if there are any stored bookmarks
-    try {
-      const savedBookmarks = localStorage.getItem('luhmann_roam_bookmarks');
-      console.log('Checking for saved bookmarks on page load:', savedBookmarks);
-    } catch (e) {
-      console.error('Error checking for saved bookmarks:', e);
-    }
-    
-    // Function to initialize BookmarkManager when the sidebar is ready
-    function initBookmarksWhenReady() {
-      if (document.querySelector('.sidebar')) {
-        console.log('Sidebar found, initializing BookmarkManager');
-        BookmarkManager.initialize();
-        
-        // Extra verification after initialization
-        setTimeout(() => {
-          if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
-            const loadedBookmarks = BookmarkManager.debug.getBookmarks();
-            console.log('Verification: Bookmarks after initialization:', loadedBookmarks);
-          }
-        }, 2000);
-      } else {
-        console.log('Sidebar not found yet, retrying initialization soon');
-        setTimeout(initBookmarksWhenReady, 500);
-      }
-    }
-    
-    // Wait until the DOM is loaded to initialize
+    // We only need to initialize once when the DOM is ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initBookmarksWhenReady, 500);
+        // Use a timeout to ensure all other components are loaded first
+        setTimeout(() => {
+          if (document.querySelector('.sidebar')) {
+            BookmarkManager.initialize();
+          }
+        }, 500);
       });
     } else {
       // DOM already loaded, try to initialize now
-      setTimeout(initBookmarksWhenReady, 500);
+      setTimeout(() => {
+        if (document.querySelector('.sidebar')) {
+          BookmarkManager.initialize();
+        }
+      }, 500);
     }
     
-    // Save bookmarks before page unload
-    window.addEventListener('beforeunload', function() {
-      if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
-        const bookmarks = BookmarkManager.debug.getBookmarks();
-        if (Array.isArray(bookmarks) && bookmarks.length > 0) {
-          console.log(`Final save: Saving ${bookmarks.length} bookmarks before page unload`);
-          localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(bookmarks));
-        }
-      }
-    });
+    // Remove any event listeners that might be causing repeated initialization
+    // No need for window.addEventListener('beforeunload') since we're using the database now
   }
 
   // Initialize the BreadcrumbManager
