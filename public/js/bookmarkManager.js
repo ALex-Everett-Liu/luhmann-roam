@@ -170,19 +170,18 @@ const BookmarkManager = (function() {
      */
     function loadBookmarks() {
       try {
-        // Log localStorage keys for debugging
-        console.log('All localStorage keys:', Object.keys(localStorage));
-        const saved = localStorage.getItem(STORAGE_KEY);
-        console.log(`Raw localStorage data for ${STORAGE_KEY}:`, saved);
+        // Try direct key first for maximum reliability
+        const saved = localStorage.getItem('luhmann_roam_bookmarks');
+        console.log('Raw localStorage data:', saved);
         
-        if (saved && saved !== 'undefined' && saved !== 'null') {
+        if (saved && saved !== 'undefined' && saved !== 'null' && saved !== '[]') {
           try {
             const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && parsed.length > 0) {
               bookmarks = parsed;
               console.log('Successfully loaded bookmarks from localStorage:', bookmarks);
             } else {
-              console.error('Loaded data is not an array:', parsed);
+              console.warn('Loaded data is an empty array or not an array:', parsed);
               bookmarks = [];
             }
           } catch (e) {
@@ -191,7 +190,7 @@ const BookmarkManager = (function() {
             bookmarks = [];
           }
         } else {
-          console.log(`No bookmarks found in localStorage with key ${STORAGE_KEY}`);
+          console.log('No bookmarks found in localStorage or empty array');
           bookmarks = [];
         }
       } catch (e) {
@@ -210,20 +209,27 @@ const BookmarkManager = (function() {
           return false;
         }
         
+        // Store the raw data for checking
         const bookmarksJson = JSON.stringify(bookmarks);
-        localStorage.setItem(STORAGE_KEY, bookmarksJson);
-        console.log('Saved bookmarks to localStorage:', bookmarks);
-        console.log('Raw saved data:', bookmarksJson);
+        console.log('About to save bookmarks:', bookmarks);
+        console.log('JSON to save:', bookmarksJson);
         
-        // Verify save was successful
-        const savedData = localStorage.getItem(STORAGE_KEY);
+        // Use a direct key reference to avoid any issues with variable scope
+        localStorage.setItem('luhmann_roam_bookmarks', bookmarksJson);
+        
+        // Verify the save immediately
+        const savedData = localStorage.getItem('luhmann_roam_bookmarks');
+        console.log('Verification check - saved data:', savedData);
+        
         if (savedData !== bookmarksJson) {
-          console.error('Verification failed! Saved data does not match:', savedData);
+          console.error('Verification failed! Saved data does not match what we tried to save');
+          console.error('Expected:', bookmarksJson);
+          console.error('Actual:', savedData);
+          return false;
         } else {
           console.log('Verification successful - localStorage contains the correct data');
+          return true;
         }
-        
-        return true;
       } catch (e) {
         console.error('Error saving bookmarks:', e);
         return false;
@@ -691,12 +697,30 @@ const BookmarkManager = (function() {
   // Export the module for use in other files
   window.BookmarkManager = BookmarkManager;
   
-  // Explicitly save bookmarks before page unload
+  // Guaranteed save mechanism
   window.addEventListener('beforeunload', function() {
-    if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
-      console.log('Page unloading, ensuring bookmarks are saved');
-      const bookmarksToSave = window.BookmarkManager.debug.getBookmarks();
-      const storageKey = window.BookmarkManager.STORAGE_KEY || 'luhmann_roam_bookmarks';
-      localStorage.setItem(storageKey, JSON.stringify(bookmarksToSave));
+    if (window.BookmarkManager) {
+      const bookmarksToSave = window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks 
+        ? window.BookmarkManager.debug.getBookmarks() 
+        : [];
+        
+      if (Array.isArray(bookmarksToSave) && bookmarksToSave.length > 0) {
+        console.log(`Saving ${bookmarksToSave.length} bookmarks before page unload`);
+        // Use direct string for maximum reliability
+        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(bookmarksToSave));
+      } else {
+        console.log('No bookmarks to save before unload');
+      }
     }
   });
+
+  // Also add an interval-based save (as a backup to beforeunload which might not always fire)
+  setInterval(function() {
+    if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
+      const currentBookmarks = window.BookmarkManager.debug.getBookmarks();
+      if (Array.isArray(currentBookmarks) && currentBookmarks.length > 0) {
+        console.log(`Auto-saving ${currentBookmarks.length} bookmarks to localStorage`);
+        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(currentBookmarks));
+      }
+    }
+  }, 30000); // Save every 30 seconds

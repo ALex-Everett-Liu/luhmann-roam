@@ -832,34 +832,50 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.BookmarkManager) {
     console.log('Setting up BookmarkManager initialization from app.js');
     
-    // Use a more reliable event for initialization
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM content loaded, ensuring sidebar is ready before BookmarkManager initialization');
-      
-      // Function to check if sidebar exists and initialize BookmarkManager
-      function initBookmarksWhenSidebarReady() {
-        if (document.querySelector('.sidebar')) {
-          console.log('Sidebar found, initializing BookmarkManager');
-          window.bookmarkManagerInitialized = true;
-          BookmarkManager.initialize();
-        } else {
-          console.log('Sidebar not found yet, retrying in 200ms');
-          setTimeout(initBookmarksWhenSidebarReady, 200);
-        }
-      }
-      
-      // Wait a short time after DOMContentLoaded before attempting initialization
-      setTimeout(initBookmarksWhenSidebarReady, 200);
-    });
+    // First, let's check if there are any stored bookmarks
+    try {
+      const savedBookmarks = localStorage.getItem('luhmann_roam_bookmarks');
+      console.log('Checking for saved bookmarks on page load:', savedBookmarks);
+    } catch (e) {
+      console.error('Error checking for saved bookmarks:', e);
+    }
     
-    // Make sure beforeunload event still works to save bookmarks
+    // Function to initialize BookmarkManager when the sidebar is ready
+    function initBookmarksWhenReady() {
+      if (document.querySelector('.sidebar')) {
+        console.log('Sidebar found, initializing BookmarkManager');
+        BookmarkManager.initialize();
+        
+        // Extra verification after initialization
+        setTimeout(() => {
+          if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
+            const loadedBookmarks = BookmarkManager.debug.getBookmarks();
+            console.log('Verification: Bookmarks after initialization:', loadedBookmarks);
+          }
+        }, 2000);
+      } else {
+        console.log('Sidebar not found yet, retrying initialization soon');
+        setTimeout(initBookmarksWhenReady, 500);
+      }
+    }
+    
+    // Wait until the DOM is loaded to initialize
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initBookmarksWhenReady, 500);
+      });
+    } else {
+      // DOM already loaded, try to initialize now
+      setTimeout(initBookmarksWhenReady, 500);
+    }
+    
+    // Save bookmarks before page unload
     window.addEventListener('beforeunload', function() {
-      console.log('Page unloading, final bookmark save');
-      if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
-        const bookmarksToSave = window.BookmarkManager.debug.getBookmarks();
-        if (Array.isArray(bookmarksToSave)) {
-          const storageKey = window.BookmarkManager.STORAGE_KEY || 'luhmann_roam_bookmarks';
-          localStorage.setItem(storageKey, JSON.stringify(bookmarksToSave));
+      if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
+        const bookmarks = BookmarkManager.debug.getBookmarks();
+        if (Array.isArray(bookmarks) && bookmarks.length > 0) {
+          console.log(`Final save: Saving ${bookmarks.length} bookmarks before page unload`);
+          localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(bookmarks));
         }
       }
     });
