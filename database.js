@@ -83,6 +83,18 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create bookmarks table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS bookmarks (
+      id TEXT PRIMARY KEY,
+      node_id TEXT NOT NULL,
+      title TEXT,
+      added_at INTEGER,
+      created_at INTEGER,
+      FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }

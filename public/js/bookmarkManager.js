@@ -1,21 +1,17 @@
 /**
  * Bookmark Manager Module
- * Manages node bookmarks for quick access from the sidebar
+ * Using database for persistence instead of localStorage
  */
 const BookmarkManager = (function() {
     // Private variables
     let bookmarks = [];
-    const STORAGE_KEY = 'luhmann_roam_bookmarks';
     let bookmarksContainer = null;
     
     /**
      * Initializes the bookmark manager
      */
     function initialize() {
-      console.log('BookmarkManager initialization started');
-      
-      // Initialize bookmarks array first (no DOM dependency)
-      loadBookmarks();
+      console.log('BookmarkManager initialization started (DB version)');
       
       // Check if DOM is ready for UI creation
       if (!document.querySelector('.sidebar')) {
@@ -27,41 +23,29 @@ const BookmarkManager = (function() {
         return;
       }
       
-      // DOM is ready, create UI
-      const success = createBookmarksSection();
-      
-      if (!success) {
-        console.error('Failed to create bookmarks section, retrying in 500ms');
-        setTimeout(initialize, 500);
-        return;
-      }
-      
-      // UI created successfully, set up event handlers
-      document.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key === 'b') {
-          e.preventDefault();
-          toggleBookmarkForFocusedNode();
-        }
-      });
-      
-      // Verify initialization is complete
-      console.log('BookmarkManager initialization complete, bookmarks:', bookmarks);
-
-      // Run a storage test to verify localStorage is working
-      try {
-        const testKey = 'bookmark_storage_test';
-        localStorage.setItem(testKey, 'test');
-        const testValue = localStorage.getItem(testKey);
-        localStorage.removeItem(testKey);
+      // Load bookmarks from DB first
+      loadBookmarks().then(() => {
+        // Then create UI
+        const success = createBookmarksSection();
         
-        if (testValue === 'test') {
-          console.log('LocalStorage test passed - storage is working correctly');
-        } else {
-          console.error('LocalStorage test failed - storage is not working correctly');
+        if (!success) {
+          console.error('Failed to create bookmarks section, retrying in 500ms');
+          setTimeout(initialize, 500);
+          return;
         }
-      } catch (e) {
-        console.error('LocalStorage test failed with exception:', e);
-      }
+        
+        // UI created successfully, set up event handlers
+        document.addEventListener('keydown', (e) => {
+          if (e.altKey && e.key === 'b') {
+            e.preventDefault();
+            toggleBookmarkForFocusedNode();
+          }
+        });
+        
+        console.log('BookmarkManager initialization complete, bookmarks:', bookmarks);
+      }).catch(error => {
+        console.error('Error initializing BookmarkManager:', error);
+      });
     }
     
     /**
@@ -166,178 +150,23 @@ const BookmarkManager = (function() {
     }
     
     /**
-     * Loads bookmarks from localStorage
+     * Loads bookmarks from database
      */
-    function loadBookmarks() {
+    async function loadBookmarks() {
       try {
-        // Try direct key first for maximum reliability
-        const saved = localStorage.getItem('luhmann_roam_bookmarks');
-        console.log('Raw localStorage data:', saved);
-        
-        if (saved && saved !== 'undefined' && saved !== 'null' && saved !== '[]') {
-          try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              bookmarks = parsed;
-              console.log('Successfully loaded bookmarks from localStorage:', bookmarks);
-            } else {
-              console.warn('Loaded data is an empty array or not an array:', parsed);
-              bookmarks = [];
-            }
-          } catch (e) {
-            console.error('Error parsing bookmarks JSON:', e);
-            console.error('Raw bookmark data that failed to parse:', saved);
-            bookmarks = [];
-          }
-        } else {
-          console.log('No bookmarks found in localStorage or empty array');
-          bookmarks = [];
+        const response = await fetch('/api/bookmarks');
+        if (!response.ok) {
+          throw new Error(`Failed to load bookmarks: ${response.statusText}`);
         }
-      } catch (e) {
-        console.error('Error accessing localStorage:', e);
+        
+        bookmarks = await response.json();
+        console.log('Successfully loaded bookmarks from database:', bookmarks);
+        return bookmarks;
+      } catch (error) {
+        console.error('Error loading bookmarks from database:', error);
         bookmarks = [];
+        return [];
       }
-    }
-    
-    /**
-     * Saves bookmarks to localStorage
-     */
-    function saveBookmarks() {
-      try {
-        if (!Array.isArray(bookmarks)) {
-          console.error('Cannot save bookmarks: not an array');
-          return false;
-        }
-        
-        // Store the raw data for checking
-        const bookmarksJson = JSON.stringify(bookmarks);
-        console.log('About to save bookmarks:', bookmarks);
-        console.log('JSON to save:', bookmarksJson);
-        
-        // Use a direct key reference to avoid any issues with variable scope
-        localStorage.setItem('luhmann_roam_bookmarks', bookmarksJson);
-        
-        // Verify the save immediately
-        const savedData = localStorage.getItem('luhmann_roam_bookmarks');
-        console.log('Verification check - saved data:', savedData);
-        
-        if (savedData !== bookmarksJson) {
-          console.error('Verification failed! Saved data does not match what we tried to save');
-          console.error('Expected:', bookmarksJson);
-          console.error('Actual:', savedData);
-          return false;
-        } else {
-          console.log('Verification successful - localStorage contains the correct data');
-          return true;
-        }
-      } catch (e) {
-        console.error('Error saving bookmarks:', e);
-        return false;
-      }
-    }
-    
-    /**
-     * Renders the bookmarks in the sidebar - final version
-     */
-    function renderBookmarks() {
-      // Explicitly check if bookmarksContainer exists and exit early if not
-      if (!bookmarksContainer) {
-        console.error('bookmarksContainer is null, cannot render bookmarks');
-        // Try to recreate the container
-        if (document.querySelector('.sidebar')) {
-          console.log('Attempting to recreate bookmarks container');
-          createBookmarksSection();
-          // If still no container, exit
-          if (!bookmarksContainer) return;
-        } else {
-          return;
-        }
-      }
-      
-      console.log('Rendering bookmarks to container:', bookmarksContainer);
-      
-      // Clear the container
-      bookmarksContainer.innerHTML = '';
-      
-      if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
-        const noBookmarks = document.createElement('div');
-        noBookmarks.className = 'no-bookmarks';
-        noBookmarks.textContent = window.I18n ? I18n.t('noBookmarks') : 'No bookmarked nodes';
-        noBookmarks.style.color = '#999';
-        noBookmarks.style.fontStyle = 'italic';
-        noBookmarks.style.padding = '8px 0';
-        bookmarksContainer.appendChild(noBookmarks);
-        console.log('Added "no bookmarks" message to container');
-        return;
-      }
-      
-      // Create a list for the bookmarks
-      const list = document.createElement('ul');
-      list.className = 'bookmarks-list';
-      list.style.listStyle = 'none';
-      list.style.padding = '0';
-      list.style.margin = '0';
-      list.style.maxHeight = 'none'; // Remove any height limit
-      list.style.height = 'auto';    // Let it grow with content
-      list.style.overflowY = 'visible'; // No scrolling in the list itself
-      
-      bookmarks.forEach((bookmark, index) => {
-        // Create bookmark item
-        const item = document.createElement('li');
-        item.className = 'bookmark-item';
-        item.style.display = 'flex';
-        item.style.alignItems = 'center';
-        item.style.padding = '6px 0';
-        item.style.borderBottom = '1px solid #f0f0f0';
-        
-        // Create icon
-        const icon = document.createElement('span');
-        icon.className = 'bookmark-icon';
-        icon.innerHTML = '📌';
-        icon.style.marginRight = '8px';
-        
-        // Create the bookmark text
-        const text = document.createElement('span');
-        text.className = 'bookmark-text';
-        text.textContent = bookmark.title || `Bookmark ${index}`;
-        text.style.flex = '1';
-        text.style.overflow = 'hidden';
-        text.style.textOverflow = 'ellipsis';
-        text.style.whiteSpace = 'nowrap';
-        text.style.cursor = 'pointer';
-        text.title = 'Click to focus on this node';
-        
-        // Add click handler to focus on the node
-        text.addEventListener('click', () => {
-          focusOnNode(bookmark.id);
-        });
-        
-        // Create delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'bookmark-delete';
-        deleteBtn.innerHTML = '×';
-        deleteBtn.title = 'Remove bookmark';
-        deleteBtn.style.background = 'none';
-        deleteBtn.style.border = 'none';
-        deleteBtn.style.color = '#999';
-        deleteBtn.style.cursor = 'pointer';
-        deleteBtn.style.fontSize = '16px';
-        deleteBtn.style.padding = '0 4px';
-        
-        // Add delete handler
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          removeBookmark(index);
-        });
-        
-        // Assemble the item
-        item.appendChild(icon);
-        item.appendChild(text);
-        item.appendChild(deleteBtn);
-        list.appendChild(item);
-      });
-      
-      bookmarksContainer.appendChild(list);
     }
     
     /**
@@ -348,38 +177,46 @@ const BookmarkManager = (function() {
       try {
         console.log(`Adding bookmark for node ${nodeId}`);
         
-        // Fetch the node data to get the title
-        const response = await fetch(`/api/nodes/${nodeId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch node ${nodeId}`);
-        }
-        
-        const node = await response.json();
-        const currentLanguage = window.I18n ? I18n.getCurrentLanguage() : 'en';
-        const nodeTitle = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-        
-        // Check if this node is already bookmarked
-        const existingIndex = bookmarks.findIndex(b => b.id === nodeId);
-        if (existingIndex !== -1) {
+        // Check if already bookmarked in our local cache
+        if (bookmarks.some(b => b.node_id === nodeId)) {
           console.log(`Node ${nodeId} is already bookmarked`);
           return false; // Already bookmarked
         }
         
-        console.log(`Creating bookmark with title "${nodeTitle}"`);
+        // Fetch the node data to get the title
+        const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+        if (!nodeResponse.ok) {
+          throw new Error(`Failed to fetch node ${nodeId}`);
+        }
         
-        // Add to bookmarks
-        const newBookmark = {
-          id: nodeId,
-          title: nodeTitle,
-          addedAt: Date.now()
-        };
+        const node = await nodeResponse.json();
+        const currentLanguage = window.I18n ? I18n.getCurrentLanguage() : 'en';
+        const nodeTitle = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
         
+        // Create bookmark in database
+        const response = await fetch('/api/bookmarks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            node_id: nodeId,
+            title: nodeTitle
+          })
+        });
+        
+        if (!response.ok) {
+          // Handle 409 (already exists) as a success case
+          if (response.status === 409) {
+            console.log(`Node ${nodeId} is already bookmarked in database`);
+            return true;
+          }
+          throw new Error(`Failed to create bookmark: ${response.statusText}`);
+        }
+        
+        // Add to local cache
+        const newBookmark = await response.json();
         bookmarks.push(newBookmark);
-        console.log('Updated bookmarks array:', bookmarks);
         
-        const success = saveBookmarks();
-        console.log('Save result:', success);
-        
+        // Update UI
         renderBookmarks();
         
         return true;
@@ -393,26 +230,65 @@ const BookmarkManager = (function() {
      * Removes a bookmark by index
      * @param {number} index - The index of the bookmark to remove
      */
-    function removeBookmark(index) {
-      if (index >= 0 && index < bookmarks.length) {
-        bookmarks.splice(index, 1);
-        saveBookmarks();
-        renderBookmarks();
-        return true;
+    async function removeBookmark(index) {
+      if (index < 0 || index >= bookmarks.length) {
+        return false;
       }
-      return false;
+      
+      try {
+        const bookmarkId = bookmarks[index].id;
+        
+        // Delete from database
+        const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete bookmark: ${response.statusText}`);
+        }
+        
+        // Remove from local cache
+        bookmarks.splice(index, 1);
+        
+        // Update UI
+        renderBookmarks();
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing bookmark:', error);
+        return false;
+      }
     }
     
     /**
      * Removes a bookmark by node ID
      * @param {string} nodeId - The ID of the node to remove from bookmarks
      */
-    function removeBookmarkByNodeId(nodeId) {
-      const index = bookmarks.findIndex(b => b.id === nodeId);
-      if (index !== -1) {
-        return removeBookmark(index);
+    async function removeBookmarkByNodeId(nodeId) {
+      try {
+        // Delete from database
+        const response = await fetch(`/api/bookmarks/node/${nodeId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete bookmark: ${response.statusText}`);
+        }
+        
+        // Remove from local cache
+        const index = bookmarks.findIndex(b => b.node_id === nodeId);
+        if (index !== -1) {
+          bookmarks.splice(index, 1);
+        }
+        
+        // Update UI
+        renderBookmarks();
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing bookmark:', error);
+        return false;
       }
-      return false;
     }
     
     /**
@@ -421,7 +297,7 @@ const BookmarkManager = (function() {
      * @returns {boolean} True if the node is bookmarked
      */
     function isNodeBookmarked(nodeId) {
-      return bookmarks.some(b => b.id === nodeId);
+      return bookmarks.some(b => b.node_id === nodeId);
     }
     
     /**
@@ -597,32 +473,111 @@ const BookmarkManager = (function() {
       }
       
       // Update bookmark titles based on current language
-      refreshBookmarkTitles();
+      loadBookmarks().then(() => renderBookmarks());
     }
     
     /**
-     * Refreshes the titles of bookmarks based on current language
+     * Renders the bookmarks in the sidebar - final version
      */
-    async function refreshBookmarkTitles() {
-      if (!window.I18n) return;
-      
-      const currentLanguage = I18n.getCurrentLanguage();
-      
-      for (let i = 0; i < bookmarks.length; i++) {
-        try {
-          const response = await fetch(`/api/nodes/${bookmarks[i].id}`);
-          if (response.ok) {
-            const node = await response.json();
-            bookmarks[i].title = currentLanguage === 'en' ? 
-              node.content : (node.content_zh || node.content);
-          }
-        } catch (error) {
-          console.error(`Error refreshing bookmark title for ${bookmarks[i].id}:`, error);
+    function renderBookmarks() {
+      // Explicitly check if bookmarksContainer exists and exit early if not
+      if (!bookmarksContainer) {
+        console.error('bookmarksContainer is null, cannot render bookmarks');
+        // Try to recreate the container
+        if (document.querySelector('.sidebar')) {
+          console.log('Attempting to recreate bookmarks container');
+          createBookmarksSection();
+          // If still no container, exit
+          if (!bookmarksContainer) return;
+        } else {
+          return;
         }
       }
       
-      saveBookmarks();
-      renderBookmarks();
+      console.log('Rendering bookmarks to container:', bookmarksContainer);
+      
+      // Clear the container
+      bookmarksContainer.innerHTML = '';
+      
+      if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+        const noBookmarks = document.createElement('div');
+        noBookmarks.className = 'no-bookmarks';
+        noBookmarks.textContent = window.I18n ? I18n.t('noBookmarks') : 'No bookmarked nodes';
+        noBookmarks.style.color = '#999';
+        noBookmarks.style.fontStyle = 'italic';
+        noBookmarks.style.padding = '8px 0';
+        bookmarksContainer.appendChild(noBookmarks);
+        console.log('Added "no bookmarks" message to container');
+        return;
+      }
+      
+      // Create a list for the bookmarks
+      const list = document.createElement('ul');
+      list.className = 'bookmarks-list';
+      list.style.listStyle = 'none';
+      list.style.padding = '0';
+      list.style.margin = '0';
+      list.style.maxHeight = 'none'; // Remove any height limit
+      list.style.height = 'auto';    // Let it grow with content
+      list.style.overflowY = 'visible'; // No scrolling in the list itself
+      
+      bookmarks.forEach((bookmark, index) => {
+        // Create bookmark item
+        const item = document.createElement('li');
+        item.className = 'bookmark-item';
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.padding = '6px 0';
+        item.style.borderBottom = '1px solid #f0f0f0';
+        
+        // Create icon
+        const icon = document.createElement('span');
+        icon.className = 'bookmark-icon';
+        icon.innerHTML = '📌';
+        icon.style.marginRight = '8px';
+        
+        // Create the bookmark text
+        const text = document.createElement('span');
+        text.className = 'bookmark-text';
+        text.textContent = bookmark.title || `Bookmark ${index}`;
+        text.style.flex = '1';
+        text.style.overflow = 'hidden';
+        text.style.textOverflow = 'ellipsis';
+        text.style.whiteSpace = 'nowrap';
+        text.style.cursor = 'pointer';
+        text.title = 'Click to focus on this node';
+        
+        // Add click handler to focus on the node
+        text.addEventListener('click', () => {
+          focusOnNode(bookmark.id);
+        });
+        
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'bookmark-delete';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Remove bookmark';
+        deleteBtn.style.background = 'none';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.color = '#999';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.fontSize = '16px';
+        deleteBtn.style.padding = '0 4px';
+        
+        // Add delete handler
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeBookmark(index);
+        });
+        
+        // Assemble the item
+        item.appendChild(icon);
+        item.appendChild(text);
+        item.appendChild(deleteBtn);
+        list.appendChild(item);
+      });
+      
+      bookmarksContainer.appendChild(list);
     }
     
     // Add this function to the public API's debug object
@@ -683,44 +638,15 @@ const BookmarkManager = (function() {
       addBookmarkButtonToNode,
       updateLanguage,
       toggleBookmarkForFocusedNode,
-      STORAGE_KEY,
-      // Add these debug methods
       debug: {
         forceRender: renderBookmarks,
         getBookmarks: () => bookmarks,
         getContainer: () => bookmarksContainer,
-        testContainerHeight: testContainerHeight
+        testContainerHeight: testContainerHeight,
+        reloadBookmarks: loadBookmarks
       }
     };
-  })();
-  
-  // Export the module for use in other files
-  window.BookmarkManager = BookmarkManager;
-  
-  // Guaranteed save mechanism
-  window.addEventListener('beforeunload', function() {
-    if (window.BookmarkManager) {
-      const bookmarksToSave = window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks 
-        ? window.BookmarkManager.debug.getBookmarks() 
-        : [];
-        
-      if (Array.isArray(bookmarksToSave) && bookmarksToSave.length > 0) {
-        console.log(`Saving ${bookmarksToSave.length} bookmarks before page unload`);
-        // Use direct string for maximum reliability
-        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(bookmarksToSave));
-      } else {
-        console.log('No bookmarks to save before unload');
-      }
-    }
-  });
+})();
 
-  // Also add an interval-based save (as a backup to beforeunload which might not always fire)
-  setInterval(function() {
-    if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
-      const currentBookmarks = window.BookmarkManager.debug.getBookmarks();
-      if (Array.isArray(currentBookmarks) && currentBookmarks.length > 0) {
-        console.log(`Auto-saving ${currentBookmarks.length} bookmarks to localStorage`);
-        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(currentBookmarks));
-      }
-    }
-  }, 30000); // Save every 30 seconds
+// Export the module for use in other files
+window.BookmarkManager = BookmarkManager;

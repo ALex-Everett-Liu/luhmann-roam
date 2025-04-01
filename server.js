@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const taskRoutes = require('./routes/taskRoutes');
 const codeAnalysisRoutes = require('./routes/codeAnalysisRoutes');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -1389,6 +1390,81 @@ app.get('/api/debug/node/:id', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Add these endpoints for bookmark operations
+
+// Get all bookmarks
+app.get('/api/bookmarks', async (req, res) => {
+  try {
+    const db = await getDb();
+    const bookmarks = await db.all(`
+      SELECT bookmarks.*, nodes.content, nodes.content_zh
+      FROM bookmarks
+      JOIN nodes ON bookmarks.node_id = nodes.id
+      ORDER BY bookmarks.added_at DESC
+    `);
+    res.json(bookmarks);
+  } catch (error) {
+    console.error('Error fetching bookmarks:', error);
+    res.status(500).json({ error: 'Failed to fetch bookmarks' });
+  }
+});
+
+// Add a bookmark
+app.post('/api/bookmarks', async (req, res) => {
+  try {
+    const { node_id, title } = req.body;
+    if (!node_id) {
+      return res.status(400).json({ error: 'Node ID is required' });
+    }
+    
+    const db = await getDb();
+    
+    // Check if bookmark already exists
+    const existing = await db.get('SELECT * FROM bookmarks WHERE node_id = ?', node_id);
+    if (existing) {
+      return res.status(409).json({ error: 'Bookmark already exists', bookmark: existing });
+    }
+    
+    const now = Date.now();
+    const id = crypto.randomUUID();
+    
+    await db.run(
+      'INSERT INTO bookmarks (id, node_id, title, added_at, created_at) VALUES (?, ?, ?, ?, ?)',
+      [id, node_id, title, now, now]
+    );
+    
+    const bookmark = await db.get('SELECT * FROM bookmarks WHERE id = ?', id);
+    res.status(201).json(bookmark);
+  } catch (error) {
+    console.error('Error creating bookmark:', error);
+    res.status(500).json({ error: 'Failed to create bookmark' });
+  }
+});
+
+// Delete a bookmark
+app.delete('/api/bookmarks/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    await db.run('DELETE FROM bookmarks WHERE id = ?', req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting bookmark:', error);
+    res.status(500).json({ error: 'Failed to delete bookmark' });
+  }
+});
+
+// Delete a bookmark by node ID
+app.delete('/api/bookmarks/node/:nodeId', async (req, res) => {
+  try {
+    const db = await getDb();
+    await db.run('DELETE FROM bookmarks WHERE node_id = ?', req.params.nodeId);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting bookmark by node ID:', error);
+    res.status(500).json({ error: 'Failed to delete bookmark' });
   }
 });
 
