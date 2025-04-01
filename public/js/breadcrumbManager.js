@@ -278,9 +278,71 @@ const BreadcrumbManager = (function() {
     if (nodeElement) {
       nodeElement.classList.add('focused-node');
       
-      // Scroll the node into view if needed
-      nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // First, determine if the node has children
+      const childrenContainer = nodeElement.querySelector('.children');
+      const hasChildren = childrenContainer !== null;
+      
+      if (hasChildren) {
+        // For nodes with children, we want to scroll to the bottom
+        console.log('Node has children, scrolling to bottom of hierarchy');
+        
+        // First, ensure the focused node is visible
+        nodeElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+        
+        // Then find the last descendant node to scroll to
+        setTimeout(() => {
+          // Find the deepest/last visible node in the hierarchy
+          const lastDescendant = findLastVisibleDescendant(childrenContainer);
+          
+          if (lastDescendant) {
+            console.log('Scrolling to last descendant');
+            // Scroll to the bottom of the last descendant
+            lastDescendant.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            // Adjust scroll to show a bit more context if available
+            setTimeout(() => {
+              // Scroll back up slightly to show more context
+              window.scrollBy({
+                top: -100, // Show some context above the bottom
+                behavior: 'smooth'
+              });
+            }, 100);
+          } else {
+            // If we couldn't find the last descendant, scroll to the bottom of the children container
+            childrenContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+        }, 50);
+      } else {
+        // For nodes without children, center them in the viewport
+        nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('Node without children centered in viewport');
+      }
     }
+  }
+  
+  /**
+   * Helper function to find the last visible descendant node
+   * @param {HTMLElement} container - The children container element
+   * @returns {HTMLElement|null} - The last visible descendant or null
+   */
+  function findLastVisibleDescendant(container) {
+    // First try to find the deepest nested visible node
+    const allNodes = container.querySelectorAll('.node');
+    if (allNodes.length === 0) return null;
+    
+    // Convert NodeList to Array to use reverse()
+    const nodesArray = Array.from(allNodes);
+    
+    // Find the last visible node
+    for (let i = nodesArray.length - 1; i >= 0; i--) {
+      const node = nodesArray[i];
+      const style = window.getComputedStyle(node);
+      if (style.display !== 'none') {
+        return node;
+      }
+    }
+    
+    return null;
   }
   
   /**
