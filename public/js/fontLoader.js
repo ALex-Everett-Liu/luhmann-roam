@@ -49,30 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Function to load local font
 function loadLocalFont() {
-  // Create and add a style element with @font-face rule for the local font
-  const style = document.createElement('style');
-  style.textContent = `
-    @font-face {
-      font-family: 'Noto Serif SC';
-      src: url('/fonts/NotoSerifSC-Regular.woff2') format('woff2');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    
-    @font-face {
-      font-family: 'Noto Serif SC';
-      src: url('/fonts/NotoSerifSC-Bold.woff2') format('woff2');
-      font-weight: bold;
-      font-style: normal;
-      font-display: swap;
-    }
-  `;
-  document.head.appendChild(style);
+  console.log('Loading local font files...');
+  
+  // Create a link element for the CSS file
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/fonts/noto-serif-sc.css';
+  document.head.appendChild(link);
   
   // Add class to body after local font is applied
-  setTimeout(() => {
+  link.onload = () => {
     document.body.classList.add('chinese-font-loaded');
-    console.log('🔄 Local font loaded');
-  }, 100);
+    console.log('✅ Local font loaded successfully');
+  };
+  
+  link.onerror = (err) => {
+    console.error('❌ Error loading local font CSS:', err);
+  };
 }

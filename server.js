@@ -1485,6 +1485,9 @@ app.get('/api/links/:id', async (req, res) => {
   }
 });
 
+// Add static route for local fonts
+app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
