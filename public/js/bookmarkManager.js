@@ -544,29 +544,11 @@ const BookmarkManager = (function() {
      * Renders the bookmarks in the sidebar - final version
      */
     function renderBookmarks() {
-      // Explicitly check if bookmarksContainer exists and exit early if not
+      // Check if bookmarksContainer exists
       if (!bookmarksContainer) {
         console.error('bookmarksContainer is null, cannot render bookmarks');
-        // Try to recreate the container
-        if (document.querySelector('.sidebar')) {
-          console.log('Attempting to recreate bookmarks container');
-          createBookmarksSection();
-          
-          // Double check that bookmarksContainer is now set
-          if (!bookmarksContainer) {
-            // Try to find it in the DOM as a last resort
-            const containerInDOM = document.querySelector('.bookmarks-container');
-            if (containerInDOM) {
-              console.log('Found container in DOM, using it');
-              bookmarksContainer = containerInDOM;
-            } else {
-              console.error('Failed to recreate bookmarks container');
-              return;
-            }
-          }
-        } else {
-          return;
-        }
+        // Instead of trying to recreate here, we'll wait for the next initialization cycle
+        return;
       }
       
       console.log('Rendering bookmarks to container:', bookmarksContainer);

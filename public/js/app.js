@@ -820,27 +820,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.BookmarkManager) {
     console.log('Setting up BookmarkManager initialization from app.js');
     
-    // We only need to initialize once when the DOM is ready
+    // Only initialize once when the DOM is fully loaded
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        // Use a timeout to ensure all other components are loaded first
-        setTimeout(() => {
-          if (document.querySelector('.sidebar')) {
-            BookmarkManager.initialize();
-          }
-        }, 500);
+        BookmarkManager.initialize();
       });
     } else {
-      // DOM already loaded, try to initialize now
-      setTimeout(() => {
-        if (document.querySelector('.sidebar')) {
-          BookmarkManager.initialize();
-        }
-      }, 500);
+      // DOM already loaded, initialize now
+      BookmarkManager.initialize();
     }
-    
-    // Remove any event listeners that might be causing repeated initialization
-    // No need for window.addEventListener('beforeunload') since we're using the database now
   }
 
   // Initialize the BreadcrumbManager
