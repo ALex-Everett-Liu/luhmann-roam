@@ -282,67 +282,71 @@ const BreadcrumbManager = (function() {
       const childrenContainer = nodeElement.querySelector('.children');
       const hasChildren = childrenContainer !== null;
       
+      console.log(`Node ${nodeId} has children: ${hasChildren}`);
+      
       if (hasChildren) {
         // For nodes with children, we want to scroll to the bottom
         console.log('Node has children, scrolling to bottom of hierarchy');
         
-        // First, ensure the focused node is visible
-        nodeElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+        // DEBUG: Measure heights for better understanding
+        const viewportHeight = window.innerHeight;
+        const nodeRect = nodeElement.getBoundingClientRect();
+        console.log(`Viewport height: ${viewportHeight}px, Node height: ${nodeRect.height}px`);
         
-        // Then find the last descendant node to scroll to
+        // Use a more aggressive approach to get to the bottom:
+        // 1. First fully scroll to the parent node
+        nodeElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+        console.log('Scrolled to parent node (start position)');
+        
+        // 2. Wait a moment for rendering to complete
         setTimeout(() => {
-          // Find the deepest/last visible node in the hierarchy
-          const lastDescendant = findLastVisibleDescendant(childrenContainer);
+          // Calculate total height of the node and its descendants
+          const allNodesInHierarchy = nodeElement.querySelectorAll('.node');
+          console.log(`Total nodes in hierarchy: ${allNodesInHierarchy.length}`);
           
-          if (lastDescendant) {
-            console.log('Scrolling to last descendant');
-            // Scroll to the bottom of the last descendant
-            lastDescendant.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          if (allNodesInHierarchy.length > 1) {
+            // Get the last node in the DOM (should be the deepest descendant)
+            const lastNode = allNodesInHierarchy[allNodesInHierarchy.length - 1];
+            console.log(`Found last node in hierarchy: ${lastNode.dataset.id}`);
             
-            // Adjust scroll to show a bit more context if available
+            // Scroll directly to the last node
+            lastNode.scrollIntoView({ behavior: 'auto', block: 'end' });
+            console.log('Scrolled to last node in hierarchy (end position)');
+            
+            // Add debug info about the final position
             setTimeout(() => {
-              // Scroll back up slightly to show more context
-              window.scrollBy({
-                top: -100, // Show some context above the bottom
-                behavior: 'smooth'
-              });
-            }, 100);
+              const lastNodeRect = lastNode.getBoundingClientRect();
+              console.log(`Last node position: top=${lastNodeRect.top}px, bottom=${lastNodeRect.bottom}px`);
+              console.log(`Viewport bottom: ${window.innerHeight}px`);
+              
+              // Check if we need to adjust further
+              if (lastNodeRect.bottom < window.innerHeight - 50) {
+                console.log('Last node not at bottom, forcing additional scroll');
+                window.scrollBy({
+                  top: window.innerHeight - lastNodeRect.bottom - 20,
+                  behavior: 'auto'
+                });
+              }
+            }, 50);
           } else {
-            // If we couldn't find the last descendant, scroll to the bottom of the children container
-            childrenContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            // If there are no children visible yet, scroll to the bottom of the container
+            const contentHeight = Math.max(
+              document.body.scrollHeight,
+              document.documentElement.scrollHeight
+            );
+            console.log(`Scrolling to content bottom: ${contentHeight}px`);
+            window.scrollTo({
+              top: contentHeight,
+              behavior: 'auto'
+            });
           }
-        }, 50);
+        }, 100);
       } else {
         // For nodes without children, center them in the viewport
         nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         console.log('Node without children centered in viewport');
       }
     }
-  }
-  
-  /**
-   * Helper function to find the last visible descendant node
-   * @param {HTMLElement} container - The children container element
-   * @returns {HTMLElement|null} - The last visible descendant or null
-   */
-  function findLastVisibleDescendant(container) {
-    // First try to find the deepest nested visible node
-    const allNodes = container.querySelectorAll('.node');
-    if (allNodes.length === 0) return null;
-    
-    // Convert NodeList to Array to use reverse()
-    const nodesArray = Array.from(allNodes);
-    
-    // Find the last visible node
-    for (let i = nodesArray.length - 1; i >= 0; i--) {
-      const node = nodesArray[i];
-      const style = window.getComputedStyle(node);
-      if (style.display !== 'none') {
-        return node;
-      }
-    }
-    
-    return null;
   }
   
   /**
