@@ -70,110 +70,106 @@ const BreadcrumbManager = (function() {
    * @param {string} nodeId - The ID of the node to focus on
    */
   async function filterToNodeAndDescendants(nodeId) {
-    const outlinerContainer = document.getElementById('outliner-container');
-    const allNodes = outlinerContainer.querySelectorAll('.node');
-    
-    // First hide all nodes
-    allNodes.forEach(node => {
-      node.style.display = 'none';
-      // Remove any previous ancestor-path class
-      node.classList.remove('ancestor-path');
-    });
+    console.log('Focusing on node:', nodeId);
     
     try {
       // Get the node's ancestry path
       const ancestors = await getNodeAncestry(nodeId);
+      console.log('Ancestors:', ancestors);
       
-      // Add a style rule for ancestor-path if it doesn't exist yet
-      if (!document.getElementById('ancestor-path-style')) {
-        const style = document.createElement('style');
-        style.id = 'ancestor-path-style';
-        style.textContent = `
-          .ancestor-path {
-            height: 0 !important;
-            overflow: hidden !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: none !important;
-            pointer-events: none !important;
-          }
-          .ancestor-path > .node-content {
-            display: none !important;
-          }
-          .ancestor-path > .children {
-            margin-left: 0 !important;
-          }
-          .ancestor-path > .children::before {
-            display: none !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
-      
-      // We need to maintain ancestor path in the DOM but make them visually hidden
-      for (let i = 0; i < ancestors.length - 1; i++) {
-        const ancestorId = ancestors[i].id;
-        const ancestorNode = document.querySelector(`.node[data-id="${ancestorId}"]`);
-        
-        if (ancestorNode) {
-          // Make ancestor node visible but with special class that hides its content
-          ancestorNode.style.display = '';
-          ancestorNode.classList.add('ancestor-path');
-          
-          // Find the next node in our path
-          const nextPathNodeId = ancestors[i + 1].id;
-          
-          // If this ancestor has children container
-          const childrenContainer = ancestorNode.querySelector('.children');
-          if (childrenContainer) {
-            // Make the children container visible
-            childrenContainer.style.display = '';
-            
-            // Only show the child that leads to our focused node
-            const immediateChildren = childrenContainer.querySelectorAll(':scope > .node');
-            immediateChildren.forEach(child => {
-              if (child.dataset.id === nextPathNodeId) {
-                child.style.display = '';
-              } else {
-                child.style.display = 'none';
-              }
-            });
-          }
-        }
-      }
-      
-      // Show the focused node
-      const focusedNode = document.querySelector(`.node[data-id="${nodeId}"]`);
-      if (focusedNode) {
-        // Show the focused node
-        focusedNode.style.display = '';
-        
-        // Show all descendants of the focused node
-        showDescendants(focusedNode);
-      }
-      
-      // Make sure our focused node is expanded
+      // Get the focused node data
       const response = await fetch(`/api/nodes/${nodeId}`);
-      const node = await response.json();
-      if (!node.is_expanded) {
-        await fetch(`/api/nodes/${nodeId}/toggle`, {
-          method: 'POST'
-        });
-        
-        // OPTIMIZATION: Use refreshSubtree instead of full DOM refresh
-        if (window.NodeOperationsManager && window.NodeOperationsManager.refreshSubtree) {
-          await window.NodeOperationsManager.refreshSubtree(nodeId);
-          // Re-apply our focus filter after refresh
-          setTimeout(() => filterToNodeAndDescendants(nodeId), 50);
-        } else if (window.fetchNodes) {
-          // Fallback to full refresh if refreshSubtree is not available
-          await window.fetchNodes();
-          // Re-apply our focus filter after fetch
-          setTimeout(() => filterToNodeAndDescendants(nodeId), 100);
-        }
+      const focusedNode = await response.json();
+      
+      // Get children of focused node
+      const childrenResponse = await fetch(`/api/nodes/${nodeId}/children`);
+      const children = await childrenResponse.json();
+      console.log('Children of focused node:', children);
+      
+      // Get the outliner container
+      const outlinerContainer = document.getElementById('outliner-container');
+      
+      // DEBUGGING: Let's output what's in the container before we modify it
+      console.log('Current container children count:', outlinerContainer.childNodes.length);
+      
+      // Save the current container content
+      if (!outlinerContainer._originalContent) {
+        outlinerContainer._originalContent = outlinerContainer.innerHTML;
       }
+      
+      // Create a temporary container for our focused view
+      const tempDiv = document.createElement('div');
+      
+      // First, create the focused node element
+      const focusedNodeElement = document.createElement('div');
+      focusedNodeElement.className = 'node focused-node';
+      focusedNodeElement.dataset.id = focusedNode.id;
+      
+      // Create node content
+      const nodeContent = document.createElement('div');
+      nodeContent.className = 'node-content';
+      
+      // Add appropriate icon (bullet or collapse icon)
+      if (children.length > 0) {
+        const collapseIcon = document.createElement('span');
+        collapseIcon.className = 'collapse-icon';
+        collapseIcon.innerHTML = focusedNode.is_expanded ? '▼' : '►';
+        collapseIcon.addEventListener('click', () => {
+          if (window.toggleNode) {
+            window.toggleNode(focusedNode.id);
+          }
+        });
+        nodeContent.appendChild(collapseIcon);
+        } else {
+        const bullet = document.createElement('span');
+        bullet.className = 'bullet';
+        bullet.innerHTML = '•';
+        nodeContent.appendChild(bullet);
+      }
+      
+      // Create node text
+      const nodeText = document.createElement('div');
+      nodeText.className = 'node-text';
+      nodeText.contentEditable = true;
+      
+      // Display appropriate language content
+      const currentLanguage = window.I18n ? window.I18n.getCurrentLanguage() : 'en';
+      const displayContent = currentLanguage === 'en' ? 
+                             focusedNode.content : 
+                             (focusedNode.content_zh || focusedNode.content);
+      
+      nodeText.textContent = displayContent;
+      nodeContent.appendChild(nodeText);
+      focusedNodeElement.appendChild(nodeContent);
+      
+      // Fetch and render all child nodes recursively
+      if (children.length > 0 && focusedNode.is_expanded) {
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = 'children';
+        
+        // Add all child nodes
+        await Promise.all(children.map(async (child) => {
+          const childElement = await window.createNodeElement(child);
+          childrenContainer.appendChild(childElement);
+        }));
+        
+        focusedNodeElement.appendChild(childrenContainer);
+      }
+      
+      // Add the focused node to our temporary container
+      tempDiv.appendChild(focusedNodeElement);
+      
+      // Clear and replace the outliner content
+      outlinerContainer.innerHTML = '';
+      outlinerContainer.appendChild(focusedNodeElement);
+      
+      console.log('Focus view created with node:', focusedNode.content);
+      
+      // Highlight the focused node
+      highlightFocusedNode(nodeId);
+      
     } catch (error) {
-      console.error('Error filtering to node and descendants:', error);
+      console.error('Error applying focus view:', error);
     }
   }
   
@@ -390,6 +386,7 @@ const BreadcrumbManager = (function() {
   function clearFocus() {
     if (!isFocusMode) return;
     
+    console.log('Clearing focus mode');
     currentFocusedNodeId = null;
     isFocusMode = false;
     
@@ -401,16 +398,25 @@ const BreadcrumbManager = (function() {
       node.classList.remove('focused-node');
     });
     
-    // Remove ancestor-path class from any nodes
-    document.querySelectorAll('.node.ancestor-path').forEach(node => {
-      node.classList.remove('ancestor-path');
-    });
-    
-    // Show all nodes again
-    const allNodes = document.querySelectorAll('.node');
-    allNodes.forEach(node => {
-      node.style.display = '';
-    });
+    // Restore original content if saved
+    const outlinerContainer = document.getElementById('outliner-container');
+    if (outlinerContainer && outlinerContainer._originalContent) {
+      outlinerContainer.innerHTML = outlinerContainer._originalContent;
+      delete outlinerContainer._originalContent;
+      
+      // Reattach event handlers that might have been lost
+      if (window.DragDropManager) {
+        window.DragDropManager.setupDragAndDrop();
+      }
+      
+      console.log('Restored original content');
+    } else {
+      // If original content wasn't saved, refresh nodes
+      if (window.fetchNodes) {
+        window.fetchNodes();
+        console.log('Refreshing nodes from server');
+      }
+    }
     
     // Reapply any filters if the FilterManager is active
     if (window.FilterManager) {

@@ -234,40 +234,50 @@ const SearchManager = (function() {
    */
   async function navigateToNode(nodeId) {
     try {
-      // First, ensure all parent nodes are expanded
-      await expandParentNodes(nodeId);
+      console.log(`Search navigating to node: ${nodeId}`);
       
-      // Then scroll to and highlight the node
-      setTimeout(() => {
-        const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-        if (nodeElement) {
-          // Scroll the node into view
-          nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
-          // Add a highlight effect
-          nodeElement.classList.add('highlight-focus');
-          setTimeout(() => {
-            nodeElement.classList.remove('highlight-focus');
-          }, 2000);
-          
-          // Set focus to the node text
-          const nodeText = nodeElement.querySelector('.node-text');
-          if (nodeText) {
-            nodeText.focus();
-          }
-          
-          // Track this as the last focused node
-          if (window.lastFocusedNodeId !== undefined) {
-            window.lastFocusedNodeId = nodeId;
-            console.log(`Search set focus to node: ${nodeId}`);
-          }
-          
-          // Use BreadcrumbManager if available
-          if (window.BreadcrumbManager) {
-            window.BreadcrumbManager.focusOnNode(nodeId);
-          }
+      // Check if BreadcrumbManager is available and use it directly
+      if (window.BreadcrumbManager) {
+        // This will handle all the expansion and focusing
+        await window.BreadcrumbManager.focusOnNode(nodeId);
+        
+        // Track this as the last focused node
+        if (window.lastFocusedNodeId !== undefined) {
+          window.lastFocusedNodeId = nodeId;
+          console.log(`Search set focus to node: ${nodeId}`);
         }
-      }, 300); // Give time for the DOM to update after expanding parents
+      } else {
+        // Fallback to the original approach if BreadcrumbManager isn't available
+        // First, ensure all parent nodes are expanded
+        await expandParentNodes(nodeId);
+        
+        // Then scroll to and highlight the node
+        setTimeout(() => {
+          const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+          if (nodeElement) {
+            // Scroll the node into view
+            nodeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add a highlight effect
+            nodeElement.classList.add('highlight-focus');
+            setTimeout(() => {
+              nodeElement.classList.remove('highlight-focus');
+            }, 2000);
+            
+            // Set focus to the node text
+            const nodeText = nodeElement.querySelector('.node-text');
+            if (nodeText) {
+              nodeText.focus();
+            }
+            
+            // Track this as the last focused node
+            if (window.lastFocusedNodeId !== undefined) {
+              window.lastFocusedNodeId = nodeId;
+              console.log(`Search set focus to node: ${nodeId}`);
+            }
+          }
+        }, 300); // Give time for the DOM to update after expanding parents
+      }
     } catch (error) {
       console.error('Error navigating to node:', error);
     }
