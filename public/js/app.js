@@ -901,12 +901,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
-  fetchNodes().then(() => {
-    if (window.NodeGridVisualizer) {
-      NodeGridVisualizer.loadAndVisualizeAllNodes();
+  // Initialize the NodeGridVisualizer
+  if (window.NodeGridVisualizer) {
+    NodeGridVisualizer.initialize();
+    
+    // Hide the grid by default
+    const container = document.getElementById('node-grid-container');
+    if (container) {
+      container.style.display = 'none';
     }
-  });
+    
+    // Add toggle button functionality
+    const toggleGridButton = document.getElementById('toggle-grid-view');
+    if (toggleGridButton) {
+      toggleGridButton.addEventListener('click', function() {
+        NodeGridVisualizer.toggleVisibility();
+      });
+    }
+  }
 
+  // Just call fetchNodes by itself
+  fetchNodes();
 
   // ================================================================
   // END OF APPLICATION CODE - DO NOT ADD FUNCTIONS BELOW THIS LINE
@@ -950,24 +965,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Make fetchChildren available globally for the NodeGridVisualizer
   window.fetchChildren = fetchChildren;
-
-  // Initialize the NodeGridVisualizer
-  if (window.NodeGridVisualizer) {
-    NodeGridVisualizer.initialize();
-    
-    // Hide the grid by default
-    const container = document.getElementById('node-grid-container');
-    if (container) {
-      container.style.display = 'none';
-    }
-    
-    // Add toggle button functionality
-    const toggleGridButton = document.getElementById('toggle-grid-view');
-    if (toggleGridButton) {
-      toggleGridButton.addEventListener('click', function() {
-        NodeGridVisualizer.toggleVisibility();
-      });
-    }
-  }
 
 }); 
