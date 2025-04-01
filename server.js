@@ -1468,6 +1468,23 @@ app.delete('/api/bookmarks/node/:nodeId', async (req, res) => {
   }
 });
 
+// Get a specific link by ID
+app.get('/api/links/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const link = await db.get('SELECT * FROM links WHERE id = ?', req.params.id);
+    
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+    
+    res.json(link);
+  } catch (error) {
+    console.error('Error getting link:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

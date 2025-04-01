@@ -401,7 +401,7 @@ const LinkManager = (function() {
         return;
       }
       
-      // Refresh links
+      // Refresh links in the modal
       await fetchNodeLinks(fromNodeId);
       
       // Switch to manage tab
@@ -412,10 +412,9 @@ const LinkManager = (function() {
       document.querySelector('.weight-input').value = '1.0';
       document.querySelector('.description-input').value = '';
       
-      // Refresh the main UI to reflect changes
-      if (window.fetchNodes) {
-        window.fetchNodes();
-      }
+      // Just update the link counts in the UI instead of refreshing everything
+      updateLinkCountDisplay(fromNodeId);
+      updateLinkCountDisplay(toNodeId);
     } catch (error) {
       console.error('Error creating link:', error);
       alert('Error creating link');
@@ -514,16 +513,14 @@ const LinkManager = (function() {
           return;
         }
         
-        // Refresh links
+        // Refresh links in the modal
         await fetchNodeLinks(currentNodeId);
         
         // Close modal
         document.body.removeChild(editModalOverlay);
         
-        // Refresh the main UI to reflect changes
-        if (window.fetchNodes) {
-          window.fetchNodes();
-        }
+        // No need to refresh the entire UI for a link edit
+        // as link counts don't change
       } catch (error) {
         console.error('Error updating link:', error);
         alert('Error updating link');
@@ -558,6 +555,18 @@ const LinkManager = (function() {
     }
     
     try {
+      // First get info about the link before deleting it
+      const linkInfoResponse = await fetch(`/api/links/${linkId}`);
+      let affectedNodes = { fromNodeId: null, toNodeId: null };
+      
+      if (linkInfoResponse.ok) {
+        const linkInfo = await linkInfoResponse.json();
+        affectedNodes = {
+          fromNodeId: linkInfo.from_node_id,
+          toNodeId: linkInfo.to_node_id
+        };
+      }
+      
       const response = await fetch(`/api/links/${linkId}`, {
         method: 'DELETE'
       });
@@ -568,13 +577,12 @@ const LinkManager = (function() {
         return;
       }
       
-      // Refresh links
+      // Refresh links in the modal
       await fetchNodeLinks(currentNodeId);
       
-      // Refresh the main UI to reflect changes
-      if (window.fetchNodes) {
-        window.fetchNodes();
-      }
+      // Only update the affected nodes' link counts
+      if (affectedNodes.fromNodeId) updateLinkCountDisplay(affectedNodes.fromNodeId);
+      if (affectedNodes.toNodeId) updateLinkCountDisplay(affectedNodes.toNodeId);
     } catch (error) {
       console.error('Error deleting link:', error);
       alert('Error deleting link');
@@ -609,6 +617,38 @@ const LinkManager = (function() {
       closeModal();
       openLinkModal(currentNodeId);
     }
+  }
+  
+  // Add this new function to the LinkManager module
+  function updateLinkCountDisplay(nodeId) {
+    // Find the relevant node in the DOM
+    const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+    if (!nodeElement) return;
+    
+    // Find the node text area where the link count is displayed
+    const nodeText = nodeElement.querySelector('.node-text');
+    if (!nodeText) return;
+    
+    // Fetch just the single node to get current link count
+    fetch(`/api/nodes/${nodeId}`)
+      .then(response => response.json())
+      .then(node => {
+        // Find or create the link count element
+        let linkCount = nodeText.querySelector('.link-count');
+        
+        if (node.link_count && node.link_count > 0) {
+          if (!linkCount) {
+            linkCount = document.createElement('sup');
+            linkCount.className = 'link-count';
+            nodeText.appendChild(linkCount);
+          }
+          linkCount.textContent = node.link_count;
+        } else if (linkCount) {
+          // Remove link count if it's zero
+          nodeText.removeChild(linkCount);
+        }
+      })
+      .catch(error => console.error(`Error updating link count for node ${nodeId}:`, error));
   }
   
   // Public API
