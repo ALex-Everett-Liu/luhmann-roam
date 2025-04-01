@@ -1173,32 +1173,6 @@ app.use('*.css', (req, res, next) => {
   next();
 });
 
-// Add this route to proxy font requests and avoid CORS issues
-app.get('/proxy/fonts/:filename', async (req, res) => {
-  const { filename } = req.params;
-  const fontUrl = `https://cdn.staticfile.org/lxgw-wenkai-screen-webfont/1.6.0/${filename}`;
-  
-  try {
-    const fontResponse = await fetch(fontUrl);
-    if (!fontResponse.ok) {
-      return res.status(fontResponse.status).send('Font not found');
-    }
-    
-    // Get the binary font data
-    const fontData = await fontResponse.arrayBuffer();
-    
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'font/woff2');
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for a year
-    
-    // Send the font data
-    res.send(Buffer.from(fontData));
-  } catch (error) {
-    console.error('Error proxying font:', error);
-    res.status(500).send('Error fetching font');
-  }
-});
-
 // Add this to your existing routes in server.js
 app.post('/api/nodes/reorder/shift', async (req, res) => {
   try {
@@ -1485,7 +1459,8 @@ app.get('/api/links/:id', async (req, res) => {
   }
 });
 
-// Add static route for local fonts
+// Add these routes if not already present (similar to what you have)
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 
 // Start the server
