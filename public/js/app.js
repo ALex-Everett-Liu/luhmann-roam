@@ -425,14 +425,15 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Store whether we're in focus mode before the operation
       const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
+      const currentFocusedNodeId = wasInFocusMode && window.BreadcrumbManager ? 
+        window.BreadcrumbManager.getCurrentFocusedNodeId() : null;
       
       if (window.NodeOperationsManager) {
+        // Just create the node without changing focus
         await NodeOperationsManager.addChildNode(parentId);
         
-        // Restore focus state if we were in focus mode
-        if (wasInFocusMode && window.BreadcrumbManager) {
-          window.BreadcrumbManager.focusOnNode(parentId);
-        }
+        // No focus restoration needed - we want to maintain the current focus state
+        // REMOVED: code that was restoring focus to parentId
       } else {
         console.error('NodeOperationsManager not available');
       }
@@ -604,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.NodeOperationsManager) {
       await preserveFocusState(async () => {
         return NodeOperationsManager.indentNode(nodeId);
-      });
+      }, true); // Keep focus restoration for indentation
     } else {
       console.error('NodeOperationsManager not available');
       return false;
@@ -650,9 +651,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add a sibling node
   async function addSiblingNode(nodeId, position) {
     if (window.NodeOperationsManager) {
-      await preserveFocusState(async () => {
-        return NodeOperationsManager.addSiblingNode(nodeId, position);
-      });
+      // Instead of using preserveFocusState, just call the operation directly
+      // to avoid any focus manipulation
+      try {
+        return await NodeOperationsManager.addSiblingNode(nodeId, position);
+      } catch (error) {
+        console.error(`Error adding sibling node to ${nodeId}:`, error);
+        return false;
+      }
     } else {
       console.error('NodeOperationsManager not available');
       return false;
@@ -907,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ================================================================
 
   // Helper function to preserve focus state across operations
-  async function preserveFocusState(operation) {
+  async function preserveFocusState(operation, shouldRestoreFocus = true) {
     // Store whether we're in focus mode before the operation
     const wasInFocusMode = window.BreadcrumbManager && window.BreadcrumbManager.isInFocusMode();
     // Store the currently focused node ID if in focus mode
@@ -918,8 +924,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Run the provided operation
       await operation();
       
-      // Restore focus state if we were in focus mode
-      if (wasInFocusMode && window.BreadcrumbManager && focusedNodeId) {
+      // Restore focus state if requested and we were in focus mode
+      if (shouldRestoreFocus && wasInFocusMode && window.BreadcrumbManager && focusedNodeId) {
         window.BreadcrumbManager.focusOnNode(focusedNodeId);
       }
     } catch (error) {
