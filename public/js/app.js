@@ -433,9 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (wasInFocusMode && window.BreadcrumbManager) {
           window.BreadcrumbManager.focusOnNode(parentId);
         }
-        
-        // Set this as the last focused node
-        lastFocusedNodeId = parentId;
       } else {
         console.error('NodeOperationsManager not available');
       }

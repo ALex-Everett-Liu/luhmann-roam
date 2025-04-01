@@ -495,17 +495,6 @@ const NodeOperationsManager = (function() {
               await window.fetchNodes();
             }
           }
-          
-          // Focus on the newly created node after refresh
-          setTimeout(() => {
-            const newNodeElement = document.querySelector(`.node[data-id="${newNode.id}"]`);
-            if (newNodeElement) {
-              const nodeText = newNodeElement.querySelector('.node-text');
-              if (nodeText) {
-                nodeText.focus();
-              }
-            }
-          }, 100);
         } else {
           // Fallback to full refresh if direct DOM manipulation isn't possible
           if (window.fetchNodes) {
