@@ -76,14 +76,71 @@ const BreadcrumbManager = (function() {
     // First hide all nodes
     allNodes.forEach(node => {
       node.style.display = 'none';
+      // Remove any previous ancestor-path class
+      node.classList.remove('ancestor-path');
     });
     
     try {
       // Get the node's ancestry path
       const ancestors = await getNodeAncestry(nodeId);
       
-      // CHANGE: Don't show ancestors in the main view anymore
-      // Instead, only show the focused node and its descendants
+      // Add a style rule for ancestor-path if it doesn't exist yet
+      if (!document.getElementById('ancestor-path-style')) {
+        const style = document.createElement('style');
+        style.id = 'ancestor-path-style';
+        style.textContent = `
+          .ancestor-path {
+            height: 0 !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            pointer-events: none !important;
+          }
+          .ancestor-path > .node-content {
+            display: none !important;
+          }
+          .ancestor-path > .children {
+            margin-left: 0 !important;
+          }
+          .ancestor-path > .children::before {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      // We need to maintain ancestor path in the DOM but make them visually hidden
+      for (let i = 0; i < ancestors.length - 1; i++) {
+        const ancestorId = ancestors[i].id;
+        const ancestorNode = document.querySelector(`.node[data-id="${ancestorId}"]`);
+        
+        if (ancestorNode) {
+          // Make ancestor node visible but with special class that hides its content
+          ancestorNode.style.display = '';
+          ancestorNode.classList.add('ancestor-path');
+          
+          // Find the next node in our path
+          const nextPathNodeId = ancestors[i + 1].id;
+          
+          // If this ancestor has children container
+          const childrenContainer = ancestorNode.querySelector('.children');
+          if (childrenContainer) {
+            // Make the children container visible
+            childrenContainer.style.display = '';
+            
+            // Only show the child that leads to our focused node
+            const immediateChildren = childrenContainer.querySelectorAll(':scope > .node');
+            immediateChildren.forEach(child => {
+              if (child.dataset.id === nextPathNodeId) {
+                child.style.display = '';
+              } else {
+                child.style.display = 'none';
+              }
+            });
+          }
+        }
+      }
       
       // Show the focused node
       const focusedNode = document.querySelector(`.node[data-id="${nodeId}"]`);
@@ -342,6 +399,11 @@ const BreadcrumbManager = (function() {
     // Remove highlighted focus from any nodes
     document.querySelectorAll('.node.focused-node').forEach(node => {
       node.classList.remove('focused-node');
+    });
+    
+    // Remove ancestor-path class from any nodes
+    document.querySelectorAll('.node.ancestor-path').forEach(node => {
+      node.classList.remove('ancestor-path');
     });
     
     // Show all nodes again
