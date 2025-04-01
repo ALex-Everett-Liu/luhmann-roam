@@ -4,3 +4,4 @@ logs/
 *.db
 markdown/
 public/attachment
+public/fonts
