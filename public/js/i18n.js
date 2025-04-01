@@ -356,6 +356,11 @@ const I18n = (function() {
     if (window.BreadcrumbManager && BreadcrumbManager.updateLanguage) {
       BreadcrumbManager.updateLanguage(currentLanguage);
     }
+    
+    // Add this line to notify BookmarkManager about language changes
+    if (window.BookmarkManager && BookmarkManager.updateLanguage) {
+      BookmarkManager.updateLanguage(currentLanguage);
+    }
   }
   
   /**

@@ -89,7 +89,7 @@ app.get('/api/nodes/:id/children', async (req, res) => {
 // Create a new node
 app.post('/api/nodes', async (req, res) => {
   try {
-    const { content, content_zh, parent_id, position } = req.body;
+    const { content, content_zh, parent_id, position } = req.body; // destructuring: extracts specific properties from the request body
     const now = Date.now();
     const id = uuidv4();
     

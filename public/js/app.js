@@ -830,24 +830,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the BookmarkManager
   if (window.BookmarkManager) {
-    console.log('Initializing BookmarkManager from app.js');
-    // Ensure BookmarkManager initializes after the DOM is fully loaded
-    if (document.readyState === 'complete') {
-      BookmarkManager.initialize();
-    } else {
-      window.addEventListener('load', () => {
-        console.log('Window loaded, now initializing BookmarkManager');
-        BookmarkManager.initialize();
-      });
-    }
+    console.log('Setting up BookmarkManager initialization from app.js');
     
-    // Add event listener to save bookmarks when page is about to unload
+    // Use a more reliable event for initialization
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM content loaded, ensuring sidebar is ready before BookmarkManager initialization');
+      
+      // Function to check if sidebar exists and initialize BookmarkManager
+      function initBookmarksWhenSidebarReady() {
+        if (document.querySelector('.sidebar')) {
+          console.log('Sidebar found, initializing BookmarkManager');
+          window.bookmarkManagerInitialized = true;
+          BookmarkManager.initialize();
+        } else {
+          console.log('Sidebar not found yet, retrying in 200ms');
+          setTimeout(initBookmarksWhenSidebarReady, 200);
+        }
+      }
+      
+      // Wait a short time after DOMContentLoaded before attempting initialization
+      setTimeout(initBookmarksWhenSidebarReady, 200);
+    });
+    
+    // Make sure beforeunload event still works to save bookmarks
     window.addEventListener('beforeunload', function() {
-      console.log('Page unloading, ensuring bookmarks are saved');
-      if (BookmarkManager.debug && BookmarkManager.debug.getBookmarks) {
-        const currentBookmarks = BookmarkManager.debug.getBookmarks();
-        console.log('Current bookmarks before unload:', currentBookmarks);
-        localStorage.setItem('luhmann_roam_bookmarks', JSON.stringify(currentBookmarks));
+      console.log('Page unloading, final bookmark save');
+      if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
+        const bookmarksToSave = window.BookmarkManager.debug.getBookmarks();
+        if (Array.isArray(bookmarksToSave)) {
+          const storageKey = window.BookmarkManager.STORAGE_KEY || 'luhmann_roam_bookmarks';
+          localStorage.setItem(storageKey, JSON.stringify(bookmarksToSave));
+        }
       }
     });
   }

@@ -12,10 +12,31 @@ const BookmarkManager = (function() {
      * Initializes the bookmark manager
      */
     function initialize() {
-      loadBookmarks();
-      createBookmarksSection();
+      console.log('BookmarkManager initialization started');
       
-      // Add hotkey for bookmarking/unbookmarking the current node (Alt+B)
+      // Initialize bookmarks array first (no DOM dependency)
+      loadBookmarks();
+      
+      // Check if DOM is ready for UI creation
+      if (!document.querySelector('.sidebar')) {
+        console.log('Sidebar not found, delaying BookmarkManager initialization');
+        setTimeout(() => {
+          console.log('Retrying BookmarkManager initialization');
+          initialize();
+        }, 500);
+        return;
+      }
+      
+      // DOM is ready, create UI
+      const success = createBookmarksSection();
+      
+      if (!success) {
+        console.error('Failed to create bookmarks section, retrying in 500ms');
+        setTimeout(initialize, 500);
+        return;
+      }
+      
+      // UI created successfully, set up event handlers
       document.addEventListener('keydown', (e) => {
         if (e.altKey && e.key === 'b') {
           e.preventDefault();
@@ -24,7 +45,7 @@ const BookmarkManager = (function() {
       });
       
       // Verify initialization is complete
-      console.log('BookmarkManager initialized, current bookmarks:', bookmarks);
+      console.log('BookmarkManager initialization complete, bookmarks:', bookmarks);
 
       // Run a storage test to verify localStorage is working
       try {
@@ -48,7 +69,10 @@ const BookmarkManager = (function() {
      */
     function createBookmarksSection() {
       const sidebar = document.querySelector('.sidebar');
-      if (!sidebar) return;
+      if (!sidebar) {
+        console.error('Cannot create bookmarks section: sidebar not found in DOM');
+        return false;
+      }
       
       // Set initial collapsed state
       const isCollapsed = localStorage.getItem('bookmarks_collapsed') === 'true';
@@ -112,7 +136,15 @@ const BookmarkManager = (function() {
         toggleIcon.innerHTML = '▼';
       }
       
-      renderBookmarks();
+      console.log('Bookmarks section created, container:', bookmarksContainer);
+      
+      // Call renderBookmarks only if bookmarksContainer was successfully created
+      if (bookmarksContainer) {
+        renderBookmarks();
+        return true;
+      }
+      
+      return false;
     }
     
     /**
@@ -145,8 +177,14 @@ const BookmarkManager = (function() {
         
         if (saved && saved !== 'undefined' && saved !== 'null') {
           try {
-            bookmarks = JSON.parse(saved);
-            console.log('Successfully loaded bookmarks from localStorage:', bookmarks);
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              bookmarks = parsed;
+              console.log('Successfully loaded bookmarks from localStorage:', bookmarks);
+            } else {
+              console.error('Loaded data is not an array:', parsed);
+              bookmarks = [];
+            }
           } catch (e) {
             console.error('Error parsing bookmarks JSON:', e);
             console.error('Raw bookmark data that failed to parse:', saved);
@@ -158,12 +196,6 @@ const BookmarkManager = (function() {
         }
       } catch (e) {
         console.error('Error accessing localStorage:', e);
-        bookmarks = [];
-      }
-      
-      // Validate bookmarks format
-      if (!Array.isArray(bookmarks)) {
-        console.error('Bookmarks is not an array, resetting to empty array');
         bookmarks = [];
       }
     }
@@ -202,10 +234,21 @@ const BookmarkManager = (function() {
      * Renders the bookmarks in the sidebar - final version
      */
     function renderBookmarks() {
+      // Explicitly check if bookmarksContainer exists and exit early if not
       if (!bookmarksContainer) {
         console.error('bookmarksContainer is null, cannot render bookmarks');
-        return;
+        // Try to recreate the container
+        if (document.querySelector('.sidebar')) {
+          console.log('Attempting to recreate bookmarks container');
+          createBookmarksSection();
+          // If still no container, exit
+          if (!bookmarksContainer) return;
+        } else {
+          return;
+        }
       }
+      
+      console.log('Rendering bookmarks to container:', bookmarksContainer);
       
       // Clear the container
       bookmarksContainer.innerHTML = '';
@@ -218,6 +261,7 @@ const BookmarkManager = (function() {
         noBookmarks.style.fontStyle = 'italic';
         noBookmarks.style.padding = '8px 0';
         bookmarksContainer.appendChild(noBookmarks);
+        console.log('Added "no bookmarks" message to container');
         return;
       }
       
@@ -633,6 +677,7 @@ const BookmarkManager = (function() {
       addBookmarkButtonToNode,
       updateLanguage,
       toggleBookmarkForFocusedNode,
+      STORAGE_KEY,
       // Add these debug methods
       debug: {
         forceRender: renderBookmarks,
@@ -645,3 +690,13 @@ const BookmarkManager = (function() {
   
   // Export the module for use in other files
   window.BookmarkManager = BookmarkManager;
+  
+  // Explicitly save bookmarks before page unload
+  window.addEventListener('beforeunload', function() {
+    if (window.BookmarkManager && window.BookmarkManager.debug && window.BookmarkManager.debug.getBookmarks) {
+      console.log('Page unloading, ensuring bookmarks are saved');
+      const bookmarksToSave = window.BookmarkManager.debug.getBookmarks();
+      const storageKey = window.BookmarkManager.STORAGE_KEY || 'luhmann_roam_bookmarks';
+      localStorage.setItem(storageKey, JSON.stringify(bookmarksToSave));
+    }
+  });

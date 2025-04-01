@@ -228,6 +228,7 @@ const MarkdownManager = (function() {
     const helpMessage = `
       <div class="resize-help-message">
         <p><strong>${tipText}</strong> ${resizeHelpText}</p>
+        <p>Tip: To add an image, use the syntax: ![alt text](image_url){width=X height=Y}</p>
       </div>
     `;
 
