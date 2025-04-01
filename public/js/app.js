@@ -854,6 +854,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the DragDropManager
   if (window.DragDropManager) {
     DragDropManager.initialize();
+    
+    // Add a toggle button for drag and drop functionality
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      const dragDropToggle = document.createElement('button');
+      dragDropToggle.id = 'toggle-drag-drop';
+      dragDropToggle.className = 'feature-toggle';
+      dragDropToggle.textContent = DragDropManager.isEnabled() ? 'Disable Drag & Drop' : 'Enable Drag & Drop';
+      dragDropToggle.classList.toggle('active', DragDropManager.isEnabled());
+      dragDropToggle.title = 'Toggle drag and drop functionality (improves performance when disabled)';
+      
+      dragDropToggle.addEventListener('click', () => {
+        DragDropManager.toggle();
+      });
+      
+      // Add it after other buttons in the sidebar
+      sidebar.appendChild(dragDropToggle);
+    }
   }
 
   // Initialize the AttributeManager

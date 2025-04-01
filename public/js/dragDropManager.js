@@ -12,6 +12,7 @@
     dragLeaveHandler: null,
     dropHandler: null,
     observerActive: false,
+    enabled: true,
     
     // Initialize the manager
     initialize: function() {
@@ -29,11 +30,22 @@
         this.currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
       }
       
+      // Check if there's a saved preference for drag-drop state
+      const savedEnabledState = localStorage.getItem('dragDropEnabled');
+      if (savedEnabledState !== null) {
+        this.enabled = savedEnabledState === 'true';
+        console.log(`DragDropManager enabled state loaded from storage: ${this.enabled}`);
+      }
+      
       // Create bound event handlers that we can reference for removal
       this.createBoundEventHandlers();
       
-      // Set up drag and drop with a slight delay to ensure DOM is ready
-      setTimeout(() => this.setupDragAndDrop(), 100);
+      // Only set up drag and drop if enabled
+      if (this.enabled) {
+        setTimeout(() => this.setupDragAndDrop(), 100);
+      } else {
+        console.log('DragDropManager initialized in disabled state');
+      }
       
       this.isInitialized = true;
       console.log('DragDropManager initialization complete');
@@ -372,6 +384,35 @@
           error: error.message
         };
       }
+    },
+    
+    // Toggle drag and drop functionality
+    toggle: function() {
+      this.enabled = !this.enabled;
+      console.log(`DragDropManager ${this.enabled ? 'enabled' : 'disabled'}`);
+      
+      // Save preference to localStorage
+      localStorage.setItem('dragDropEnabled', this.enabled);
+      
+      if (this.enabled) {
+        this.setupDragAndDrop();
+      } else {
+        this.removeAllEventListeners();
+      }
+      
+      // Update the toggle button if it exists
+      const toggleButton = document.getElementById('toggle-drag-drop');
+      if (toggleButton) {
+        toggleButton.textContent = this.enabled ? 'Disable Drag & Drop' : 'Enable Drag & Drop';
+        toggleButton.classList.toggle('active', this.enabled);
+      }
+      
+      return this.enabled;
+    },
+    
+    // Get current enabled state
+    isEnabled: function() {
+      return this.enabled;
     }
   };
   
