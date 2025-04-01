@@ -344,16 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteButton.addEventListener('click', () => deleteNode(node.id));
     nodeActions.appendChild(deleteButton);
     
-    // Add attribute button directly in the action buttons creation flow
-    if (window.AttributeManager) {
-      const attributeButton = document.createElement('button');
-      attributeButton.className = 'attribute-button';
-      attributeButton.innerHTML = '📊';
-      attributeButton.title = 'Manage attributes';
-      attributeButton.addEventListener('click', () => AttributeManager.openModal(node.id));
-      nodeActions.appendChild(attributeButton);
-    }
-    
     // Position fixer button
     const positionFixerButton = document.createElement('button');
     positionFixerButton.className = 'position-fixer-button';
@@ -400,11 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // After creating the node element and before returning it
     if (window.BreadcrumbManager) {
       BreadcrumbManager.addNodeFocusHandler(nodeDiv, node.id);
-    }
-    
-    // Add attribute button to node actions
-    if (window.AttributeManager) {
-      AttributeManager.addAttributeButtonToNode(nodeDiv, node.id);
     }
     
     return nodeDiv;
@@ -885,7 +870,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize the AttributeManager
   if (window.AttributeManager) {
+    // Only initialize the manager itself, not the node buttons
     AttributeManager.initialize();
+    
+    // Don't apply attributes to all nodes immediately
+    // Remove or comment out any code that adds attribute buttons at startup
   }
 
   // Initialize the HotkeyManager

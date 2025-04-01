@@ -10,23 +10,88 @@ const AttributeManager = (function() {
   let currentNodeId = null;
   let queryModal = null;
   let recentQueries = [];
+  let isFullyInitialized = false;
   
   // Common attribute keys for autocompletion
   const commonAttributes = [
     'type', 'source', 'author', 'rating', 'url', 'tags', 'category', 'status', 'priority'
   ];
   
-  // Initialize the module
+  // Initialize the module - only core functionality
   function initialize() {
-    console.log('AttributeManager initialized');
+    console.log('AttributeManager initialized (core only)');
     
     // Get the current language from I18n if available
     if (window.I18n) {
       currentLanguage = I18n.getCurrentLanguage();
     }
     
-    ensureModalsExist(); // Use this instead of createModals()
+    // Only load recent queries, don't create modals yet
     loadRecentQueries();
+    
+    // Set up lazy button addition on hover
+    setupLazyButtonAddition();
+    
+    // Set up hotkey support
+    setupHotkeySupport();
+    
+    // Note that we're only partially initialized
+    isFullyInitialized = false;
+  }
+  
+  // Set up lazy button addition on hover
+  function setupLazyButtonAddition() {
+    // Add a global event listener for node hovering
+    document.addEventListener('mouseover', event => {
+      const nodeContent = event.target.closest('.node-content');
+      if (nodeContent) {
+        const node = nodeContent.closest('.node');
+        if (node) {
+          const nodeId = node.dataset.id;
+          
+          // Check if this node already has an attribute button
+          const nodeActions = nodeContent.querySelector('.node-actions');
+          if (nodeActions && !nodeActions.querySelector('.attribute-button')) {
+            // Lazy-add the attribute button when hovering
+            addAttributeButtonToNode(node, nodeId);
+          }
+        }
+      }
+    }, { passive: true });
+  }
+  
+  // Set up hotkey support for attribute management
+  function setupHotkeySupport() {
+    document.addEventListener('keydown', event => {
+      if (event.altKey && event.key.toLowerCase() === 'u') {
+        event.preventDefault();
+        
+        // Find the currently focused or hovered node
+        const focusedNode = document.querySelector('.node-text:focus');
+        const hoveredNode = document.querySelector('.node:hover');
+        
+        if (focusedNode) {
+          const node = focusedNode.closest('.node');
+          if (node) {
+            openModal(node.dataset.id);
+          }
+        } else if (hoveredNode) {
+          openModal(hoveredNode.dataset.id);
+        }
+      }
+    });
+  }
+  
+  // Full initialization - create modals and UI elements
+  function initializeFully() {
+    if (isFullyInitialized) {
+      return; // Already fully initialized
+    }
+    
+    console.log('AttributeManager fully initializing...');
+    ensureModalsExist();
+    isFullyInitialized = true;
+    console.log('AttributeManager fully initialized');
   }
   
   // Update language
@@ -447,25 +512,17 @@ const AttributeManager = (function() {
   // Open the attribute modal for a specific node
   async function openModal(nodeId) {
     try {
+      // Ensure we're fully initialized before opening modal
+      if (!isFullyInitialized) {
+        initializeFully();
+      }
+      
       currentNodeId = nodeId;
 
-      // Ensure modals exist before trying to use them
-      ensureModalsExist();
-      
-      // Make sure the modal is created if it doesn't exist
-      // if (!attributeModal) {
-      //   createAttributeModal();
-      // }
-      
-      // Ensure the modal overlay is in the document
-      // if (!document.body.contains(modalOverlay)) {
-      //   document.body.appendChild(modalOverlay);
-      // }
-      
       // Ensure the attribute modal is in the overlay
-      // if (!modalOverlay.contains(attributeModal)) {
-      //   modalOverlay.appendChild(attributeModal);
-      // }
+      if (!modalOverlay.contains(attributeModal)) {
+        modalOverlay.appendChild(attributeModal);
+      }
       
       // Check if the modal title element exists, recreate if not
       let modalTitle = document.getElementById('attribute-modal-title');
@@ -721,10 +778,12 @@ const AttributeManager = (function() {
     }
   }
   
-  // Open the query modal
+  // Open the query modal - trigger full initialization
   function openQueryModal() {
-    // Ensure modals exist before trying to use them
-    ensureModalsExist();
+    // Ensure full initialization
+    if (!isFullyInitialized) {
+      initializeFully();
+    }
     
     if (queryModal) {
       // Refresh recent queries
@@ -1093,15 +1152,13 @@ const AttributeManager = (function() {
     executeQuery();
   }
   
-  // Add attribute button to node actions
+  // Add attribute button to node actions - modified for lazy loading
   function addAttributeButtonToNode(nodeElement, nodeId) {
-    // Add console logging to debug the issue
-    console.log('Adding attribute button to node:', nodeId);
-    console.log('Node element exists:', !!nodeElement);
+    // No need to log every button addition
+    // console.log('Adding attribute button to node:', nodeId);
     
     // Check if nodeElement exists
     if (!nodeElement) {
-      console.warn('Node element is null or undefined for node:', nodeId);
       return;
     }
     
@@ -1112,7 +1169,6 @@ const AttributeManager = (function() {
       // Check if button already exists to prevent duplicates
       const existingButton = nodeActions.querySelector('.attribute-button');
       if (existingButton) {
-        console.log('Attribute button already exists for node:', nodeId);
         return;
       }
       
@@ -1127,6 +1183,7 @@ const AttributeManager = (function() {
       attributeButton.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // This will trigger full initialization when needed
         openModal(nodeId);
       });
       
@@ -1186,6 +1243,7 @@ const AttributeManager = (function() {
   // Public API
   return {
     initialize,
+    initializeFully,
     updateLanguage,
     openModal,
     addAttributeButtonToNode,
