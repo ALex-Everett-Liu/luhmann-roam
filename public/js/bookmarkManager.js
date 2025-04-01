@@ -30,16 +30,19 @@ const BookmarkManager = (function() {
         section.remove();
       });
       
-      // Load bookmarks from DB first
+      // Create UI first
+      const success = createBookmarksSection();
+      
+      if (!success) {
+        console.error('Failed to create bookmarks section, retrying in 500ms');
+        setTimeout(initialize, 500);
+        return;
+      }
+      
+      // Then load and render bookmarks
       loadBookmarks().then(() => {
-        // Then create UI
-        const success = createBookmarksSection();
-        
-        if (!success) {
-          console.error('Failed to create bookmarks section, retrying in 500ms');
-          setTimeout(initialize, 500);
-          return;
-        }
+        // After loading, render bookmarks
+        renderBookmarks();
         
         // UI created successfully, set up event handlers
         document.addEventListener('keydown', (e) => {
@@ -51,7 +54,7 @@ const BookmarkManager = (function() {
         
         console.log('BookmarkManager initialization complete, bookmarks:', bookmarks);
       }).catch(error => {
-        console.error('Error initializing BookmarkManager:', error);
+        console.error('Error loading bookmarks:', error);
       });
     }
     
@@ -129,9 +132,8 @@ const BookmarkManager = (function() {
       
       console.log('Bookmarks section created, container:', bookmarksContainer);
       
-      // Call renderBookmarks only if bookmarksContainer was successfully created
+      // Just return true if the container was created successfully
       if (bookmarksContainer) {
-        renderBookmarks();
         return true;
       }
       
@@ -549,8 +551,16 @@ const BookmarkManager = (function() {
         if (document.querySelector('.sidebar')) {
           console.log('Attempting to recreate bookmarks container');
           createBookmarksSection();
-          // If still no container, exit
-          if (!bookmarksContainer) return;
+          
+          // Check if container was created successfully
+          const containerElement = document.querySelector('.bookmarks-container');
+          if (containerElement && !bookmarksContainer) {
+            console.log('Container exists in DOM but reference is missing, restoring reference');
+            bookmarksContainer = containerElement;
+          } else if (!bookmarksContainer) {
+            console.error('Failed to recreate bookmarks container');
+            return;
+          }
         } else {
           return;
         }
