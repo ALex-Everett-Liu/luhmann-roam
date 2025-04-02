@@ -128,6 +128,33 @@ const SearchManager = (function() {
           return;
         }
         
+        // Load parent content for nodes with parents
+        const nodesWithParents = results.filter(node => node.parent_id);
+        if (nodesWithParents.length > 0) {
+          const parentIds = [...new Set(nodesWithParents.map(node => node.parent_id))];
+          
+          // Fetch parent nodes content
+          const parentPromises = parentIds.map(id => 
+            fetch(`/api/nodes/${id}`).then(res => res.json())
+          );
+          
+          const parentNodes = await Promise.all(parentPromises);
+          const parentContentMap = {};
+          
+          // Create a map of parent ID to parent content
+          parentNodes.forEach(parent => {
+            const displayContent = currentLanguage === 'en' ? parent.content : (parent.content_zh || parent.content);
+            parentContentMap[parent.id] = displayContent;
+          });
+          
+          // Attach parent content to result nodes
+          results.forEach(node => {
+            if (node.parent_id && parentContentMap[node.parent_id]) {
+              node.parent_content = parentContentMap[node.parent_id];
+            }
+          });
+        }
+        
         results.forEach(node => {
           const resultItem = document.createElement('div');
           resultItem.className = 'search-result-item';
@@ -221,11 +248,12 @@ const SearchManager = (function() {
    * @returns {string} A string representation of the node's path
    */
   function getNodePath(node) {
-    // This is a placeholder - in a real implementation, you would
-    // fetch the parent chain and create a proper breadcrumb
-    return node.parent_id ? 
-      `${window.I18n ? I18n.t('parent') : 'Parent'}: ${node.parent_id.substring(0, 8)}...` : 
-      (window.I18n ? I18n.t('rootLevel') : 'Root level');
+    // Fetch the parent node content instead of using the ID
+    if (node.parent_id) {
+      return `${window.I18n ? I18n.t('parent') : 'Parent'}: ${node.parent_content || node.parent_id.substring(0, 8) + '...'}`;
+    } else {
+      return window.I18n ? I18n.t('rootLevel') : 'Root level';
+    }
   }
   
   /**
