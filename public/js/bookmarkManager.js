@@ -1,6 +1,8 @@
 /**
  * Bookmark Manager Module
+ * Handles bookmarking individual nodes for quick access
  * Using database for persistence instead of localStorage
+ * Note: Node bookmarks are different from filter presets managed by FilterManager
  */
 const BookmarkManager = (function() {
     // Private variables

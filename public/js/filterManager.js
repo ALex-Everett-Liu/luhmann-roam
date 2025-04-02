@@ -1,6 +1,7 @@
 /**
  * Filter Manager Module
- * Handles filtering nodes in the outliner
+ * Handles node filtering and saving filter presets (collections of filters)
+ * Note: Filter presets are different from node bookmarks managed by BookmarkManager
  */
 const FilterManager = (function() {
   // Private variables
@@ -169,13 +170,13 @@ const FilterManager = (function() {
     clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
     clearFiltersButton.addEventListener('click', clearFilters);
     
-    const saveBookmarkButton = document.createElement('button');
-    saveBookmarkButton.className = 'btn-secondary filter-action-button';
-    saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
-    saveBookmarkButton.addEventListener('click', addFilterBookmark);
+    const savePresetButton = document.createElement('button');
+    savePresetButton.className = 'btn-secondary filter-action-button';
+    savePresetButton.textContent = window.I18n ? I18n.t('saveAsPreset') : 'Save as Preset';
+    savePresetButton.addEventListener('click', saveFilterPreset);
     
     filterActions.appendChild(clearFiltersButton);
-    filterActions.appendChild(saveBookmarkButton);
+    filterActions.appendChild(savePresetButton);
     modalBody.appendChild(filterActions);
     
     // Bookmarks section
@@ -464,11 +465,12 @@ const FilterManager = (function() {
   }
   
   /**
-   * Adds the current filter configuration as a bookmark
+   * Saves the current active filters as a named preset for later reuse
+   * Note: This is different from bookmarking individual nodes (see BookmarkManager)
    */
-  function addFilterBookmark() {
+  function saveFilterPreset() {
     if (activeFilters.length === 0) {
-      alert(window.I18n ? I18n.t('noFiltersToBookmark') : 'No active filters to bookmark');
+      alert(window.I18n ? I18n.t('noFiltersToSave') : 'No active filters to save');
       return;
     }
     
@@ -587,7 +589,11 @@ const FilterManager = (function() {
    * Updates the list of filter bookmarks in the UI
    */
   function updateBookmarksList() {
+    // First check if the bookmarks list element exists in the current modal
     const bookmarksList = document.querySelector('.bookmarks-list');
+    
+    // If the element doesn't exist (modal not open), don't attempt to update
+    if (!bookmarksList) return;
     
     if (filterBookmarks.length === 0) {
       bookmarksList.innerHTML = `<p class="no-bookmarks">${window.I18n ? I18n.t('noSavedBookmarks') : 'No saved bookmarks'}</p>`;
@@ -692,9 +698,9 @@ const FilterManager = (function() {
       clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
     }
     
-    const saveBookmarkButton = document.querySelector('.filter-actions button:last-child');
-    if (saveBookmarkButton) {
-      saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
+    const savePresetButton = document.querySelector('.filter-actions button:last-child');
+    if (savePresetButton) {
+      savePresetButton.textContent = window.I18n ? I18n.t('saveAsPreset') : 'Save as Preset';
     }
     
     const bookmarksTitle = document.querySelector('.filter-bookmarks h4');
@@ -763,7 +769,7 @@ const FilterManager = (function() {
     removeFilter: removeFilter,
     applyFilters: applyFilters,
     clearFilters: clearFilters,
-    addFilterBookmark: addFilterBookmark,
+    addFilterBookmark: saveFilterPreset,
     saveBookmarks: saveBookmarks,
     updateLanguage: updateLanguage,
     addFilterButtonToNode: addFilterButtonToNode

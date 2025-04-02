@@ -810,13 +810,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set up resizable sidebar
   setupResizableSidebar();
 
-  // Initialize the FilterManager
-  if (window.FilterManager) {
-    console.log('Setting up FilterManager initialization from app.js');
-    FilterManager.initialize();
-  } else {
-    console.error('FilterManager is not available - check script loading order');
+  // Initialize the FilterManager - make sure it's after I18n initialization
+  function initializeFilterManager() {
+    if (window.FilterManager) {
+      console.log('Setting up FilterManager initialization from app.js');
+      
+      // Make sure language is properly set first
+      if (window.I18n && I18n.getCurrentLanguage) {
+        FilterManager.updateLanguage(I18n.getCurrentLanguage());
+      }
+      
+      FilterManager.initialize();
+    } else {
+      console.error('FilterManager is not available - check script loading order');
+      
+      // Try again in a moment in case scripts are still loading
+      setTimeout(() => {
+        if (window.FilterManager) {
+          console.log('FilterManager now available, initializing');
+          FilterManager.initialize();
+        }
+      }, 100);
+    }
   }
+
+  // Call this function at the right time
+  initializeFilterManager();
 
   // Initialize the SearchManager
   SearchManager.initialize();
