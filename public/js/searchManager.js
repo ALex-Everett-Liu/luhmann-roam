@@ -26,9 +26,9 @@ const SearchManager = (function() {
     // Create modal container with better height handling
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.style.maxWidth = '600px';
+    modal.style.maxWidth = '800px'; // Wider to accommodate side-by-side layout
     modal.style.maxHeight = '95vh';
-    modal.style.minHeight = '900px';
+    modal.style.minHeight = '500px'; // Reduced min height
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
     
@@ -48,19 +48,19 @@ const SearchManager = (function() {
     modalHeader.appendChild(modalTitle);
     modalHeader.appendChild(closeButton);
     
-    // Create modal body with revised styling
+    // Create modal body with two-panel layout
     const modalBody = document.createElement('div');
     modalBody.className = 'modal-body';
     modalBody.style.flex = '1';
     modalBody.style.display = 'flex';
     modalBody.style.flexDirection = 'column';
-    modalBody.style.overflow = 'auto';
+    modalBody.style.overflow = 'hidden'; // Changed from auto to hidden
     
-    // Search container
-    const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container';
-    searchContainer.style.marginBottom = '0';
-    searchContainer.style.flex = '0 0 auto';
+    // Search input container (stays at the top)
+    const searchInputContainer = document.createElement('div');
+    searchInputContainer.className = 'search-input-container';
+    searchInputContainer.style.marginBottom = '10px';
+    searchInputContainer.style.flex = '0 0 auto';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -68,18 +68,31 @@ const SearchManager = (function() {
     searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
     searchInput.autofocus = true;
     
-    // Add recent searches section with revised styling
-    const recentSearchesSection = document.createElement('div');
-    recentSearchesSection.className = 'recent-searches';
-    recentSearchesSection.style.margin = '10px 0';
-    recentSearchesSection.style.flex = '1 1 auto';
-    recentSearchesSection.style.display = 'flex';
-    recentSearchesSection.style.flexDirection = 'column';
-    recentSearchesSection.style.minHeight = '0';
+    searchInputContainer.appendChild(searchInput);
+    
+    // Two-panel container (for recent searches and results)
+    const twoPanel = document.createElement('div');
+    twoPanel.className = 'search-two-panel';
+    twoPanel.style.display = 'flex';
+    twoPanel.style.flex = '1 1 auto';
+    twoPanel.style.minHeight = '0'; // Important for flex child to respect parent height
+    twoPanel.style.gap = '10px';
+    
+    // Recent searches panel (left)
+    const recentSearchesPanel = document.createElement('div');
+    recentSearchesPanel.className = 'recent-searches-panel';
+    recentSearchesPanel.style.flex = '0 0 300px'; // Fixed width
+    recentSearchesPanel.style.display = 'flex';
+    recentSearchesPanel.style.flexDirection = 'column';
+    recentSearchesPanel.style.border = '1px solid #ddd';
+    recentSearchesPanel.style.borderRadius = '4px';
+    recentSearchesPanel.style.padding = '10px';
+    recentSearchesPanel.style.overflow = 'hidden';
     
     const recentSearchesTitle = document.createElement('h4');
     recentSearchesTitle.textContent = window.I18n ? I18n.t('recentSearches') : 'Recent Searches';
-    recentSearchesTitle.style.marginBottom = '5px';
+    recentSearchesTitle.style.marginTop = '0';
+    recentSearchesTitle.style.marginBottom = '8px';
     recentSearchesTitle.style.flex = '0 0 auto';
     
     const recentSearchesList = document.createElement('div');
@@ -87,24 +100,44 @@ const SearchManager = (function() {
     recentSearchesList.id = 'recent-searches-list';
     recentSearchesList.style.flex = '1 1 auto';
     recentSearchesList.style.overflowY = 'auto';
-    recentSearchesList.style.maxHeight = 'none';
     
-    recentSearchesSection.appendChild(recentSearchesTitle);
-    recentSearchesSection.appendChild(recentSearchesList);
+    recentSearchesPanel.appendChild(recentSearchesTitle);
+    recentSearchesPanel.appendChild(recentSearchesList);
+    
+    // Search results panel (right)
+    const searchResultsPanel = document.createElement('div');
+    searchResultsPanel.className = 'search-results-panel';
+    searchResultsPanel.style.flex = '1 1 auto';
+    searchResultsPanel.style.display = 'flex';
+    searchResultsPanel.style.flexDirection = 'column';
+    searchResultsPanel.style.border = '1px solid #ddd';
+    searchResultsPanel.style.borderRadius = '4px';
+    searchResultsPanel.style.padding = '10px';
+    searchResultsPanel.style.overflow = 'hidden';
+    
+    const searchResultsTitle = document.createElement('h4');
+    searchResultsTitle.textContent = window.I18n ? I18n.t('searchResults') : 'Search Results';
+    searchResultsTitle.style.marginTop = '0';
+    searchResultsTitle.style.marginBottom = '8px';
+    searchResultsTitle.style.flex = '0 0 auto';
     
     const searchResults = document.createElement('div');
     searchResults.className = 'search-results search-results-scrollable';
-    searchResults.style.position = 'static';
-    searchResults.style.border = '1px solid #ddd';
-    searchResults.style.marginTop = '8px';
-    searchResults.style.borderRadius = '4px';
-    searchResults.style.flex = '0 0 auto';
-    searchResults.style.maxHeight = '40vh';
+    searchResults.style.flex = '1 1 auto';
     searchResults.style.overflowY = 'auto';
+    searchResults.style.border = '1px solid #eee';
+    searchResults.style.borderRadius = '4px';
     
-    searchContainer.appendChild(searchInput);
-    searchContainer.appendChild(recentSearchesSection);
-    searchContainer.appendChild(searchResults);
+    searchResultsPanel.appendChild(searchResultsTitle);
+    searchResultsPanel.appendChild(searchResults);
+    
+    // Add the panels to the two-panel container
+    twoPanel.appendChild(recentSearchesPanel);
+    twoPanel.appendChild(searchResultsPanel);
+    
+    // Add the search input and two-panel to the modal body
+    modalBody.appendChild(searchInputContainer);
+    modalBody.appendChild(twoPanel);
     
     // Add search functionality
     searchInput.addEventListener('input', debounce(async (e) => {
@@ -159,8 +192,6 @@ const SearchManager = (function() {
         searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
-    
-    modalBody.appendChild(searchContainer);
     
     // Create modal footer with sticky position
     const modalFooter = document.createElement('div');
@@ -455,6 +486,9 @@ const SearchManager = (function() {
       const noSearches = document.createElement('div');
       noSearches.className = 'no-searches';
       noSearches.textContent = window.I18n ? I18n.t('noRecentSearches') : 'No recent searches';
+      noSearches.style.padding = '10px';
+      noSearches.style.color = '#888';
+      noSearches.style.fontStyle = 'italic';
       container.appendChild(noSearches);
       return;
     }
@@ -462,10 +496,20 @@ const SearchManager = (function() {
     recentSearches.forEach((search, index) => {
       const item = document.createElement('div');
       item.className = 'recent-search-item';
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.style.alignItems = 'center';
+      item.style.padding = '8px';
+      item.style.borderBottom = '1px solid #eee';
       
       const searchText = document.createElement('span');
       searchText.className = 'recent-search-text';
       searchText.textContent = search;
+      searchText.style.flex = '1';
+      searchText.style.overflow = 'hidden';
+      searchText.style.textOverflow = 'ellipsis';
+      searchText.style.whiteSpace = 'nowrap';
+      searchText.style.cursor = 'pointer';
       searchText.title = 'Click to use this search';
       searchText.addEventListener('click', () => {
         const searchInput = document.querySelector('.node-search');
@@ -479,6 +523,12 @@ const SearchManager = (function() {
       deleteButton.className = 'recent-search-delete';
       deleteButton.innerHTML = '×';
       deleteButton.title = 'Delete this search';
+      deleteButton.style.marginLeft = '8px';
+      deleteButton.style.background = 'none';
+      deleteButton.style.border = 'none';
+      deleteButton.style.cursor = 'pointer';
+      deleteButton.style.fontSize = '18px';
+      deleteButton.style.color = '#999';
       deleteButton.addEventListener('click', (e) => {
         e.stopPropagation();
         removeRecentSearch(index);
