@@ -114,8 +114,9 @@
 /* Add the following for the two-panel layout */
 .search-two-panel {
   display: flex;
-  min-height: 0; /* Important for nested flex children */
-  gap: 10px;
+  min-height: 400px;
+  height: 100%;
+  gap: 15px;
 }
 
 .recent-searches-panel,
@@ -126,10 +127,11 @@
   border-radius: 4px;
   padding: 10px;
   overflow: hidden;
+  height: 100%; /* Ensure both panels have the same height */
 }
 
 .recent-searches-panel {
-  flex: 0 0 300px;
+  flex: 0 0 350px;
 }
 
 .search-results-panel {
@@ -138,10 +140,11 @@
 
 .recent-searches-list,
 .search-results {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   border: 1px solid #eee;
   border-radius: 4px;
+  min-height: 300px; /* Set a minimum height for both lists */
 }
 
 .recent-search-item {
@@ -193,4 +196,9 @@
   font-size: 16px;
   border: 1px solid #ddd;
   border-radius: 4px;
+}
+
+/* Update the modal width in CSS as well */
+.modal {
+  max-width: 1200px; /* Increased from default */
 }

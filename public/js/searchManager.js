@@ -26,9 +26,9 @@ const SearchManager = (function() {
     // Create modal container with better height handling
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.style.maxWidth = '800px'; // Wider to accommodate side-by-side layout
+    modal.style.maxWidth = '1200px'; // Increased from 800px to 1200px
     modal.style.maxHeight = '95vh';
-    modal.style.minHeight = '500px'; // Reduced min height
+    modal.style.minHeight = '500px';
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
     
@@ -75,19 +75,21 @@ const SearchManager = (function() {
     twoPanel.className = 'search-two-panel';
     twoPanel.style.display = 'flex';
     twoPanel.style.flex = '1 1 auto';
-    twoPanel.style.minHeight = '0'; // Important for flex child to respect parent height
+    twoPanel.style.minHeight = '400px'; // Increased minimum height
+    twoPanel.style.height = 'calc(100% - 50px)'; // Take most of available height
     twoPanel.style.gap = '10px';
     
     // Recent searches panel (left)
     const recentSearchesPanel = document.createElement('div');
     recentSearchesPanel.className = 'recent-searches-panel';
-    recentSearchesPanel.style.flex = '0 0 300px'; // Fixed width
+    recentSearchesPanel.style.flex = '0 0 350px'; // Increased from 300px to 350px
     recentSearchesPanel.style.display = 'flex';
     recentSearchesPanel.style.flexDirection = 'column';
     recentSearchesPanel.style.border = '1px solid #ddd';
     recentSearchesPanel.style.borderRadius = '4px';
     recentSearchesPanel.style.padding = '10px';
     recentSearchesPanel.style.overflow = 'hidden';
+    recentSearchesPanel.style.height = '100%'; // Ensure it takes full available height
     
     const recentSearchesTitle = document.createElement('h4');
     recentSearchesTitle.textContent = window.I18n ? I18n.t('recentSearches') : 'Recent Searches';
@@ -100,6 +102,8 @@ const SearchManager = (function() {
     recentSearchesList.id = 'recent-searches-list';
     recentSearchesList.style.flex = '1 1 auto';
     recentSearchesList.style.overflowY = 'auto';
+    recentSearchesList.style.minHeight = '300px'; // Set a minimum height to match search results
+    recentSearchesList.style.height = '100%'; // Take full height of parent
     
     recentSearchesPanel.appendChild(recentSearchesTitle);
     recentSearchesPanel.appendChild(recentSearchesList);
@@ -107,7 +111,7 @@ const SearchManager = (function() {
     // Search results panel (right)
     const searchResultsPanel = document.createElement('div');
     searchResultsPanel.className = 'search-results-panel';
-    searchResultsPanel.style.flex = '1 1 auto';
+    searchResultsPanel.style.flex = '1 1 auto'; // This will make it take the remaining space
     searchResultsPanel.style.display = 'flex';
     searchResultsPanel.style.flexDirection = 'column';
     searchResultsPanel.style.border = '1px solid #ddd';
