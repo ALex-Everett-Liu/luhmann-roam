@@ -7,6 +7,7 @@ const FilterManager = (function() {
   let activeFilters = [];
   let filterBookmarks = JSON.parse(localStorage.getItem('filterBookmarks') || '[]');
   let currentLanguage = 'en';
+  let filterModalElement = null;
   
   /**
    * Initialize the manager
@@ -20,38 +21,109 @@ const FilterManager = (function() {
     }
     console.log('FilterManager initialized with language:', currentLanguage);
     
-    // Create the UI
-    createFilterUI();
+    // Create just the filter button in the sidebar
+    createFilterButton();
   }
   
   /**
-   * Creates the filter UI in the sidebar
+   * Creates the filter button in the sidebar
    */
-  function createFilterUI() {
+  function createFilterButton() {
     const sidebar = document.querySelector('.sidebar');
     
-    // Create filter section
-    const filterSection = document.createElement('div');
-    filterSection.className = 'filter-section';
+    // Create filter button for sidebar
+    const filterButton = document.createElement('button');
+    filterButton.id = 'filter-nodes-button';
+    filterButton.className = 'filter-button';
+    filterButton.textContent = window.I18n ? I18n.t('filters') : 'Filters';
+    filterButton.addEventListener('click', openFilterModal);
     
-    const filterTitle = document.createElement('h3');
-    filterTitle.textContent = window.I18n ? I18n.t('filters') : 'Filters';
-    filterSection.appendChild(filterTitle);
+    // Add badge to show number of active filters if any
+    const badgeSpan = document.createElement('span');
+    badgeSpan.id = 'filter-badge';
+    badgeSpan.className = 'filter-badge-count';
+    badgeSpan.style.display = 'none'; // Hide initially
+    filterButton.appendChild(badgeSpan);
+    
+    // Insert the filter button after the search button
+    const searchButton = document.getElementById('search-nodes-button');
+    if (searchButton && sidebar) {
+      sidebar.insertBefore(filterButton, searchButton.nextSibling);
+    } else {
+      sidebar.appendChild(filterButton);
+    }
+    
+    // Update badge if we have active filters
+    updateFilterBadge();
+  }
+  
+  /**
+   * Updates the filter badge count
+   */
+  function updateFilterBadge() {
+    const badge = document.getElementById('filter-badge');
+    if (!badge) return;
+    
+    if (activeFilters.length > 0) {
+      badge.textContent = activeFilters.length;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Opens the filter modal
+   */
+  function openFilterModal() {
+    // Create overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.maxWidth = '600px';
+    modal.style.minHeight = '500px';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    
+    const modalTitle = document.createElement('div');
+    modalTitle.className = 'modal-title';
+    modalTitle.textContent = window.I18n ? I18n.t('filters') : 'Filters';
+    
+    const closeButton = document.createElement('button');
+    closeButton.className = 'modal-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', closeFilterModal);
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+    
+    // Create modal body
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    modalBody.style.flex = '1';
+    modalBody.style.display = 'flex';
+    modalBody.style.flexDirection = 'column';
     
     // Add search functionality
     const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container filter-search-container';
+    searchContainer.className = 'filter-search-container';
+    searchContainer.style.marginBottom = '16px';
     searchContainer.style.position = 'relative';
-    searchContainer.style.zIndex = '5';
-    searchContainer.style.marginBottom = '10px';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.className = 'node-search';
+    searchInput.className = 'filter-search-input';
     searchInput.placeholder = window.I18n ? I18n.t('searchNodesForFilter') : 'Search for nodes to filter...';
     
     const searchResults = document.createElement('div');
-    searchResults.className = 'search-results filter-search-results';
+    searchResults.className = 'filter-search-results';
     searchResults.style.position = 'absolute';
     searchResults.style.top = '100%';
     searchResults.style.left = '0';
@@ -62,15 +134,83 @@ const FilterManager = (function() {
     searchResults.style.border = '1px solid #ddd';
     searchResults.style.borderRadius = '0 0 4px 4px';
     searchResults.style.zIndex = '10';
+    searchResults.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchResults);
+    modalBody.appendChild(searchContainer);
+    
+    // Active filters container
+    const activeFiltersTitle = document.createElement('h4');
+    activeFiltersTitle.textContent = window.I18n ? I18n.t('activeFilters') : 'Active Filters';
+    activeFiltersTitle.style.marginTop = '16px';
+    activeFiltersTitle.style.marginBottom = '8px';
+    modalBody.appendChild(activeFiltersTitle);
+    
+    const activeFiltersContainer = document.createElement('div');
+    activeFiltersContainer.className = 'active-filters';
+    activeFiltersContainer.style.minHeight = '100px';
+    activeFiltersContainer.style.border = '1px solid #ddd';
+    activeFiltersContainer.style.borderRadius = '4px';
+    activeFiltersContainer.style.padding = '10px';
+    activeFiltersContainer.style.marginBottom = '16px';
+    activeFiltersContainer.innerHTML = `<p class="no-filters">${window.I18n ? I18n.t('noActiveFilters') : 'No active filters'}</p>`;
+    modalBody.appendChild(activeFiltersContainer);
+    
+    // Create filter actions
+    const filterActions = document.createElement('div');
+    filterActions.className = 'filter-actions';
+    filterActions.style.display = 'flex';
+    filterActions.style.gap = '8px';
+    filterActions.style.marginBottom = '16px';
+    
+    const clearFiltersButton = document.createElement('button');
+    clearFiltersButton.className = 'btn-secondary filter-action-button';
+    clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
+    clearFiltersButton.addEventListener('click', clearFilters);
+    
+    const saveBookmarkButton = document.createElement('button');
+    saveBookmarkButton.className = 'btn-secondary filter-action-button';
+    saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
+    saveBookmarkButton.addEventListener('click', addFilterBookmark);
+    
+    filterActions.appendChild(clearFiltersButton);
+    filterActions.appendChild(saveBookmarkButton);
+    modalBody.appendChild(filterActions);
+    
+    // Bookmarks section
+    const bookmarksTitle = document.createElement('h4');
+    bookmarksTitle.textContent = window.I18n ? I18n.t('bookmarks') : 'Bookmarks';
+    bookmarksTitle.style.marginTop = '16px';
+    bookmarksTitle.style.marginBottom = '8px';
+    modalBody.appendChild(bookmarksTitle);
+    
+    const bookmarksList = document.createElement('div');
+    bookmarksList.className = 'bookmarks-list';
+    bookmarksList.style.border = '1px solid #ddd';
+    bookmarksList.style.borderRadius = '4px';
+    bookmarksList.style.padding = '10px';
+    bookmarksList.style.maxHeight = '200px';
+    bookmarksList.style.overflowY = 'auto';
+    modalBody.appendChild(bookmarksList);
+    
+    // Create modal footer
+    const modalFooter = document.createElement('div');
+    modalFooter.className = 'modal-footer';
+    
+    const closeModalButton = document.createElement('button');
+    closeModalButton.className = 'btn btn-secondary';
+    closeModalButton.textContent = window.I18n ? I18n.t('close') : 'Close';
+    closeModalButton.addEventListener('click', closeFilterModal);
+    
+    modalFooter.appendChild(closeModalButton);
     
     // Add search functionality
     searchInput.addEventListener('input', debounce(async (e) => {
       const query = e.target.value.trim();
       if (query.length < 2) {
         searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
         return;
       }
       
@@ -79,29 +219,34 @@ const FilterManager = (function() {
         const results = await response.json();
         
         searchResults.innerHTML = '';
+        searchResults.style.display = 'block';
         
         if (results.length === 0) {
-          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
+          searchResults.innerHTML = `<div class="no-results" style="padding: 8px;">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
         }
         
         results.forEach(node => {
           const resultItem = document.createElement('div');
-          resultItem.className = 'search-result-item';
+          resultItem.className = 'filter-result-item';
+          resultItem.style.padding = '10px';
+          resultItem.style.borderBottom = '1px solid #eee';
+          resultItem.style.cursor = 'pointer';
           resultItem.dataset.id = node.id;
           
           const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-          resultItem.textContent = nodeContent;
           
-          // Add filter icon
-          const filterIcon = document.createElement('span');
-          filterIcon.className = 'filter-search-icon';
-          filterIcon.innerHTML = '🔍';
-          resultItem.prepend(filterIcon);
+          resultItem.innerHTML = `
+            <div style="display: flex; align-items: center;">
+              <span style="margin-right: 8px;">🔍</span>
+              <span>${nodeContent}</span>
+            </div>
+          `;
           
           resultItem.addEventListener('click', () => {
             addFilter(node.id);
             searchResults.innerHTML = '';
+            searchResults.style.display = 'none';
             searchInput.value = '';
           });
           
@@ -109,56 +254,48 @@ const FilterManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
+        searchResults.innerHTML = `<div class="search-error" style="padding: 8px;">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     
-    filterSection.appendChild(searchContainer);
+    // Initial state of search results - hidden
+    searchResults.style.display = 'none';
     
-    // Active filters container
-    const activeFiltersContainer = document.createElement('div');
-    activeFiltersContainer.className = 'active-filters';
-    activeFiltersContainer.innerHTML = `<p class="no-filters">${window.I18n ? I18n.t('noActiveFilters') : 'No active filters'}</p>`;
-    filterSection.appendChild(activeFiltersContainer);
+    // Assemble the modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(modalBody);
+    modal.appendChild(modalFooter);
+    modalOverlay.appendChild(modal);
     
-    // Create filter actions
-    const filterActions = document.createElement('div');
-    filterActions.className = 'filter-actions';
+    // Add to document
+    document.body.appendChild(modalOverlay);
+    filterModalElement = modalOverlay;
     
-    const clearFiltersButton = document.createElement('button');
-    clearFiltersButton.className = 'btn-secondary filter-button';
-    clearFiltersButton.textContent = window.I18n ? I18n.t('clearFilters') : 'Clear Filters';
-    clearFiltersButton.addEventListener('click', clearFilters);
-    
-    const saveBookmarkButton = document.createElement('button');
-    saveBookmarkButton.className = 'btn-secondary filter-button';
-    saveBookmarkButton.textContent = window.I18n ? I18n.t('saveAsBookmark') : 'Save as Bookmark';
-    saveBookmarkButton.addEventListener('click', addFilterBookmark);
-    
-    filterActions.appendChild(clearFiltersButton);
-    filterActions.appendChild(saveBookmarkButton);
-    filterSection.appendChild(filterActions);
-    
-    // Bookmarks section
-    const bookmarksContainer = document.createElement('div');
-    bookmarksContainer.className = 'filter-bookmarks';
-    
-    const bookmarksTitle = document.createElement('h4');
-    bookmarksTitle.textContent = window.I18n ? I18n.t('bookmarks') : 'Bookmarks';
-    bookmarksContainer.appendChild(bookmarksTitle);
-    
-    const bookmarksList = document.createElement('div');
-    bookmarksList.className = 'bookmarks-list';
-    bookmarksContainer.appendChild(bookmarksList);
-    
-    filterSection.appendChild(bookmarksContainer);
-    
-    // Insert the filter section before the language toggle
-    const languageToggle = document.getElementById('language-toggle');
-    sidebar.insertBefore(filterSection, languageToggle);
-    
-    // Initial load of bookmarks
+    // Update filter displays
+    updateActiveFiltersDisplay();
     updateBookmarksList();
+    
+    // Focus the search input
+    setTimeout(() => {
+      searchInput.focus();
+    }, 100);
+    
+    // Add keyboard shortcut to close modal
+    modalOverlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeFilterModal();
+      }
+    });
+  }
+  
+  /**
+   * Closes the filter modal
+   */
+  function closeFilterModal() {
+    if (filterModalElement) {
+      document.body.removeChild(filterModalElement);
+      filterModalElement = null;
+    }
   }
   
   /**
@@ -268,6 +405,7 @@ const FilterManager = (function() {
    */
   async function updateActiveFiltersDisplay() {
     const activeFiltersContainer = document.querySelector('.active-filters');
+    if (!activeFiltersContainer) return;
     
     if (activeFilters.length === 0) {
       activeFiltersContainer.innerHTML = `<p class="no-filters">${window.I18n ? I18n.t('noActiveFilters') : 'No active filters'}</p>`;
@@ -284,24 +422,45 @@ const FilterManager = (function() {
         
         const filterBadge = document.createElement('div');
         filterBadge.className = 'filter-badge';
+        filterBadge.style.display = 'flex';
+        filterBadge.style.justifyContent = 'space-between';
+        filterBadge.style.alignItems = 'center';
+        filterBadge.style.padding = '8px';
+        filterBadge.style.backgroundColor = '#f1f3f4';
+        filterBadge.style.borderRadius = '4px';
+        filterBadge.style.marginBottom = '5px';
         
         const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-        filterBadge.innerHTML = `
-          <span class="filter-text">${nodeContent}</span>
-          <button class="filter-remove" data-id="${nodeId}">&times;</button>
-        `;
         
-        // Add event listener to remove button
-        filterBadge.querySelector('.filter-remove').addEventListener('click', (e) => {
+        const filterText = document.createElement('span');
+        filterText.className = 'filter-text';
+        filterText.textContent = nodeContent;
+        filterText.style.flex = '1';
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'filter-remove';
+        removeButton.innerHTML = '&times;';
+        removeButton.dataset.id = nodeId;
+        removeButton.style.background = 'none';
+        removeButton.style.border = 'none';
+        removeButton.style.cursor = 'pointer';
+        removeButton.style.fontSize = '18px';
+        removeButton.style.color = '#777';
+        removeButton.addEventListener('click', (e) => {
           const id = e.target.dataset.id;
           removeFilter(id);
         });
         
+        filterBadge.appendChild(filterText);
+        filterBadge.appendChild(removeButton);
         activeFiltersContainer.appendChild(filterBadge);
       } catch (error) {
         console.error('Error fetching node details:', error);
       }
     }
+    
+    // Update the filter badge in the sidebar
+    updateFilterBadge();
   }
   
   /**
@@ -510,33 +669,6 @@ const FilterManager = (function() {
   }
   
   /**
-   * Adds the filter button to each node
-   * @param {HTMLElement} nodeElement - The node element
-   * @param {string} nodeId - The ID of the node
-   */
-  function addFilterButtonToNode(nodeElement, nodeId) {
-    // Find the node-actions div within the provided node element
-    const nodeActions = nodeElement.querySelector('.node-actions');
-    
-    if (nodeActions) {
-      // Create the filter button
-      const filterButton = document.createElement('button');
-      filterButton.className = 'filter-button';
-      filterButton.innerHTML = '🔍';
-      filterButton.title = window.I18n ? I18n.t('filterOnNode') : 'Filter on this node';
-      
-      // Add click event listener
-      filterButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        addFilter(nodeId);
-      });
-      
-      // Insert the filter button at the beginning of the node actions
-      nodeActions.insertBefore(filterButton, nodeActions.firstChild);
-    }
-  }
-  
-  /**
    * Updates the current language
    * @param {string} language - The language code ('en' or 'zh')
    */
@@ -596,6 +728,32 @@ const FilterManager = (function() {
       clearTimeout(timeout);
       timeout = setTimeout(() => func.apply(context, args), wait);
     };
+  }
+  
+  /**
+   * Adds the filter button to each node
+   * @param {HTMLElement} nodeActions - The node actions element
+   * @param {string} nodeId - The ID of the node
+   */
+  function addFilterButtonToNode(nodeActions, nodeId) {
+    if (nodeActions) {
+      // Create the filter button
+      const filterButton = document.createElement('button');
+      filterButton.className = 'node-filter-button';
+      filterButton.innerHTML = '🔍';
+      filterButton.title = window.I18n ? I18n.t('filterOnNode') : 'Filter on this node';
+      
+      // Add click event listener
+      filterButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addFilter(nodeId);
+        // Open the filter modal to show the applied filter
+        openFilterModal();
+      });
+      
+      // Insert the filter button at the beginning of the node actions
+      nodeActions.insertBefore(filterButton, nodeActions.firstChild);
+    }
   }
   
   // Public API

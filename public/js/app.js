@@ -811,7 +811,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setupResizableSidebar();
 
   // Initialize the FilterManager
-  FilterManager.initialize();
+  if (window.FilterManager) {
+    console.log('Setting up FilterManager initialization from app.js');
+    FilterManager.initialize();
+  } else {
+    console.error('FilterManager is not available - check script loading order');
+  }
 
   // Initialize the SearchManager
   SearchManager.initialize();
