@@ -118,7 +118,8 @@ const SearchManager = (function() {
         // Add to recent searches if query is executed
         addRecentSearch(query);
         
-        const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}`);
+        // Include the current language in the search request
+        const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}`);
         const results = await response.json();
         
         searchResults.innerHTML = '';
@@ -126,33 +127,6 @@ const SearchManager = (function() {
         if (results.length === 0) {
           searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
-        }
-        
-        // Load parent content for nodes with parents
-        const nodesWithParents = results.filter(node => node.parent_id);
-        if (nodesWithParents.length > 0) {
-          const parentIds = [...new Set(nodesWithParents.map(node => node.parent_id))];
-          
-          // Fetch parent nodes content
-          const parentPromises = parentIds.map(id => 
-            fetch(`/api/nodes/${id}`).then(res => res.json())
-          );
-          
-          const parentNodes = await Promise.all(parentPromises);
-          const parentContentMap = {};
-          
-          // Create a map of parent ID to parent content
-          parentNodes.forEach(parent => {
-            const displayContent = currentLanguage === 'en' ? parent.content : (parent.content_zh || parent.content);
-            parentContentMap[parent.id] = displayContent;
-          });
-          
-          // Attach parent content to result nodes
-          results.forEach(node => {
-            if (node.parent_id && parentContentMap[node.parent_id]) {
-              node.parent_content = parentContentMap[node.parent_id];
-            }
-          });
         }
         
         results.forEach(node => {
@@ -248,9 +222,13 @@ const SearchManager = (function() {
    * @returns {string} A string representation of the node's path
    */
   function getNodePath(node) {
-    // Fetch the parent node content instead of using the ID
     if (node.parent_id) {
-      return `${window.I18n ? I18n.t('parent') : 'Parent'}: ${node.parent_content || node.parent_id.substring(0, 8) + '...'}`;
+      // Use the parent content from the server response based on current language
+      const parentContent = currentLanguage === 'en' 
+        ? (node.parent_content || '(Unknown)')
+        : (node.parent_content_zh || node.parent_content || '(Unknown)');
+      
+      return `${window.I18n ? I18n.t('parent') : 'Parent'}: ${parentContent}`;
     } else {
       return window.I18n ? I18n.t('rootLevel') : 'Root level';
     }
