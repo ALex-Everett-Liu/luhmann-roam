@@ -179,21 +179,21 @@ const FilterManager = (function() {
     filterActions.appendChild(savePresetButton);
     modalBody.appendChild(filterActions);
     
-    // Bookmarks section
-    const bookmarksTitle = document.createElement('h4');
-    bookmarksTitle.textContent = window.I18n ? I18n.t('bookmarks') : 'Bookmarks';
-    bookmarksTitle.style.marginTop = '16px';
-    bookmarksTitle.style.marginBottom = '8px';
-    modalBody.appendChild(bookmarksTitle);
+    // Filter presets section
+    const presetsTitle = document.createElement('h4');
+    presetsTitle.textContent = window.I18n ? I18n.t('savedFilterPresets') : 'Saved Filter Presets';
+    presetsTitle.style.marginTop = '16px';
+    presetsTitle.style.marginBottom = '8px';
+    modalBody.appendChild(presetsTitle);
     
-    const bookmarksList = document.createElement('div');
-    bookmarksList.className = 'bookmarks-list';
-    bookmarksList.style.border = '1px solid #ddd';
-    bookmarksList.style.borderRadius = '4px';
-    bookmarksList.style.padding = '10px';
-    bookmarksList.style.maxHeight = '200px';
-    bookmarksList.style.overflowY = 'auto';
-    modalBody.appendChild(bookmarksList);
+    const presetsList = document.createElement('div');
+    presetsList.className = 'filter-presets-list';
+    presetsList.style.border = '1px solid #ddd';
+    presetsList.style.borderRadius = '4px';
+    presetsList.style.padding = '10px';
+    presetsList.style.maxHeight = '200px';
+    presetsList.style.overflowY = 'auto';
+    modalBody.appendChild(presetsList);
     
     // Create modal footer
     const modalFooter = document.createElement('div');
@@ -586,45 +586,48 @@ const FilterManager = (function() {
   }
   
   /**
-   * Updates the list of filter bookmarks in the UI
+   * Updates the list of filter presets in the UI
    */
   function updateBookmarksList() {
-    // First check if the bookmarks list element exists in the current modal
-    const bookmarksList = document.querySelector('.bookmarks-list');
+    // Only update if the filter modal is currently open
+    if (!filterModalElement) return;
     
-    // If the element doesn't exist (modal not open), don't attempt to update
-    if (!bookmarksList) return;
+    // Use a more specific selector that only targets elements within the filter modal
+    const presetsList = filterModalElement.querySelector('.filter-presets-list');
+    
+    // If the element doesn't exist, don't attempt to update
+    if (!presetsList) return;
     
     if (filterBookmarks.length === 0) {
-      bookmarksList.innerHTML = `<p class="no-bookmarks">${window.I18n ? I18n.t('noSavedBookmarks') : 'No saved bookmarks'}</p>`;
+      presetsList.innerHTML = `<p class="no-presets">${window.I18n ? I18n.t('noSavedPresets') : 'No saved filter presets'}</p>`;
       return;
     }
     
-    bookmarksList.innerHTML = '';
+    presetsList.innerHTML = '';
     
     // Create a list item for each bookmark
     filterBookmarks.forEach(bookmark => {
-      const bookmarkItem = document.createElement('div');
-      bookmarkItem.className = 'bookmark-item';
+      const presetItem = document.createElement('div');
+      presetItem.className = 'filter-preset-item';
       
-      bookmarkItem.innerHTML = `
-        <span class="bookmark-name">${bookmark.name}</span>
-        <div class="bookmark-actions">
-          <button class="bookmark-load" data-id="${bookmark.id}">${window.I18n ? I18n.t('load') : 'Load'}</button>
-          <button class="bookmark-delete" data-id="${bookmark.id}">&times;</button>
+      presetItem.innerHTML = `
+        <span class="filter-preset-name">${bookmark.name}</span>
+        <div class="filter-preset-actions">
+          <button class="filter-preset-load" data-id="${bookmark.id}">${window.I18n ? I18n.t('load') : 'Load'}</button>
+          <button class="filter-preset-delete" data-id="${bookmark.id}">&times;</button>
         </div>
       `;
       
       // Add event listeners
-      bookmarkItem.querySelector('.bookmark-load').addEventListener('click', () => {
+      presetItem.querySelector('.filter-preset-load').addEventListener('click', () => {
         loadBookmark(bookmark.id);
       });
       
-      bookmarkItem.querySelector('.bookmark-delete').addEventListener('click', () => {
+      presetItem.querySelector('.filter-preset-delete').addEventListener('click', () => {
         deleteBookmark(bookmark.id);
       });
       
-      bookmarksList.appendChild(bookmarkItem);
+      presetsList.appendChild(presetItem);
     });
   }
   
