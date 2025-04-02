@@ -202,3 +202,114 @@
 .modal {
   max-width: 1200px; /* Increased from default */
 }
+
+/* Create more specific selectors for the search modal */
+.modal .search-container {
+  position: relative;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.modal .node-search {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modal .search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal .search-result-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Original filter section styles that need to be preserved */
+.filter-section .search-container {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.filter-section .search-results {
+  position: absolute;
+  z-index: 100;
+  width: 100%;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Add other filter-specific styles as needed */
+
+/* Prevent the two-panel layout from affecting other parts of the UI */
+.search-two-panel {
+  display: flex;
+  min-height: 400px;
+  height: 100%;
+  gap: 15px;
+}
+
+/* Only apply these styles to panels inside the search modal */
+.modal .recent-searches-panel,
+.modal .search-results-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Filter section specific styles */
+.filter-section {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+}
+
+.active-filters {
+  margin: 10px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.filter-bookmarks {
+  margin-top: 15px;
+  position: relative;
+}
+
+.bookmarks-list {
+  max-height: 150px;
+  overflow-y: auto;
+}

@@ -505,6 +505,20 @@ const SearchManager = (function() {
       item.style.alignItems = 'center';
       item.style.padding = '8px';
       item.style.borderBottom = '1px solid #eee';
+      item.style.cursor = 'pointer'; // Make the entire item appear clickable
+      
+      // Add click handler to the entire item
+      item.addEventListener('click', (e) => {
+        // Don't trigger if clicking the delete button
+        if (e.target.className !== 'recent-search-delete') {
+          const searchInput = searchModalElement.querySelector('.node-search');
+          if (searchInput) {
+            searchInput.value = search;
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            searchInput.focus();
+          }
+        }
+      });
       
       const searchText = document.createElement('span');
       searchText.className = 'recent-search-text';
@@ -513,15 +527,6 @@ const SearchManager = (function() {
       searchText.style.overflow = 'hidden';
       searchText.style.textOverflow = 'ellipsis';
       searchText.style.whiteSpace = 'nowrap';
-      searchText.style.cursor = 'pointer';
-      searchText.title = 'Click to use this search';
-      searchText.addEventListener('click', () => {
-        const searchInput = document.querySelector('.node-search');
-        if (searchInput) {
-          searchInput.value = search;
-          searchInput.dispatchEvent(new Event('input'));
-        }
-      });
       
       const deleteButton = document.createElement('button');
       deleteButton.className = 'recent-search-delete';
@@ -534,7 +539,7 @@ const SearchManager = (function() {
       deleteButton.style.fontSize = '18px';
       deleteButton.style.color = '#999';
       deleteButton.addEventListener('click', (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); // Prevent triggering the item click
         removeRecentSearch(index);
       });
       

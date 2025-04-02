@@ -40,7 +40,10 @@ const FilterManager = (function() {
     
     // Add search functionality
     const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container';
+    searchContainer.className = 'search-container filter-search-container';
+    searchContainer.style.position = 'relative';
+    searchContainer.style.zIndex = '5';
+    searchContainer.style.marginBottom = '10px';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -48,7 +51,17 @@ const FilterManager = (function() {
     searchInput.placeholder = window.I18n ? I18n.t('searchNodesForFilter') : 'Search for nodes to filter...';
     
     const searchResults = document.createElement('div');
-    searchResults.className = 'search-results';
+    searchResults.className = 'search-results filter-search-results';
+    searchResults.style.position = 'absolute';
+    searchResults.style.top = '100%';
+    searchResults.style.left = '0';
+    searchResults.style.right = '0';
+    searchResults.style.maxHeight = '200px';
+    searchResults.style.overflowY = 'auto';
+    searchResults.style.background = 'white';
+    searchResults.style.border = '1px solid #ddd';
+    searchResults.style.borderRadius = '0 0 4px 4px';
+    searchResults.style.zIndex = '10';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchResults);
