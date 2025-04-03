@@ -115,3 +115,38 @@
   .selected-node-content {
     font-weight: 500;
   }
+
+/* Position modal specific styles */
+.position-modal-container {
+  z-index: 1050; /* Ensure it's on top */
+}
+
+.position-modal-container .modal-body {
+  position: relative;
+}
+
+/* Ensure the close button is clickable */
+.position-modal-container .modal-close {
+  z-index: 1060;
+  position: relative;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.position-modal-container .modal-close:hover {
+  opacity: 1;
+}
+
+/* Make sure the modal overlay is properly capturing clicks */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}

@@ -169,11 +169,24 @@ const PositionManager = (function() {
   
   // Close modal
   function closeModal() {
-    const modalOverlay = document.querySelector('.modal-overlay');
-    if (modalOverlay) {
-      document.body.removeChild(modalOverlay);
+    // Select ALL modal overlays to ensure we remove everything
+    const modalOverlays = document.querySelectorAll('.modal-overlay');
+    if (modalOverlays.length > 0) {
+      modalOverlays.forEach(overlay => {
+        document.body.removeChild(overlay);
+      });
     }
     currentModalNodeId = null;
+    
+    // Clean up any potential event listeners that might be lingering
+    document.removeEventListener('keydown', escapeKeyHandler);
+  }
+  
+  // Add this escape key handler function
+  function escapeKeyHandler(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
   }
   
   // Adjust node position
@@ -233,7 +246,7 @@ const PositionManager = (function() {
     
     // Create modal container
     const modal = document.createElement('div');
-    modal.className = 'modal';
+    modal.className = 'modal position-modal-container'; // Add specific class for CSS targeting
     
     // Create modal header
     const modalHeader = document.createElement('div');
@@ -246,7 +259,14 @@ const PositionManager = (function() {
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
     closeButton.innerHTML = '&times;';
-    closeButton.addEventListener('click', closeModal);
+    
+    // Use a single bound function for close button to prevent multiple handlers
+    const closeModalHandler = (e) => {
+      e.stopPropagation(); // Prevent event from bubbling
+      closeModal();
+    };
+    
+    closeButton.addEventListener('click', closeModalHandler, { once: true }); // Use once: true to ensure it only fires once
     
     modalHeader.appendChild(modalTitle);
     modalHeader.appendChild(closeButton);
@@ -370,7 +390,7 @@ const PositionManager = (function() {
     const cancelButton = document.createElement('button');
     cancelButton.className = 'btn btn-secondary';
     cancelButton.textContent = window.I18n ? I18n.t('cancel') : 'Cancel';
-    cancelButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModalHandler, { once: true });
     
     modalFooter.appendChild(makeRootButton);
     modalFooter.appendChild(cancelButton);
@@ -381,6 +401,9 @@ const PositionManager = (function() {
     modal.appendChild(modalBody);
     modal.appendChild(modalFooter);
     modalOverlay.appendChild(modal);
+    
+    // Add keyboard event listener for Escape key
+    document.addEventListener('keydown', escapeKeyHandler);
     
     return { modalOverlay, selectedNodeInput, positionInput };
   }
