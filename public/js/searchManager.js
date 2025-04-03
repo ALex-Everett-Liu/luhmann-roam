@@ -25,8 +25,8 @@ const SearchManager = (function() {
     
     // Create modal container with better height handling
     const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.maxWidth = '1200px'; // Increased from 800px to 1200px
+    modal.className = 'modal search-modal-container';
+    modal.style.maxWidth = '1200px';
     modal.style.maxHeight = '95vh';
     modal.style.minHeight = '500px';
     modal.style.display = 'flex';
