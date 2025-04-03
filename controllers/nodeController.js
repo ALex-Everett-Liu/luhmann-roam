@@ -337,5 +337,57 @@ exports.shiftNodePositions = async (req, res) => {
   }
 };
 
+/**
+ * Search for nodes
+ * GET /api/nodes/search
+ */
+exports.searchNodes = async (req, res) => {
+  try {
+    const query = req.query.q;
+    const lang = req.query.lang || 'en'; // Optional language parameter
+    
+    if (!query || query.length < 2) {
+      return res.json([]);
+    }
+    
+    const db = req.db;
+    
+    // First get the matching nodes
+    const searchQuery = `%${query}%`;
+    const contentField = lang === 'zh' ? 'content_zh' : 'content';
+    
+    // Modified query to join with parent nodes to get their content
+    const sqlQuery = `
+      SELECT 
+        n.id, 
+        n.content, 
+        n.content_zh, 
+        n.parent_id,
+        n.is_expanded,
+        n.has_markdown,
+        n.position,
+        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count,
+        p.content as parent_content,
+        p.content_zh as parent_content_zh
+      FROM 
+        nodes n
+      LEFT JOIN 
+        nodes p ON n.parent_id = p.id
+      WHERE 
+        n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?
+      ORDER BY 
+        n.position
+      LIMIT 100
+    `;
+    
+    const nodes = await db.all(sqlQuery, [searchQuery, searchQuery, searchQuery]);
+    
+    res.json(nodes);
+  } catch (error) {
+    console.error('Error searching nodes:', error);
+    res.status(500).json({ error: 'Error searching nodes' });
+  }
+};
+
 // Add additional controller functions for other node operations...
 // (Remaining operations like indenting, outdenting, fixing positions, etc.)

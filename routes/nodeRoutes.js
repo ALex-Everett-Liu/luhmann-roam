@@ -4,6 +4,9 @@ const nodeController = require('../controllers/nodeController');
 
 const router = express.Router();
 
+// Add this BEFORE routes with :id params
+router.get('/search', nodeController.searchNodes);
+
 // Get all top-level nodes
 router.get('/', nodeController.getAllNodes);
 
