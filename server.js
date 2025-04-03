@@ -116,6 +116,7 @@ app.put('/api/nodes/:id', async (req, res) => {
     let query = 'UPDATE nodes SET updated_at = ?';
     const params = [now];
     
+    // The following conditional statements check if each property is defined in the request body. If a property is provided, it is added to the SQL query and the parameters array. Dynamic Query Building: This approach allows the API to update only the fields that are provided in the request body, making the endpoint flexible and efficient.
     if (content !== undefined) {
       query += ', content = ?';
       params.push(content);
@@ -146,11 +147,11 @@ app.put('/api/nodes/:id', async (req, res) => {
       params.push(node_size);
     }
     
-    query += ' WHERE id = ?';
+    query += ' WHERE id = ?'; // The query is finalized by adding a WHERE clause to specify which node to update based on its ID. The id is added to the parameters array.
     params.push(id);
     
     await db.run(query, params);
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id); // Fetching the Updated Node: After the update, this line retrieves the complete record of the updated node from the database using its ID. This is useful for returning the full details of the node in the response.
     res.json(node);
   } catch (error) {
     res.status(500).json({ error: error.message });

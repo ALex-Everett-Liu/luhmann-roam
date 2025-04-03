@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 exports.getTasksByDate = async (req, res) => {
   try {
-    const { date } = req.params;
+    const { date } = req.params; // The function extracts the date parameter from the request's URL parameters using req.params. This is the date for which tasks are being requested.
     const db = req.db;
     
     // Validate date format (YYYY-MM-DD)
