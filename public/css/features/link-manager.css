@@ -115,3 +115,49 @@
   padding: 1px 4px;
   border-radius: 8px;
 }
+
+/* Add these specific styles for link search */
+.link-search-container {
+  position: relative;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.link-search-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.link-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.link-search-result-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.link-search-result-item:hover {
+  background-color: #f5f5f5;
+}
+
+.link-no-results,
+.link-search-error {
+  padding: 8px;
+  color: #666;
+  font-style: italic;
+}

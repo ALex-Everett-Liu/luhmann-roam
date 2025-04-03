@@ -84,7 +84,7 @@ const LinkManager = (function() {
     
     // Replace dropdown with search input
     const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container';
+    searchContainer.className = 'link-search-container';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
@@ -92,7 +92,7 @@ const LinkManager = (function() {
     searchInput.placeholder = window.I18n ? I18n.t('searchTarget') : 'Type to search for nodes...';
     
     const searchResults = document.createElement('div');
-    searchResults.className = 'search-results';
+    searchResults.className = 'link-search-results';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchResults);
@@ -122,13 +122,13 @@ const LinkManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
+          searchResults.innerHTML = `<div class="link-no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
           return;
         }
         
         results.forEach(node => {
           const resultItem = document.createElement('div');
-          resultItem.className = 'search-result-item';
+          resultItem.className = 'link-search-result-item';
           resultItem.dataset.id = node.id;
           
           const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
@@ -146,7 +146,7 @@ const LinkManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
+        searchResults.innerHTML = `<div class="link-search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     
