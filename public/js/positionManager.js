@@ -257,15 +257,15 @@ const PositionManager = (function() {
     
     // Search container
     const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container';
+    searchContainer.className = 'position-search-container';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.className = 'node-search';
+    searchInput.className = 'position-search-input';
     searchInput.placeholder = window.I18n ? I18n.t('searchParentNodePlaceholder') : 'Type to search for a parent node...';
     
     const searchResults = document.createElement('div');
-    searchResults.className = 'search-results';
+    searchResults.className = 'position-search-results';
     
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchResults);
@@ -295,13 +295,13 @@ const PositionManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noMatchingNodes') : 'No matching nodes found'}</div>`;
+          searchResults.innerHTML = `<div class="position-no-results">${window.I18n ? I18n.t('noMatchingNodes') : 'No matching nodes found'}</div>`;
           return;
         }
         
         results.forEach(node => {
           const resultItem = document.createElement('div');
-          resultItem.className = 'search-result-item';
+          resultItem.className = 'position-search-result-item';
           resultItem.dataset.id = node.id;
           
           const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
@@ -319,7 +319,7 @@ const PositionManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('errorSearchingNodes') : 'Error searching nodes'}</div>`;
+        searchResults.innerHTML = `<div class="position-search-error">${window.I18n ? I18n.t('errorSearchingNodes') : 'Error searching nodes'}</div>`;
       }
     }, 300));
     

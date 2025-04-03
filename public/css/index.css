@@ -15,6 +15,7 @@
 @import './features/markdown-editor.css';
 @import './features/link-manager.css';
 @import './features/search-filter.css';
+@import './features/position-manager.css';
 @import './features/breadcrumbs.css';
 @import './features/task-manager.css';
 @import './features/attribute-manager.css';

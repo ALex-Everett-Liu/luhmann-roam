@@ -1,0 +1,117 @@
+/* Position manager specific styles */
+.position-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .position-button {
+    background-color: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .position-button:hover {
+    background-color: #e9ecef;
+  }
+  
+  .current-position-info {
+    margin-bottom: 16px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .current-position-info p {
+    margin: 5px 0;
+  }
+  
+  .current-position-info .error {
+    color: #dc3545;
+  }
+  
+  .move-button {
+    background-color: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .move-button:hover {
+    background-color: #e9ecef;
+  }
+  
+  /* Position manager specific search styles */
+  .position-search-container {
+    position: relative;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .position-search-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .position-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .position-search-result-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+  
+  .position-search-result-item:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .position-no-results,
+  .position-search-error {
+    padding: 8px;
+    color: #666;
+    font-style: italic;
+  }
+  
+  /* Selected node styles */
+  .selected-node {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    margin-bottom: 16px;
+    min-height: 40px;
+  }
+  
+  .no-selection {
+    color: #999;
+    font-style: italic;
+  }
+  
+  .selected-node-content {
+    font-weight: 500;
+  }
