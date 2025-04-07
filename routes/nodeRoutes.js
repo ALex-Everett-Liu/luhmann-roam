@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/search', nodeController.searchNodes);
 
 // Get all top-level nodes
-router.get('/', nodeController.getAllNodes);
+router.get('/', nodeController.getAllRootNodes);
 
 // Get a single node by ID
 router.get('/:id', nodeController.getNodeById);

@@ -7,10 +7,10 @@ const path = require('path');
 const markdownDir = path.join(__dirname, '..', 'markdown');
 
 /**
- * Get all top-level nodes
+ * Get all root nodes (top-level nodes)
  * GET /api/nodes
  */
-exports.getAllNodes = async (req, res) => {
+exports.getAllRootNodes = async (req, res) => {
   try {
     const db = req.db;
     
@@ -138,17 +138,17 @@ exports.updateNode = async (req, res) => {
  */
 exports.deleteNode = async (req, res) => {
   try {
-    const { id } = req.params;
-    const db = req.db;
+    const { id } = req.params; // Extract the node ID from the request parameters
+    const db = req.db; // Get the database connection from the request object
     
     // Start a transaction
     await db.run('BEGIN TRANSACTION');
     
     // Recursive function to delete children
-    const deleteChildren = async (nodeId) => {
-      const children = await db.all('SELECT id FROM nodes WHERE parent_id = ?', nodeId);
+    const deleteChildren = async (nodeId) => { // takes a nodeId as an argument.
+      const children = await db.all('SELECT id FROM nodes WHERE parent_id = ?', nodeId); // retrieves all nodes that have the current node as their parent.
       for (const child of children) {
-        await deleteChildren(child.id);
+        await deleteChildren(child.id); // For each child node found, the function calls itself recursively to delete that child's children, ensuring that all descendants are deleted before the parent node.
       }
       
       // Delete markdown file if it exists
@@ -167,7 +167,7 @@ exports.deleteNode = async (req, res) => {
     await deleteChildren(id);
     
     await db.run('COMMIT');
-    res.status(204).send();
+    res.status(204).send(); // indicate that the deletion was successful and there is no content to return.
   } catch (error) {
     await db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
