@@ -1205,6 +1205,47 @@ app.get('/api/links/:id', async (req, res) => {
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 
+// Add this to your existing routes
+app.post('/api/backup', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Create backups directory if it doesn't exist
+    const backupDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir);
+    }
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString()
+      .replace(/:/g, '-')  // Replace colons with hyphens for valid filename
+      .replace(/\..+/, ''); // Remove milliseconds
+    
+    // Define source and destination paths
+    const dbPath = path.join(__dirname, 'outliner.db');
+    const backupFilename = `outliner-${timestamp}.db`;
+    const backupPath = path.join(backupDir, backupFilename);
+    
+    // Copy the database file
+    fs.copyFileSync(dbPath, backupPath);
+    
+    console.log(`Database backup created: ${backupFilename}`);
+    
+    res.status(200).json({
+      success: true,
+      filename: backupFilename,
+      timestamp: timestamp
+    });
+  } catch (error) {
+    console.error('Backup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

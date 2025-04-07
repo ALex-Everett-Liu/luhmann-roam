@@ -855,6 +855,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Initialize the BackupManager
+  if (window.BackupManager) {
+    console.log('Setting up BackupManager initialization from app.js');
+    BackupManager.initialize();
+  }
+
   // Initialize the BreadcrumbManager
   if (window.BreadcrumbManager) {
     BreadcrumbManager.initialize();
