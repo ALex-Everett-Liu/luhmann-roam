@@ -7,7 +7,7 @@ const NodeOperationsManager = (function() {
     // Initialize the manager
     function initialize() {
       if (isInitialized) {
-        console.log('NodeOperationsManager already initialized, skipping');
+        console.log('NodeOperationsManager already initialized, skipping'); // This prevents re-initialization, which could lead to unexpected behavior.
         return;
       }
       

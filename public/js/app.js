@@ -20,12 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleButton.textContent = I18n.t('switchToLanguage');
   }
   
-  // Toggle language
-  function toggleLanguage() {
-    I18n.toggleLanguage();
-  }
-  
-  
   // Fetch top-level nodes
   async function fetchNodes(forceFresh = false) {
     // Save scroll position before updating
