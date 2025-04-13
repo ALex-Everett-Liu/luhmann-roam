@@ -1,49 +1,113 @@
-// Font loader with local font fallback
+// Font loader for Noto Serif SC from external CDN
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Checking Noto Serif SC font availability...');
+  console.log('Setting up Noto Serif SC font loading...');
   
-  // Create test elements for comparison
-  const testContainer = document.createElement('div');
-  testContainer.style.position = 'absolute';
-  testContainer.style.visibility = 'hidden';
-  testContainer.style.pointerEvents = 'none';
+  // First ensure the CSS file is in the document
+  const cssLink = Array.from(document.querySelectorAll('link')).find(
+    link => link.href && (link.href.includes('NotoSerifSC.css') || link.href.includes('notoserifsc'))
+  );
   
-  // Test element with target font
-  const testElement = document.createElement('span');
-  testElement.style.fontFamily = '"Noto Serif SC", serif';
-  testElement.style.fontSize = '40px';
-  testElement.textContent = '汉字测试';
-  
-  // Control element with fallback font
-  const controlElement = document.createElement('span');
-  controlElement.style.fontFamily = 'serif';
-  controlElement.style.fontSize = '40px';
-  controlElement.textContent = '汉字测试';
-  
-  // Add elements to container
-  testContainer.appendChild(testElement);
-  testContainer.appendChild(controlElement);
-  document.body.appendChild(testContainer);
-  
-  // Get dimensions for comparison
-  const testRect = testElement.getBoundingClientRect();
-  const controlRect = controlElement.getBoundingClientRect();
-  
-  // Calculate differences
-  const widthDifference = Math.abs(testRect.width - controlRect.width);
-  const heightDifference = Math.abs(testRect.height - controlRect.height);
-  
-  // Clean up
-  document.body.removeChild(testContainer);
-  
-  // Compare dimensions - they should differ if fonts are different
-  if (widthDifference > 1 || heightDifference > 1) {
-    console.log(`✅ Noto Serif SC font is loaded! ►{widthDifference: ${widthDifference}, heightDifference: ${heightDifference}}`);
-    document.body.classList.add('chinese-font-loaded');
+  if (!cssLink) {
+    console.log('Font CSS link not found in document, adding it now');
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/css/fonts/NotoSerifSC.css';
+    document.head.appendChild(link);
+    
+    link.onload = () => {
+      console.log('✅ Font CSS loaded from local path');
+      checkFontAvailability();
+    };
+    
+    link.onerror = () => {
+      console.error('❌ Failed to load local font CSS, trying fallback');
+      // Try loading directly from CDN as fallback
+      const cdnLink = document.createElement('link');
+      cdnLink.rel = 'stylesheet';
+      cdnLink.href = 'https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@500;700&display=swap';
+      document.head.appendChild(cdnLink);
+      
+      cdnLink.onload = () => {
+        console.log('✅ Font CSS loaded from CDN fallback');
+        checkFontAvailability();
+      };
+      
+      cdnLink.onerror = () => {
+        console.error('❌ Failed to load font from CDN as well');
+      };
+    };
   } else {
-    console.log(`⚠️ Using local font fallback ►{widthDifference: ${widthDifference}, heightDifference: ${heightDifference}}`);
-    // Use locally stored font CSS file
-    loadLocalFontCSS();
+    console.log('✅ Font CSS link already in document, checking availability');
+    checkFontAvailability();
+  }
+  
+  function checkFontAvailability() {
+    // Give enough time for the external font to load
+    setTimeout(() => {
+      if ('fonts' in document) {
+        document.fonts.ready.then(() => {
+          console.log('Fonts ready event triggered, checking Noto Serif SC...');
+          
+          // Just for debugging: Log all available fonts
+          try {
+            const fontFamilies = new Set();
+            document.fonts.forEach(font => fontFamilies.add(font.family));
+            console.log('Available font families:', Array.from(fontFamilies).join(', '));
+          } catch (e) {
+            console.log('Could not enumerate available fonts:', e);
+          }
+          
+          // Check if our font loaded
+          const isLoaded = document.fonts.check('1em "Noto Serif SC"');
+          
+          if (isLoaded) {
+            console.log('✅ Noto Serif SC font available and ready');
+            document.body.classList.add('chinese-font-loaded');
+          } else {
+            console.error('❌ Noto Serif SC font check failed');
+            testActualRendering();
+          }
+        });
+      } else {
+        // Fallback for browsers that don't support the Font Loading API
+        console.log('Font Loading API not supported, assuming font is loaded');
+        document.body.classList.add('chinese-font-loaded');
+        testActualRendering();
+      }
+    }, 1000); // Increased timeout to ensure external font has time to load
+  }
+  
+  // Function to test if the font actually renders Chinese characters
+  function testActualRendering() {
+    console.log('Testing actual rendering with Noto Serif SC...');
+    
+    // Create a test element with Chinese text
+    const testEl = document.createElement('div');
+    testEl.style.fontFamily = '"Noto Serif SC", serif';
+    testEl.style.position = 'absolute';
+    testEl.style.left = '-9999px';
+    testEl.style.fontSize = '24px';
+    testEl.textContent = '你好'; // "Hello" in Chinese
+    
+    document.body.appendChild(testEl);
+    
+    // Check computed style and dimensions
+    setTimeout(() => {
+      const style = window.getComputedStyle(testEl);
+      console.log('Test element font-family:', style.fontFamily);
+      console.log('Test element dimensions:', testEl.offsetWidth, 'x', testEl.offsetHeight);
+      
+      // If font is loaded properly, Chinese characters should have reasonable width
+      if (testEl.offsetWidth > 20) {
+        console.log('✅ Font appears to be rendering Chinese text properly');
+        document.body.classList.add('chinese-font-loaded');
+      } else {
+        console.log('❌ Font may not be rendering Chinese text properly');
+      }
+      
+      // Clean up
+      document.body.removeChild(testEl);
+    }, 100);
   }
 });
 

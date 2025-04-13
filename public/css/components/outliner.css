@@ -187,11 +187,6 @@ button:hover {
   background-color: #e0e0e0;
 }
 
-.node-text[lang="zh"] {
-  font-family: "Noto Serif SC", "SimSun", "STSong", serif !important;
-  font-size: 17px;
-  font-weight: 500;
-}
 
 /* Modal styles */
 
