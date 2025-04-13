@@ -9,6 +9,8 @@ const taskRoutes = require('./routes/taskRoutes');
 const nodeRoutes = require('./routes/nodeRoutes');
 const codeAnalysisRoutes = require('./routes/codeAnalysisRoutes');
 const crypto = require('crypto');
+const axios = require('axios');
+const url = require('url');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -1270,8 +1272,8 @@ app.post('/api/download-font', async (req, res) => {
     }
     
     // First fetch the CSS to extract the actual font files
-    const response = await fetch(fontUrl);
-    const cssText = await response.text();
+    const cssResponse = await axios.get(fontUrl);
+    const cssText = cssResponse.data;
     
     // Extract font URLs
     const urlRegex = /url\(([^)]+)\)/g;
@@ -1332,12 +1334,15 @@ app.post('/api/download-font', async (req, res) => {
       
       console.log(`Downloading font file: ${filename}`);
       
-      // Download the file
-      const fontResponse = await fetch(url);
-      const buffer = await fontResponse.arrayBuffer();
+      // Download the file using axios
+      const fontResponse = await axios({
+        method: 'get',
+        url: url,
+        responseType: 'arraybuffer'
+      });
       
       // Save to file
-      fs.writeFileSync(outputPath, Buffer.from(buffer));
+      fs.writeFileSync(outputPath, Buffer.from(fontResponse.data));
       console.log(`Saved font file to: ${outputPath}`);
       downloadedFiles.push({ filename, path: outputPath });
     }

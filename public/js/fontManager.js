@@ -188,7 +188,10 @@ const FontManager = (function() {
     function openFontManager() {
       const modal = document.getElementById('font-manager-modal');
       if (modal) {
-        modal.style.display = 'block';
+        // Use flex display instead of block for better centering
+        modal.style.display = 'flex';
+        // Add visible class
+        modal.classList.add('visible');
         updateFontPreviews();
       }
     }
@@ -200,6 +203,8 @@ const FontManager = (function() {
       const modal = document.getElementById('font-manager-modal');
       if (modal) {
         modal.style.display = 'none';
+        // Remove visible class
+        modal.classList.remove('visible');
       }
     }
     
