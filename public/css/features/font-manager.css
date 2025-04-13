@@ -1,0 +1,65 @@
+/* Font Manager Styles */
+.font-manager-modal-content {
+    max-width: 600px;
+  }
+  
+  .font-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background-color: #f9f9f9;
+  }
+  
+  .font-section h3 {
+    margin-bottom: 10px;
+    color: var(--text-color);
+    font-weight: var(--font-weight-bold);
+  }
+  
+  .font-preview {
+    margin-top: 15px;
+    padding: 10px;
+    min-height: 60px;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius-sm);
+    background-color: white;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  
+  .font-actions {
+    margin: 20px 0;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+  }
+  
+  .download-fonts-button {
+    padding: 8px 16px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+  }
+  
+  .download-fonts-button:hover {
+    background-color: #588b42;
+  }
+  
+  .download-status {
+    margin-top: 10px;
+    min-height: 20px;
+    font-size: 14px;
+    color: var(--text-color);
+  }
+  
+  #latin-font-selector,
+  #chinese-font-selector {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 16px;
+  }

@@ -24,6 +24,7 @@
 @import './features/timestamp.css';
 @import './features/node-grid-visualizer.css';
 @import './features/node-size-manager.css';
+@import './features/font-manager.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */

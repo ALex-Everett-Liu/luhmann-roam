@@ -985,4 +985,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make fetchChildren available globally for the NodeGridVisualizer
   window.fetchChildren = fetchChildren;
 
+  // Initialize the Font Manager
+  if (window.FontManager) {
+    FontManager.initialize();
+  }
+
 }); 
