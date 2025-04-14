@@ -395,6 +395,11 @@ const MarkdownManager = (function() {
       if (response.ok) {
         console.log('Markdown saved successfully via API response');
         updateUIAfterSave(content);
+        
+        // Update the markdown indicator without refreshing
+        if (window.MarkdownManager && window.MarkdownManager.updateIndicator) {
+          window.MarkdownManager.updateIndicator(currentNodeId, content.trim().length > 0);
+        }
       } else {
         console.warn(`Server returned ${response.status} when saving markdown, checking if content was saved anyway...`);
         
@@ -406,6 +411,11 @@ const MarkdownManager = (function() {
           if (savedData.content === content) {
             console.log('Markdown was saved successfully despite error response');
             updateUIAfterSave(content);
+            
+            // Update the markdown indicator without refreshing
+            if (window.MarkdownManager && window.MarkdownManager.updateIndicator) {
+              window.MarkdownManager.updateIndicator(currentNodeId, content.trim().length > 0);
+            }
           } else {
             console.error('Markdown verification failed, content was not saved');
             alert('Failed to save markdown content');
@@ -435,11 +445,6 @@ const MarkdownManager = (function() {
       } else {
         nodeText.classList.remove('has-markdown');
       }
-    }
-    
-    // Refresh the main UI to reflect changes
-    if (window.fetchNodes) {
-      window.fetchNodes();
     }
     
     closeModal();
