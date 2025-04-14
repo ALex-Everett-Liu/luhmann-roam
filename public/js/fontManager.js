@@ -288,6 +288,26 @@ const FontManager = (function() {
       document.documentElement.style.setProperty('--font-family-base', latinFont.value);
       document.documentElement.style.setProperty('--font-family-chinese', chineseFont.value);
       
+      // Add !important styles to enforce our font choices 
+      // Create or update a dedicated style element for font settings
+      let fontStyleEl = document.getElementById('custom-font-styles');
+      if (!fontStyleEl) {
+        fontStyleEl = document.createElement('style');
+        fontStyleEl.id = 'custom-font-styles';
+        document.head.appendChild(fontStyleEl);
+      }
+      
+      // Apply higher-specificity styles that override any other rules
+      fontStyleEl.textContent = `
+        body, .node-text:not([lang="zh"]) {
+          font-family: ${latinFont.value} !important;
+        }
+        
+        [lang="zh"], .chinese-text, .node-text[lang="zh"] {
+          font-family: ${chineseFont.value} !important;
+        }
+      `;
+      
       console.log('Applied fonts:', {
         latin: latinFont.name,
         chinese: chineseFont.name
@@ -346,7 +366,7 @@ const FontManager = (function() {
       const chineseFont = getSelectedFont('chinese', chineseSelector.value);
       
       // Server endpoint for downloading fonts
-      const downloadEndpoint = '/api/download-font';
+      const downloadEndpoint = '/api/fonts/download';
       
       try {
         let results = [];
