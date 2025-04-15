@@ -1,0 +1,45 @@
+/* High contrast mode styles */
+body.high-contrast {
+    --text-color: #000000;
+    --background-color: #ffffff;
+    --border-color: #000000;
+    --primary-color: #0000cc;
+    --accent-color: #cc0000;
+  }
+  
+  body.high-contrast.dark-theme {
+    --text-color: #ffffff;
+    --background-color: #000000;
+    --border-color: #ffffff;
+    --primary-color: #6699ff;
+    --accent-color: #ff6666;
+  }
+  
+  body.high-contrast .node-text {
+    border: 1px solid var(--border-color) !important;
+  }
+  
+  body.high-contrast .children::before,
+  body.high-contrast .node-content::before {
+    background-color: var(--border-color) !important;
+    width: 3px !important;
+  }
+  
+  body.high-contrast button {
+    border: 2px solid var(--border-color) !important;
+    color: var(--background-color) !important;
+  }
+  
+  body.high-contrast .node-actions {
+    border: 2px solid var(--border-color) !important;
+  }
+  
+  body.high-contrast .node-actions button {
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--background-color) !important;
+    color: var(--text-color) !important;
+  }
+  
+  body.high-contrast .modal-content {
+    border: 3px solid var(--border-color) !important;
+  }

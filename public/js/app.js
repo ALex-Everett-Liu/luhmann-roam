@@ -898,6 +898,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Initialize the StyleSettingsManager
+  if (window.StyleSettingsManager) {
+    console.log('Setting up StyleSettingsManager initialization from app.js');
+    StyleSettingsManager.initialize();
+  }
+
   // Initialize the AttributeManager
   if (window.AttributeManager) {
     // Only initialize the manager itself, not the node buttons
