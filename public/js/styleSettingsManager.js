@@ -17,7 +17,10 @@ const StyleSettingsManager = (function() {
         enabled: false,
         url: 'https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2FXELiu-NovaKG%2FoGSdu_nHAz.jpg?alt=media&token=995ea666-6efa-4fa7-a409-2f84b5a646fc',
         opacity: 0.15, // Default overlay opacity to ensure readability
-        blur: 0 // Optional blur effect in pixels
+        blur: 0, // Optional blur effect in pixels
+        contentColorAdjust: 'auto', // 'auto', 'light', 'dark', or 'custom'
+        customTextColor: '#333333', // For custom text color option
+        customBgColor: 'rgba(255, 255, 255, 0.7)' // Semi-transparent background for text areas
       }
     };
     
@@ -47,6 +50,69 @@ const StyleSettingsManager = (function() {
         { name: 'Green', value: '#66bb6a' }
       ]
     };
+    
+    /**
+     * Helper function to convert RGBA to HEX color
+     * Safely handles various input formats
+     */
+    function getHexFromRgba(rgbaStr) {
+      // Default color if parsing fails
+      const defaultColor = '#ffffff';
+      
+      // Return default if not a string
+      if (typeof rgbaStr !== 'string') {
+        return defaultColor;
+      }
+      
+      try {
+        // Check if it's already a hex color
+        if (rgbaStr.startsWith('#')) {
+          return rgbaStr;
+        }
+        
+        // Try to extract RGB values from the rgba string
+        const rgbaMatch = rgbaStr.match(/rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)/);
+        if (rgbaMatch) {
+          const r = parseInt(rgbaMatch[1]);
+          const g = parseInt(rgbaMatch[2]);
+          const b = parseInt(rgbaMatch[3]);
+          
+          // Convert to hex
+          return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+        
+        return defaultColor;
+      } catch (e) {
+        console.error('Error parsing RGBA color:', e);
+        return defaultColor;
+      }
+    }
+    
+    /**
+     * Helper function to extract opacity value from RGBA string
+     */
+    function getOpacityFromRgba(rgbaStr) {
+      // Default opacity
+      const defaultOpacity = 0.7;
+      
+      // Return default if not a string
+      if (typeof rgbaStr !== 'string') {
+        return defaultOpacity;
+      }
+      
+      try {
+        // Try to extract opacity value from the rgba string
+        const opacityMatch = rgbaStr.match(/rgba?\([^,]+,[^,]+,[^,]+,([^)]+)\)/);
+        if (opacityMatch && opacityMatch[1]) {
+          return parseFloat(opacityMatch[1]);
+        }
+        
+        return defaultOpacity;
+      } catch (e) {
+        console.error('Error parsing opacity from RGBA color:', e);
+        return defaultOpacity;
+      }
+    }
     
     /**
      * Initialize the style settings manager
@@ -213,6 +279,30 @@ const StyleSettingsManager = (function() {
                   
                   <label for="background-blur">Blur Effect: ${currentSettings.backgroundImage.blur}px</label>
                   <input type="range" id="background-blur" min="0" max="20" step="1" value="${currentSettings.backgroundImage.blur}">
+                  
+                  <label for="content-color-adjust">Content Colors:</label>
+                  <select id="content-color-adjust">
+                    <option value="auto" ${currentSettings.backgroundImage.contentColorAdjust === 'auto' ? 'selected' : ''}>Auto (Based on Theme)</option>
+                    <option value="light" ${currentSettings.backgroundImage.contentColorAdjust === 'light' ? 'selected' : ''}>Light Mode Colors</option>
+                    <option value="dark" ${currentSettings.backgroundImage.contentColorAdjust === 'dark' ? 'selected' : ''}>Dark Mode Colors</option>
+                    <option value="custom" ${currentSettings.backgroundImage.contentColorAdjust === 'custom' ? 'selected' : ''}>Custom Colors</option>
+                  </select>
+                  
+                  <div id="custom-colors-container" style="${currentSettings.backgroundImage.contentColorAdjust !== 'custom' ? 'display: none;' : ''}">
+                    <div class="color-option">
+                      <label for="custom-text-color">Text Color</label>
+                      <div class="color-preview" id="custom-text-color-preview" style="background-color: ${currentSettings.backgroundImage.customTextColor}"></div>
+                      <input type="color" id="custom-text-color" class="color-picker" value="${currentSettings.backgroundImage.customTextColor}">
+                    </div>
+                    
+                    <div class="color-option">
+                      <label for="custom-bg-color">Content Background</label>
+                      <div class="color-preview" id="custom-bg-color-preview" style="background-color: ${currentSettings.backgroundImage.customBgColor}"></div>
+                      <input type="color" id="custom-bg-color" class="color-picker" value="${getHexFromRgba(currentSettings.backgroundImage.customBgColor)}">
+                      <input type="range" id="custom-bg-opacity" min="0" max="1" step="0.1" value="${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}">
+                      <label for="custom-bg-opacity" id="custom-bg-opacity-label">Opacity: ${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}</label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -528,6 +618,32 @@ const StyleSettingsManager = (function() {
         currentSettings.backgroundImage.blur = parseInt(bgBlurSlider.value);
       }
       
+      // Content color adjustment settings
+      const contentColorAdjust = document.getElementById('content-color-adjust');
+      const customTextColor = document.getElementById('custom-text-color');
+      const customBgColor = document.getElementById('custom-bg-color');
+      const customBgOpacity = document.getElementById('custom-bg-opacity');
+      
+      if (contentColorAdjust) {
+        currentSettings.backgroundImage.contentColorAdjust = contentColorAdjust.value;
+      }
+      
+      if (customTextColor) {
+        currentSettings.backgroundImage.customTextColor = customTextColor.value;
+      }
+      
+      if (customBgColor && customBgOpacity) {
+        // Convert hex to rgba
+        const baseColor = customBgColor.value;
+        const opacity = customBgOpacity.value;
+        
+        const r = parseInt(baseColor.slice(1, 3), 16);
+        const g = parseInt(baseColor.slice(3, 5), 16);
+        const b = parseInt(baseColor.slice(5, 7), 16);
+        
+        currentSettings.backgroundImage.customBgColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+      
       // Update the theme toggler text if it exists
       const themeToggler = document.getElementById('theme-toggler');
       if (themeToggler) {
@@ -588,11 +704,34 @@ const StyleSettingsManager = (function() {
         document.documentElement.style.setProperty('--background-image-overlay', currentSettings.backgroundImage.opacity);
         document.documentElement.style.setProperty('--background-image-blur', `${currentSettings.backgroundImage.blur}px`);
         document.body.classList.add('has-background-image');
+        
+        // Apply content color adjustments
+        const colorAdjust = currentSettings.backgroundImage.contentColorAdjust;
+        
+        // Remove all special content color classes first
+        document.body.classList.remove('bg-content-dark');
+        document.body.classList.remove('bg-content-light');
+        document.body.classList.remove('bg-content-custom');
+        
+        if (colorAdjust === 'auto') {
+          // Use the current theme setting (no additional classes needed)
+        } else if (colorAdjust === 'dark') {
+          document.body.classList.add('bg-content-dark');
+        } else if (colorAdjust === 'light') {
+          document.body.classList.add('bg-content-light');
+        } else if (colorAdjust === 'custom') {
+          document.body.classList.add('bg-content-custom');
+          document.documentElement.style.setProperty('--custom-text-color', currentSettings.backgroundImage.customTextColor);
+          document.documentElement.style.setProperty('--custom-bg-color', currentSettings.backgroundImage.customBgColor);
+        }
       } else {
         document.documentElement.style.removeProperty('--background-image-url');
         document.documentElement.style.removeProperty('--background-image-overlay');
         document.documentElement.style.removeProperty('--background-image-blur');
         document.body.classList.remove('has-background-image');
+        document.body.classList.remove('bg-content-dark');
+        document.body.classList.remove('bg-content-light');
+        document.body.classList.remove('bg-content-custom');
       }
       
       console.log('Applied style settings:', currentSettings);
@@ -659,6 +798,7 @@ const StyleSettingsManager = (function() {
       bgToggle.addEventListener('change', () => {
         bgControls.style.display = bgToggle.checked ? 'block' : 'none';
         updateBackgroundPreview();
+        updateContentPreview();
       });
       
       // Apply URL button
@@ -673,6 +813,7 @@ const StyleSettingsManager = (function() {
             bgPreview.style.backgroundImage = '';
             bgPreview.innerHTML = '<span>No image selected</span>';
           }
+          updateContentPreview();
         });
       }
       
@@ -689,6 +830,7 @@ const StyleSettingsManager = (function() {
               bgPreview.style.backgroundImage = `url(${dataUrl})`;
               bgPreview.innerHTML = '';
               bgUrlInput.value = dataUrl;
+              updateContentPreview();
             };
             
             reader.readAsDataURL(file);
@@ -704,6 +846,7 @@ const StyleSettingsManager = (function() {
           const value = bgOpacitySlider.value;
           opacityLabel.textContent = `Overlay Opacity: ${value}`;
           updateBackgroundPreview();
+          updateContentPreview();
         });
       }
       
@@ -715,7 +858,83 @@ const StyleSettingsManager = (function() {
           const value = bgBlurSlider.value;
           blurLabel.textContent = `Blur Effect: ${value}px`;
           updateBackgroundPreview();
+          updateContentPreview();
         });
+      }
+      
+      // Add content color adjustment handlers
+      const contentColorAdjust = document.getElementById('content-color-adjust');
+      const customColorsContainer = document.getElementById('custom-colors-container');
+      const customTextColor = document.getElementById('custom-text-color');
+      const customTextColorPreview = document.getElementById('custom-text-color-preview');
+      const customBgColor = document.getElementById('custom-bg-color');
+      const customBgColorPreview = document.getElementById('custom-bg-color-preview');
+      const customBgOpacity = document.getElementById('custom-bg-opacity');
+      const customBgOpacityLabel = document.getElementById('custom-bg-opacity-label');
+      
+      if (contentColorAdjust) {
+        contentColorAdjust.addEventListener('change', () => {
+          if (customColorsContainer) {
+            customColorsContainer.style.display = 
+              contentColorAdjust.value === 'custom' ? 'block' : 'none';
+          }
+          updateBackgroundPreview();
+          updateContentPreview();
+        });
+      }
+      
+      // Setup color pickers for custom colors
+      if (customTextColor && customTextColorPreview) {
+        customTextColor.addEventListener('input', () => {
+          customTextColorPreview.style.backgroundColor = customTextColor.value;
+          updateBackgroundPreview();
+          updateContentPreview();
+        });
+        
+        customTextColorPreview.addEventListener('click', () => {
+          customTextColor.click();
+        });
+      }
+      
+      if (customBgColor && customBgColorPreview) {
+        customBgColor.addEventListener('input', () => {
+          updateCustomBgColor();
+          updateContentPreview();
+        });
+        
+        customBgColorPreview.addEventListener('click', () => {
+          customBgColor.click();
+        });
+      }
+      
+      if (customBgOpacity) {
+        customBgOpacity.addEventListener('input', () => {
+          if (customBgOpacityLabel) {
+            customBgOpacityLabel.textContent = `Opacity: ${customBgOpacity.value}`;
+          }
+          updateCustomBgColor();
+          updateContentPreview();
+        });
+      }
+      
+      function updateCustomBgColor() {
+        const baseColor = customBgColor.value;
+        const opacity = customBgOpacity ? customBgOpacity.value : 0.7;
+        
+        // Convert hex to rgba
+        const r = parseInt(baseColor.slice(1, 3), 16);
+        const g = parseInt(baseColor.slice(3, 5), 16);
+        const b = parseInt(baseColor.slice(5, 7), 16);
+        
+        const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        
+        if (customBgColorPreview) {
+          customBgColorPreview.style.backgroundColor = rgbaColor;
+        }
+        
+        updateBackgroundPreview();
+        
+        return rgbaColor;
       }
     }
     
@@ -740,6 +959,85 @@ const StyleSettingsManager = (function() {
       // Apply to preview
       bgPreview.style.setProperty('--preview-opacity', opacity);
       bgPreview.style.setProperty('--preview-blur', `${blur}px`);
+    }
+    
+    // Add this function to create and update the content preview
+    function updateContentPreview() {
+      const bgPreview = document.getElementById('bg-image-preview');
+      const bgColorAdjust = document.getElementById('content-color-adjust');
+      const contentPreview = document.getElementById('content-preview');
+      
+      if (!bgPreview || !bgColorAdjust) return;
+      
+      // Create content preview if it doesn't exist
+      if (!contentPreview) {
+        const previewContainer = document.createElement('div');
+        previewContainer.id = 'content-preview';
+        previewContainer.className = 'content-preview';
+        
+        // Add some sample text items
+        previewContainer.innerHTML = `
+          <div class="content-preview-item">Sample text with background</div>
+          <div class="content-preview-item">Another line of content</div>
+        `;
+        
+        // Insert after the background preview
+        bgPreview.parentNode.insertBefore(previewContainer, bgPreview.nextSibling);
+      }
+      
+      // Get the content preview (now we're sure it exists)
+      const preview = document.getElementById('content-preview');
+      
+      // Update background image to match the main preview
+      preview.style.backgroundImage = bgPreview.style.backgroundImage;
+      
+      // Update preview based on selected color adjustment
+      preview.className = 'content-preview';
+      const colorAdjust = bgColorAdjust.value;
+      
+      if (colorAdjust === 'auto') {
+        // Use the current theme setting
+        if (document.body.classList.contains('dark-theme')) {
+          preview.classList.add('dark');
+        }
+      } else if (colorAdjust === 'dark') {
+        preview.classList.add('dark');
+      } else if (colorAdjust === 'custom') {
+        preview.classList.add('custom');
+        
+        // Get custom colors
+        const customTextColor = document.getElementById('custom-text-color');
+        const customBgColor = document.getElementById('custom-bg-color');
+        const customBgOpacity = document.getElementById('custom-bg-opacity');
+        
+        if (customTextColor && customBgColor && customBgOpacity) {
+          // Convert hex to rgba for background
+          const baseColor = customBgColor.value;
+          const opacity = customBgOpacity.value;
+          
+          const r = parseInt(baseColor.slice(1, 3), 16);
+          const g = parseInt(baseColor.slice(3, 5), 16);
+          const b = parseInt(baseColor.slice(5, 7), 16);
+          
+          const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+          
+          // Apply to preview
+          preview.style.setProperty('--preview-custom-text', customTextColor.value);
+          preview.style.setProperty('--preview-custom-bg', rgbaColor);
+        }
+      }
+      
+      // Apply blur and opacity from the main controls
+      const bgOpacitySlider = document.getElementById('background-opacity');
+      const bgBlurSlider = document.getElementById('background-blur');
+      
+      if (bgOpacitySlider) {
+        preview.style.setProperty('--preview-content-opacity', bgOpacitySlider.value);
+      }
+      
+      if (bgBlurSlider) {
+        preview.style.setProperty('--preview-blur', `${bgBlurSlider.value}px`);
+      }
     }
     
     // Public API

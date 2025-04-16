@@ -417,3 +417,151 @@ body.has-background-image.dark-theme .content::before {
 .background-settings input[type="range"] {
   width: 100%;
 }
+
+/* Content color adjustments when background image is enabled */
+
+/* Force light theme colors for content when light color adjustment is selected */
+body.has-background-image.bg-content-light {
+  --text-color: #333333;
+  --background-color: transparent;
+  --border-color: #dddddd;
+}
+
+/* Force dark theme colors for content when dark color adjustment is selected */
+body.has-background-image.bg-content-dark {
+  --text-color: #e0e0e0;
+  --background-color: transparent;
+  --border-color: #444444;
+}
+
+/* Custom colors when custom color adjustment is selected */
+body.has-background-image.bg-content-custom {
+  --text-color: var(--custom-text-color);
+  --background-color: transparent;
+  --border-color: var(--custom-text-color);
+}
+
+/* Semi-transparent backgrounds for content with background image */
+body.has-background-image .node-content {
+  position: relative;
+}
+
+body.has-background-image .node-text {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: var(--border-radius-sm);
+  padding: 3px 6px;
+}
+
+body.has-background-image.dark-theme .node-text {
+  background-color: rgba(40, 40, 40, 0.7);
+}
+
+body.has-background-image.bg-content-dark .node-text {
+  background-color: rgba(40, 40, 40, 0.7);
+}
+
+body.has-background-image.bg-content-light .node-text {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+body.has-background-image.bg-content-custom .node-text {
+  background-color: var(--custom-bg-color);
+}
+
+/* Focused node styles for better visibility */
+body.has-background-image .node-text:focus {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  border-color: var(--accent-color);
+}
+
+body.has-background-image.dark-theme .node-text:focus,
+body.has-background-image.bg-content-dark .node-text:focus {
+  background-color: rgba(50, 50, 50, 0.9);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+body.has-background-image.bg-content-custom .node-text:focus {
+  box-shadow: 0 0 5px var(--custom-text-color);
+}
+
+/* Adjust node connector lines for better visibility with background images */
+body.has-background-image .children::before,
+body.has-background-image .node-content::before {
+  background-color: rgba(180, 180, 180, 0.7);
+  width: 2px; /* Slightly thicker for better visibility */
+}
+
+body.has-background-image.dark-theme .children::before,
+body.has-background-image.dark-theme .node-content::before,
+body.has-background-image.bg-content-dark .children::before,
+body.has-background-image.bg-content-dark .node-content::before {
+  background-color: rgba(120, 120, 120, 0.7);
+}
+
+body.has-background-image.bg-content-custom .children::before,
+body.has-background-image.bg-content-custom .node-content::before {
+  background-color: var(--custom-text-color);
+  opacity: 0.7;
+}
+
+/* Enhance buttons and interactive elements with background images */
+body.has-background-image .node-actions {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+body.has-background-image.dark-theme .node-actions,
+body.has-background-image.bg-content-dark .node-actions {
+  background-color: rgba(40, 40, 40, 0.8);
+}
+
+body.has-background-image.bg-content-custom .node-actions {
+  background-color: var(--custom-bg-color);
+  border-color: var(--custom-text-color);
+}
+
+/* Add styles for preview panel that shows how content will look with background */
+.content-preview {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background-size: cover;
+  background-position: center;
+  height: 100px;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-preview::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(var(--preview-blur, 0px));
+  z-index: 0;
+  opacity: var(--preview-content-opacity, 0.8);
+}
+
+.content-preview-item {
+  position: relative;
+  z-index: 1;
+  padding: 5px 8px;
+  margin-bottom: 5px;
+  border-radius: var(--border-radius-sm);
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.7);
+}
+
+.content-preview.dark .content-preview-item {
+  background-color: rgba(40, 40, 40, 0.7);
+  color: #e0e0e0;
+}
+
+.content-preview.custom .content-preview-item {
+  background-color: var(--preview-custom-bg);
+  color: var(--preview-custom-text);
+}

@@ -70,6 +70,10 @@
     --background-image-url: none;
     --background-image-overlay: 0.15;
     --background-image-blur: 0px;
+    
+    /* Custom colors for background image content */
+    --custom-text-color: #333333;
+    --custom-bg-color: rgba(255, 255, 255, 0.7);
 }
 
 /* Dark theme class that will be added to body */
