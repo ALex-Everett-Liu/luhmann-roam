@@ -11,7 +11,14 @@ const StyleSettingsManager = (function() {
       accentColor: '#e69138',
       fontSize: 'normal', // 'small', 'normal', 'large'
       reducedMotion: false,
-      highContrast: false
+      highContrast: false,
+      // Add background image settings
+      backgroundImage: {
+        enabled: false,
+        url: 'https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2FXELiu-NovaKG%2FoGSdu_nHAz.jpg?alt=media&token=995ea666-6efa-4fa7-a409-2f84b5a646fc',
+        opacity: 0.15, // Default overlay opacity to ensure readability
+        blur: 0 // Optional blur effect in pixels
+      }
     };
     
     // Current style settings
@@ -170,6 +177,47 @@ const StyleSettingsManager = (function() {
                 </label>
               </div>
             </div>
+            
+            <!-- New Background Image Section -->
+            <div class="style-settings-section">
+              <h3>Background Image</h3>
+              <div class="background-image-option">
+                <label for="background-image-toggle">
+                  <input type="checkbox" id="background-image-toggle" ${currentSettings.backgroundImage.enabled ? 'checked' : ''}>
+                  Enable Background Image
+                </label>
+              </div>
+              
+              <div class="background-image-controls" style="${!currentSettings.backgroundImage.enabled ? 'display: none;' : ''}">
+                <div class="background-image-preview">
+                  <div id="bg-image-preview" class="image-preview" 
+                       style="${currentSettings.backgroundImage.url ? `background-image: url(${currentSettings.backgroundImage.url});` : ''}">
+                    ${!currentSettings.backgroundImage.url ? '<span>No image selected</span>' : ''}
+                  </div>
+                </div>
+                
+                <div class="background-image-upload">
+                  <label for="background-image-url">Image URL:</label>
+                  <input type="text" id="background-image-url" value="${currentSettings.backgroundImage.url}" placeholder="https://example.com/image.jpg">
+                  <button id="apply-bg-url" class="small-button">Apply URL</button>
+                </div>
+                
+                <div class="background-image-upload">
+                  <label for="background-image-file">Or upload image:</label>
+                  <input type="file" id="background-image-file" accept="image/*">
+                </div>
+                
+                <div class="background-settings">
+                  <label for="background-opacity">Overlay Opacity: ${currentSettings.backgroundImage.opacity}</label>
+                  <input type="range" id="background-opacity" min="0" max="1" step="0.05" value="${currentSettings.backgroundImage.opacity}">
+                  
+                  <label for="background-blur">Blur Effect: ${currentSettings.backgroundImage.blur}px</label>
+                  <input type="range" id="background-blur" min="0" max="20" step="1" value="${currentSettings.backgroundImage.blur}">
+                </div>
+              </div>
+            </div>
+            
+            <!-- End of new section -->
           </div>
           <div class="modal-footer">
             <button id="reset-style-settings" class="secondary-button">Reset to Defaults</button>
@@ -286,6 +334,9 @@ const StyleSettingsManager = (function() {
       // Preset colors
       setupPresetColors('primary-preset-colors', 'primary-color');
       setupPresetColors('accent-preset-colors', 'accent-color');
+      
+      // Setup background image controls
+      setupBackgroundImageControls();
       
       // Close when clicking outside the modal
       window.addEventListener('click', (e) => {
@@ -455,6 +506,28 @@ const StyleSettingsManager = (function() {
         currentSettings.highContrast = highContrast.checked;
       }
       
+      // Background image
+      const bgToggle = document.getElementById('background-image-toggle');
+      const bgUrlInput = document.getElementById('background-image-url');
+      const bgOpacitySlider = document.getElementById('background-opacity');
+      const bgBlurSlider = document.getElementById('background-blur');
+      
+      if (bgToggle) {
+        currentSettings.backgroundImage.enabled = bgToggle.checked;
+      }
+      
+      if (bgUrlInput) {
+        currentSettings.backgroundImage.url = bgUrlInput.value.trim();
+      }
+      
+      if (bgOpacitySlider) {
+        currentSettings.backgroundImage.opacity = parseFloat(bgOpacitySlider.value);
+      }
+      
+      if (bgBlurSlider) {
+        currentSettings.backgroundImage.blur = parseInt(bgBlurSlider.value);
+      }
+      
       // Update the theme toggler text if it exists
       const themeToggler = document.getElementById('theme-toggler');
       if (themeToggler) {
@@ -509,6 +582,19 @@ const StyleSettingsManager = (function() {
         document.body.classList.remove('high-contrast');
       }
       
+      // Apply background image settings
+      if (currentSettings.backgroundImage.enabled && currentSettings.backgroundImage.url) {
+        document.documentElement.style.setProperty('--background-image-url', `url(${currentSettings.backgroundImage.url})`);
+        document.documentElement.style.setProperty('--background-image-overlay', currentSettings.backgroundImage.opacity);
+        document.documentElement.style.setProperty('--background-image-blur', `${currentSettings.backgroundImage.blur}px`);
+        document.body.classList.add('has-background-image');
+      } else {
+        document.documentElement.style.removeProperty('--background-image-url');
+        document.documentElement.style.removeProperty('--background-image-overlay');
+        document.documentElement.style.removeProperty('--background-image-blur');
+        document.body.classList.remove('has-background-image');
+      }
+      
       console.log('Applied style settings:', currentSettings);
     }
     
@@ -554,6 +640,106 @@ const StyleSettingsManager = (function() {
       }
       
       console.log('Reset style settings to defaults');
+    }
+    
+    // Setup background image UI controls
+    function setupBackgroundImageControls() {
+      const bgToggle = document.getElementById('background-image-toggle');
+      const bgControls = document.querySelector('.background-image-controls');
+      const bgUrlInput = document.getElementById('background-image-url');
+      const bgApplyUrlBtn = document.getElementById('apply-bg-url');
+      const bgFileInput = document.getElementById('background-image-file');
+      const bgOpacitySlider = document.getElementById('background-opacity');
+      const bgBlurSlider = document.getElementById('background-blur');
+      const bgPreview = document.getElementById('bg-image-preview');
+      
+      if (!bgToggle || !bgControls) return;
+      
+      // Toggle background image controls visibility
+      bgToggle.addEventListener('change', () => {
+        bgControls.style.display = bgToggle.checked ? 'block' : 'none';
+        updateBackgroundPreview();
+      });
+      
+      // Apply URL button
+      if (bgApplyUrlBtn && bgUrlInput) {
+        bgApplyUrlBtn.addEventListener('click', () => {
+          const url = bgUrlInput.value.trim();
+          if (url) {
+            // Update preview with new URL
+            bgPreview.style.backgroundImage = `url(${url})`;
+            bgPreview.innerHTML = '';
+          } else {
+            bgPreview.style.backgroundImage = '';
+            bgPreview.innerHTML = '<span>No image selected</span>';
+          }
+        });
+      }
+      
+      // File upload
+      if (bgFileInput) {
+        bgFileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+              const dataUrl = event.target.result;
+              // Update preview and URL input with data URL
+              bgPreview.style.backgroundImage = `url(${dataUrl})`;
+              bgPreview.innerHTML = '';
+              bgUrlInput.value = dataUrl;
+            };
+            
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+      
+      // Opacity slider
+      if (bgOpacitySlider) {
+        const opacityLabel = bgOpacitySlider.previousElementSibling;
+        
+        bgOpacitySlider.addEventListener('input', () => {
+          const value = bgOpacitySlider.value;
+          opacityLabel.textContent = `Overlay Opacity: ${value}`;
+          updateBackgroundPreview();
+        });
+      }
+      
+      // Blur slider
+      if (bgBlurSlider) {
+        const blurLabel = bgBlurSlider.previousElementSibling;
+        
+        bgBlurSlider.addEventListener('input', () => {
+          const value = bgBlurSlider.value;
+          blurLabel.textContent = `Blur Effect: ${value}px`;
+          updateBackgroundPreview();
+        });
+      }
+    }
+    
+    // Update background preview with current settings
+    function updateBackgroundPreview() {
+      const bgPreview = document.getElementById('bg-image-preview');
+      const bgToggle = document.getElementById('background-image-toggle');
+      const bgOpacitySlider = document.getElementById('background-opacity');
+      const bgBlurSlider = document.getElementById('background-blur');
+      
+      if (!bgPreview) return;
+      
+      if (bgToggle && !bgToggle.checked) {
+        document.documentElement.style.removeProperty('--background-image-overlay');
+        document.documentElement.style.removeProperty('--background-image-blur');
+        return;
+      }
+      
+      const opacity = bgOpacitySlider ? bgOpacitySlider.value : currentSettings.backgroundImage.opacity;
+      const blur = bgBlurSlider ? bgBlurSlider.value : currentSettings.backgroundImage.blur;
+      
+      // Apply to preview
+      bgPreview.style.setProperty('--preview-opacity', opacity);
+      bgPreview.style.setProperty('--preview-blur', `${blur}px`);
     }
     
     // Public API

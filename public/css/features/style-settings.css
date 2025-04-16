@@ -310,3 +310,110 @@ body.dark-theme .style-settings-modal-content {
   background-color: var(--dark-surface-color);
   color: var(--dark-text-color);
 }
+
+/* Background image styles */
+.content {
+  position: relative;
+}
+
+/* Background image container that goes behind content */
+body.has-background-image .content::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--background-image-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+  opacity: calc(1 - var(--background-image-overlay, 0.15));
+  filter: blur(var(--background-image-blur, 0px));
+  z-index: -1;
+}
+
+/* Dark overlay for dark theme */
+body.has-background-image.dark-theme .content::before {
+  filter: blur(var(--background-image-blur, 0px)) brightness(0.7);
+}
+
+/* Background image preview in settings */
+.background-image-preview {
+  margin: 15px 0;
+  width: 100%;
+  height: 150px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  position: relative;
+}
+
+.image-preview {
+  width: 100%;
+  height: 100%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  position: relative;
+}
+
+.image-preview::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--background-color);
+  opacity: var(--preview-opacity, 0.15);
+  filter: blur(var(--preview-blur, 0px));
+  pointer-events: none;
+}
+
+.image-preview span {
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: var(--border-radius-sm);
+}
+
+.background-image-upload {
+  margin: 10px 0;
+}
+
+.background-image-upload input[type="text"] {
+  width: calc(100% - 110px);
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  margin-right: 5px;
+}
+
+.background-image-upload input[type="file"] {
+  margin-top: 5px;
+}
+
+.small-button {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+.background-settings {
+  margin-top: 15px;
+}
+
+.background-settings label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.background-settings input[type="range"] {
+  width: 100%;
+}
