@@ -266,3 +266,47 @@ body.dark-theme {
   body.dark-theme .preset-color.active {
     box-shadow: 0 0 0 2px var(--dark-text-color);
   }
+
+/* Add these styles to fix the style settings modal positioning */
+
+/* Fix modal positioning to be centered with flexbox */
+#style-settings-modal {
+  position: fixed;
+  z-index: var(--z-index-modal, 2000);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+  /* Add flexbox centering */
+  display: none; /* Will be changed to flex when opened */
+  justify-content: center;
+  align-items: center;
+}
+
+/* When modal is visible, use flex display */
+#style-settings-modal.visible {
+  display: flex;
+}
+
+/* Adjust modal content positioning */
+.style-settings-modal-content {
+  position: relative;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 700px;
+  background-color: white;
+  border-radius: var(--border-radius-lg, 8px);
+  box-shadow: var(--shadow-lg, 0 10px 15px rgba(0, 0, 0, 0.1));
+  /* Remove any positioning that might be causing the offset */
+  top: unset;
+  left: unset;
+  transform: unset;
+}
+
+/* Dark theme support for the modal */
+body.dark-theme .style-settings-modal-content {
+  background-color: var(--dark-surface-color);
+  color: var(--dark-text-color);
+}
