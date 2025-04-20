@@ -95,6 +95,20 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create blog_pages table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS blog_pages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      node_id TEXT NOT NULL,
+      template_id TEXT,
+      title TEXT,
+      slug TEXT UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }

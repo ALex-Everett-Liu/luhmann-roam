@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Playfair+Display:wght@400;700;900&display=swap');
+    
+    :root {
+      --font-heading: 'Playfair Display', Georgia, serif;
+      --font-body: 'Merriweather', Georgia, serif;
+      --color-bg: #fff;
+      --color-text: #222;
+      --color-accent: #b91c1c;
+      --color-light: #f8f8f8;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: var(--font-body);
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.8;
+      font-size: 17px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+    
+    header {
+      text-align: center;
+      padding: 4rem 0 2rem;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 2rem;
+    }
+    
+    .title {
+      font-family: var(--font-heading);
+      font-weight: 900;
+      font-size: 3.2rem;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+    
+    .metadata {
+      font-style: italic;
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+    
+    .divider {
+      display: block;
+      width: 40px;
+      height: 3px;
+      background-color: var(--color-accent);
+      margin: 2rem auto;
+    }
+    
+    main {
+      margin-bottom: 4rem;
+    }
+    
+    p {
+      margin-bottom: 1.8rem;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-heading);
+      margin: 2.5rem 0 1.5rem;
+      line-height: 1.3;
+    }
+    
+    h2 {
+      font-size: 2.2rem;
+    }
+    
+    h3 {
+      font-size: 1.8rem;
+    }
+    
+    h4 {
+      font-size: 1.4rem;
+    }
+    
+    blockquote {
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      line-height: 1.6;
+      margin: 2.5rem 0;
+      padding: 1rem 2rem;
+      border-left: none;
+      position: relative;
+      font-style: italic;
+      text-align: center;
+    }
+    
+    blockquote:before,
+    blockquote:after {
+      content: '';
+      display: block;
+      width: 80px;
+      height: 2px;
+      background-color: var(--color-accent);
+      margin: 1rem auto;
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: 2.5rem 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    code {
+      font-family: 'Courier New', Courier, monospace;
+      background-color: var(--color-light);
+      padding: 0.2rem 0.4rem;
+      font-size: 0.9em;
+      border-radius: 3px;
+    }
+    
+    pre {
+      background-color: var(--color-light);
+      padding: 1.5rem;
+      margin: 2rem 0;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+    
+    pre code {
+      padding: 0;
+      background-color: transparent;
+    }
+    
+    a {
+      color: var(--color-accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+    
+    a:hover {
+      border-bottom-color: var(--color-accent);
+    }
+    
+    ul, ol {
+      margin: 1.5rem 0 1.5rem 2rem;
+    }
+    
+    li {
+      margin-bottom: 0.5rem;
+    }
+    
+    hr {
+      border: none;
+      height: 1px;
+      background-color: #eee;
+      margin: 2.5rem 0;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 3rem 0;
+      font-size: 0.9rem;
+      color: #666;
+      border-top: 1px solid #eee;
+    }
+    
+    @media (max-width: 768px) {
+      .title {
+        font-size: 2.4rem;
+      }
+      
+      h2 {
+        font-size: 1.8rem;
+      }
+      
+      h3 {
+        font-size: 1.5rem;
+      }
+      
+      blockquote {
+        font-size: 1.2rem;
+        padding: 0.5rem 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="title">{{title}}</h1>
+      <div class="metadata">
+        <span>Published on {{date}}</span>
+      </div>
+      <span class="divider"></span>
+    </header>
+    
+    <main>
+      {{content}}
+    </main>
+    
+    <footer>
+      <p>&copy; {{year}} - From Luhmann-Roam Notes</p>
+    </footer>
+  </div>
+</body>
+</html>

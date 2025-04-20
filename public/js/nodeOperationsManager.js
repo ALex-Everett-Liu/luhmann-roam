@@ -29,7 +29,7 @@ const NodeOperationsManager = (function() {
     }
     
     // Add a root node with optimized DOM update
-    async function addRootNode(nodesArray) {
+    async function addRootNode(nodesArray) { // It takes one parameter, nodesArray, which is expected to be an array of existing root nodes. This array is used to determine the position of the new root node.
       try {
         // Get the highest position
         const maxPosition = nodesArray && nodesArray.length > 0 

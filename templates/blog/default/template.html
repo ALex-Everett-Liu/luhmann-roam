@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .metadata {
+      color: #666;
+      font-size: 0.9em;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+    blockquote {
+      border-left: 3px solid #ccc;
+      margin-left: 0;
+      padding-left: 15px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{title}}</h1>
+    <div class="metadata">
+      <span>Posted on: {{date}}</span>
+    </div>
+  </header>
+  <main>
+    {{content}}
+  </main>
+  <footer>
+    <p>&copy; {{year}} - Generated from Luhmann-Roam</p>
+  </footer>
+</body>
+</html>

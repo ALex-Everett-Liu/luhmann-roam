@@ -28,6 +28,7 @@
 @import './features/style-settings.css';
 @import './features/high-contrast.css';
 @import './features/cosmic-visualizer.css';
+@import './features/blog-manager.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */

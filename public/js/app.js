@@ -986,6 +986,12 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebar.appendChild(toggleCosmicButton);
   }
 
+  // Initialize the BlogManager
+  if (window.BlogManager) {
+    console.log('Setting up BlogManager initialization from app.js');
+    BlogManager.initialize();
+  }
+
   // Just call fetchNodes by itself
   fetchNodes();
 
