@@ -29,6 +29,19 @@ const CosmicNodeVisualizer = (function() {
       largeNode: 0xDB4437, // Red for nodes with large size
       orbital: 0x666666    // Grey for orbit lines
     };
+
+    // Add these constants for portal configuration - place near the top with other constants
+    const PORTAL_SETTINGS = {
+        size: 1.2,          // Size multiplier for the portal
+        segments: 32,       // Detail level of portal rings
+        ringCount: 3,       // Number of concentric rings
+        rotationSpeed: 0.5, // Rotation speed for animation
+        colors: {
+        outer: 0x9c27b0,  // Purple outer ring
+        middle: 0x2196f3, // Blue middle ring
+        inner: 0x4caf50   // Green inner ring
+        }
+    };
     
     /**
      * Initialize the visualizer
@@ -103,6 +116,7 @@ const CosmicNodeVisualizer = (function() {
       if (renderer) {
         container.removeChild(renderer.domElement);
         cancelAnimationFrame(animationId);
+        renderer.domElement.addEventListener('click', handleSceneClick); // Add a global click handler for the scene for object and portal detection
       }
       
       // Create scene
@@ -140,6 +154,68 @@ const CosmicNodeVisualizer = (function() {
       // Handle window resizing
       window.addEventListener('resize', onWindowResize);
     }
+
+// Add this function for scene click handling
+function handleSceneClick(event) {
+    if (!renderer) return;
+    
+    // Get normalized coordinates
+    const mouse = new THREE.Vector2();
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Get all objects in the scene to check for intersections
+    const allObjects = [];
+    scene.traverse(object => {
+      if (object.isMesh || object.isLine || object.isPoints) {
+        allObjects.push(object);
+      }
+    });
+    
+    // Check for intersections
+    const intersects = raycaster.intersectObjects(allObjects, true);
+    
+    if (intersects.length > 0) {
+      // Find the first interactive object (portal or node)
+      let portalObject = null;
+      let nodeObject = null;
+      
+      for (const intersect of intersects) {
+        // Check if it's a portal or part of a portal
+        let parent = intersect.object;
+        while (parent) {
+          if (parent.userData && parent.userData.isPortal) {
+            portalObject = parent;
+            break;
+          }
+          if (parent.userData && parent.userData.node) {
+            nodeObject = parent;
+          }
+          parent = parent.parent;
+        }
+        
+        if (portalObject) break;
+      }
+      
+      // Handle portal click first if found
+      if (portalObject) {
+        showTravelOptionsMenu(portalObject, event);
+        return;
+      }
+      
+      // Otherwise handle node click as before
+      if (nodeObject && nodeObject.userData.node) {
+        focusOnObject(nodeObject);
+        updateInfoPanel(nodeObject.userData.node);
+        showNodeActionMenu(nodeObject.userData.node, event);
+      }
+    }
+  }
     
     /**
      * Add background stars to the scene
@@ -209,6 +285,9 @@ const CosmicNodeVisualizer = (function() {
       
       // Update planet positions
       updatePlanetPositions();
+
+      // Update portal animations
+      updatePortals();
       
       // Update any tweens
       TWEEN.update();
@@ -248,6 +327,200 @@ const CosmicNodeVisualizer = (function() {
         }
       });
     }
+
+    function updatePortals() {
+        // Get all portals in the scene
+        nodeObjects.forEach((nodeObject, nodeId) => {
+          const portal = nodeObject.getObjectByName('portal');
+          if (!portal) return;
+          
+          // Update portal rings rotation
+          const rings = portal.userData.rings;
+          if (rings) {
+            rings.forEach((ring, index) => {
+              // Rotate each ring at different speeds and axes
+              ring.rotation.x += PORTAL_SETTINGS.rotationSpeed * 0.01 * (index + 1);
+              ring.rotation.y += PORTAL_SETTINGS.rotationSpeed * 0.005 * (index + 1);
+              ring.rotation.z += PORTAL_SETTINGS.rotationSpeed * 0.003 * (index + 1);
+            });
+          }
+          
+          // Pulse the center sphere
+          const sphere = portal.userData.sphere;
+          if (sphere) {
+            const pulse = Math.sin(Date.now() * 0.003) * 0.2 + 0.8;
+            sphere.scale.set(pulse, pulse, pulse);
+            sphere.material.opacity = 0.5 + (pulse * 0.2);
+          }
+        });
+      }
+
+// Add this function for portal travel
+function showTravelOptionsMenu(portal, event) {
+    // Get node data from the portal
+    const node = portal.userData.node;
+    if (!node || !node.links) return;
+    
+    console.log('Portal clicked, showing travel options for node:', node.id);
+    
+    // Remove any existing menu
+    const existingMenu = document.getElementById('travel-options-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+    
+    // Collect all linked nodes (both incoming and outgoing)
+    const linkedNodes = [];
+    
+    // Add outgoing links
+    if (node.links.outgoing && node.links.outgoing.length > 0) {
+      node.links.outgoing.forEach(link => {
+        linkedNodes.push({
+          id: link.to_node_id,
+          content: currentLanguage === 'en' ? link.content : (link.content_zh || link.content),
+          weight: link.weight,
+          direction: 'outgoing',
+          description: link.description || ''
+        });
+      });
+    }
+    
+    // Add incoming links
+    if (node.links.incoming && node.links.incoming.length > 0) {
+      node.links.incoming.forEach(link => {
+        linkedNodes.push({
+          id: link.from_node_id,
+          content: currentLanguage === 'en' ? link.content : (link.content_zh || link.content),
+          weight: link.weight,
+          direction: 'incoming',
+          description: link.description || ''
+        });
+      });
+    }
+    
+    // Create travel options menu
+    const menu = document.createElement('div');
+    menu.id = 'travel-options-menu';
+    menu.className = 'cosmic-travel-menu';
+    
+    // Add header
+    const header = document.createElement('div');
+    header.className = 'travel-menu-header';
+    header.innerHTML = `<h3>Wormhole Travel Options</h3>`;
+    menu.appendChild(header);
+    
+    // Add options list
+    const optionsList = document.createElement('div');
+    optionsList.className = 'travel-options-list';
+    
+    if (linkedNodes.length === 0) {
+      optionsList.innerHTML = '<p class="no-links">No destinations available</p>';
+    } else {
+      linkedNodes.forEach(linkedNode => {
+        const option = document.createElement('div');
+        option.className = 'travel-option';
+        option.dataset.nodeId = linkedNode.id;
+        
+        // Direction indicator 
+        const directionIcon = linkedNode.direction === 'outgoing' ? '→' : '←';
+        const directionClass = linkedNode.direction === 'outgoing' ? 'outgoing' : 'incoming';
+        
+        option.innerHTML = `
+          <div class="travel-option-content">
+            <span class="direction-icon ${directionClass}">${directionIcon}</span>
+            <span class="travel-destination-name">${linkedNode.content}</span>
+            <span class="travel-link-weight">(Weight: ${linkedNode.weight})</span>
+          </div>
+          <div class="travel-option-description">${linkedNode.description}</div>
+        `;
+        
+        option.addEventListener('click', () => {
+          // Close the menu
+          menu.remove();
+          
+          // Animate wormhole travel effect
+          animateWormholeTravel(() => {
+            // Load the new solar system after animation
+            visualizeNode(linkedNode.id);
+          });
+        });
+        
+        optionsList.appendChild(option);
+      });
+    }
+    menu.appendChild(optionsList);
+    
+    // Add close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'travel-menu-close';
+    closeButton.innerHTML = 'Cancel';
+    closeButton.addEventListener('click', () => {
+      menu.remove();
+    });
+    menu.appendChild(closeButton);
+    
+    // Position the menu
+    const renderRect = renderer.domElement.getBoundingClientRect();
+    menu.style.left = `${event.clientX}px`;
+    menu.style.top = `${event.clientY}px`;
+    
+    // Keep menu within bounds
+    setTimeout(() => {
+      const menuRect = menu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        menu.style.left = `${window.innerWidth - menuRect.width - 20}px`;
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        menu.style.top = `${window.innerHeight - menuRect.height - 20}px`;
+      }
+    }, 0);
+    
+    // Add to document
+    document.body.appendChild(menu);
+  }
+  
+  // Add this function for wormhole travel animation
+  function animateWormholeTravel(callback) {
+    console.log('Animating wormhole travel effect');
+    
+    // Create a full-screen wormhole effect
+    const wormholeOverlay = document.createElement('div');
+    wormholeOverlay.className = 'wormhole-travel-overlay';
+    document.body.appendChild(wormholeOverlay);
+    
+    // Create the wormhole tunnel element
+    const wormholeTunnel = document.createElement('div');
+    wormholeTunnel.className = 'wormhole-tunnel';
+    wormholeOverlay.appendChild(wormholeTunnel);
+    
+    // Add stars to the tunnel
+    for (let i = 0; i < 100; i++) {
+      const star = document.createElement('div');
+      star.className = 'wormhole-star';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.animationDelay = `${Math.random() * 1.5}s`;
+      star.style.animationDuration = `${0.5 + Math.random() * 1}s`;
+      // Random direction
+      star.style.setProperty('--star-direction', Math.random() > 0.5 ? '1' : '-1');
+      wormholeTunnel.appendChild(star);
+    }
+    
+    // Animate the wormhole effect
+    setTimeout(() => {
+      wormholeOverlay.classList.add('active');
+      
+      // Wait for animation to complete, then remove overlay and call callback
+      setTimeout(() => {
+        wormholeOverlay.classList.add('exit');
+        
+        setTimeout(() => {
+          wormholeOverlay.remove();
+          if (callback) callback();
+        }, 1000); // Exit animation duration
+      }, 1500); // Main travel animation duration
+    }, 100);
+  }
     
     /**
      * Visualize a node as the central sun with its children as planets
@@ -392,6 +665,9 @@ const CosmicNodeVisualizer = (function() {
       
       // Add label
       addNodeLabel(node, sun, true);
+
+      // Add portal to sun if it has links
+      createPortalForNode(node, sun);
       
       // Store reference
       nodeObjects.set(node.id, sun);
@@ -446,6 +722,9 @@ const CosmicNodeVisualizer = (function() {
         
         // Add label
         addNodeLabel(node, planet, false);
+
+        // Add portal to planet if it has links
+        createPortalForNode(node, planet);
         
         // Store reference
         nodeObjects.set(node.id, planet);
@@ -454,6 +733,134 @@ const CosmicNodeVisualizer = (function() {
         makeObjectClickable(planet, node);
       });
     }
+
+// Add this function after createSun and createPlanets functions
+/**
+ * Create a wormhole portal for nodes with links
+ */
+function createPortalForNode(node, nodeObject) {
+    // First, fetch links for this node
+    fetch(`/api/nodes/${node.id}/links`)
+      .then(response => response.json())
+      .then(links => {
+        // Only create portals for nodes with links
+        if ((!links.outgoing || links.outgoing.length === 0) && 
+            (!links.incoming || links.incoming.length === 0)) {
+          return;
+        }
+        
+        console.log(`Creating portal for node ${node.id} with links`);
+        
+        // Store links with the node for later use
+        node.links = links;
+        
+        // Calculate total links for sizing
+        const totalLinks = (links.outgoing ? links.outgoing.length : 0) + 
+                          (links.incoming ? links.incoming.length : 0);
+        
+        // Create container for the portal
+        const portalContainer = new THREE.Object3D();
+        portalContainer.name = 'portal';
+        
+        // Create portal rings with different sizes and colors
+        const rings = [];
+        const nodeSize = nodeObject.geometry.parameters.radius;
+        const baseSize = nodeSize * 1.2 * PORTAL_SETTINGS.size;
+        
+        // Create each ring
+        const createRing = (radius, color, index) => {
+          const ringGeometry = new THREE.TorusGeometry(
+            radius, 
+            radius * 0.1, // thickness
+            PORTAL_SETTINGS.segments, 
+            PORTAL_SETTINGS.segments
+          );
+          
+          // Create glow material
+          const ringMaterial = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+          });
+          
+          const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+          
+          // Set initial rotation 
+          ring.rotation.x = Math.PI / 2; // Align with horizontal plane
+          ring.rotation.y = index * (Math.PI / PORTAL_SETTINGS.ringCount); // Stagger rotations
+          
+          portalContainer.add(ring);
+          rings.push(ring);
+          
+          // Add a particle system inside the ring for extra effect
+          const particleCount = 50 + (totalLinks * 5);
+          const particleGeometry = new THREE.BufferGeometry();
+          const particlePositions = [];
+          const particleSizes = [];
+          
+          for (let i = 0; i < particleCount; i++) {
+            // Create particles in a circular pattern
+            const angle = Math.random() * Math.PI * 2;
+            const radialDistance = (Math.random() * 0.5 + 0.5) * radius;
+            
+            particlePositions.push(
+              Math.cos(angle) * radialDistance, // x
+              (Math.random() - 0.5) * (radius * 0.1), // y (slight variance in height)
+              Math.sin(angle) * radialDistance  // z
+            );
+            
+            // Vary particle sizes
+            particleSizes.push(Math.random() * 0.4 + 0.1);
+          }
+          
+          particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
+          particleGeometry.setAttribute('size', new THREE.Float32BufferAttribute(particleSizes, 1));
+          
+          const particleMaterial = new THREE.PointsMaterial({
+            color: color,
+            size: 0.2,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+          });
+          
+          const particles = new THREE.Points(particleGeometry, particleMaterial);
+          portalContainer.add(particles);
+        };
+        
+        // Create portal rings
+        createRing(baseSize, PORTAL_SETTINGS.colors.outer, 0);
+        createRing(baseSize * 0.75, PORTAL_SETTINGS.colors.middle, 1);
+        createRing(baseSize * 0.5, PORTAL_SETTINGS.colors.inner, 2);
+        
+        // Create a glow sphere in the center
+        const sphereGeometry = new THREE.SphereGeometry(baseSize * 0.25, 20, 20);
+        const sphereMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.7,
+          blending: THREE.AdditiveBlending
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        portalContainer.add(sphere);
+        
+        // Position the portal next to the node
+        portalContainer.position.set(nodeSize * 1.5, nodeSize * 1.5, 0);
+        
+        // Store the rings for animation
+        portalContainer.userData.rings = rings;
+        portalContainer.userData.sphere = sphere;
+        portalContainer.userData.node = node;
+        portalContainer.userData.isPortal = true;
+        
+        // Add portal to the node
+        nodeObject.add(portalContainer);
+      })
+      .catch(error => {
+        console.error(`Error fetching links for node ${node.id}:`, error);
+      });
+  }
     
     /**
      * Create an orbital line for a planet
