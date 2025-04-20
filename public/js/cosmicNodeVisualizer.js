@@ -116,7 +116,6 @@ const CosmicNodeVisualizer = (function() {
       if (renderer) {
         container.removeChild(renderer.domElement);
         cancelAnimationFrame(animationId);
-        renderer.domElement.addEventListener('click', handleSceneClick); // Add a global click handler for the scene for object and portal detection
       }
       
       // Create scene
@@ -133,6 +132,9 @@ const CosmicNodeVisualizer = (function() {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(container.clientWidth, container.clientHeight);
       container.appendChild(renderer.domElement);
+      
+      // Add click handler to the NEW renderer.domElement
+      renderer.domElement.addEventListener('click', handleSceneClick);
       
       // Add orbit controls for interaction
       controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -853,6 +855,17 @@ function createPortalForNode(node, nodeObject) {
         portalContainer.userData.sphere = sphere;
         portalContainer.userData.node = node;
         portalContainer.userData.isPortal = true;
+        
+        // Add a direct click handler for debugging
+        portalContainer.traverse(obj => {
+          if (obj.isMesh) {
+            obj.callback = function(event) {
+              console.log("Direct portal mesh click detected!");
+              event.stopPropagation();
+              showTravelOptionsMenu(portalContainer, event);
+            };
+          }
+        });
         
         // Add portal to the node
         nodeObject.add(portalContainer);
