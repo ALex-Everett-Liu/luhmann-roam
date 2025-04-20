@@ -254,14 +254,28 @@ const CosmicNodeVisualizer = (function() {
      */
     async function visualizeNode(nodeId) {
       try {
+        console.log(`Attempting to visualize node ${nodeId}`);
+        
         // Load the requested node
+        console.log(`Fetching node data for ${nodeId}`);
         const response = await fetch(`/api/nodes/${nodeId}?lang=${currentLanguage}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch node: ${response.status} ${response.statusText}`);
+        }
+        
         sunNode = await response.json();
+        console.log(`Node data received:`, sunNode);
         
         // Fetch children nodes
+        console.log(`Fetching children for node ${nodeId}`);
         const childrenResponse = await fetch(`/api/nodes/${nodeId}/children?lang=${currentLanguage}`);
-        planetNodes = await childrenResponse.json();
         
+        if (!childrenResponse.ok) {
+          throw new Error(`Failed to fetch children: ${childrenResponse.status} ${childrenResponse.statusText}`);
+        }
+        
+        planetNodes = await childrenResponse.json();
         console.log(`Visualizing node ${nodeId} with ${planetNodes.length} children`);
         
         // Setup Three.js scene
@@ -287,6 +301,32 @@ const CosmicNodeVisualizer = (function() {
         isVisible = true;
       } catch (error) {
         console.error('Error visualizing node:', error);
+        
+        // Show error in the container
+        const infoPanel = document.getElementById('cosmic-info-panel');
+        if (infoPanel) {
+          infoPanel.innerHTML = `
+            <h3>Error Visualizing Node</h3>
+            <p>${error.message}</p>
+            <button id="focus-node-btn" class="cosmic-focus-btn">Try Another Node</button>
+          `;
+          
+          // Add event listener for the button
+          const focusButton = document.getElementById('focus-node-btn');
+          if (focusButton) {
+            focusButton.addEventListener('click', () => {
+              // Try to visualize the first available node
+              fetch(`/api/nodes?lang=${currentLanguage}`)
+                .then(response => response.json())
+                .then(nodes => {
+                  if (nodes && nodes.length > 0) {
+                    visualizeNode(nodes[0].id);
+                  }
+                })
+                .catch(err => console.error('Error fetching nodes:', err));
+            });
+          }
+        }
       }
     }
     
@@ -683,17 +723,26 @@ const CosmicNodeVisualizer = (function() {
     function show(nodeId) {
       if (!container) return;
       
+      console.log('CosmicNodeVisualizer.show() called with nodeId:', nodeId);
+      
       // If no nodeId provided, use the last focused node or the first root node
       if (!nodeId) {
+        console.log('No nodeId provided, checking for lastFocusedNodeId');
+        
         if (window.lastFocusedNodeId) {
           nodeId = window.lastFocusedNodeId;
+          console.log('Using lastFocusedNodeId:', nodeId);
         } else {
+          console.log('No lastFocusedNodeId available, fetching first root node');
           // Get the first available node
           fetch(`/api/nodes?lang=${currentLanguage}`)
             .then(response => response.json())
             .then(nodes => {
               if (nodes && nodes.length > 0) {
+                console.log('Found first node:', nodes[0].id);
                 show(nodes[0].id);
+              } else {
+                console.error('No nodes found');
               }
             })
             .catch(error => console.error('Error fetching nodes:', error));
@@ -703,13 +752,28 @@ const CosmicNodeVisualizer = (function() {
       
       container.style.display = 'block';
       
+      // Add loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'cosmic-loading';
+      loadingIndicator.textContent = 'Loading cosmic view';
+      container.appendChild(loadingIndicator);
+      
       // Load Three.js and TWEEN.js dynamically
       loadDependencies()
         .then(() => {
+          console.log('Dependencies loaded, visualizing node:', nodeId);
+          container.removeChild(loadingIndicator);
           visualizeNode(nodeId);
         })
         .catch(error => {
           console.error('Error loading dependencies:', error);
+          container.removeChild(loadingIndicator);
+          
+          // Show error message
+          const errorMessage = document.createElement('div');
+          errorMessage.className = 'cosmic-error';
+          errorMessage.textContent = 'Failed to load visualization libraries. Please check your internet connection.';
+          container.appendChild(errorMessage);
         });
     }
     
@@ -753,50 +817,88 @@ const CosmicNodeVisualizer = (function() {
      */
     function loadDependencies() {
       return new Promise((resolve, reject) => {
+        console.log('Loading dependencies...');
+        
         // Check if Three.js is already loaded
         if (window.THREE) {
+          console.log('THREE is already loaded');
           // Check if TWEEN is already loaded
           if (window.TWEEN) {
+            console.log('TWEEN is already loaded');
             resolve();
             return;
           }
         }
         
+        // Set a timeout for loading
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Dependency loading timed out after 15 seconds'));
+        }, 15000);
+        
         // Load Three.js
         const threeScript = document.createElement('script');
         threeScript.src = 'https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js';
+        threeScript.onerror = (e) => {
+          clearTimeout(timeoutId);
+          console.error('Failed to load Three.js', e);
+          reject(new Error('Failed to load Three.js'));
+        };
         document.head.appendChild(threeScript);
         
-        // Load OrbitControls
-        const orbitControlsScript = document.createElement('script');
-        orbitControlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.min.js';
-        
-        // Load TWEEN.js
-        const tweenScript = document.createElement('script');
-        tweenScript.src = 'https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.js';
-        
-        // Wait for Three.js to load before loading OrbitControls
+        // Load OrbitControls after Three.js loads
         threeScript.onload = function() {
-          console.log('Three.js loaded');
+          console.log('Three.js loaded successfully');
+          
+          const orbitControlsScript = document.createElement('script');
+          orbitControlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.min.js';
+          orbitControlsScript.onerror = (e) => {
+            clearTimeout(timeoutId);
+            console.error('Failed to load OrbitControls', e);
+            reject(new Error('Failed to load OrbitControls'));
+          };
           document.head.appendChild(orbitControlsScript);
+          
+          // Load TWEEN.js after OrbitControls loads
+          orbitControlsScript.onload = function() {
+            console.log('OrbitControls loaded successfully');
+            
+            const tweenScript = document.createElement('script');
+            tweenScript.src = 'https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.js';
+            tweenScript.onerror = (e) => {
+              clearTimeout(timeoutId);
+              console.error('Failed to load TWEEN.js', e);
+              reject(new Error('Failed to load TWEEN.js'));
+            };
+            document.head.appendChild(tweenScript);
+            
+            // Resolve promise when TWEEN.js loads
+            tweenScript.onload = function() {
+              console.log('TWEEN.js loaded successfully');
+              clearTimeout(timeoutId);
+              
+              // Verify that everything is actually loaded and available
+              if (!window.THREE) {
+                console.error('THREE is not available after loading');
+                reject(new Error('THREE is not available after loading'));
+                return;
+              }
+              
+              if (!window.THREE.OrbitControls) {
+                console.error('THREE.OrbitControls is not available after loading');
+                reject(new Error('THREE.OrbitControls is not available after loading'));
+                return;
+              }
+              
+              if (!window.TWEEN) {
+                console.error('TWEEN is not available after loading');
+                reject(new Error('TWEEN is not available after loading'));
+                return;
+              }
+              
+              resolve();
+            };
+          };
         };
-        
-        // Wait for OrbitControls to load before loading TWEEN
-        orbitControlsScript.onload = function() {
-          console.log('OrbitControls loaded');
-          document.head.appendChild(tweenScript);
-        };
-        
-        // Wait for TWEEN to load before resolving
-        tweenScript.onload = function() {
-          console.log('TWEEN.js loaded');
-          resolve();
-        };
-        
-        // Handle errors
-        threeScript.onerror = reject;
-        orbitControlsScript.onerror = reject;
-        tweenScript.onerror = reject;
       });
     }
     

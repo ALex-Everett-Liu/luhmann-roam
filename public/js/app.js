@@ -957,8 +957,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (CosmicNodeVisualizer.isVisible()) {
         CosmicNodeVisualizer.hide();
       } else {
-        // Show visualization for current focused node or first available node
-        CosmicNodeVisualizer.show(lastFocusedNodeId);
+        // Add debug logging
+        console.log('Opening Cosmic View with node ID:', lastFocusedNodeId);
+        
+        // If lastFocusedNodeId is not available, try to get it from BreadcrumbManager
+        let nodeToShow = lastFocusedNodeId;
+        
+        if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
+          nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
+          console.log('Got nodeId from BreadcrumbManager:', nodeToShow);
+        }
+        
+        // If still no node ID, get the first visible node
+        if (!nodeToShow && nodes.length > 0) {
+          nodeToShow = nodes[0].id;
+          console.log('Falling back to first visible node:', nodeToShow);
+        }
+        
+        // Show visualization with the determined node ID
+        CosmicNodeVisualizer.show(nodeToShow);
       }
     }
   });
