@@ -273,19 +273,50 @@ const BlogManager = (function() {
       modalElement.style.display = 'flex';
       
       try {
-        // Load nodes with markdown content
-        const response = await fetch('/api/nodes?has_markdown=true');
+        // Add a search field to the node selector
+        const nodeSelector = document.getElementById('node-selector');
+        
+        // Create a search container to hold both search and dropdown
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'search-container';
+        
+        // Create a search input
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.id = 'node-search';
+        searchInput.className = 'form-control';
+        searchInput.placeholder = window.I18n ? I18n.t('searchNodes') : 'Search nodes...';
+        
+        // Insert search input before the node selector
+        nodeSelector.parentNode.insertBefore(searchContainer, nodeSelector);
+        searchContainer.appendChild(searchInput);
+        searchContainer.appendChild(nodeSelector);
+        
+        // Use the existing search API endpoint to find nodes with markdown
+        const response = await fetch('/api/nodes/search?q=&has_markdown=true');
         const nodes = await response.json();
         
-        // Populate the node selector
-        const nodeSelector = document.getElementById('node-selector');
-        nodeSelector.innerHTML = '<option value="">-- Select a node --</option>';
+        // Store all nodes for filtering
+        const allMarkdownNodes = nodes;
         
-        nodes.forEach(node => {
-          const option = document.createElement('option');
-          option.value = node.id;
-          option.textContent = node.content;
-          nodeSelector.appendChild(option);
+        // Populate the node selector initially
+        populateNodeSelector(allMarkdownNodes);
+        
+        // Add search functionality
+        searchInput.addEventListener('input', async () => {
+          const searchTerm = searchInput.value.toLowerCase();
+          
+          if (searchTerm.trim() === '') {
+            // Empty search, show all markdown nodes
+            const emptyResponse = await fetch('/api/nodes/search?q=&has_markdown=true');
+            const allNodes = await emptyResponse.json();
+            populateNodeSelector(allNodes);
+          } else {
+            // Search with the entered term
+            const searchResponse = await fetch(`/api/nodes/search?q=${encodeURIComponent(searchTerm)}&has_markdown=true`);
+            const filteredNodes = await searchResponse.json();
+            populateNodeSelector(filteredNodes);
+          }
         });
         
         // Populate the template selector
@@ -307,6 +338,54 @@ const BlogManager = (function() {
       } catch (error) {
         console.error('Error loading data for blog manager:', error);
       }
+    }
+    
+    /**
+     * Populate the node selector with the given nodes
+     */
+    function populateNodeSelector(nodes) {
+      const nodeSelector = document.getElementById('node-selector');
+      nodeSelector.innerHTML = '<option value="">-- Select a node --</option>';
+      
+      // Get the current language
+      const currentLanguage = I18n ? I18n.getCurrentLanguage() : 'en';
+      
+      // Sort nodes alphabetically based on the current language content
+      nodes.sort((a, b) => {
+        const aContent = currentLanguage === 'zh' && a.content_zh ? a.content_zh : a.content;
+        const bContent = currentLanguage === 'zh' && b.content_zh ? b.content_zh : b.content;
+        return aContent.localeCompare(bContent);
+      });
+      
+      nodes.forEach(node => {
+        const option = document.createElement('option');
+        option.value = node.id;
+        
+        // Display content based on current language
+        const displayContent = currentLanguage === 'zh' && node.content_zh ? 
+          node.content_zh : node.content;
+        
+        // Truncate long content for display
+        let contentText = displayContent;
+        if (contentText.length > 50) {
+          contentText = contentText.substring(0, 47) + '...';
+        }
+        
+        option.textContent = contentText;
+        nodeSelector.appendChild(option);
+      });
+      
+      // Update the counter
+      const searchContainer = document.querySelector('.search-container');
+      let counter = searchContainer.querySelector('.node-counter');
+      
+      if (!counter) {
+        counter = document.createElement('div');
+        counter.className = 'node-counter';
+        searchContainer.appendChild(counter);
+      }
+      
+      counter.textContent = `${nodes.length} nodes found`;
     }
     
     /**
@@ -438,9 +517,16 @@ const BlogManager = (function() {
           })
         });
         
+        // Log the actual error response
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to generate blog page');
+          const errorText = await response.text();
+          console.error('Server response:', errorText);
+          try {
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.error || 'Failed to generate blog page');
+          } catch (jsonError) {
+            throw new Error(`Server error: ${errorText || response.statusText}`);
+          }
         }
         
         const result = await response.json();

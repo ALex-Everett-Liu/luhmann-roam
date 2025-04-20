@@ -345,16 +345,33 @@ exports.searchNodes = async (req, res) => {
   try {
     const query = req.query.q;
     const lang = req.query.lang || 'en'; // Optional language parameter
-    
-    if (!query || query.length < 2) {
-      return res.json([]);
-    }
+    const hasMarkdown = req.query.has_markdown === 'true'; // New parameter
     
     const db = req.db;
     
-    // First get the matching nodes
-    const searchQuery = `%${query}%`;
-    const contentField = lang === 'zh' ? 'content_zh' : 'content';
+    // Base WHERE clause
+    let whereClause = '';
+    const params = [];
+    
+    // Build WHERE clause based on parameters
+    if (query && query.length >= 2) {
+      // Searching with a specific term
+      const searchQuery = `%${query}%`;
+      const contentField = lang === 'zh' ? 'content_zh' : 'content';
+      
+      whereClause = `WHERE (n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?)`;
+      params.push(searchQuery, searchQuery, searchQuery);
+    }
+    
+    // Add markdown filter if requested
+    if (hasMarkdown) {
+      whereClause = whereClause ? `${whereClause} AND n.has_markdown = 1` : 'WHERE n.has_markdown = 1';
+    }
+    
+    // If no search query and no has_markdown filter, return empty array
+    if (!whereClause) {
+      return res.json([]);
+    }
     
     // Modified query to join with parent nodes to get their content
     const sqlQuery = `
@@ -373,14 +390,13 @@ exports.searchNodes = async (req, res) => {
         nodes n
       LEFT JOIN 
         nodes p ON n.parent_id = p.id
-      WHERE 
-        n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?
+      ${whereClause}
       ORDER BY 
-        n.position
+        n.content
       LIMIT 100
     `;
     
-    const nodes = await db.all(sqlQuery, [searchQuery, searchQuery, searchQuery]);
+    const nodes = await db.all(sqlQuery, params);
     
     res.json(nodes);
   } catch (error) {

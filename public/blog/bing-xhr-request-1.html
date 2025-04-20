@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>如何获取超高清版 bing 每日壁纸 -- xhr request</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .metadata {
+      color: #666;
+      font-size: 0.9em;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+    blockquote {
+      border-left: 3px solid #ccc;
+      margin-left: 0;
+      padding-left: 15px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>如何获取超高清版 bing 每日壁纸 -- xhr request</h1>
+    <div class="metadata">
+      <span>Posted on: 2025/4/21</span>
+    </div>
+  </header>
+  <main>
+    <p>通过对其网络状态的分析，必应首页的加载逻辑是先加载网页结构，获取低清壁纸。然后因为某种判断，触发一个 xhr 请求，获取高清图片链接。最后根据链接获取高清图片地址，渲染在网页结构中。</p><p>关键在于这个 xhr 请求，其地址为 https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&nc=1586230018677&pid=hp&uhd=1&uhdwidth=2880&uhdheight=1620 ，其返回值如下：</p><p><img src="/attachment/1755814-20200407120053428-1659534733.jpg" alt="xhr-request-bing-01" class="blog-image" width="1050"></p><p>网络上比较流行的接口是<a href="https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&nc=1501558320736&pid=hp">这个</a>，但是它只能请求到 <code>1920*1080</code> 清晰度的图片，还不如我们右键得到的清晰度高，而且据我测试，不能通过更改图片链接来获取更高清的图。</p><p>也许是近年来必应更新了接口？我不清楚。不过既然有了更高清的可能性，为什么要容忍低清呢？</p>
+  </main>
+  <footer>
+    <p>&copy; 2025 - Generated from Luhmann-Roam</p>
+  </footer>
+</body>
+</html>

@@ -1398,6 +1398,8 @@ app.get('/api/blog/templates', (req, res) => {
 app.post('/api/blog/generate', async (req, res) => {
   const { nodeId, templateId, title, slug } = req.body;
   
+  console.log('Blog generation request:', { nodeId, templateId, title, slug });
+  
   if (!nodeId || !templateId || !title || !slug) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -1418,15 +1420,25 @@ app.post('/api/blog/generate', async (req, res) => {
       return res.status(400).json({ error: 'A blog page with this slug already exists' });
     }
     
-    // Get the markdown content for the node
-    const nodeMarkdown = await db.get('SELECT content FROM node_markdown WHERE node_id = ?', [nodeId]);
+    // Get the markdown content directly from file instead of database
+    console.log('Fetching markdown for node:', nodeId);
+    const markdownPath = path.join(__dirname, 'markdown', `${nodeId}.md`);
+    console.log('Looking for markdown file at:', markdownPath);
     
-    if (!nodeMarkdown) {
+    let markdownContent = '';
+    if (fs.existsSync(markdownPath)) {
+      console.log('Markdown file found, reading content');
+      markdownContent = fs.readFileSync(markdownPath, 'utf8');
+    } else {
+      console.log('No markdown file found for node');
       return res.status(404).json({ error: 'No markdown content found for this node' });
     }
     
     // Get the template
     const templateFile = path.join(TEMPLATES_DIR, templateId, 'template.html');
+    console.log('Template path:', templateFile);
+    console.log('Template exists:', fs.existsSync(templateFile));
+    
     if (!fs.existsSync(templateFile)) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -1434,7 +1446,15 @@ app.post('/api/blog/generate', async (req, res) => {
     let templateHtml = fs.readFileSync(templateFile, 'utf8');
     
     // Convert markdown to HTML
-    const contentHtml = markdownToHtml(nodeMarkdown.content);
+    console.log('Converting markdown to HTML, markdown length:', markdownContent.length);
+    let contentHtml;
+    try {
+      contentHtml = markdownToHtml(markdownContent);
+      console.log('Markdown converted to HTML successfully');
+    } catch (mdError) {
+      console.error('Error converting markdown to HTML:', mdError);
+      return res.status(500).json({ error: 'Failed to convert markdown to HTML' });
+    }
     
     // Replace placeholders in the template
     const date = new Date().toLocaleDateString();
@@ -1446,25 +1466,31 @@ app.post('/api/blog/generate', async (req, res) => {
       .replace(/{{date}}/g, date)
       .replace(/{{year}}/g, year);
     
+    console.log('Template processed with content');
+    
     // Create blog directory if it doesn't exist
     if (!fs.existsSync(BLOG_PAGES_DIR)) {
+      console.log('Creating blog directory:', BLOG_PAGES_DIR);
       fs.mkdirSync(BLOG_PAGES_DIR, { recursive: true });
     }
     
     // Write the HTML file
     const blogFilePath = path.join(BLOG_PAGES_DIR, `${slug}.html`);
+    console.log('Writing blog file to:', blogFilePath);
     fs.writeFileSync(blogFilePath, templateHtml);
     
     // Save the blog page info to the database
-    const result = await db.run(
+    console.log('Saving blog page info to database');
+    await db.run(
       'INSERT INTO blog_pages (node_id, template_id, title, slug) VALUES (?, ?, ?, ?)',
       [nodeId, templateId, title, slug]
     );
     
+    console.log('Blog generated successfully!');
     res.json({ success: true, slug });
   } catch (error) {
-    console.error('Error generating blog page:', error);
-    res.status(500).json({ error: 'Failed to generate blog page' });
+    console.error('Error in blog generation:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
