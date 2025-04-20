@@ -945,6 +945,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Add a toggle button for the cosmic visualizer
+  const toggleCosmicButton = document.createElement('button');
+  toggleCosmicButton.id = 'toggle-cosmic-view';
+  toggleCosmicButton.className = 'feature-toggle';
+  toggleCosmicButton.textContent = 'Cosmic View';
+  toggleCosmicButton.title = 'View nodes as a cosmic solar system';
+
+  toggleCosmicButton.addEventListener('click', function() {
+    if (window.CosmicNodeVisualizer) {
+      if (CosmicNodeVisualizer.isVisible()) {
+        CosmicNodeVisualizer.hide();
+      } else {
+        // Show visualization for current focused node or first available node
+        CosmicNodeVisualizer.show(lastFocusedNodeId);
+      }
+    }
+  });
+
+  // Add to sidebar
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    sidebar.appendChild(toggleCosmicButton);
+  }
+
   // Just call fetchNodes by itself
   fetchNodes();
 
@@ -994,6 +1018,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the Font Manager
   if (window.FontManager) {
     FontManager.initialize();
+  }
+
+  // Initialize the CosmicNodeVisualizer
+  if (window.CosmicNodeVisualizer) {
+    CosmicNodeVisualizer.initialize();
   }
 
 }); 

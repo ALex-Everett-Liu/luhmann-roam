@@ -6,9 +6,9 @@ const StyleSettingsManager = (function() {
     // Default style settings
     const defaultSettings = {
       theme: 'light', // 'light' or 'dark'
-      primaryColor: '#4a86e8',
+      primaryColor: '#3490C2',
       secondaryColor: '#6aa84f',
-      accentColor: '#e69138',
+      accentColor: '#e69138', // orange
       fontSize: 'normal', // 'small', 'normal', 'large'
       reducedMotion: false,
       highContrast: false,
