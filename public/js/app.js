@@ -986,6 +986,68 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebar.appendChild(toggleCosmicButton);
   }
 
+  // Add a toggle button for the 2D cosmic visualizer
+  const toggle2DCosmicButton = document.createElement('button');
+  toggle2DCosmicButton.id = 'toggle-cosmic-2d-view';
+  toggle2DCosmicButton.className = 'feature-toggle';
+  toggle2DCosmicButton.textContent = '2D Cosmic View';
+  toggle2DCosmicButton.title = 'View nodes as a 2D cosmic solar system (better performance)';
+
+  toggle2DCosmicButton.addEventListener('click', function() {
+    console.log('2D Cosmic View button clicked');
+    console.log('CosmicNodeVisualizer2D exists:', !!window.CosmicNodeVisualizer2D);
+    
+    if (window.CosmicNodeVisualizer2D) {
+        const isCurrentlyVisible = CosmicNodeVisualizer2D.isVisible();
+        console.log('Is currently visible:', isCurrentlyVisible);
+        
+        if (isCurrentlyVisible) {
+            console.log('Hiding 2D cosmic view');
+            CosmicNodeVisualizer2D.hide();
+        } else {
+            // Add debug logging
+            console.log('Opening 2D Cosmic View with node ID:', lastFocusedNodeId);
+            
+            // If lastFocusedNodeId is not available, try to get it from BreadcrumbManager
+            let nodeToShow = lastFocusedNodeId;
+            console.log('Initial nodeToShow:', nodeToShow);
+            
+            if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
+                nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
+                console.log('Got nodeId from BreadcrumbManager:', nodeToShow);
+            }
+            
+            // If still no node ID, get the first visible node
+            if (!nodeToShow && nodes.length > 0) {
+                nodeToShow = nodes[0].id;
+                console.log('Falling back to first visible node:', nodeToShow);
+            }
+            
+            console.log('Final nodeToShow:', nodeToShow);
+            
+            // Show visualization with the determined node ID
+            if (nodeToShow) {
+                try {
+                    console.log('Calling CosmicNodeVisualizer2D.show()');
+                    CosmicNodeVisualizer2D.show(nodeToShow);
+                } catch (error) {
+                    console.error('Error calling show():', error);
+                }
+            } else {
+                console.warn('No node selected');
+                alert('Please select a node first');
+            }
+        }
+    } else {
+        console.error('CosmicNodeVisualizer2D is not available');
+    }
+  });
+
+  // Add to sidebar
+  if (sidebar) {
+    sidebar.appendChild(toggle2DCosmicButton);
+  }
+
   // Initialize the BlogManager
   if (window.BlogManager) {
     console.log('Setting up BlogManager initialization from app.js');
@@ -1048,4 +1110,8 @@ document.addEventListener('DOMContentLoaded', () => {
     CosmicNodeVisualizer.initialize();
   }
 
-}); 
+  // Initialize the CosmicNodeVisualizer2D
+  if (window.CosmicNodeVisualizer2D) {
+    CosmicNodeVisualizer2D.initialize();
+  }
+});
