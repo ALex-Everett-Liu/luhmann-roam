@@ -438,6 +438,38 @@ const CosmicNodeVisualizer2D = (function() {
             // Fetch links
             const linksResponse = await fetch(`/api/nodes/${nodeId}/links`);
             const links = await linksResponse.json();
+            console.log('Raw links data:', links);
+
+            // Process links into a standardized format
+            let processedLinks = [];
+        
+            if (Array.isArray(links)) {
+                processedLinks = links;
+            } else if (links && typeof links === 'object') {
+                if (Array.isArray(links.outgoing)) {
+                    links.outgoing.forEach(link => {
+                        processedLinks.push({
+                            ...link,
+                            direction: 'outgoing',
+                            target_id: link.target_id || link.to_node_id,
+                            target_content: link.target_content || link.content
+                        });
+                    });
+                }
+                
+                if (Array.isArray(links.incoming)) {
+                    links.incoming.forEach(link => {
+                        processedLinks.push({
+                            ...link,
+                            direction: 'incoming',
+                            target_id: link.target_id || link.from_node_id,
+                            target_content: link.target_content || link.content
+                        });
+                    });
+                }
+            }
+            
+            console.log('Processed links:', processedLinks);
             
             // Clear previous data
             planets = [];
@@ -450,9 +482,11 @@ const CosmicNodeVisualizer2D = (function() {
             // Create planets (children)
             createPlanets(children);
             
-            // Create portal for links
-            if (links && links.length > 0) {
-                createPortal(node, links);
+            // Create portal for links only if we have valid processed links
+            if (processedLinks && processedLinks.length > 0) {
+                createPortal(node, processedLinks);
+            } else {
+                console.log('No valid links to create portal for');
             }
             
             // Store current node
@@ -591,36 +625,97 @@ const CosmicNodeVisualizer2D = (function() {
         const optionsList = document.createElement('div');
         optionsList.className = 'travel-options-list';
         
-        portal.links.forEach(link => {
-            const option = document.createElement('div');
-            option.className = 'travel-option';
-            
-            const content = document.createElement('div');
-            content.className = 'travel-option-content';
-            
-            // Direction icon
-            const icon = document.createElement('span');
-            icon.className = `direction-icon ${link.direction}`;
-            icon.textContent = link.direction === 'outgoing' ? '→' : '←';
-            content.appendChild(icon);
-            
-            // Node name
-            const name = document.createElement('span');
-            name.className = 'travel-destination-name';
-            name.textContent = link.target_content;
-            content.appendChild(name);
-            
-            option.appendChild(content);
-            
-            // Add click event to travel to the node
-            option.addEventListener('click', () => {
-                animateWormholeTravel(() => {
-                    visualizeNode(link.target_id);
+        // Debug the portal links structure
+        console.log('Portal links structure:', JSON.stringify(portal.links, null, 2));
+        
+        // Handle different possible link structures
+        let processedLinks = [];
+        
+        if (Array.isArray(portal.links)) {
+            // If it's a simple array of links
+            processedLinks = portal.links;
+        } else if (portal.links && typeof portal.links === 'object') {
+            // If it's an object with outgoing/incoming properties
+            if (Array.isArray(portal.links.outgoing)) {
+                portal.links.outgoing.forEach(link => {
+                    processedLinks.push({
+                        ...link,
+                        direction: 'outgoing',
+                        target_id: link.target_id || link.to_node_id,
+                        target_content: link.target_content || link.content
+                    });
                 });
-            });
+            }
             
-            optionsList.appendChild(option);
-        });
+            if (Array.isArray(portal.links.incoming)) {
+                portal.links.incoming.forEach(link => {
+                    processedLinks.push({
+                        ...link,
+                        direction: 'incoming',
+                        target_id: link.target_id || link.from_node_id,
+                        target_content: link.target_content || link.content
+                    });
+                });
+            }
+        }
+        
+        console.log('Processed links:', processedLinks);
+        
+        if (processedLinks.length === 0) {
+            const noLinks = document.createElement('div');
+            noLinks.className = 'travel-option';
+            noLinks.textContent = 'No linked nodes available';
+            optionsList.appendChild(noLinks);
+        } else {
+            processedLinks.forEach(link => {
+                const option = document.createElement('div');
+                option.className = 'travel-option';
+                
+                const content = document.createElement('div');
+                content.className = 'travel-option-content';
+                
+                // Direction icon
+                const icon = document.createElement('span');
+                icon.className = `direction-icon ${link.direction || 'unknown'}`;
+                icon.textContent = (link.direction === 'outgoing') ? '→' : (link.direction === 'incoming' ? '←' : '↔');
+                content.appendChild(icon);
+                
+                // Get the target node ID and content
+                const targetId = link.target_id || link.to_node_id || link.from_node_id;
+                const targetContent = link.target_content || link.content || 'Unknown node';
+                
+                // Debug each link
+                console.log('Processing link:', {
+                    original: link,
+                    targetId,
+                    targetContent
+                });
+                
+                // Node name
+                const name = document.createElement('span');
+                name.className = 'travel-destination-name';
+                name.textContent = targetContent;
+                content.appendChild(name);
+                
+                option.appendChild(content);
+                
+                // Add click event to travel to the node only if we have a valid target ID
+                if (targetId) {
+                    option.addEventListener('click', () => {
+                        console.log(`Traveling to node ${targetId}`);
+                        animateWormholeTravel(() => {
+                            visualizeNode(targetId);
+                        });
+                    });
+                } else {
+                    // If we don't have a target ID, disable the option
+                    option.classList.add('disabled');
+                    option.title = 'Cannot travel to this node - missing ID';
+                }
+                
+                optionsList.appendChild(option);
+            });
+        }
         
         menu.appendChild(optionsList);
         
@@ -767,7 +862,16 @@ const CosmicNodeVisualizer2D = (function() {
         const infoPanel = container.querySelector('.cosmic-info-panel');
         if (!infoPanel) return;
         
-        let content = `<h3>${node.content}</h3>`;
+        // Make sure we have valid node data
+        if (!node) {
+            infoPanel.innerHTML = '<h3>Error: No node data available</h3>';
+            return;
+        }
+        
+        // Use a safe content value, fallback to ID if content is missing
+        const safeContent = node.content || `Node ${node.id || 'Unknown'}`;
+        
+        let content = `<h3>${safeContent}</h3>`;
         
         if (node.created_at) {
             const created = new Date(node.created_at).toLocaleString();
@@ -782,6 +886,9 @@ const CosmicNodeVisualizer2D = (function() {
         if (node.has_markdown) {
             content += `<p><span class="markdown-badge">MD</span> This node has markdown content</p>`;
         }
+
+        // Add node ID for debugging
+        content += `<p class="node-id-display">ID: ${node.id || 'Unknown'}</p>`;
         
         // Add focus button
         content += `<button class="cosmic-focus-btn">Focus on this node</button>`;
