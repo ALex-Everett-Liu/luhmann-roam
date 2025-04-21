@@ -48,9 +48,24 @@ const CosmicNodeVisualizer2D = (function() {
     // Animation settings
     const ANIMATION_SPEED = 0.005;
     
+    // Add this near the top of the file, with other style definitions
+    const menuStyles = `
+    .cosmic-links-button {
+        background-color: #6495ED; /* A bluish color to match the portal theme */
+        color: white;
+        margin-top: 5px;
+    }
+    `;
+    
     // Initialize the visualizer
     function initialize() {
         console.log('Initializing 2D Cosmic Node Visualizer');
+        
+        // Add custom styles for the links button
+        const styleElement = document.createElement('style');
+        styleElement.textContent = menuStyles;
+        document.head.appendChild(styleElement);
+        
         createContainer();
         
         // Add event listeners for window resize
@@ -140,8 +155,16 @@ const CosmicNodeVisualizer2D = (function() {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
+        console.log('Canvas click at position:', x, y);
+        
+        // Debug portals
+        if (portals.length > 0) {
+            console.log('Portal positions:', portals.map(p => ({x: p.x, y: p.y, radius: p.radius})));
+        }
+        
         // Check if user clicked on sun
         if (sun && isPointInCircle(x, y, sun.x, sun.y, sun.radius)) {
+            console.log('Sun clicked');
             showNodeActionMenu(sun.node, event);
             return;
         }
@@ -149,6 +172,7 @@ const CosmicNodeVisualizer2D = (function() {
         // Check if user clicked on a planet
         for (const planet of planets) {
             if (isPointInCircle(x, y, planet.x, planet.y, planet.radius)) {
+                console.log('Planet clicked:', planet.node.content);
                 showNodeActionMenu(planet.node, event);
                 return;
             }
@@ -157,10 +181,13 @@ const CosmicNodeVisualizer2D = (function() {
         // Check if user clicked on a portal
         for (const portal of portals) {
             if (isPointInCircle(x, y, portal.x, portal.y, portal.radius)) {
+                console.log('Portal clicked with', portal.links.length, 'links');
                 showTravelOptionsMenu(portal, event);
                 return;
             }
         }
+        
+        console.log('Click not on any interactive element');
     }
     
     // Helper function to check if a point is inside a circle
@@ -310,35 +337,66 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Update and draw portals
     function updateAndDrawPortals() {
+        if (portals.length === 0) {
+            return; // No portals to draw
+        }
+        
+        console.log('Drawing', portals.length, 'portals');
+        
         for (let i = 0; i < portals.length; i++) {
             const portal = portals[i];
             
-            // Draw portal base
+            // Draw a connecting line from sun to portal
+            if (sun) {
+                ctx.beginPath();
+                ctx.moveTo(sun.x, sun.y);
+                ctx.lineTo(portal.x, portal.y);
+                ctx.strokeStyle = 'rgba(100, 149, 237, 0.3)';
+                ctx.setLineDash([5, 5]);
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Draw portal base (make it more vibrant)
             ctx.beginPath();
             ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(100, 149, 237, 0.3)';
+            
+            // Use a gradient for the portal base
+            const gradient = ctx.createRadialGradient(
+                portal.x, portal.y, 0,
+                portal.x, portal.y, portal.radius
+            );
+            gradient.addColorStop(0, 'rgba(120, 180, 255, 0.5)');
+            gradient.addColorStop(1, 'rgba(70, 130, 220, 0.2)');
+            
+            ctx.fillStyle = gradient;
             ctx.fill();
             
             // Draw portal rings
             for (let j = 0; j < 3; j++) {
                 const ringRadius = portal.radius * (0.6 + j * 0.2);
-                const ringWidth = 2;
+                const ringWidth = 3;
                 
                 portal.ringAngles[j] += 0.01 * (j + 1);
                 
                 ctx.beginPath();
                 ctx.arc(portal.x, portal.y, ringRadius, 0, Math.PI * 2);
-                ctx.strokeStyle = `rgba(100, 149, 237, ${0.5 + j * 0.2})`;
+                ctx.strokeStyle = `rgba(100, 180, 255, ${0.6 + j * 0.15})`;
                 ctx.lineWidth = ringWidth;
                 ctx.stroke();
             }
             
             // Draw number of connections
-            ctx.font = '12px Arial';
+            ctx.font = 'bold 16px Arial';
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(portal.links.length.toString(), portal.x, portal.y);
+            
+            // Add "LINKS" text below the number
+            ctx.font = '12px Arial';
+            ctx.fillText('LINKS', portal.x, portal.y + 18);
         }
     }
     
@@ -486,22 +544,32 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Create portal (links)
     function createPortal(node, links) {
-        if (!links || links.length === 0) return;
+        if (!links || links.length === 0) {
+            console.log('No links to create portal for');
+            return;
+        }
         
-        // Position portal in the top right quadrant
-        const portalX = canvas.width * 0.8;
-        const portalY = canvas.height * 0.2;
+        console.log('Creating portal for', links.length, 'links');
+        
+        // Position portal more prominently in the top right quadrant
+        // Use relative positioning based on canvas size
+        const portalX = canvas.width * 0.85;
+        const portalY = canvas.height * 0.15;
+        
+        // Make the portal larger and more visible
+        const portalRadius = Math.max(30, 20 + (links.length * 5));
         
         const portal = {
             node: node,
             links: links,
             x: portalX,
             y: portalY,
-            radius: 25,
+            radius: portalRadius,
             ringAngles: [0, Math.PI/2, Math.PI]
         };
         
         portals.push(portal);
+        console.log('Portal created at position:', portalX, portalY, 'with radius:', portalRadius);
     }
     
     // Show travel options menu
@@ -649,6 +717,35 @@ const CosmicNodeVisualizer2D = (function() {
                 });
             });
             menu.appendChild(visualizeButton);
+        }
+        
+        // Add "View Links" button if the node has links
+        if (node.link_count && node.link_count > 0) {
+            const linksButton = document.createElement('button');
+            linksButton.textContent = 'View Linked Nodes';
+            linksButton.className = 'cosmic-links-button';
+            linksButton.addEventListener('click', async () => {
+                // Fetch links for this node
+                try {
+                    const linksResponse = await fetch(`/api/nodes/${node.id}/links`);
+                    const links = await linksResponse.json();
+                    
+                    if (links && links.length > 0) {
+                        // Create fake portal object to reuse the travel menu
+                        const portalObj = {
+                            node: node,
+                            links: links
+                        };
+                        showTravelOptionsMenu(portalObj, event);
+                    } else {
+                        alert('No links available for this node.');
+                    }
+                } catch (error) {
+                    console.error('Error fetching links:', error);
+                    alert('Error loading links for this node.');
+                }
+            });
+            menu.appendChild(linksButton);
         }
         
         // Position the menu
