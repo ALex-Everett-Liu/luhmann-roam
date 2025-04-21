@@ -15,6 +15,7 @@ const fontRoutes = require('./routes/fontRoutes');
 const sanitizeHtml = require('sanitize-html');
 const blogRoutes = require('./routes/blogRoutes');
 const blogController = require('./controllers/blogController');
+const markdownRoutes = require('./routes/markdownRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -48,76 +49,10 @@ app.use((req, res, next) => {
 // Make sure this middleware is placed BEFORE your routes are defined
 // but AFTER the database is initialized
 
-// Create markdown directory if it doesn't exist
-const markdownDir = path.join(__dirname, 'markdown');
-if (!fs.existsSync(markdownDir)) {
-  fs.mkdirSync(markdownDir);
-}
-
 // Routes
 
 // Use the node routes
 app.use('/api/nodes', nodeRoutes);
-
-// Get markdown content
-app.get('/api/nodes/:id/markdown', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const filePath = path.join(markdownDir, `${id}.md`);
-    
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
-      res.json({ content });
-    } else {
-      res.json({ content: '' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Save markdown content
-app.post('/api/nodes/:id/markdown', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { content } = req.body;
-    const filePath = path.join(markdownDir, `${id}.md`);
-    
-    fs.writeFileSync(filePath, content);
-    
-    // Update the node to indicate it has markdown
-    await db.run(
-      'UPDATE nodes SET has_markdown = 1, updated_at = ? WHERE id = ?',
-      [Date.now(), id]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete markdown content
-app.delete('/api/nodes/:id/markdown', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const filePath = path.join(markdownDir, `${id}.md`);
-    
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-    
-    // Update the node to indicate it no longer has markdown
-    await db.run(
-      'UPDATE nodes SET has_markdown = 0, updated_at = ? WHERE id = ?',
-      [Date.now(), id]
-    );
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Get node above
 app.get('/api/nodes/:id/above', async (req, res) => {
@@ -1259,6 +1194,9 @@ app.use('/api/fonts', fontRoutes);
 
 // Use the blog routes
 app.use('/api/blog', blogRoutes);
+
+// Use the markdown routes - note the proper approach for nested routes
+app.use('/api/nodes/:id/markdown', markdownRoutes);
 
 // Add a special route for serving blog pages
 app.get('/blog/:slug', blogController.serveBlogPage);

@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getDb } = require('../database');
+const markdownController = require('./markdownController');
 
 // Define directory paths
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates', 'blog');
@@ -121,7 +122,7 @@ exports.generateBlog = async (req, res) => {
     console.log('Converting markdown to HTML, markdown length:', markdownContent.length);
     let contentHtml;
     try {
-      contentHtml = markdownToHtml(markdownContent);
+      contentHtml = markdownController.markdownToHtml(markdownContent);
       console.log('Markdown converted to HTML successfully');
     } catch (mdError) {
       console.error('Error converting markdown to HTML:', mdError);
@@ -385,98 +386,4 @@ function ensureDefaultTemplateExists() {
     `;
     fs.writeFileSync(path.join(defaultTemplateDir, 'preview.svg'), previewHtml);
   }
-}
-
-/**
- * Helper function to convert markdown to HTML
- */
-function markdownToHtml(markdown) {
-  if (!markdown) return '';
-  
-  // Preserve any existing HTML img tags
-  const htmlImgPlaceholders = [];
-  markdown = markdown.replace(/<img\s+[^>]*>/gi, match => {
-    const placeholder = `__HTML_IMG_${htmlImgPlaceholders.length}__`;
-    htmlImgPlaceholders.push(match);
-    return placeholder;
-  });
-  
-  // Replace headers
-  let html = markdown
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^##### (.+)$/gm, '<h5>$1</h5>')
-    .replace(/^###### (.+)$/gm, '<h6>$1</h6>');
-  
-  // Replace images with custom size syntax
-  html = html.replace(/!\[(.*?)\]\((.*?)\)(?:{([^}]*)})?/g, (match, alt, src, options) => {
-    // Path handling
-    if (!src.startsWith('http') && !src.startsWith('/')) {
-      src = `/attachment/${src}`;
-    }
-    
-    // Parse options like width and height
-    let width = '';
-    let height = '';
-    
-    if (options) {
-      const widthMatch = options.match(/width=(\d+)/);
-      const heightMatch = options.match(/height=(\d+)/);
-      
-      if (widthMatch) width = widthMatch[1];
-      if (heightMatch) height = heightMatch[1];
-    }
-    
-    const sizeAttrs = [];
-    if (width) sizeAttrs.push(`width="${width}"`);
-    if (height) sizeAttrs.push(`height="${height}"`);
-    
-    const sizeAttrsStr = sizeAttrs.length > 0 ? ' ' + sizeAttrs.join(' ') : '';
-    
-    return `<img src="${src}" alt="${alt}" class="blog-image"${sizeAttrsStr}>`;
-  });
-  
-  // Restore HTML img tags
-  htmlImgPlaceholders.forEach((imgTag, index) => {
-    html = html.replace(`__HTML_IMG_${index}__`, imgTag);
-  });
-  
-  // Replace bold and italic
-  html = html
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\_\_(.+?)\_\_/g, '<strong>$1</strong>')
-    .replace(/\_(.+?)\_/g, '<em>$1</em>');
-  
-  // Replace lists
-  html = html
-    .replace(/^\* (.+)$/gm, '<ul><li>$1</li></ul>')
-    .replace(/^- (.+)$/gm, '<ul><li>$1</li></ul>')
-    .replace(/^\d+\. (.+)$/gm, '<ol><li>$1</li></ol>');
-  
-  // Replace links
-  html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
-  
-  // Replace inline code
-  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
-  
-  // Replace code blocks
-  html = html.replace(/```(.+?)```/gs, '<pre><code>$1</code></pre>');
-  
-  // Replace paragraphs (two new lines)
-  html = html.replace(/\n\s*\n/g, '</p><p>');
-  
-  // Wrap with paragraph tags if needed
-  if (html && !html.startsWith('<')) {
-    html = '<p>' + html + '</p>';
-  }
-  
-  // Cleanup adjacent lists
-  html = html
-    .replace(/<\/ul><ul>/g, '')
-    .replace(/<\/ol><ol>/g, '');
-  
-  return html;
 }
