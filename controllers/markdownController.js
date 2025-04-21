@@ -163,7 +163,7 @@ exports.markdownToHtml = function(markdown) {
   html = html.replace(/`(.+?)`/g, '<code>$1</code>');
   
   // Replace code blocks
-  html = html.replace(/```(.+?)```/gs, '<pre><code>$1</code></pre>');
+  html = html.replace(/```(.+?)```/gs, '<pre class="code-block"><code>$1</code></pre>');
   
   // Replace paragraphs (two new lines)
   html = html.replace(/\n\s*\n/g, '</p><p>');

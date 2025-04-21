@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>luhmann-roam project structure</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .metadata {
+      color: #666;
+      font-size: 0.9em;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+    blockquote {
+      border-left: 3px solid #ccc;
+      margin-left: 0;
+      padding-left: 15px;
+      color: #666;
+    }
+    pre.code-block {
+      background-color: #f5f5f5;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    .code-block code {
+      font-family: monospace;
+      background-color: transparent;
+      padding: 0;
+      white-space: pre;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>luhmann-roam project structure</h1>
+    <div class="metadata">
+      <span>Posted on: 2025/4/22</span>
+    </div>
+  </header>
+  <main>
+    <h2>Step 2: Structure Your Documentation</h2>
+    <p>Create a documentation structure for your Luhmann-Roam project:</p>
+    <p>Create a docs directory in your repository (if you haven't already)</p>
+    <p>Create the following structure:</p>
+    
+    <pre class="code-block"><code class="language-plaintext">docs/
+├── README.md                  # Introduction and overview
+├── SUMMARY.md                 # Table of contents
+├── api/                       # API Documentation
+│   ├── README.md              # API Overview
+│   ├── node-operations.md     # Node Operations API
+│   ├── markdown-operations.md # Markdown Operations API
+│   ├── link-operations.md     # Link Operations API
+│   ├── task-operations.md     # Task Operations API
+│   └── search-operations.md   # Search Operations API
+├── architecture/              # System Architecture
+│   ├── README.md              # Architecture Overview
+│   ├── node-architecture.md   # Node Operations Architecture
+│   ├── frontend-modules.md    # Frontend Module Architecture
+│   ├── backend-modules.md     # Backend Module Architecture
+│   └── database-schema.md     # Database Schema
+├── user-guide/                # User Guide
+│   ├── README.md              # User Guide Overview
+│   ├── getting-started.md     # First Steps
+│   ├── node-management.md     # Node Management
+│   ├── markdown-editing.md    # Markdown Editing
+│   ├── linking-nodes.md       # Creating Links Between Nodes
+│   └── tasks.md               # Task Management
+├── development/               # Developer Guide
+│   ├── README.md              # Development Overview
+│   ├── setup.md               # Development Environment Setup
+│   ├── extending-nodes.md     # Extending Node Operations
+│   ├── custom-modules.md      # Creating New Modules
+│   └── testing.md             # Testing Guidelines
+└── testing/                   # Test Documentation
+    ├── README.md              # Testing Overview
+    ├── test-plan.md           # Overall Test Plan
+    ├── node-tests.md          # Node Operation Tests
+    ├── performance-tests.md   # Performance Tests
+    └── test-results.md        # Test Results and Reports</code></pre>
+  </main>
+  <footer>
+    <p>&copy; 2025 - Generated from Luhmann-Roam</p>
+  </footer>
+</body>
+</html>
