@@ -822,22 +822,80 @@ const CosmicNodeVisualizer2D = (function() {
             linksButton.addEventListener('click', async () => {
                 // Fetch links for this node
                 try {
-                    const linksResponse = await fetch(`/api/nodes/${node.id}/links`);
-                    const links = await linksResponse.json();
+                    // Show a loading message
+                    alert('Fetching links...');
                     
-                    if (links && links.length > 0) {
+                    // Log the node ID being fetched
+                    console.log(`Fetching links for node: ${node.id}`);
+                    
+                    const linksResponse = await fetch(`/api/nodes/${node.id}/links`);
+                    console.log('Links response status:', linksResponse.status);
+                    
+                    // Try to parse the response as text first to inspect it
+                    const responseText = await linksResponse.text();
+                    console.log('Raw links response:', responseText);
+                    
+                    // Then parse it as JSON
+                    let links;
+                    try {
+                        links = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('Error parsing links JSON:', parseError);
+                        alert('Error parsing link data format');
+                        return;
+                    }
+                    
+                    console.log('Parsed links data:', links);
+                    
+                    // Better handling of different response formats
+                    let processedLinks = [];
+                    
+                    if (Array.isArray(links)) {
+                        console.log('Links is an array with', links.length, 'items');
+                        processedLinks = links;
+                    } else if (links && typeof links === 'object') {
+                        console.log('Links is an object with properties:', Object.keys(links).join(', '));
+                        
+                        // Check for outgoing links
+                        if (Array.isArray(links.outgoing)) {
+                            console.log('Found', links.outgoing.length, 'outgoing links');
+                            processedLinks = processedLinks.concat(links.outgoing.map(link => ({
+                                ...link,
+                                direction: 'outgoing',
+                                target_id: link.target_id || link.to_node_id,
+                                target_content: link.target_content || link.content
+                            })));
+                        }
+                        
+                        // Check for incoming links
+                        if (Array.isArray(links.incoming)) {
+                            console.log('Found', links.incoming.length, 'incoming links');
+                            processedLinks = processedLinks.concat(links.incoming.map(link => ({
+                                ...link,
+                                direction: 'incoming',
+                                target_id: link.target_id || link.from_node_id,
+                                target_content: link.target_content || link.content
+                            })));
+                        }
+                    }
+                    
+                    console.log('Processed links:', processedLinks);
+                    
+                    if (processedLinks && processedLinks.length > 0) {
                         // Create fake portal object to reuse the travel menu
                         const portalObj = {
                             node: node,
-                            links: links
+                            links: processedLinks  // Use processed links here
                         };
+                        console.log('Creating travel menu with portal:', portalObj);
                         showTravelOptionsMenu(portalObj, event);
                     } else {
-                        alert('No links available for this node.');
+                        console.warn('No links found after processing');
+                        alert('No usable links found for this node.');
                     }
                 } catch (error) {
                     console.error('Error fetching links:', error);
-                    alert('Error loading links for this node.');
+                    alert(`Error loading links: ${error.message}`);
                 }
             });
             menu.appendChild(linksButton);
