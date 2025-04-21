@@ -37,6 +37,7 @@ const CosmicNodeVisualizer2D = (function() {
     let _isVisible = false;
     let labels = [];
     let stars = [];
+    let frameCounter = 0;
     
     // Constants for the visualization
     const PLANET_COLORS = [
@@ -246,6 +247,9 @@ const CosmicNodeVisualizer2D = (function() {
         
         // Draw labels
         drawLabels();
+        
+        // Increment frame counter
+        frameCounter++;
     }
     
     // Draw orbit lines
@@ -341,7 +345,10 @@ const CosmicNodeVisualizer2D = (function() {
             return; // No portals to draw
         }
         
-        console.log('Drawing', portals.length, 'portals');
+        // Only log every 100 frames to avoid console flooding
+        if (frameCounter % 100 === 0) {
+            console.log('Drawing', portals.length, 'portals');
+        }
         
         for (let i = 0; i < portals.length; i++) {
             const portal = portals[i];
@@ -701,11 +708,34 @@ const CosmicNodeVisualizer2D = (function() {
                 
                 // Add click event to travel to the node only if we have a valid target ID
                 if (targetId) {
-                    option.addEventListener('click', () => {
+                    option.addEventListener('click', async () => {
                         console.log(`Traveling to node ${targetId}`);
-                        animateWormholeTravel(() => {
-                            visualizeNode(targetId);
-                        });
+                        
+                        // Before traveling, fetch the node's parent to visualize its context
+                        try {
+                            // Show travel animation
+                            animateWormholeTravel(async () => {
+                                // First, fetch the target node to get its information
+                                const nodeResponse = await fetch(`/api/nodes/${targetId}`);
+                                const targetNode = await nodeResponse.json();
+                                
+                                if (targetNode.parent_id) {
+                                    // If the node has a parent, visualize the parent's system
+                                    console.log(`Target node has parent ${targetNode.parent_id}, visualizing parent system`);
+                                    visualizeNode(targetNode.parent_id);
+                                } else {
+                                    // If it's a root node, just visualize it directly
+                                    console.log(`Target node is a root node, visualizing directly`);
+                                    visualizeNode(targetId);
+                                }
+                            });
+                        } catch (error) {
+                            console.error(`Error preparing travel to node ${targetId}:`, error);
+                            // Fall back to direct visualization on error
+                            animateWormholeTravel(() => {
+                                visualizeNode(targetId);
+                            });
+                        }
                     });
                 } else {
                     // If we don't have a target ID, disable the option
