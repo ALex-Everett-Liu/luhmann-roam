@@ -993,6 +993,23 @@ document.addEventListener('DOMContentLoaded', () => {
   toggle2DCosmicButton.textContent = '2D Cosmic View';
   toggle2DCosmicButton.title = 'View nodes as a 2D cosmic solar system (better performance)';
 
+  /**
+   * IMPORTANT INTEGRATION NOTES:
+   * 
+   * 1. Module Availability:
+   *    - We first check if window.CosmicNodeVisualizer2D exists
+   *    - This depends on the module being assigned to the window object in its file
+   *    - Without this window assignment, the module won't be available here
+   * 
+   * 2. Event Flow:
+   *    - Button click → Check module exists → Check visibility state → Show/hide
+   *    - We carefully handle the case where the module doesn't exist
+   * 
+   * 3. Node ID Fallback Logic:
+   *    - Try lastFocusedNodeId first
+   *    - Fall back to BreadcrumbManager if available
+   *    - Use first available node as last resort
+   */
   toggle2DCosmicButton.addEventListener('click', function() {
     console.log('2D Cosmic View button clicked');
     console.log('CosmicNodeVisualizer2D exists:', !!window.CosmicNodeVisualizer2D);

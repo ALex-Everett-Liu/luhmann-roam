@@ -96,3 +96,28 @@ sequenceDiagram
 ...
 
 [Continue with other operations and diagrams...]
+
+## Module Integration Notes
+
+### Global Modules
+All UI modules that need to interact with the main application must be properly exposed to the global scope:
+
+1. **Module Definition**: Use the Revealing Module Pattern for encapsulation.
+2. **Global Assignment**: Always assign your module to the window object:
+   ```javascript
+   window.YourModuleName = YourModuleName;
+   ```
+3. **Script Loading Order**: Ensure modules are loaded in the correct order in index.html:
+   - Dependencies first
+   - Module scripts
+   - Main app.js last
+
+### Debugging Module Availability
+If a module isn't accessible from other parts of the application:
+1. Check the browser console for errors
+2. Verify the module is properly assigned to the window object
+3. Check script loading order in index.html
+4. Add console logging for visibility:
+   ```javascript
+   console.log('ModuleName exists:', !!window.ModuleName);
+   ```

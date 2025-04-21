@@ -1,6 +1,30 @@
 // 2D Cosmic Node Visualizer
 // A performance-optimized 2D version of the cosmic solar system visualization
 
+/**
+ * IMPLEMENTATION NOTES:
+ * 
+ * 1. MODULE ARCHITECTURE:
+ *    - This module uses the Revealing Module Pattern (IIFE) for encapsulation
+ *    - Private variables and functions are contained inside the module scope
+ *    - Only necessary methods are exposed through the returned object
+ * 
+ * 2. GLOBAL ACCESSIBILITY:
+ *    - IMPORTANT: This module MUST be explicitly added to the window object
+ *    - Without the window.CosmicNodeVisualizer2D assignment at the end of this file,
+ *      the module won't be accessible from app.js and other modules
+ *    - This line is crucial: window.CosmicNodeVisualizer2D = CosmicNodeVisualizer2D;
+ * 
+ * 3. SCRIPT LOADING:
+ *    - Ensure this script is loaded before app.js in the HTML file
+ *    - The order of loading is important: dependencies first, then this module, then app.js
+ * 
+ * 4. VISUAL DESIGN:
+ *    - Uses HTML5 Canvas for efficient 2D rendering
+ *    - Follows similar visual metaphor as the 3D version for consistency
+ *    - Optimized for performance with reduced complexity compared to 3D version
+ */
+
 const CosmicNodeVisualizer2D = (function() {
     // Private variables
     let canvas, ctx;
@@ -773,5 +797,7 @@ const CosmicNodeVisualizer2D = (function() {
     };
 })();
 
+// CRITICAL: Make the module globally accessible
+// This assignment ensures that app.js can access this module
 window.CosmicNodeVisualizer2D = CosmicNodeVisualizer2D;
 console.log('CosmicNodeVisualizer2D assigned to window object');
