@@ -39,6 +39,14 @@ const CosmicNodeVisualizer2D = (function() {
     let stars = [];
     let frameCounter = 0;
     let moons = []; // New array to store moon data
+    let zoomLevel = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let minZoom = 0.2;
+    let maxZoom = 5;
     
     // Constants for the visualization
     const PLANET_COLORS = [
@@ -57,6 +65,39 @@ const CosmicNodeVisualizer2D = (function() {
         color: white;
         margin-top: 5px;
     }
+
+    .cosmic-zoom-controls {
+        display: flex;
+        align-items: center;
+        margin: 0 10px;
+    }
+
+    .cosmic-zoom-controls button {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 5px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    .cosmic-zoom-controls button:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .cosmic-zoom-display {
+        color: white;
+        font-size: 14px;
+        margin: 0 5px;
+        min-width: 50px;
+        text-align: center;
+    }
     `;
     
     // Initialize the visualizer
@@ -69,6 +110,12 @@ const CosmicNodeVisualizer2D = (function() {
         document.head.appendChild(styleElement);
         
         createContainer();
+        
+        // Set up pan and zoom
+        setupPanAndZoom();
+        
+        // Prevent context menu on canvas (to allow right-click dragging)
+        canvas.addEventListener('contextmenu', preventContextMenu);
         
         // Add event listeners for window resize
         window.addEventListener('resize', onWindowResize);
@@ -112,6 +159,37 @@ const CosmicNodeVisualizer2D = (function() {
         resetButton.addEventListener('click', resetView);
         controls.appendChild(resetButton);
         
+        // Add zoom controls
+        const zoomControls = document.createElement('div');
+        zoomControls.className = 'cosmic-zoom-controls';
+        
+        // Zoom in button
+        const zoomInButton = document.createElement('button');
+        zoomInButton.innerHTML = '+';
+        zoomInButton.title = 'Zoom in';
+        zoomInButton.addEventListener('click', () => {
+            setZoom(zoomLevel * 1.2);
+        });
+        zoomControls.appendChild(zoomInButton);
+        
+        // Zoom out button
+        const zoomOutButton = document.createElement('button');
+        zoomOutButton.innerHTML = '−';
+        zoomOutButton.title = 'Zoom out';
+        zoomOutButton.addEventListener('click', () => {
+            setZoom(zoomLevel * 0.8);
+        });
+        zoomControls.appendChild(zoomOutButton);
+        
+        // Zoom level display
+        const zoomDisplay = document.createElement('span');
+        zoomDisplay.className = 'cosmic-zoom-display';
+        zoomDisplay.id = 'cosmic-zoom-display';
+        zoomDisplay.textContent = '100%';
+        zoomControls.appendChild(zoomDisplay);
+        
+        controls.appendChild(zoomControls);
+        
         // Close button
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '×';
@@ -145,7 +223,15 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Reset the view
     function resetView() {
-        // Simply redraw the current node's system
+        // Reset zoom and pan
+        zoomLevel = 1;
+        offsetX = 0;
+        offsetY = 0;
+        
+        // Update zoom display
+        updateZoomDisplay();
+        
+        // Redraw
         if (currentNode) {
             visualizeNode(currentNode.id);
         }
@@ -153,6 +239,13 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Handle canvas click
     function handleCanvasClick(event) {
+        // Only handle click if not dragging
+        if (isDragging) {
+            // This was a drag end, not a click
+            isDragging = false;
+            return;
+        }
+        
         const rect = canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
@@ -203,8 +296,17 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Helper function to check if a point is inside a circle
     function isPointInCircle(x, y, cx, cy, radius) {
-        const dx = x - cx;
-        const dy = y - cy;
+        // Apply inverse transformation to click coordinates
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Adjust for the center, zoom, and offset
+        const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
+        const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
+        
+        // Now check if the adjusted point is in the circle
+        const dx = adjustedX - cx;
+        const dy = adjustedY - cy;
         return (dx * dx + dy * dy) <= (radius * radius);
     }
     
@@ -240,6 +342,23 @@ const CosmicNodeVisualizer2D = (function() {
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // Save the current context state
+        ctx.save();
+        
+        // Apply transformations for zoom and pan
+        // Calculate the center of the canvas
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Translate to the center
+        ctx.translate(centerX, centerY);
+        // Apply zoom centered on the canvas
+        ctx.scale(zoomLevel, zoomLevel);
+        // Apply pan offset
+        ctx.translate(offsetX / zoomLevel, offsetY / zoomLevel);
+        // Translate back from the center
+        ctx.translate(-centerX, -centerY);
+        
         // Draw background stars
         drawStars();
         
@@ -260,6 +379,9 @@ const CosmicNodeVisualizer2D = (function() {
         
         // Draw labels
         drawLabels();
+        
+        // Restore the canvas state
+        ctx.restore();
         
         // Increment frame counter
         frameCounter++;
@@ -1163,6 +1285,130 @@ const CosmicNodeVisualizer2D = (function() {
             ctx.strokeStyle = adjustColor(moon.color, 20);
             ctx.lineWidth = 1;
             ctx.stroke();
+        }
+    }
+    
+    // Add mouse events for pan functionality
+    function setupPanAndZoom() {
+        // Mouse wheel for zoom
+        canvas.addEventListener('wheel', handleMouseWheel);
+        
+        // Mouse down for pan
+        canvas.addEventListener('mousedown', handleMouseDown);
+        
+        // Mouse move for pan
+        canvas.addEventListener('mousemove', handleMouseMove);
+        
+        // Mouse up to end pan
+        canvas.addEventListener('mouseup', handleMouseUp);
+        
+        // Mouse leave to end pan if cursor leaves canvas
+        canvas.addEventListener('mouseleave', handleMouseLeave);
+    }
+    
+    // Handle mouse wheel for zooming
+    function handleMouseWheel(event) {
+        event.preventDefault();
+        
+        // Get mouse position relative to canvas
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        
+        // Determine zoom direction
+        const zoomDirection = event.deltaY < 0 ? 1 : -1;
+        
+        // Calculate new zoom level
+        const zoomFactor = 1.1;
+        const newZoom = zoomDirection > 0 ? 
+            zoomLevel * zoomFactor : 
+            zoomLevel / zoomFactor;
+        
+        // Apply zoom
+        setZoom(newZoom);
+    }
+    
+    // Handle mouse down for panning
+    function handleMouseDown(event) {
+        // Middle mouse button (wheel) or right-click for panning
+        if (event.button === 1 || event.button === 2) {
+            event.preventDefault();
+            isDragging = true;
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+            
+            // Change cursor to indicate panning is active
+            canvas.style.cursor = 'grabbing';
+        }
+    }
+    
+    // Handle mouse move for panning
+    function handleMouseMove(event) {
+        if (isDragging) {
+            // Calculate how much the mouse has moved
+            const deltaX = event.clientX - lastMouseX;
+            const deltaY = event.clientY - lastMouseY;
+            
+            // Update last position
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+            
+            // Update offset
+            offsetX += deltaX;
+            offsetY += deltaY;
+            
+            // Redraw
+            redrawCanvas();
+        }
+    }
+    
+    // Handle mouse up to end panning
+    function handleMouseUp(event) {
+        if (isDragging) {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        }
+    }
+    
+    // Handle mouse leave to end panning if cursor leaves canvas
+    function handleMouseLeave(event) {
+        if (isDragging) {
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        }
+    }
+    
+    // Prevent context menu from appearing on right-click
+    function preventContextMenu(event) {
+        event.preventDefault();
+        return false;
+    }
+    
+    // Add a function to set the zoom level
+    function setZoom(newZoom) {
+        // Constrain zoom level between min and max
+        zoomLevel = Math.max(minZoom, Math.min(maxZoom, newZoom));
+        
+        // Update the zoom display
+        updateZoomDisplay();
+        
+        // Redraw with new zoom level
+        redrawCanvas();
+    }
+    
+    // Add a function to update the zoom display
+    function updateZoomDisplay() {
+        const zoomDisplay = document.getElementById('cosmic-zoom-display');
+        if (zoomDisplay) {
+            zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
+    }
+    
+    // Add a function to redraw the canvas with current state
+    function redrawCanvas() {
+        // No need to call visualizeNode again, just update the drawing
+        if (!animationFrameId) {
+            animate(); // Start animation if not running
         }
     }
     
