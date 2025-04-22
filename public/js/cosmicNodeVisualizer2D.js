@@ -55,6 +55,11 @@ const CosmicNodeVisualizer2D = (function() {
         '#ffc107', '#ff9800', '#ff5722', '#f44336'
     ];
     
+    // Add these missing constants
+    const PLANETS_PER_ORBIT = 6; // Number of planets per orbit
+    const BASE_ORBIT_RADIUS = 120; // Base radius for the first orbit
+    const ORBIT_SPACING = 80; // Space between orbits
+    
     // Animation settings
     const ANIMATION_SPEED = 0.005;
     
@@ -408,16 +413,13 @@ const CosmicNodeVisualizer2D = (function() {
     
     // Update and draw planets
     function updateAndDrawPlanets() {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        
         for (let i = 0; i < planets.length; i++) {
             const planet = planets[i];
             
-            // Update position
-            planet.angle += ANIMATION_SPEED / Math.sqrt(planet.orbitRadius);
-            planet.x = centerX + Math.cos(planet.angle) * planet.orbitRadius;
-            planet.y = centerY + Math.sin(planet.angle) * planet.orbitRadius;
+            // Update planet position
+            planet.orbitAngle += planet.angleSpeed * ANIMATION_SPEED;
+            planet.x = canvas.width / 2 + Math.cos(planet.orbitAngle) * planet.orbitRadius;
+            planet.y = canvas.height / 2 + Math.sin(planet.orbitAngle) * planet.orbitRadius;
             
             // Draw planet
             ctx.beginPath();
@@ -428,16 +430,16 @@ const CosmicNodeVisualizer2D = (function() {
                 planet.x, planet.y, 0,
                 planet.x, planet.y, planet.radius
             );
-            gradient.addColorStop(0, planet.color);
-            gradient.addColorStop(1, adjustColor(planet.color, -30));
+            gradient.addColorStop(0, adjustColor(planet.color, 20));
+            gradient.addColorStop(1, planet.color);
             
             ctx.fillStyle = gradient;
             ctx.fill();
             
-            // Draw planet border
-            ctx.strokeStyle = adjustColor(planet.color, 30);
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // Draw rings if planet has links
+            if (planet.hasRings) {
+                drawCelestialRings(planet);
+            }
         }
     }
     
@@ -449,29 +451,21 @@ const CosmicNodeVisualizer2D = (function() {
         ctx.beginPath();
         ctx.arc(sun.x, sun.y, sun.radius, 0, Math.PI * 2);
         
-        // Create gradient
+        // Create gradient for sun
         const gradient = ctx.createRadialGradient(
             sun.x, sun.y, 0,
             sun.x, sun.y, sun.radius
         );
-        gradient.addColorStop(0, '#FDB813');
-        gradient.addColorStop(1, '#F77F00');
+        gradient.addColorStop(0, '#ffee00');
+        gradient.addColorStop(1, sun.color);
         
         ctx.fillStyle = gradient;
         ctx.fill();
         
-        // Draw sun glow
-        ctx.beginPath();
-        ctx.arc(sun.x, sun.y, sun.radius + 10, 0, Math.PI * 2);
-        const glowGradient = ctx.createRadialGradient(
-            sun.x, sun.y, sun.radius,
-            sun.x, sun.y, sun.radius + 10
-        );
-        glowGradient.addColorStop(0, 'rgba(253, 184, 19, 0.5)');
-        glowGradient.addColorStop(1, 'rgba(253, 184, 19, 0)');
-        
-        ctx.fillStyle = glowGradient;
-        ctx.fill();
+        // Draw rings if sun has links
+        if (sun.hasRings) {
+            drawCelestialRings(sun);
+        }
     }
     
     // Update and draw portals
@@ -488,8 +482,14 @@ const CosmicNodeVisualizer2D = (function() {
         for (let i = 0; i < portals.length; i++) {
             const portal = portals[i];
             
+            // Skip this portal if coordinates are invalid
+            if (!isFinite(portal.x) || !isFinite(portal.y) || !isFinite(portal.radius)) {
+                console.error('Portal has invalid coordinates:', portal);
+                continue;
+            }
+            
             // Draw a connecting line from sun to portal
-            if (sun) {
+            if (sun && isFinite(sun.x) && isFinite(sun.y)) {
                 ctx.beginPath();
                 ctx.moveTo(sun.x, sun.y);
                 ctx.lineTo(portal.x, portal.y);
@@ -500,25 +500,37 @@ const CosmicNodeVisualizer2D = (function() {
                 ctx.setLineDash([]);
             }
             
-            // Draw portal base (make it more vibrant)
+            // Draw portal base
             ctx.beginPath();
             ctx.arc(portal.x, portal.y, portal.radius, 0, Math.PI * 2);
             
-            // Use a gradient for the portal base
-            const gradient = ctx.createRadialGradient(
-                portal.x, portal.y, 0,
-                portal.x, portal.y, portal.radius
-            );
-            gradient.addColorStop(0, 'rgba(120, 180, 255, 0.5)');
-            gradient.addColorStop(1, 'rgba(70, 130, 220, 0.2)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fill();
+            try {
+                // Use a gradient for the portal base
+                const gradient = ctx.createRadialGradient(
+                    portal.x, portal.y, 0,
+                    portal.x, portal.y, portal.radius
+                );
+                gradient.addColorStop(0, 'rgba(120, 180, 255, 0.5)');
+                gradient.addColorStop(1, 'rgba(70, 130, 220, 0.2)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            } catch (error) {
+                console.error('Error creating portal gradient:', error, 'Portal:', portal);
+                // Use a fallback solid color
+                ctx.fillStyle = 'rgba(70, 130, 220, 0.5)';
+                ctx.fill();
+            }
             
             // Draw portal rings
             for (let j = 0; j < 3; j++) {
                 const ringRadius = portal.radius * (0.6 + j * 0.2);
                 const ringWidth = 3;
+                
+                // Ensure ringAngles array exists
+                if (!portal.ringAngles) {
+                    portal.ringAngles = [0, Math.PI/2, Math.PI];
+                }
                 
                 portal.ringAngles[j] += 0.01 * (j + 1);
                 
@@ -529,12 +541,27 @@ const CosmicNodeVisualizer2D = (function() {
                 ctx.stroke();
             }
             
+            // FIXED: Calculate link count safely
+            let linkCount = 0;
+            
+            // Determine the link count based on the structure of portal.links
+            if (portal.links) {
+                if (Array.isArray(portal.links)) {
+                    linkCount = portal.links.length;
+                } else if (typeof portal.links === 'object') {
+                    // Check for outgoing and incoming arrays
+                    const outgoingCount = Array.isArray(portal.links.outgoing) ? portal.links.outgoing.length : 0;
+                    const incomingCount = Array.isArray(portal.links.incoming) ? portal.links.incoming.length : 0;
+                    linkCount = outgoingCount + incomingCount;
+                }
+            }
+            
             // Draw number of connections
             ctx.font = 'bold 16px Arial';
             ctx.fillStyle = 'white';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(portal.links.length.toString(), portal.x, portal.y);
+            ctx.fillText(linkCount.toString(), portal.x, portal.y);
             
             // Add "LINKS" text below the number
             ctx.font = '12px Arial';
@@ -654,48 +681,81 @@ const CosmicNodeVisualizer2D = (function() {
             node: node,
             x: canvas.width / 2,
             y: canvas.height / 2,
-            radius: 40,
-            color: '#FDB813'
+            radius: 30,
+            color: document.documentElement.style.getPropertyValue('--primary-color') || '#3490c2'
         };
+        
+        // Add new property to track if sun has rings (links)
+        sun.hasRings = node.link_count && node.link_count > 0;
+        
+        // Add new property to track if sun has markdown
+        sun.hasMarkdown = node.has_markdown;
     }
     
     // Create planets (children)
     function createPlanets(nodes) {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const basePlanetSize = 15;
+        planets = [];
         
-        // Calculate base orbit radius based on canvas size
-        const minDimension = Math.min(canvas.width, canvas.height);
-        const baseOrbitRadius = minDimension * 0.2;
+        if (!nodes || nodes.length === 0) {
+            return;
+        }
         
-        for (let i = 0; i < nodes.length; i++) {
-            const node = nodes[i];
+        // Calculate the number of orbits needed
+        const numOrbits = Math.ceil(nodes.length / PLANETS_PER_ORBIT);
+        
+        // For each orbit
+        for (let orbit = 0; orbit < numOrbits; orbit++) {
+            // Calculate the orbit radius
+            const orbitRadius = BASE_ORBIT_RADIUS + (orbit * ORBIT_SPACING);
             
-            // Determine planet size based on content length or any other property
-            const contentLength = node.content ? node.content.length : 1;
-            const planetSize = Math.max(basePlanetSize, Math.min(basePlanetSize * 1.5, contentLength / 5));
+            // Calculate how many planets for this orbit
+            const planetsInOrbit = Math.min(PLANETS_PER_ORBIT, nodes.length - (orbit * PLANETS_PER_ORBIT));
             
-            // Calculate orbit radius - increasing with each planet
-            const orbitRadius = baseOrbitRadius + (i * 50);
-            
-            // Calculate initial position on the orbit
-            const angle = Math.random() * Math.PI * 2;
-            const x = centerX + Math.cos(angle) * orbitRadius;
-            const y = centerY + Math.sin(angle) * orbitRadius;
-            
-            // Create planet object
-            const planet = {
-                node: node,
-                x: x,
-                y: y,
-                radius: planetSize,
-                orbitRadius: orbitRadius,
-                angle: angle,
-                color: PLANET_COLORS[i % PLANET_COLORS.length]
-            };
-            
-            planets.push(planet);
+            // For each planet in this orbit
+            for (let i = 0; i < planetsInOrbit; i++) {
+                // Get the node index
+                const nodeIndex = (orbit * PLANETS_PER_ORBIT) + i;
+                
+                // Skip if we've run out of nodes
+                if (nodeIndex >= nodes.length) {
+                    break;
+                }
+                
+                // Get the node
+                const node = nodes[nodeIndex];
+                
+                // Calculate the position on the orbit
+                const angle = (i / planetsInOrbit) * Math.PI * 2;
+                const x = canvas.width / 2 + Math.cos(angle) * orbitRadius;
+                const y = canvas.height / 2 + Math.sin(angle) * orbitRadius;
+                
+                // Calculate planet size based on content length (min 8, max 20)
+                const contentLength = node.content ? node.content.length : 1;
+                const planetSize = Math.max(8, Math.min(20, 8 + contentLength / 10));
+                
+                // Calculate planet color (use node's position to determine hue)
+                const hue = (i / planetsInOrbit) * 360;
+                const color = `hsl(${hue}, 70%, 60%)`;
+                
+                // Create planet
+                const planet = {
+                    node: node,
+                    orbitRadius: orbitRadius,
+                    orbitAngle: angle,
+                    angleSpeed: 0.002 / Math.sqrt(orbit + 1), // Planets in outer orbits move slower
+                    radius: planetSize,
+                    x: x,
+                    y: y,
+                    color: color,
+                    orbit: orbit,
+                    // Add properties to track if planet has rings (links) or markdown
+                    hasRings: node.link_count && node.link_count > 0,
+                    hasMarkdown: node.has_markdown
+                };
+                
+                // Add to planets array
+                planets.push(planet);
+            }
         }
     }
     
@@ -710,11 +770,26 @@ const CosmicNodeVisualizer2D = (function() {
         
         // Position portal more prominently in the top right quadrant
         // Use relative positioning based on canvas size
-        const portalX = canvas.width * 0.85;
-        const portalY = canvas.height * 0.15;
+        // Make sure we have valid canvas dimensions
+        const portalX = (isFinite(canvas.width) ? canvas.width * 0.85 : 800 * 0.85);
+        const portalY = (isFinite(canvas.height) ? canvas.height * 0.15 : 600 * 0.15);
         
         // Make the portal larger and more visible
-        const portalRadius = Math.max(30, 20 + (links.length * 5));
+        // Use a valid links array or default to empty
+        const linksArray = Array.isArray(links) ? links : 
+                          (links.outgoing && links.incoming ? 
+                           [...links.outgoing, ...links.incoming] : []);
+        
+        const linkCount = linksArray.length || 1;
+        const portalRadius = Math.max(30, 20 + (linkCount * 5));
+        
+        console.log(`Portal position: x=${portalX}, y=${portalY}, radius=${portalRadius}`);
+        
+        // Validate all values are finite
+        if (!isValidCoordinate(portalX) || !isValidCoordinate(portalY) || !isValidCoordinate(portalRadius)) {
+            console.error('Invalid portal coordinates:', {portalX, portalY, portalRadius});
+            return;
+        }
         
         const portal = {
             node: node,
@@ -1169,31 +1244,78 @@ const CosmicNodeVisualizer2D = (function() {
     }
     
     // Utility function to adjust color brightness
-    function adjustColor(color, amount) {
-        // Convert hex to RGB
-        let r, g, b;
-        
-        if (color.startsWith('#')) {
-            const hex = color.slice(1);
-            r = parseInt(hex.slice(0, 2), 16);
-            g = parseInt(hex.slice(2, 4), 16);
-            b = parseInt(hex.slice(4, 6), 16);
-        } else if (color.startsWith('rgb')) {
-            const match = color.match(/\d+/g);
-            r = parseInt(match[0]);
-            g = parseInt(match[1]);
-            b = parseInt(match[2]);
-        } else {
-            return color; // Return original if format not recognized
+    function adjustColor(color, amount, alpha) {
+        // If no valid color is provided, return a default
+        if (!color || typeof color !== 'string') {
+            return alpha !== undefined ? `rgba(100, 100, 100, ${alpha})` : '#646464';
         }
         
-        // Adjust and clamp RGB values
-        r = Math.max(0, Math.min(255, r + amount));
-        g = Math.max(0, Math.min(255, g + amount));
-        b = Math.max(0, Math.min(255, b + amount));
+        // Handle HSL colors
+        if (color.startsWith('hsl')) {
+            const hslMatch = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (hslMatch) {
+                const h = parseInt(hslMatch[1]);
+                const s = parseInt(hslMatch[2]);
+                const l = Math.min(100, Math.max(0, parseInt(hslMatch[3]) + amount / 2));
+                
+                if (alpha !== undefined) {
+                    return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+                } else {
+                    return `hsl(${h}, ${s}%, ${l}%)`;
+                }
+            }
+        }
         
-        // Convert back to hex
-        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        // Handle hex and RGB colors
+        let r, g, b;
+        
+        // Check if it's a hex color
+        if (color.startsWith('#')) {
+            const hex = color.substring(1);
+            
+            // Handle shorthand hex (#RGB)
+            if (hex.length === 3) {
+                r = parseInt(hex[0] + hex[0], 16);
+                g = parseInt(hex[1] + hex[1], 16);
+                b = parseInt(hex[2] + hex[2], 16);
+            } 
+            // Handle full hex (#RRGGBB)
+            else if (hex.length === 6) {
+                r = parseInt(hex.substring(0, 2), 16);
+                g = parseInt(hex.substring(2, 4), 16);
+                b = parseInt(hex.substring(4, 6), 16);
+            } else {
+                // Invalid hex, use default
+                r = g = b = 100;
+            }
+        } 
+        // Check if it's an RGB color
+        else if (color.startsWith('rgb')) {
+            const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+            if (rgbMatch) {
+                r = parseInt(rgbMatch[1]);
+                g = parseInt(rgbMatch[2]);
+                b = parseInt(rgbMatch[3]);
+            } else {
+                // Invalid RGB, use default
+                r = g = b = 100;
+            }
+        } else {
+            // Unknown color format, use default
+            r = g = b = 100;
+        }
+        
+        // Adjust the color by the given amount
+        r = Math.min(255, Math.max(0, r + amount));
+        g = Math.min(255, Math.max(0, g + amount));
+        b = Math.min(255, Math.max(0, b + amount));
+        
+        // Return the adjusted color
+        if (alpha !== undefined) {
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        } else {
+            return `rgb(${r}, ${g}, ${b})`;
+        }
     }
     
     // New function to fetch and create moons for all planets
@@ -1244,7 +1366,10 @@ const CosmicNodeVisualizer2D = (function() {
                 orbitRadius: orbitRadius,
                 angle: angle,
                 // Use a slightly different color than the planet
-                color: adjustColor(planet.color, 30)
+                color: adjustColor(planet.color, 30),
+                // Add properties to track if moon has rings (links) or markdown
+                hasRings: moonNode.link_count && moonNode.link_count > 0,
+                hasMarkdown: moonNode.has_markdown
             };
             
             moons.push(moon);
@@ -1261,7 +1386,6 @@ const CosmicNodeVisualizer2D = (function() {
             if (!planet) continue; // Skip if parent planet not found
             
             // Update moon position relative to its planet
-            // Moons orbit faster than planets
             moon.angle += ANIMATION_SPEED * 2.5 / Math.sqrt(moon.orbitRadius);
             moon.x = planet.x + Math.cos(moon.angle) * moon.orbitRadius;
             moon.y = planet.y + Math.sin(moon.angle) * moon.orbitRadius;
@@ -1285,6 +1409,11 @@ const CosmicNodeVisualizer2D = (function() {
             ctx.strokeStyle = adjustColor(moon.color, 20);
             ctx.lineWidth = 1;
             ctx.stroke();
+            
+            // Draw rings if moon has links
+            if (moon.hasRings) {
+                drawCelestialRings(moon);
+            }
         }
     }
     
@@ -1410,6 +1539,77 @@ const CosmicNodeVisualizer2D = (function() {
         if (!animationFrameId) {
             animate(); // Start animation if not running
         }
+    }
+    
+    // New function to draw rings around celestial bodies with links
+    function drawCelestialRings(body) {
+        // Skip if any coordinates are invalid
+        if (!body || !isFinite(body.x) || !isFinite(body.y) || !isFinite(body.radius)) {
+            console.error('Cannot draw rings for body with invalid coordinates:', body);
+            return;
+        }
+        
+        const ringWidth = body.radius * 0.4;
+        const outerRadius = body.radius + ringWidth;
+        const innerRadius = body.radius;
+        
+        // Create a ring path
+        ctx.beginPath();
+        ctx.arc(body.x, body.y, outerRadius, 0, Math.PI * 2);
+        ctx.arc(body.x, body.y, innerRadius, 0, Math.PI * 2, true);
+        
+        try {
+            // Create a semi-transparent gradient
+            const ringGradient = ctx.createRadialGradient(
+                body.x, body.y, innerRadius,
+                body.x, body.y, outerRadius
+            );
+            
+            // Get a ring color based on the body color
+            let ringColor = typeof body.color === 'string' ? body.color : '#ffffff';
+            
+            ringGradient.addColorStop(0, adjustColor(ringColor, 40, 0.8));
+            ringGradient.addColorStop(1, adjustColor(ringColor, -20, 0.2));
+            
+            ctx.fillStyle = ringGradient;
+            ctx.fill();
+        } catch (error) {
+            console.error('Error creating ring gradient:', error, 'Body:', body);
+            // Use a fallback solid color
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fill();
+        }
+        
+        // Add animated particles to the ring to make it more dynamic
+        const particleCount = Math.floor(body.radius / 2);
+        const now = Date.now() / 1000;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        
+        // Draw particles along the ring
+        for (let i = 0; i < particleCount; i++) {
+            try {
+                const angle = ((i / particleCount) * Math.PI * 2) + (now % (Math.PI * 2));
+                const radius = innerRadius + (Math.sin(angle * 5 + now) + 1) * (ringWidth / 2);
+                const particleX = body.x + Math.cos(angle) * radius;
+                const particleY = body.y + Math.sin(angle) * radius;
+                const particleSize = Math.max(0.5, (ringWidth / 8) * (Math.sin(angle * 3 + now) + 1.2));
+                
+                if (isFinite(particleX) && isFinite(particleY) && isFinite(particleSize)) {
+                    ctx.beginPath();
+                    ctx.arc(particleX, particleY, particleSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } catch (e) {
+                // Skip this particle if there's an error
+                console.error('Error drawing ring particle:', e);
+            }
+        }
+    }
+    
+    // Add function to validate coordinates before creating any gradients
+    function isValidCoordinate(value) {
+        return value !== undefined && value !== null && isFinite(value);
     }
     
     // Public API
