@@ -440,6 +440,11 @@ const CosmicNodeVisualizer2D = (function() {
             if (planet.hasRings) {
                 drawCelestialRings(planet);
             }
+            
+            // Draw city structures if planet has markdown
+            if (planet.hasMarkdown) {
+                drawCelestialCity(planet);
+            }
         }
     }
     
@@ -465,6 +470,11 @@ const CosmicNodeVisualizer2D = (function() {
         // Draw rings if sun has links
         if (sun.hasRings) {
             drawCelestialRings(sun);
+        }
+        
+        // Draw city structures if sun has markdown
+        if (sun.hasMarkdown) {
+            drawCelestialCity(sun);
         }
     }
     
@@ -1414,6 +1424,11 @@ const CosmicNodeVisualizer2D = (function() {
             if (moon.hasRings) {
                 drawCelestialRings(moon);
             }
+            
+            // Draw city structures if moon has markdown
+            if (moon.hasMarkdown) {
+                drawCelestialCity(moon);
+            }
         }
     }
     
@@ -1610,6 +1625,120 @@ const CosmicNodeVisualizer2D = (function() {
     // Add function to validate coordinates before creating any gradients
     function isValidCoordinate(value) {
         return value !== undefined && value !== null && isFinite(value);
+    }
+    
+    // Add the missing drawCelestialCity function
+    function drawCelestialCity(body) {
+        // Skip if any coordinates are invalid
+        if (!body || !isFinite(body.x) || !isFinite(body.y) || !isFinite(body.radius)) {
+            console.error('Cannot draw city for body with invalid coordinates:', body);
+            return;
+        }
+        
+        // Parameters for the city
+        const cityBaseHeight = body.radius * 0.15;
+        const buildingCount = Math.floor(body.radius / 2);
+        const spread = Math.PI / 3; // City covers 60° arc
+        
+        // Pick a random but consistent angle for the city (using hash of node ID)
+        const hash = hashString(body.node.id);
+        const cityAngle = (hash % 360) * (Math.PI / 180);
+        
+        // Draw the city buildings
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 0.5;
+        
+        for (let i = 0; i < buildingCount; i++) {
+            // Calculate building angle
+            const angle = cityAngle + (i / buildingCount - 0.5) * spread;
+            
+            // Calculate building height (varied)
+            const buildingHeight = cityBaseHeight * (0.4 + Math.sin(i * 0.7) * 0.6);
+            
+            // Calculate building width
+            const buildingWidth = body.radius * 0.04;
+            
+            // Calculate building position on the celestial body's surface
+            const baseX = body.x + Math.cos(angle) * body.radius;
+            const baseY = body.y + Math.sin(angle) * body.radius;
+            
+            // Calculate the building's top position
+            const topX = body.x + Math.cos(angle) * (body.radius + buildingHeight);
+            const topY = body.y + Math.sin(angle) * (body.radius + buildingHeight);
+            
+            // Calculate building sides
+            const perpAngle = angle + Math.PI / 2;
+            const halfWidth = buildingWidth / 2;
+            
+            // Draw the building
+            ctx.beginPath();
+            
+            // Bottom edge (along planet surface)
+            ctx.moveTo(baseX + Math.cos(perpAngle) * halfWidth, 
+                      baseY + Math.sin(perpAngle) * halfWidth);
+            ctx.lineTo(baseX - Math.cos(perpAngle) * halfWidth, 
+                      baseY - Math.sin(perpAngle) * halfWidth);
+            
+            // Right edge
+            ctx.lineTo(topX - Math.cos(perpAngle) * halfWidth, 
+                      topY - Math.sin(perpAngle) * halfWidth);
+            
+            // Top edge
+            ctx.lineTo(topX + Math.cos(perpAngle) * halfWidth, 
+                      topY + Math.sin(perpAngle) * halfWidth);
+            
+            // Create gradient for building
+            const gradient = ctx.createLinearGradient(baseX, baseY, topX, topY);
+            gradient.addColorStop(0, adjustColor(body.color, 30, 0.8));
+            gradient.addColorStop(1, adjustColor(body.color, 60, 0.9));
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add windows to taller buildings
+            if (buildingHeight > cityBaseHeight * 0.6) {
+                const windowRows = Math.floor(buildingHeight / (cityBaseHeight * 0.2));
+                const windowCols = 2;
+                
+                ctx.fillStyle = `rgba(255, 255, 150, ${0.4 + Math.random() * 0.6})`;
+                
+                for (let row = 0; row < windowRows; row++) {
+                    for (let col = 0; col < windowCols; col++) {
+                        // Only draw some windows (for variation)
+                        if (Math.random() > 0.3) {
+                            const windowSize = buildingWidth * 0.2;
+                            const windowPosX = baseX + (topX - baseX) * (row + 1) / (windowRows + 1);
+                            const windowPosY = baseY + (topY - baseY) * (row + 1) / (windowRows + 1);
+                            
+                            const windowOffsetX = (col - (windowCols - 1) / 2) * (buildingWidth * 0.4);
+                            
+                            ctx.beginPath();
+                            ctx.arc(
+                                windowPosX + Math.cos(perpAngle) * windowOffsetX,
+                                windowPosY + Math.sin(perpAngle) * windowOffsetX,
+                                windowSize, 0, Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Add the missing hashString function
+    function hashString(str) {
+        if (!str) return 0;
+        
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash);
     }
     
     // Public API
