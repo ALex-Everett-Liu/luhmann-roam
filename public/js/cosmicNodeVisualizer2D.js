@@ -38,6 +38,7 @@ const CosmicNodeVisualizer2D = (function() {
     let labels = [];
     let stars = [];
     let frameCounter = 0;
+    let moons = []; // New array to store moon data
     
     // Constants for the visualization
     const PLANET_COLORS = [
@@ -170,6 +171,15 @@ const CosmicNodeVisualizer2D = (function() {
             return;
         }
         
+        // Check if user clicked on a moon (check moons first since they're on top of planets)
+        for (const moon of moons) {
+            if (isPointInCircle(x, y, moon.x, moon.y, moon.radius)) {
+                console.log('Moon clicked:', moon.node.content);
+                showNodeActionMenu(moon.node, event);
+                return;
+            }
+        }
+        
         // Check if user clicked on a planet
         for (const planet of planets) {
             if (isPointInCircle(x, y, planet.x, planet.y, planet.radius)) {
@@ -238,6 +248,9 @@ const CosmicNodeVisualizer2D = (function() {
         
         // Update and draw planets
         updateAndDrawPlanets();
+        
+        // Update and draw moons
+        updateAndDrawMoons();
         
         // Draw sun
         drawSun();
@@ -424,6 +437,15 @@ const CosmicNodeVisualizer2D = (function() {
         for (const planet of planets) {
             const labelY = planet.y + planet.radius + 5;
             ctx.fillText(planet.node.content, planet.x, labelY);
+            
+            // Add indicator for planets with moons
+            const moonCount = moons.filter(moon => moon.planetId === planet.node.id).length;
+            if (moonCount > 0) {
+                const moonIndicatorY = planet.y + planet.radius + 25;
+                ctx.font = '12px Arial';
+                ctx.fillText(`(${moonCount} moons)`, planet.x, moonIndicatorY);
+                ctx.font = '14px Arial'; // Reset font size for next labels
+            }
         }
     }
     
@@ -445,43 +467,12 @@ const CosmicNodeVisualizer2D = (function() {
             // Fetch links
             const linksResponse = await fetch(`/api/nodes/${nodeId}/links`);
             const links = await linksResponse.json();
-            console.log('Raw links data:', links);
-
-            // Process links into a standardized format
-            let processedLinks = [];
-        
-            if (Array.isArray(links)) {
-                processedLinks = links;
-            } else if (links && typeof links === 'object') {
-                if (Array.isArray(links.outgoing)) {
-                    links.outgoing.forEach(link => {
-                        processedLinks.push({
-                            ...link,
-                            direction: 'outgoing',
-                            target_id: link.target_id || link.to_node_id,
-                            target_content: link.target_content || link.content
-                        });
-                    });
-                }
-                
-                if (Array.isArray(links.incoming)) {
-                    links.incoming.forEach(link => {
-                        processedLinks.push({
-                            ...link,
-                            direction: 'incoming',
-                            target_id: link.target_id || link.from_node_id,
-                            target_content: link.target_content || link.content
-                        });
-                    });
-                }
-            }
-            
-            console.log('Processed links:', processedLinks);
             
             // Clear previous data
             planets = [];
             portals = [];
             labels = [];
+            moons = []; // Clear moons array too
             
             // Create sun (current node)
             createSun(node);
@@ -489,11 +480,14 @@ const CosmicNodeVisualizer2D = (function() {
             // Create planets (children)
             createPlanets(children);
             
-            // Create portal for links only if we have valid processed links
-            if (processedLinks && processedLinks.length > 0) {
-                createPortal(node, processedLinks);
-            } else {
-                console.log('No valid links to create portal for');
+            // Fetch and create moons (grandchildren) for each planet
+            await createMoonsForPlanets();
+            
+            // Create portal for links
+            if (links && (Array.isArray(links) ? links.length > 0 : 
+                (links.outgoing && links.outgoing.length > 0) || 
+                (links.incoming && links.incoming.length > 0))) {
+                createPortal(node, links);
             }
             
             // Store current node
@@ -1078,6 +1072,98 @@ const CosmicNodeVisualizer2D = (function() {
         
         // Convert back to hex
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    
+    // New function to fetch and create moons for all planets
+    async function createMoonsForPlanets() {
+        // For each planet, fetch its children and create moons
+        for (let i = 0; i < planets.length; i++) {
+            const planet = planets[i];
+            try {
+                // Fetch children of the planet node
+                const moonNodes = await window.fetchChildren(planet.node.id);
+                
+                if (moonNodes && moonNodes.length > 0) {
+                    console.log(`Planet ${planet.node.content} has ${moonNodes.length} moons`);
+                    createMoonsForPlanet(planet, moonNodes);
+                }
+            } catch (error) {
+                console.error(`Error fetching moons for planet ${planet.node.id}:`, error);
+            }
+        }
+    }
+    
+    // New function to create moons for a specific planet
+    function createMoonsForPlanet(planet, moonNodes) {
+        // Base moon size - smaller than planets
+        const baseMoonSize = 5;
+        // Base orbit radius - relative to planet size
+        const baseOrbitRadius = planet.radius * 2;
+        
+        // Calculate moon distribution around the planet
+        for (let i = 0; i < moonNodes.length; i++) {
+            const moonNode = moonNodes[i];
+            
+            // Calculate moon size based on content length
+            const contentLength = moonNode.content ? moonNode.content.length : 1;
+            const moonSize = Math.max(baseMoonSize, Math.min(baseMoonSize * 1.2, contentLength / 10));
+            
+            // Calculate orbit radius - slightly increasing with each moon
+            const orbitRadius = baseOrbitRadius + (i * 5);
+            
+            // Calculate initial position on the orbit
+            const angle = Math.random() * Math.PI * 2;
+            
+            // Create moon object
+            const moon = {
+                node: moonNode,
+                planetId: planet.node.id, // Reference to parent planet
+                radius: moonSize,
+                orbitRadius: orbitRadius,
+                angle: angle,
+                // Use a slightly different color than the planet
+                color: adjustColor(planet.color, 30)
+            };
+            
+            moons.push(moon);
+        }
+    }
+    
+    // Update and draw moons in the animation loop
+    function updateAndDrawMoons() {
+        for (let i = 0; i < moons.length; i++) {
+            const moon = moons[i];
+            
+            // Find the parent planet
+            const planet = planets.find(p => p.node.id === moon.planetId);
+            if (!planet) continue; // Skip if parent planet not found
+            
+            // Update moon position relative to its planet
+            // Moons orbit faster than planets
+            moon.angle += ANIMATION_SPEED * 2.5 / Math.sqrt(moon.orbitRadius);
+            moon.x = planet.x + Math.cos(moon.angle) * moon.orbitRadius;
+            moon.y = planet.y + Math.sin(moon.angle) * moon.orbitRadius;
+            
+            // Draw moon
+            ctx.beginPath();
+            ctx.arc(moon.x, moon.y, moon.radius, 0, Math.PI * 2);
+            
+            // Create gradient
+            const gradient = ctx.createRadialGradient(
+                moon.x, moon.y, 0,
+                moon.x, moon.y, moon.radius
+            );
+            gradient.addColorStop(0, moon.color);
+            gradient.addColorStop(1, adjustColor(moon.color, -20));
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Draw moon border
+            ctx.strokeStyle = adjustColor(moon.color, 20);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
     
     // Public API
