@@ -392,7 +392,7 @@ const CosmicNodeVisualizer2D = (function() {
         frameCounter++;
     }
     
-    // Draw orbit lines
+    // Also update drawOrbitLines to draw individual orbits for each planet
     function drawOrbitLines() {
         ctx.save();
         
@@ -400,12 +400,24 @@ const CosmicNodeVisualizer2D = (function() {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
+        // Track which orbits we've already drawn to avoid duplicates
+        const drawnOrbits = new Set();
+        
         for (const planet of planets) {
+            // Skip if we've already drawn this orbit
+            if (drawnOrbits.has(planet.orbitRadius)) {
+                continue;
+            }
+            
+            // Draw the orbit
             ctx.beginPath();
             ctx.arc(centerX, centerY, planet.orbitRadius, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.setLineDash([5, 3]);
             ctx.stroke();
+            
+            // Mark this orbit as drawn
+            drawnOrbits.add(planet.orbitRadius);
         }
         
         ctx.restore();
@@ -703,6 +715,7 @@ const CosmicNodeVisualizer2D = (function() {
     }
     
     // Create planets (children)
+    // Modify the createPlanets function to use nodes' position property for orbits
     function createPlanets(nodes) {
         planets = [];
         
@@ -710,62 +723,56 @@ const CosmicNodeVisualizer2D = (function() {
             return;
         }
         
-        // Calculate the number of orbits needed
-        const numOrbits = Math.ceil(nodes.length / PLANETS_PER_ORBIT);
+        // Sort nodes by position to ensure consistent orbit assignment
+        nodes.sort((a, b) => a.position - b.position);
         
-        // For each orbit
-        for (let orbit = 0; orbit < numOrbits; orbit++) {
-            // Calculate the orbit radius
-            const orbitRadius = BASE_ORBIT_RADIUS + (orbit * ORBIT_SPACING);
+        // Calculate BASE_ORBIT_SPACING based on node count to avoid overcrowding
+        const orbitSpacing = nodes.length > 10 ? BASE_ORBIT_RADIUS / 2 : ORBIT_SPACING;
+        
+        // For each node
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
             
-            // Calculate how many planets for this orbit
-            const planetsInOrbit = Math.min(PLANETS_PER_ORBIT, nodes.length - (orbit * PLANETS_PER_ORBIT));
+            // Use node's position property to determine orbit radius
+            // This ensures each node gets its own orbit based on position
+            const orbitRadius = BASE_ORBIT_RADIUS + (node.position * orbitSpacing);
             
-            // For each planet in this orbit
-            for (let i = 0; i < planetsInOrbit; i++) {
-                // Get the node index
-                const nodeIndex = (orbit * PLANETS_PER_ORBIT) + i;
-                
-                // Skip if we've run out of nodes
-                if (nodeIndex >= nodes.length) {
-                    break;
-                }
-                
-                // Get the node
-                const node = nodes[nodeIndex];
-                
-                // Calculate the position on the orbit
-                const angle = (i / planetsInOrbit) * Math.PI * 2;
-                const x = canvas.width / 2 + Math.cos(angle) * orbitRadius;
-                const y = canvas.height / 2 + Math.sin(angle) * orbitRadius;
-                
-                // Calculate planet size based on content length (min 8, max 20)
-                const contentLength = node.content ? node.content.length : 1;
-                const planetSize = Math.max(8, Math.min(20, 8 + contentLength / 10));
-                
-                // Calculate planet color (use node's position to determine hue)
-                const hue = (i / planetsInOrbit) * 360;
-                const color = `hsl(${hue}, 70%, 60%)`;
-                
-                // Create planet
-                const planet = {
-                    node: node,
-                    orbitRadius: orbitRadius,
-                    orbitAngle: angle,
-                    angleSpeed: 0.002 / Math.sqrt(orbit + 1), // Planets in outer orbits move slower
-                    radius: planetSize,
-                    x: x,
-                    y: y,
-                    color: color,
-                    orbit: orbit,
-                    // Add properties to track if planet has rings (links) or markdown
-                    hasRings: node.link_count && node.link_count > 0,
-                    hasMarkdown: node.has_markdown
-                };
-                
-                // Add to planets array
-                planets.push(planet);
-            }
+            // Calculate starting angle - distribute evenly or use a consistent formula
+            // Here we use a formula based on node position to ensure consistent placement
+            const angle = (node.position * 0.618033988749895) * Math.PI * 2; // Golden ratio helps distribute nodes evenly
+            
+            // Calculate planet size based on content length (min 8, max 20)
+            const contentLength = node.content ? node.content.length : 1;
+            const planetSize = Math.max(8, Math.min(20, 8 + contentLength / 10));
+            
+            // Calculate planet color (use node's position to determine hue)
+            const hue = (node.position * 137.508) % 360; // Use golden angle (137.5°) for nice distribution
+            const color = `hsl(${hue}, 70%, 60%)`;
+            
+            // Calculate position
+            const x = canvas.width / 2 + Math.cos(angle) * orbitRadius;
+            const y = canvas.height / 2 + Math.sin(angle) * orbitRadius;
+            
+            // Create planet
+            const planet = {
+                node: node,
+                orbitRadius: orbitRadius,
+                orbitAngle: angle,
+                // Speed is inversely proportional to orbit radius 
+                // (outer planets move slower)
+                angleSpeed: 0.002 / Math.sqrt(1 + node.position),
+                radius: planetSize,
+                x: x,
+                y: y,
+                color: color,
+                orbit: node.position,
+                // Add properties to track if planet has rings (links) or markdown
+                hasRings: node.link_count && node.link_count > 0,
+                hasMarkdown: node.has_markdown
+            };
+            
+            // Add to planets array
+            planets.push(planet);
         }
     }
     

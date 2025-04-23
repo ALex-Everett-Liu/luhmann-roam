@@ -918,6 +918,11 @@ document.addEventListener('DOMContentLoaded', () => {
     HotkeyManager.initialize();
   }
 
+  // Add this to the initialization code
+  if (window.CommandPaletteManager) {
+    CommandPaletteManager.initialize();
+  }
+
   // Initialize the CodeAnalyzerManager
   if (window.CodeAnalyzerManager) {
     CodeAnalyzerManager.initialize();

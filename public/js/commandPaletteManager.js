@@ -1,0 +1,854 @@
+/**
+ * Command Palette Manager Module
+ * Provides a searchable command palette for executing commands
+ * similar to VS Code or Obsidian's command palette.
+ */
+const CommandPaletteManager = (function() {
+    // Private variables
+    let isCommandPaletteOpen = false;
+    let commands = [];
+    let filteredCommands = [];
+    let selectedCommandIndex = 0;
+    let paletteElement = null;
+    let searchInput = null;
+    let commandsList = null;
+    let isInitialized = false;
+    
+    /**
+     * Initialize the Command Palette Manager
+     */
+    function initialize() {
+        if (isInitialized) return;
+        
+        // Setup keyboard shortcut for opening the command palette (Ctrl+P)
+        document.addEventListener('keydown', function(e) {
+            // Check for Ctrl+P (or Cmd+P on Mac)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault(); // Prevent the browser's print dialog
+                toggleCommandPalette();
+            }
+            
+            // Handle keyboard navigation when palette is open
+            if (isCommandPaletteOpen) {
+                handleKeyboardNavigation(e);
+            }
+        });
+        
+        // Create the command palette UI elements
+        createCommandPaletteUI();
+        
+        // Register commands from all modules
+        registerAllCommands();
+        
+        isInitialized = true;
+        console.log('CommandPaletteManager initialized');
+    }
+    
+    /**
+     * Create the command palette UI
+     */
+    function createCommandPaletteUI() {
+        // Create modal overlay
+        paletteElement = document.createElement('div');
+        paletteElement.className = 'command-palette-overlay';
+        paletteElement.style.display = 'none';
+        
+        // Create the command palette container
+        const palette = document.createElement('div');
+        palette.className = 'command-palette';
+        
+        // Create search input
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'command-palette-search';
+        searchInput.placeholder = 'Type a command...';
+        searchInput.addEventListener('input', handleSearchInput);
+        
+        // Create commands list container
+        commandsList = document.createElement('div');
+        commandsList.className = 'command-palette-list';
+        
+        // Assemble the UI
+        palette.appendChild(searchInput);
+        palette.appendChild(commandsList);
+        paletteElement.appendChild(palette);
+        
+        // Add click handler to close when clicking outside
+        paletteElement.addEventListener('click', function(e) {
+            if (e.target === paletteElement) {
+                closeCommandPalette();
+            }
+        });
+        
+        // Add to document
+        document.body.appendChild(paletteElement);
+        
+        // Add style element for command palette
+        addCommandPaletteStyles();
+    }
+    
+    /**
+     * Add CSS styles for the command palette
+     */
+    function addCommandPaletteStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .command-palette-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 10000;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                padding-top: 100px;
+            }
+            
+            .command-palette {
+                width: 500px;
+                max-width: 90%;
+                background-color: #fff;
+                border-radius: 5px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                display: flex;
+                flex-direction: column;
+                max-height: 70vh;
+                overflow: hidden;
+            }
+            
+            .command-palette-search {
+                padding: 12px 16px;
+                font-size: 16px;
+                border: none;
+                border-bottom: 1px solid #eee;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            .command-palette-list {
+                overflow-y: auto;
+                max-height: calc(70vh - 50px);
+            }
+            
+            .command-palette-item {
+                padding: 10px 16px;
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .command-palette-item:hover, .command-palette-item.selected {
+                background-color: #f5f5f5;
+            }
+            
+            .command-palette-item-name {
+                font-weight: 500;
+            }
+            
+            .command-palette-item-category {
+                font-size: 12px;
+                color: #666;
+                margin-top: 3px;
+            }
+            
+            .command-palette-item-shortcut {
+                font-size: 12px;
+                color: #999;
+                background-color: #f1f1f1;
+                padding: 2px 5px;
+                border-radius: 3px;
+                min-width: 20px;
+                text-align: center;
+            }
+            
+            .command-palette-no-results {
+                padding: 16px;
+                color: #666;
+                text-align: center;
+                font-style: italic;
+            }
+            
+            .command-palette-info {
+                font-size: 12px;
+                padding: 8px 16px;
+                background-color: #f5f5f5;
+                color: #666;
+                border-top: 1px solid #eee;
+            }
+            
+            /* Dark mode support */
+            @media (prefers-color-scheme: dark) {
+                .command-palette {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                }
+                
+                .command-palette-search {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                    border-bottom: 1px solid #444;
+                }
+                
+                .command-palette-item:hover, .command-palette-item.selected {
+                    background-color: #3d3d3d;
+                }
+                
+                .command-palette-item-category {
+                    color: #aaa;
+                }
+                
+                .command-palette-item-shortcut {
+                    background-color: #444;
+                    color: #ccc;
+                }
+                
+                .command-palette-no-results {
+                    color: #aaa;
+                }
+                
+                .command-palette-info {
+                    background-color: #333;
+                    color: #aaa;
+                    border-top: 1px solid #444;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * Toggle the command palette open/closed
+     */
+    function toggleCommandPalette() {
+        if (isCommandPaletteOpen) {
+            closeCommandPalette();
+        } else {
+            openCommandPalette();
+        }
+    }
+    
+    /**
+     * Open the command palette
+     */
+    function openCommandPalette() {
+        // Update commands in case new ones have been registered
+        registerAllCommands();
+        
+        // Reset state
+        filteredCommands = [...commands];
+        selectedCommandIndex = 0;
+        
+        // Show the palette
+        paletteElement.style.display = 'flex';
+        searchInput.value = '';
+        
+        // Focus the search input
+        setTimeout(() => {
+            searchInput.focus();
+            renderCommandsList();
+        }, 50);
+        
+        isCommandPaletteOpen = true;
+    }
+    
+    /**
+     * Close the command palette
+     */
+    function closeCommandPalette() {
+        paletteElement.style.display = 'none';
+        isCommandPaletteOpen = false;
+    }
+    
+    /**
+     * Handle search input changes
+     * @param {Event} e - Input event
+     */
+    function handleSearchInput(e) {
+        const query = e.target.value.toLowerCase().trim();
+        
+        if (!query) {
+            filteredCommands = [...commands];
+        } else {
+            // Filter commands based on search query
+            filteredCommands = commands.filter(command => {
+                // Match by name, category, or keywords
+                return (
+                    command.name.toLowerCase().includes(query) ||
+                    (command.category && command.category.toLowerCase().includes(query)) ||
+                    (command.keywords && command.keywords.some(keyword => 
+                        keyword.toLowerCase().includes(query)
+                    ))
+                );
+            });
+            
+            // Sort by relevance: exact matches first, then starts with, then includes
+            filteredCommands.sort((a, b) => {
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+                
+                // Exact matches first
+                if (aName === query && bName !== query) return -1;
+                if (bName === query && aName !== query) return 1;
+                
+                // Then starts with
+                if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
+                if (bName.startsWith(query) && !aName.startsWith(query)) return 1;
+                
+                // Default to original order
+                return 0;
+            });
+        }
+        
+        // Reset selection
+        selectedCommandIndex = filteredCommands.length > 0 ? 0 : -1;
+        
+        // Update the UI
+        renderCommandsList();
+    }
+    
+    /**
+     * Handle keyboard navigation within the command palette
+     * @param {KeyboardEvent} e - Keyboard event
+     */
+    function handleKeyboardNavigation(e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeCommandPalette();
+            return;
+        }
+        
+        if (filteredCommands.length === 0) return;
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedCommandIndex = (selectedCommandIndex + 1) % filteredCommands.length;
+            renderCommandsList();
+            scrollToSelectedCommand();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedCommandIndex = (selectedCommandIndex - 1 + filteredCommands.length) % filteredCommands.length;
+            renderCommandsList();
+            scrollToSelectedCommand();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedCommandIndex >= 0 && selectedCommandIndex < filteredCommands.length) {
+                executeCommand(filteredCommands[selectedCommandIndex]);
+            }
+        }
+    }
+    
+    /**
+     * Scroll to make the selected command visible
+     */
+    function scrollToSelectedCommand() {
+        const selectedElement = commandsList.querySelector('.command-palette-item.selected');
+        if (selectedElement) {
+            selectedElement.scrollIntoView({ block: 'nearest' });
+        }
+    }
+    
+    /**
+     * Render the list of filtered commands
+     */
+    function renderCommandsList() {
+        // Clear the list
+        commandsList.innerHTML = '';
+        
+        if (filteredCommands.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'command-palette-no-results';
+            noResults.textContent = 'No matching commands found';
+            commandsList.appendChild(noResults);
+            return;
+        }
+        
+        // Create a document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        // Add each command to the list
+        filteredCommands.forEach((command, index) => {
+            const item = document.createElement('div');
+            item.className = 'command-palette-item';
+            if (index === selectedCommandIndex) {
+                item.className += ' selected';
+            }
+            
+            const leftSide = document.createElement('div');
+            
+            const nameElement = document.createElement('div');
+            nameElement.className = 'command-palette-item-name';
+            nameElement.textContent = command.name;
+            leftSide.appendChild(nameElement);
+            
+            if (command.category) {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'command-palette-item-category';
+                categoryElement.textContent = command.category;
+                leftSide.appendChild(categoryElement);
+            }
+            
+            item.appendChild(leftSide);
+            
+            if (command.shortcut) {
+                const shortcutElement = document.createElement('div');
+                shortcutElement.className = 'command-palette-item-shortcut';
+                shortcutElement.textContent = command.shortcut;
+                item.appendChild(shortcutElement);
+            }
+            
+            // Add click handler
+            item.addEventListener('click', () => {
+                executeCommand(command);
+            });
+            
+            // Add mouse over handler to update selection
+            item.addEventListener('mouseover', () => {
+                selectedCommandIndex = index;
+                renderCommandsList();
+            });
+            
+            fragment.appendChild(item);
+        });
+        
+        // Add the commands to the list
+        commandsList.appendChild(fragment);
+        
+        // Add keyboard shortcut info
+        const infoElement = document.createElement('div');
+        infoElement.className = 'command-palette-info';
+        infoElement.textContent = 'Use ↑↓ to navigate, Enter to execute, Escape to close';
+        commandsList.appendChild(infoElement);
+    }
+    
+    /**
+     * Execute a command and close the palette
+     * @param {Object} command - The command to execute
+     */
+    function executeCommand(command) {
+        // Close the command palette first
+        closeCommandPalette();
+        
+        // Execute the command
+        if (typeof command.action === 'function') {
+            try {
+                command.action();
+            } catch (error) {
+                console.error('Error executing command:', command.name, error);
+            }
+        }
+    }
+    
+    /**
+     * Register a new command
+     * @param {Object} command - Command object with name, action, etc.
+     */
+    function registerCommand(command) {
+        // Ensure required properties
+        if (!command.name || typeof command.action !== 'function') {
+            console.error('Invalid command:', command);
+            return;
+        }
+        
+        // Check if command already exists
+        const existingCommandIndex = commands.findIndex(cmd => cmd.name === command.name);
+        
+        if (existingCommandIndex !== -1) {
+            // Update existing command
+            commands[existingCommandIndex] = command;
+        } else {
+            // Add new command
+            commands.push(command);
+        }
+        
+        // Sort commands alphabetically by name
+        commands.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    /**
+     * Register a batch of commands
+     * @param {Array} commandsArray - Array of command objects
+     */
+    function registerCommands(commandsArray) {
+        if (!Array.isArray(commandsArray)) {
+            console.error('registerCommands expects an array');
+            return;
+        }
+        
+        commandsArray.forEach(command => {
+            registerCommand(command);
+        });
+    }
+    
+    /**
+     * Collect and register commands from all modules
+     */
+    function registerAllCommands() {
+        // Clear existing commands to start fresh
+        commands = [];
+        
+        // Register commands from HotkeyManager
+        registerHotkeyCommands();
+        
+        // Register node operations
+        registerNodeCommands();
+        
+        // Register app-level commands
+        registerAppCommands();
+        
+        // Register navigation commands
+        registerNavigationCommands();
+        
+        // Register other module commands
+        registerModuleCommands();
+    }
+    
+    /**
+     * Register commands from HotkeyManager
+     */
+    function registerHotkeyCommands() {
+        // Check if HotkeyManager exists and has global hotkeys
+        if (window.HotkeyManager && window.HotkeyManager._getGlobalHotkeys) {
+            const globalHotkeys = window.HotkeyManager._getGlobalHotkeys();
+            
+            Object.keys(globalHotkeys).forEach(key => {
+                if (key === 'escape') return; // Skip escape key
+                
+                const hotkey = globalHotkeys[key];
+                registerCommand({
+                    name: hotkey.description,
+                    action: hotkey.action,
+                    category: 'Global',
+                    shortcut: `Alt+${key.toUpperCase()}`,
+                    keywords: ['hotkey', 'shortcut']
+                });
+            });
+        } else {
+            // Fallback for simple commands if HotkeyManager doesn't expose its hotkeys
+            registerCommand({
+                name: 'Toggle Hotkey Help',
+                action: () => {
+                    if (window.HotkeyManager) {
+                        window.HotkeyManager.enterHotkeyMode();
+                        // Simulate 'h' keypress
+                        const event = new KeyboardEvent('keydown', { key: 'h' });
+                        document.dispatchEvent(event);
+                    }
+                },
+                category: 'Help',
+                shortcut: 'Alt+H',
+                keywords: ['hotkey', 'keyboard', 'shortcuts', 'help']
+            });
+        }
+    }
+    
+    /**
+     * Register node operation commands
+     */
+    function registerNodeCommands() {
+        // Add node commands
+        registerCommand({
+            name: 'Add Root Node',
+            action: () => {
+                if (window.addRootNode) {
+                    window.addRootNode();
+                }
+            },
+            category: 'Nodes',
+            shortcut: 'Alt+A',
+            keywords: ['create', 'new', 'root', 'node', 'add']
+        });
+        
+        // Check if NodeOperationsManager exists
+        if (window.NodeOperationsManager) {
+            registerCommand({
+                name: 'Add Child Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId && window.addChildNode) {
+                            window.addChildNode(nodeId);
+                        }
+                    }
+                },
+                category: 'Nodes',
+                shortcut: 'Enter',
+                keywords: ['create', 'new', 'child', 'node', 'add']
+            });
+            
+            registerCommand({
+                name: 'Delete Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId && window.deleteNode) {
+                            if (confirm(window.I18n ? window.I18n.t('confirmDeleteNode') : 'Are you sure you want to delete this node and all its children?')) {
+                                window.deleteNode(nodeId);
+                            }
+                        }
+                    }
+                },
+                category: 'Nodes',
+                shortcut: 'Alt+X',
+                keywords: ['remove', 'delete', 'node']
+            });
+            
+            registerCommand({
+                name: 'Indent Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId && window.indentNode) {
+                            window.indentNode(nodeId);
+                        }
+                    }
+                },
+                category: 'Nodes',
+                shortcut: 'Tab',
+                keywords: ['indent', 'node', 'child']
+            });
+            
+            registerCommand({
+                name: 'Outdent Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId && window.outdentNode) {
+                            window.outdentNode(nodeId);
+                        }
+                    }
+                },
+                category: 'Nodes',
+                shortcut: 'Shift+Tab',
+                keywords: ['outdent', 'node', 'parent']
+            });
+        }
+    }
+    
+    /**
+     * Register app-level commands
+     */
+    function registerAppCommands() {
+        registerCommand({
+            name: 'Save Changes',
+            action: () => {
+                if (window.saveChanges) {
+                    window.saveChanges();
+                }
+            },
+            category: 'App',
+            shortcut: 'Alt+S',
+            keywords: ['save', 'store', 'persist']
+        });
+        
+        registerCommand({
+            name: 'Toggle Language',
+            action: () => {
+                if (window.I18n && window.I18n.toggleLanguage) {
+                    window.I18n.toggleLanguage();
+                }
+            },
+            category: 'App',
+            shortcut: 'Alt+L',
+            keywords: ['language', 'english', 'chinese', 'toggle', 'switch']
+        });
+        
+        registerCommand({
+            name: 'Refresh Data',
+            action: () => {
+                if (window.fetchNodes) {
+                    window.fetchNodes(true);
+                }
+            },
+            category: 'App',
+            shortcut: 'Alt+R',
+            keywords: ['refresh', 'reload', 'update']
+        });
+        
+        // Add backup command if BackupManager exists
+        if (window.BackupManager) {
+            registerCommand({
+                name: 'Backup Database',
+                action: () => {
+                    if (window.BackupManager && window.BackupManager.createBackup) {
+                        window.BackupManager.createBackup();
+                    } else {
+                        const backupButton = document.getElementById('backup-database');
+                        if (backupButton) backupButton.click();
+                    }
+                },
+                category: 'App',
+                keywords: ['backup', 'save', 'export', 'database']
+            });
+        }
+    }
+    
+    /**
+     * Register navigation commands
+     */
+    function registerNavigationCommands() {
+        // Add breadcrumb navigation if BreadcrumbManager exists
+        if (window.BreadcrumbManager) {
+            registerCommand({
+                name: 'Return to Root Level',
+                action: () => {
+                    if (window.BreadcrumbManager.clearFocus) {
+                        window.BreadcrumbManager.clearFocus();
+                    }
+                },
+                category: 'Navigation',
+                shortcut: 'Alt+B0',
+                keywords: ['home', 'root', 'clear focus', 'navigation']
+            });
+            
+            // Add command to focus on previously focused node
+            registerCommand({
+                name: 'Focus Last Node',
+                action: () => {
+                    if (window.lastFocusedNodeId) {
+                        const nodeElement = document.querySelector(`.node[data-id="${window.lastFocusedNodeId}"]`);
+                        if (nodeElement) {
+                            const nodeText = nodeElement.querySelector('.node-text');
+                            if (nodeText) {
+                                nodeText.focus();
+                            }
+                        }
+                    }
+                },
+                category: 'Navigation',
+                shortcut: 'Alt+Z',
+                keywords: ['last', 'previous', 'focus', 'node']
+            });
+        }
+        
+        // Add search command
+        if (window.SearchManager) {
+            registerCommand({
+                name: 'Search Nodes',
+                action: () => {
+                    if (window.SearchManager.openSearchModal) {
+                        window.SearchManager.openSearchModal();
+                    }
+                },
+                category: 'Navigation',
+                shortcut: 'Alt+F',
+                keywords: ['search', 'find', 'lookup']
+            });
+        }
+    }
+    
+    /**
+     * Register commands from other modules
+     */
+    function registerModuleCommands() {
+        // Add Filter commands if FilterManager exists
+        if (window.FilterManager) {
+            registerCommand({
+                name: 'Open Filters',
+                action: () => {
+                    if (window.FilterManager.openFilterModal) {
+                        window.FilterManager.openFilterModal();
+                    }
+                },
+                category: 'Filters',
+                shortcut: 'Alt+I',
+                keywords: ['filter', 'search', 'narrow']
+            });
+            
+            registerCommand({
+                name: 'Clear Filters',
+                action: () => {
+                    if (window.FilterManager.clearFilters) {
+                        window.FilterManager.clearFilters();
+                    }
+                },
+                category: 'Filters',
+                keywords: ['clear', 'reset', 'filters']
+            });
+        }
+        
+        // Add Bookmark commands if BookmarkManager exists
+        if (window.BookmarkManager) {
+            registerCommand({
+                name: 'Toggle Bookmark for Focused Node',
+                action: () => {
+                    if (window.BookmarkManager.toggleBookmarkForFocusedNode) {
+                        window.BookmarkManager.toggleBookmarkForFocusedNode();
+                    }
+                },
+                category: 'Bookmarks',
+                shortcut: 'Alt+B',
+                keywords: ['bookmark', 'save', 'favorite']
+            });
+            
+            if (window.BookmarkManager.openBookmarksPanel) {
+                registerCommand({
+                    name: 'Open Bookmarks Panel',
+                    action: () => {
+                        window.BookmarkManager.openBookmarksPanel();
+                    },
+                    category: 'Bookmarks',
+                    keywords: ['bookmarks', 'favorites', 'saved']
+                });
+            }
+        }
+        
+        // Add task commands if TaskManager exists
+        if (window.TaskManager) {
+            registerCommand({
+                name: 'Open Task Manager',
+                action: () => {
+                    if (window.TaskManager.openTaskManager) {
+                        window.TaskManager.openTaskManager();
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['tasks', 'todo', 'manage']
+            });
+        }
+    }
+    
+    /**
+     * Update translations for command palette
+     * @param {string} language - The language code
+     */
+    function updateLanguage(language) {
+        if (searchInput) {
+            if (language === 'zh') {
+                searchInput.placeholder = '输入命令...';
+            } else {
+                searchInput.placeholder = 'Type a command...';
+            }
+        }
+        
+        // Update commands that might have translated names
+        registerAllCommands();
+        
+        // Update the UI if open
+        if (isCommandPaletteOpen) {
+            renderCommandsList();
+        }
+    }
+    
+    // Public API
+    return {
+        initialize,
+        registerCommand,
+        registerCommands,
+        openCommandPalette,
+        closeCommandPalette,
+        updateLanguage,
+        // Expose for testing only
+        _getCommands: () => commands
+    };
+})();
+
+// Export the module for use in other files
+window.CommandPaletteManager = CommandPaletteManager;

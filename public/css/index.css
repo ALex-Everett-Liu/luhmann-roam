@@ -22,6 +22,7 @@
 @import './features/code-analyzer.css';
 @import './features/node.css';
 @import './features/timestamp.css';
+@import './features/command-palette.css';
 @import './features/node-grid-visualizer.css';
 @import './features/node-size-manager.css';
 @import './features/font-manager.css';
