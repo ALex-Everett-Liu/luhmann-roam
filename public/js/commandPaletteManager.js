@@ -813,6 +813,83 @@ const CommandPaletteManager = (function() {
                 keywords: ['tasks', 'todo', 'manage']
             });
         }
+        
+        // Add Blog Manager commands if BlogManager exists
+        if (window.BlogManager) {
+            registerCommand({
+                name: 'Open Blog Manager',
+                action: () => {
+                    if (window.BlogManager.openModal) {
+                        window.BlogManager.openModal();
+                    }
+                },
+                category: 'Blog',
+                keywords: ['blog', 'publish', 'html', 'markdown', 'convert']
+            });
+            
+            // Add command to quickly create a blog from the current focused node
+            registerCommand({
+                name: 'Create Blog from Current Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId) {
+                            // Open Blog Manager
+                            window.BlogManager.openModal();
+                            
+                            // Set a small timeout to allow modal to fully initialize
+                            setTimeout(() => {
+                                // Find and set the node selector to the current node
+                                const nodeSelector = document.getElementById('node-selector');
+                                if (nodeSelector) {
+                                    // Look for the option with the matching nodeId
+                                    const option = Array.from(nodeSelector.options).find(opt => opt.value === nodeId);
+                                    if (option) {
+                                        nodeSelector.value = nodeId;
+                                        
+                                        // Trigger a change event to update the preview
+                                        const event = new Event('change', { bubbles: true });
+                                        nodeSelector.dispatchEvent(event);
+                                        
+                                        // Find and click the preview button
+                                        const previewBtn = document.getElementById('preview-markdown-btn');
+                                        if (previewBtn) {
+                                            previewBtn.click();
+                                        }
+                                    }
+                                }
+                            }, 300);
+                        }
+                    } else {
+                        alert('Please focus on a node first');
+                    }
+                },
+                category: 'Blog',
+                keywords: ['blog', 'current', 'node', 'publish', 'quick']
+            });
+            
+            // Add command to view all published blogs
+            registerCommand({
+                name: 'View Published Blogs',
+                action: () => {
+                    if (window.BlogManager.openModal) {
+                        window.BlogManager.openModal();
+                        
+                        // Set timeout to allow modal to initialize
+                        setTimeout(() => {
+                            // Switch to manage tab
+                            const manageTabBtn = document.getElementById('manage-tab-btn');
+                            if (manageTabBtn) {
+                                manageTabBtn.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Blog',
+                keywords: ['blog', 'published', 'list', 'manage']
+            });
+        }
     }
     
     /**

@@ -496,9 +496,36 @@ const HotkeyManager = (function() {
         const isTwoDigit = i >= 9;
         
         // Register a hotkey that will navigate to this node when pressed
+        // and also put it in editing mode with cursor at the end
         registerHotkey(key, bulletOrIcon || node, () => {
           if (window.BreadcrumbManager) {
+            // First focus on the node to ensure it's in view
             window.BreadcrumbManager.focusOnNode(nodeId);
+            
+            // Then find the node-text element and put it in editing mode
+            setTimeout(() => {
+              const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+              if (nodeElement) {
+                const nodeTextElement = nodeElement.querySelector('.node-text');
+                if (nodeTextElement) {
+                  // Focus on the text element
+                  nodeTextElement.focus();
+                  
+                  // If this is a contenteditable element, position cursor at the end
+                  if (nodeTextElement.isContentEditable) {
+                    // Create a range at the end of the text content
+                    const range = document.createRange();
+                    range.selectNodeContents(nodeTextElement);
+                    range.collapse(false); // false means collapse to end
+                    
+                    // Apply the range selection
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                  }
+                }
+              }
+            }, 100); // Short delay to ensure DOM is updated after focusOnNode
           }
         }, `Focus on: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`, isTwoDigit);
       }
