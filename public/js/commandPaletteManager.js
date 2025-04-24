@@ -24,11 +24,11 @@ const CommandPaletteManager = (function() {
         document.addEventListener('keydown', function(e) {
             // Check for Ctrl+P (or Cmd+P on Mac)
             if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-                e.preventDefault(); // Prevent the browser's print dialog
+                e.preventDefault(); // it prevents the default action (which would normally trigger the browser's print dialog)
                 toggleCommandPalette();
             }
             
-            // Handle keyboard navigation when palette is open
+            // Handle keyboard navigation when palette is open; navigation within the command palette using the keyboard
             if (isCommandPaletteOpen) {
                 handleKeyboardNavigation(e);
             }
@@ -889,6 +889,116 @@ const CommandPaletteManager = (function() {
                 category: 'Blog',
                 keywords: ['blog', 'published', 'list', 'manage']
             });
+        }
+        
+        // Add 2D Cosmic Visualizer commands if CosmicNodeVisualizer2D exists
+        if (window.CosmicNodeVisualizer2D) {
+            registerCommand({
+                name: 'Open 2D Cosmic View',
+                action: () => {
+                    const nodeId = getCurrentNodeId();
+                    if (nodeId) {
+                        openCosmicView2D(nodeId);
+                    } else {
+                        alert('Please select or focus on a node first');
+                    }
+                },
+                category: 'Visualization',
+                keywords: ['cosmic', '2d', 'visualize', 'solar', 'system', 'graph']
+            });
+            
+            registerCommand({
+                name: 'Open 2D Cosmic View for Current Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId) {
+                            openCosmicView2D(nodeId);
+                        }
+                    } else {
+                        alert('Please focus on a node first');
+                    }
+                },
+                category: 'Visualization',
+                keywords: ['cosmic', '2d', 'current', 'focus', 'visualize']
+            });
+            
+            registerCommand({
+                name: 'Open 2D Cosmic View for Root Node',
+                action: async () => {
+                    try {
+                        // Get all root nodes
+                        const response = await fetch('/api/nodes?limit=1');
+                        const nodes = await response.json();
+                        
+                        if (nodes && nodes.length > 0) {
+                            openCosmicView2D(nodes[0].id);
+                        } else {
+                            alert('No root nodes found');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching root node:', error);
+                        alert('Failed to fetch root node');
+                    }
+                },
+                category: 'Visualization',
+                keywords: ['cosmic', '2d', 'root', 'visualize', 'overview']
+            });
+            
+            registerCommand({
+                name: 'Toggle 2D Cosmic View',
+                action: () => {
+                    if (window.CosmicNodeVisualizer2D.isVisible()) {
+                        window.CosmicNodeVisualizer2D.hide();
+                    } else {
+                        const nodeId = getCurrentNodeId();
+                        if (nodeId) {
+                            openCosmicView2D(nodeId);
+                        } else {
+                            alert('Please select or focus on a node first');
+                        }
+                    }
+                },
+                category: 'Visualization',
+                shortcut: 'Alt+C',
+                keywords: ['cosmic', '2d', 'toggle', 'visualize', 'hide', 'show']
+            });
+            
+            // Helper function to open the cosmic view
+            function openCosmicView2D(nodeId) {
+                console.log('Opening 2D Cosmic View for node:', nodeId);
+                window.CosmicNodeVisualizer2D.show(nodeId);
+            }
+            
+            // Helper function to get the current node ID
+            function getCurrentNodeId() {
+                // First try to get focused node from DOM
+                const focusedNode = document.querySelector('.node-text:focus');
+                if (focusedNode) {
+                    const nodeId = focusedNode.closest('.node').dataset.id;
+                    if (nodeId) return nodeId;
+                }
+                
+                // Then try to get from BreadcrumbManager if available
+                if (window.BreadcrumbManager && window.BreadcrumbManager.getCurrentFocusedNodeId) {
+                    const focusedNodeId = window.BreadcrumbManager.getCurrentFocusedNodeId();
+                    if (focusedNodeId) return focusedNodeId;
+                }
+                
+                // Otherwise try to get from lastFocusedNodeId
+                if (window.lastFocusedNodeId) {
+                    return window.lastFocusedNodeId;
+                }
+                
+                // Finally, if all else fails, try to get the first visible node
+                const firstVisibleNode = document.querySelector('.node');
+                if (firstVisibleNode) {
+                    return firstVisibleNode.dataset.id;
+                }
+                
+                return null;
+            }
         }
     }
     
