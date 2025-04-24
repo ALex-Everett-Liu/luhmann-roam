@@ -51,10 +51,10 @@ const CommandPaletteManager = (function() {
         // Create modal overlay
         paletteElement = document.createElement('div');
         paletteElement.className = 'command-palette-overlay';
-        paletteElement.style.display = 'none';
+        paletteElement.style.display = 'none'; // meaning the overlay is hidden by default until the command palette is opened.
         
         // Create the command palette container
-        const palette = document.createElement('div');
+        const palette = document.createElement('div'); // the main container for the command palette UI, it will hold the search input and the list of commands.
         palette.className = 'command-palette';
         
         // Create search input
@@ -71,7 +71,7 @@ const CommandPaletteManager = (function() {
         // Assemble the UI
         palette.appendChild(searchInput);
         palette.appendChild(commandsList);
-        paletteElement.appendChild(palette);
+        paletteElement.appendChild(palette); // the palette container is appended to the overlay. creates a structured hierarchy of elements for the command palette UI.
         
         // Add click handler to close when clicking outside
         paletteElement.addEventListener('click', function(e) {
@@ -82,142 +82,6 @@ const CommandPaletteManager = (function() {
         
         // Add to document
         document.body.appendChild(paletteElement);
-        
-        // Add style element for command palette
-        addCommandPaletteStyles();
-    }
-    
-    /**
-     * Add CSS styles for the command palette
-     */
-    function addCommandPaletteStyles() {
-        const style = document.createElement('style');
-        style.textContent = `
-            .command-palette-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-                z-index: 10000;
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                padding-top: 100px;
-            }
-            
-            .command-palette {
-                width: 500px;
-                max-width: 90%;
-                background-color: #fff;
-                border-radius: 5px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                display: flex;
-                flex-direction: column;
-                max-height: 70vh;
-                overflow: hidden;
-            }
-            
-            .command-palette-search {
-                padding: 12px 16px;
-                font-size: 16px;
-                border: none;
-                border-bottom: 1px solid #eee;
-                width: 100%;
-                box-sizing: border-box;
-            }
-            
-            .command-palette-list {
-                overflow-y: auto;
-                max-height: calc(70vh - 50px);
-            }
-            
-            .command-palette-item {
-                padding: 10px 16px;
-                cursor: pointer;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .command-palette-item:hover, .command-palette-item.selected {
-                background-color: #f5f5f5;
-            }
-            
-            .command-palette-item-name {
-                font-weight: 500;
-            }
-            
-            .command-palette-item-category {
-                font-size: 12px;
-                color: #666;
-                margin-top: 3px;
-            }
-            
-            .command-palette-item-shortcut {
-                font-size: 12px;
-                color: #999;
-                background-color: #f1f1f1;
-                padding: 2px 5px;
-                border-radius: 3px;
-                min-width: 20px;
-                text-align: center;
-            }
-            
-            .command-palette-no-results {
-                padding: 16px;
-                color: #666;
-                text-align: center;
-                font-style: italic;
-            }
-            
-            .command-palette-info {
-                font-size: 12px;
-                padding: 8px 16px;
-                background-color: #f5f5f5;
-                color: #666;
-                border-top: 1px solid #eee;
-            }
-            
-            /* Dark mode support */
-            @media (prefers-color-scheme: dark) {
-                .command-palette {
-                    background-color: #2d2d2d;
-                    color: #e0e0e0;
-                }
-                
-                .command-palette-search {
-                    background-color: #2d2d2d;
-                    color: #e0e0e0;
-                    border-bottom: 1px solid #444;
-                }
-                
-                .command-palette-item:hover, .command-palette-item.selected {
-                    background-color: #3d3d3d;
-                }
-                
-                .command-palette-item-category {
-                    color: #aaa;
-                }
-                
-                .command-palette-item-shortcut {
-                    background-color: #444;
-                    color: #ccc;
-                }
-                
-                .command-palette-no-results {
-                    color: #aaa;
-                }
-                
-                .command-palette-info {
-                    background-color: #333;
-                    color: #aaa;
-                    border-top: 1px solid #444;
-                }
-            }
-        `;
-        document.head.appendChild(style);
     }
     
     /**
@@ -239,8 +103,8 @@ const CommandPaletteManager = (function() {
         registerAllCommands();
         
         // Reset state
-        filteredCommands = [...commands];
-        selectedCommandIndex = 0;
+        filteredCommands = [...commands]; // creating a shallow copy of the commands array.
+        selectedCommandIndex = 0; // resets the index of the currently selected command to the first command in the list.
         
         // Show the palette
         paletteElement.style.display = 'flex';
