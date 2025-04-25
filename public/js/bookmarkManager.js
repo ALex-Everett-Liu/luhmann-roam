@@ -43,6 +43,9 @@ const BookmarkManager = (function() {
       
       // Then load and render bookmarks
       loadBookmarks().then(() => {
+        // After loading, load click counts from localStorage
+        loadClickCounts();
+        
         // After loading, render bookmarks
         renderBookmarks();
         
@@ -93,6 +96,15 @@ const BookmarkManager = (function() {
       title.style.margin = '0';
       title.style.fontSize = '16px';
       
+      // Add sort toggle button
+      const sortToggle = document.createElement('span');
+      sortToggle.className = 'bookmark-sort-toggle';
+      sortToggle.textContent = '📊';
+      sortToggle.title = 'Sort by click count';
+      sortToggle.style.cursor = 'pointer';
+      sortToggle.style.marginRight = '10px';
+      sortToggle.addEventListener('click', toggleSortByClicks);
+      
       const toggleIcon = document.createElement('span');
       toggleIcon.className = 'bookmark-toggle-icon';
       toggleIcon.innerHTML = '▼';
@@ -100,6 +112,7 @@ const BookmarkManager = (function() {
       toggleIcon.addEventListener('click', toggleBookmarksVisibility);
       
       header.appendChild(title);
+      header.appendChild(sortToggle);
       header.appendChild(toggleIcon);
       
       // Create bookmarks list container with fixed height
@@ -140,6 +153,65 @@ const BookmarkManager = (function() {
       }
       
       return false;
+    }
+    
+    // Track click counts for each bookmark
+    let clickCounts = {};
+    let sortByClicks = false;
+    
+    /**
+     * Load click counts from localStorage
+     */
+    function loadClickCounts() {
+      try {
+        const saved = localStorage.getItem('bookmark_click_counts');
+        if (saved) {
+          clickCounts = JSON.parse(saved);
+          console.log('Loaded bookmark click counts:', clickCounts);
+        }
+      } catch (error) {
+        console.error('Error loading bookmark click counts:', error);
+        clickCounts = {};
+      }
+    }
+    
+    /**
+     * Save click counts to localStorage
+     */
+    function saveClickCounts() {
+      try {
+        localStorage.setItem('bookmark_click_counts', JSON.stringify(clickCounts));
+      } catch (error) {
+        console.error('Error saving bookmark click counts:', error);
+      }
+    }
+    
+    /**
+     * Increment the click count for a bookmark
+     * @param {string} nodeId - The ID of the node
+     */
+    function incrementClickCount(nodeId) {
+      if (!clickCounts[nodeId]) {
+        clickCounts[nodeId] = 0;
+      }
+      clickCounts[nodeId]++;
+      console.log(`Incremented click count for node ${nodeId} to ${clickCounts[nodeId]}`);
+      saveClickCounts();
+    }
+    
+    /**
+     * Toggle sorting by click count
+     */
+    function toggleSortByClicks() {
+      sortByClicks = !sortByClicks;
+      renderBookmarks();
+      
+      // Update toggle button appearance
+      const sortToggle = document.querySelector('.bookmark-sort-toggle');
+      if (sortToggle) {
+        sortToggle.style.color = sortByClicks ? '#4285f4' : '';
+        sortToggle.title = sortByClicks ? 'Sort by added time' : 'Sort by click count';
+      }
     }
     
     /**
@@ -227,6 +299,11 @@ const BookmarkManager = (function() {
         const newBookmark = await response.json();
         bookmarks.push(newBookmark);
         
+        // Initialize click count for the new bookmark
+        if (!clickCounts[nodeId]) {
+          clickCounts[nodeId] = 0;
+        }
+        
         // Update UI
         renderBookmarks();
         
@@ -248,6 +325,7 @@ const BookmarkManager = (function() {
       
       try {
         const bookmarkId = bookmarks[index].id;
+        const nodeId = bookmarks[index].node_id;
         
         // Delete from database
         const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
@@ -260,6 +338,12 @@ const BookmarkManager = (function() {
         
         // Remove from local cache
         bookmarks.splice(index, 1);
+        
+        // Remove click count
+        if (clickCounts[nodeId]) {
+          delete clickCounts[nodeId];
+          saveClickCounts();
+        }
         
         // Update UI
         renderBookmarks();
@@ -292,6 +376,12 @@ const BookmarkManager = (function() {
           bookmarks.splice(index, 1);
         }
         
+        // Remove click count
+        if (clickCounts[nodeId]) {
+          delete clickCounts[nodeId];
+          saveClickCounts();
+        }
+        
         // Update UI
         renderBookmarks();
         
@@ -318,6 +408,14 @@ const BookmarkManager = (function() {
     async function focusOnNode(nodeId) {
       try {
         console.log(`Focusing on node: ${nodeId}`);
+        
+        // Increment click count
+        incrementClickCount(nodeId);
+        
+        // Refresh bookmarks list if sorted by clicks
+        if (sortByClicks) {
+          renderBookmarks();
+        }
         
         // Verify the node exists before attempting to focus on it
         try {
@@ -543,7 +641,7 @@ const BookmarkManager = (function() {
     }
     
     /**
-     * Renders the bookmarks in the sidebar - final version
+     * Renders the bookmarks in the sidebar
      */
     function renderBookmarks() {
       // Check if bookmarksContainer exists
@@ -580,7 +678,20 @@ const BookmarkManager = (function() {
       list.style.height = 'auto';    // Let it grow with content
       list.style.overflowY = 'visible'; // No scrolling in the list itself
       
-      bookmarks.forEach((bookmark, index) => {
+      // Sort bookmarks by click count if enabled
+      let sortedBookmarks = [...bookmarks];
+      if (sortByClicks) {
+        sortedBookmarks.sort((a, b) => {
+          const countA = clickCounts[a.node_id] || 0;
+          const countB = clickCounts[b.node_id] || 0;
+          return countB - countA; // Sort by descending click count
+        });
+      }
+      
+      sortedBookmarks.forEach((bookmark, index) => {
+        // Get click count
+        const clickCount = clickCounts[bookmark.node_id] || 0;
+        
         // Create bookmark item
         const item = document.createElement('li');
         item.className = 'bookmark-item';
@@ -605,6 +716,20 @@ const BookmarkManager = (function() {
         text.style.whiteSpace = 'nowrap';
         text.style.cursor = 'pointer';
         text.title = 'Click to focus on this node';
+        
+        // Add click count badge
+        const clickBadge = document.createElement('span');
+        clickBadge.className = 'bookmark-click-count';
+        clickBadge.textContent = clickCount.toString();
+        clickBadge.style.marginLeft = '8px';
+        clickBadge.style.marginRight = '8px';
+        clickBadge.style.backgroundColor = clickCount > 0 ? '#e8f0fe' : '#f5f5f5';
+        clickBadge.style.color = clickCount > 0 ? '#4285f4' : '#999';
+        clickBadge.style.borderRadius = '12px';
+        clickBadge.style.padding = '1px 6px';
+        clickBadge.style.fontSize = '11px';
+        clickBadge.style.fontWeight = 'bold';
+        clickBadge.title = `Clicked ${clickCount} times`;
         
         // Add click handler to focus on the node
         text.addEventListener('click', () => {
@@ -632,6 +757,7 @@ const BookmarkManager = (function() {
         // Assemble the item
         item.appendChild(icon);
         item.appendChild(text);
+        item.appendChild(clickBadge);
         item.appendChild(deleteBtn);
         list.appendChild(item);
       });
@@ -702,7 +828,13 @@ const BookmarkManager = (function() {
         getBookmarks: () => bookmarks,
         getContainer: () => bookmarksContainer,
         testContainerHeight: testContainerHeight,
-        reloadBookmarks: loadBookmarks
+        reloadBookmarks: loadBookmarks,
+        getClickCounts: () => clickCounts,
+        resetClickCounts: () => {
+          clickCounts = {};
+          saveClickCounts();
+          renderBookmarks();
+        }
       }
     };
 })();

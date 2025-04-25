@@ -71,7 +71,7 @@ const TaskManager = (function() {
       </div>
     `;
     
-    sidebarElement.insertAdjacentHTML('beforeend', taskManagerHTML);
+    sidebarElement.insertAdjacentHTML('afterbegin', taskManagerHTML);
     
     // Set up event listeners
     document.getElementById('task-date').addEventListener('change', handleDateChange);
