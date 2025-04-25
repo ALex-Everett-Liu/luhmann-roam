@@ -1,0 +1,120 @@
+/* Plugin Manager */
+#plugin-manager-modal {
+    max-width: 600px;
+    /* Center the modal on the screen */
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000; /* Ensure it appears above other elements */
+  }
+  
+  .plugin-category {
+    margin-bottom: 20px;
+  }
+  
+  .plugin-category h3 {
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .plugin-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background-color: var(--background-light);
+  }
+  
+  .plugin-item:hover {
+    background-color: var(--background-hover);
+  }
+  
+  .plugin-info {
+    margin-left: 15px;
+  }
+  
+  .plugin-name {
+    font-weight: bold;
+    margin-bottom: 3px;
+  }
+  
+  .plugin-description {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+  }
+  
+  .reload-required {
+    color: var(--warning-color);
+    font-size: 0.85em;
+    font-style: italic;
+  }
+  
+  /* Toggle Switch */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  
+  .switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+  }
+  
+  input:checked + .slider {
+    background-color: var(--primary-color);
+  }
+  
+  input:focus + .slider {
+    box-shadow: 0 0 1px var(--primary-color);
+  }
+  
+  input:checked + .slider:before {
+    transform: translateX(20px);
+  }
+  
+  .slider.round {
+    border-radius: 24px;
+  }
+  
+  .slider.round:before {
+    border-radius: 50%;
+  }
+  
+  /* Style for the plugin manager button */
+  #plugin-manager-button {
+    background-color: var(--secondary-color);
+    margin-top: 10px;
+  }
+  
+  #plugin-manager-button:hover {
+    background-color: var(--secondary-color-dark);
+  }

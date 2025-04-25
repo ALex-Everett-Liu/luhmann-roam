@@ -875,11 +875,15 @@ document.addEventListener('DOMContentLoaded', () => {
     TaskManager.initialize();
   }
 
-  // Initialize the DragDropManager
-  if (window.DragDropManager) {
+  // Initialize the DragDropManager - replace with plugin manager approach
+  if (window.DragDropManager && window.PluginManager && PluginManager.isPluginEnabled('dragDropManager')) {
+    console.log('DragDropManager initialized via PluginManager');
+    // The PluginManager will handle initialization
+  } else if (window.DragDropManager) {
+    console.log('DragDropManager initialized directly (PluginManager not available or plugin disabled)');
     DragDropManager.initialize();
     
-    // Add a toggle button for drag and drop functionality
+    // Keep toggle button for backward compatibility
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) {
       const dragDropToggle = document.createElement('button');

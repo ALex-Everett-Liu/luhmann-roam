@@ -128,12 +128,34 @@ const BookmarkManager = (function() {
       section.appendChild(header);
       section.appendChild(bookmarksContainer);
       
-      // Add to sidebar after the search button
-      const searchButton = document.getElementById('search-nodes-button');
-      if (searchButton) {
-        sidebar.insertBefore(section, searchButton.nextSibling);
+      // Find the correct insertion point - right after task-manager but before anything else
+      const taskManager = document.querySelector('.task-manager');
+      if (taskManager) {
+        // Get h1 element for the outliner title
+        const outlinerTitle = document.getElementById('app-title');
+        
+        // Insert bookmark section right after task manager
+        // Check if task manager is the last element
+        if (taskManager.nextElementSibling) {
+          sidebar.insertBefore(section, taskManager.nextElementSibling);
+        } else {
+          // If task manager is the last element, just append
+          sidebar.appendChild(section);
+        }
       } else {
-        sidebar.appendChild(section);
+        // Fallback: Insert at a specific position relative to app-title if present
+        const appTitle = document.getElementById('app-title');
+        if (appTitle) {
+          // Insert after app-title
+          if (appTitle.nextElementSibling) {
+            sidebar.insertBefore(section, appTitle.nextElementSibling);
+          } else {
+            sidebar.appendChild(section);
+          }
+        } else {
+          // Last resort: just append to sidebar
+          sidebar.appendChild(section);
+        }
       }
       
       // Apply initial collapsed state
