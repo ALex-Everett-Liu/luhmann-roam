@@ -23,9 +23,6 @@
         // Create the plugin management UI
         this.createPluginUI();
         
-        // Register with CommandPaletteManager
-        this.registerWithCommandPalette();
-        
         this.isInitialized = true;
         console.log('PluginManager initialization complete');
         return this;
@@ -461,33 +458,6 @@
       // Format category name for display
       formatCategoryName: function(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
-      },
-      
-      // Register with CommandPaletteManager
-      registerWithCommandPalette: function() {
-        if (window.CommandPaletteManager) {
-          CommandPaletteManager.registerCommand({
-            name: 'Open Plugin Manager',
-            action: () => this.openPluginModal(),
-            category: 'App',
-            shortcut: 'Alt+P',
-            keywords: ['plugin', 'manager', 'settings', 'features', 'toggle', 'modules']
-          });
-          
-          // Also register commands for enabling/disabling specific plugins
-          for (const id in this.plugins) {
-            const plugin = this.plugins[id];
-            
-            CommandPaletteManager.registerCommand({
-              name: `${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`,
-              action: () => this.togglePlugin(id),
-              category: 'Plugins',
-              keywords: [plugin.name.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
-            });
-          }
-          
-          console.log('PluginManager registered with CommandPaletteManager');
-        }
       }
     };
     

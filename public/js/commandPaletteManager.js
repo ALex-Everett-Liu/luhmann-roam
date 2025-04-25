@@ -366,6 +366,9 @@ const CommandPaletteManager = (function() {
         // Register navigation commands
         registerNavigationCommands();
         
+        // Register Plugin Manager commands
+        registerPluginManagerCommands();
+        
         // Register other module commands
         registerModuleCommands();
     }
@@ -862,6 +865,38 @@ const CommandPaletteManager = (function() {
                 }
                 
                 return null;
+            }
+        }
+    }
+    
+    /**
+     * Register Plugin Manager commands
+     */
+    function registerPluginManagerCommands() {
+        // Check if PluginManager exists
+        if (window.PluginManager) {
+            registerCommand({
+                name: 'Open Plugin Manager',
+                action: () => {
+                    window.PluginManager.openPluginModal();
+                },
+                category: 'App',
+                shortcut: 'Alt+P',
+                keywords: ['plugin', 'manager', 'settings', 'features', 'toggle', 'modules']
+            });
+            
+            // Also register commands for enabling/disabling specific plugins
+            for (const id in window.PluginManager.plugins) {
+                const plugin = window.PluginManager.plugins[id];
+                
+                registerCommand({
+                    name: `${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`,
+                    action: () => {
+                        window.PluginManager.togglePlugin(id);
+                    },
+                    category: 'Plugins',
+                    keywords: [plugin.name.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
+                });
             }
         }
     }
