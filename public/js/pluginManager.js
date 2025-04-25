@@ -23,6 +23,9 @@
         // Create the plugin management UI
         this.createPluginUI();
         
+        // Register with CommandPaletteManager
+        this.registerWithCommandPalette();
+        
         this.isInitialized = true;
         console.log('PluginManager initialization complete');
         return this;
@@ -266,8 +269,27 @@
       
       // Open the plugin management modal
       openPluginModal: function() {
+        // First, hide any other modals that might be open
+        const otherModals = document.querySelectorAll('.modal:not(#plugin-manager-modal)');
+        otherModals.forEach(modal => {
+          modal.style.display = 'none';
+        });
+
         // Create modal if it doesn't exist
         let pluginModal = document.getElementById('plugin-manager-modal');
+        let modalOverlay = document.querySelector('.modal-overlay.plugin-manager-overlay');
+        
+        if (!modalOverlay) {
+          modalOverlay = document.createElement('div');
+          modalOverlay.className = 'modal-overlay plugin-manager-overlay'; // Add specific class
+          document.body.appendChild(modalOverlay);
+          
+          // Make overlay close the modal when clicked
+          modalOverlay.addEventListener('click', () => {
+            pluginModal.style.display = 'none';
+            modalOverlay.style.display = 'none';
+          });
+        }
         
         if (!pluginModal) {
           pluginModal = document.createElement('div');
@@ -322,6 +344,17 @@
           
           // Add modal to document
           document.body.appendChild(pluginModal);
+          
+          // Add specific inline styles to force 100% width
+          const style = document.createElement('style');
+          style.textContent = `
+            #plugin-manager-modal .modal-content {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+            }
+          `;
+          document.head.appendChild(style);
         } else {
           // Update plugin list
           const pluginListContainer = document.getElementById('plugin-list-container');
@@ -331,8 +364,9 @@
           }
         }
         
-        // Show the modal
+        // Show the modal and overlay
         pluginModal.style.display = 'block';
+        modalOverlay.style.display = 'block';
       },
       
       // Populate the plugin list in the modal
@@ -427,6 +461,33 @@
       // Format category name for display
       formatCategoryName: function(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
+      },
+      
+      // Register with CommandPaletteManager
+      registerWithCommandPalette: function() {
+        if (window.CommandPaletteManager) {
+          CommandPaletteManager.registerCommand({
+            name: 'Open Plugin Manager',
+            action: () => this.openPluginModal(),
+            category: 'App',
+            shortcut: 'Alt+P',
+            keywords: ['plugin', 'manager', 'settings', 'features', 'toggle', 'modules']
+          });
+          
+          // Also register commands for enabling/disabling specific plugins
+          for (const id in this.plugins) {
+            const plugin = this.plugins[id];
+            
+            CommandPaletteManager.registerCommand({
+              name: `${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`,
+              action: () => this.togglePlugin(id),
+              category: 'Plugins',
+              keywords: [plugin.name.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
+            });
+          }
+          
+          console.log('PluginManager registered with CommandPaletteManager');
+        }
       }
     };
     
