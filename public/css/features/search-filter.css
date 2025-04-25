@@ -140,13 +140,15 @@
   font-style: italic;
 }
 
-/* Search button in sidebar */
+/* Search button in sidebar - no longer needed */
+/*
 .search-button {
   background-color: #4285f4;
   margin-top: 10px;
   margin-bottom: 10px;
   width: 100%;
 }
+*/
 
 /* ============================
    3. FILTER SPECIFIC STYLES

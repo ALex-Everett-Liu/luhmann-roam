@@ -561,26 +561,6 @@ const SearchManager = (function() {
     // Load recent searches
     loadRecentSearches();
     
-    const sidebar = document.querySelector('.sidebar');
-    
-    // Create search button
-    const searchButton = document.createElement('button');
-    searchButton.id = 'search-nodes-button';
-    searchButton.className = 'search-button';
-    searchButton.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
-    searchButton.addEventListener('click', openSearchModal);
-    
-    // Add keyboard shortcut info
-    searchButton.title = window.I18n ? 
-      I18n.t('searchShortcutHint') : 
-      'Search for nodes (Ctrl+F)';
-    
-    // Insert the search button after the "Add Root Node" button
-    const addRootNodeButton = document.getElementById('add-root-node');
-    if (addRootNodeButton && sidebar) {
-      sidebar.insertBefore(searchButton, addRootNodeButton.nextSibling);
-    }
-    
     // Add global keyboard shortcut (Ctrl+F)
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {

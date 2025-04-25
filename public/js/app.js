@@ -714,16 +714,16 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Add this function to set up the resizable sidebar
   function setupResizableSidebar() {
-    const appContainer = document.querySelector('.app-container');
+    const appContainer = document.querySelector('.app-container'); // selecting the main application container; public/css/core/layout.css
     const sidebar = document.querySelector('.sidebar');
     const content = document.querySelector('.content');
     
     // Create the resize handle with a visible grip
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
-    resizeHandle.innerHTML = '<div class="resize-grip"></div>';
+    resizeHandle.innerHTML = '<div class="resize-grip"></div>'; // users can click and drag to resize the sidebar
     
-    // Insert the handle between sidebar and content
+    // Insert the handle into the DOM between sidebar and content area
     appContainer.insertBefore(resizeHandle, content);
     
     // Get the initial sidebar width from localStorage or use default
