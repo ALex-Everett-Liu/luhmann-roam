@@ -1,12 +1,62 @@
 /* Plugin Manager */
 #plugin-manager-modal {
-    max-width: 600px;
+    width: 600px; /* Set exact width instead of max-width */
     /* Center the modal on the screen */
     position: fixed;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
     z-index: 1000; /* Ensure it appears above other elements */
+    background-color: #fff; /* Add explicit background color */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Add shadow for depth */
+    border-radius: 8px; /* Rounded corners */
+    overflow: hidden; /* Keep contents within rounded corners */
+  }
+  
+  /* Modal overlay */
+  #plugin-manager-modal::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+    z-index: -1; /* Behind the modal but in front of everything else */
+  }
+  
+  /* Make sure the modal content is properly contained */
+  .modal-content {
+    position: relative;
+    z-index: 1; /* Above the overlay */
+    background-color: #fff;
+    padding: 0;
+    width: 100%; /* Full width of the modal */
+    box-sizing: border-box; /* Include padding in width calculation */
+    border: none; /* Remove any borders */
+  }
+  
+  /* Ensure the modal body has proper padding and scrolling */
+  .modal-body {
+    max-height: 60vh; /* Limit height and enable scrolling for many plugins */
+    overflow-y: auto;
+    padding: 15px;
+    box-sizing: border-box; /* Include padding in width calculation */
+  }
+  
+  /* Adjust header and footer styling */
+  .modal-header, .modal-footer {
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #e5e5e5;
+    width: 100%;
+    box-sizing: border-box; /* Include padding in width calculation */
+  }
+  
+  .modal-footer {
+    border-top: 1px solid #e5e5e5;
+    border-bottom: none;
+    text-align: right;
   }
   
   .plugin-category {
