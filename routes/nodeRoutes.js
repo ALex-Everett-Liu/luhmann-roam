@@ -1,6 +1,7 @@
 // nodeRoutes.js - Routes for node operations
 const express = require('express');
 const nodeController = require('../controllers/nodeController');
+const linkController = require('../controllers/linkController');
 
 const router = express.Router();
 
@@ -33,6 +34,9 @@ router.post('/reorder/shift', nodeController.shiftNodePositions);
 
 // Toggle node expansion
 router.post('/:id/toggle', nodeController.toggleNode);
+
+// Get links for a node
+router.get('/:id/links', linkController.getNodeLinks);
 
 // Add additional routes for other node operations...
 // (Routes for indenting, outdenting, fixing positions, etc.)
