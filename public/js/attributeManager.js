@@ -84,15 +84,34 @@ const AttributeManager = (function() {
   
   // Full initialization - create modals and UI elements
   function initializeFully() {
-    if (isFullyInitialized) {
-      return; // Already fully initialized
-    }
+    try {
+      if (isFullyInitialized) {
+        return; // Already fully initialized
+      }
     
     console.log('AttributeManager fully initializing...');
-    ensureModalsExist();
+    
+    // Verify document.body is available
+    if (!document.body) {
+      console.error('Document body not available during initialization');
+      throw new Error('Document body not available');
+    }
+    
+    // Create modals safely
+    const modalsCreated = ensureModalsExist();
+    if (!modalsCreated) {
+      console.error('Failed to create modals during initialization');
+      throw new Error('Modal creation failed');
+    }
+    
     isFullyInitialized = true;
     console.log('AttributeManager fully initialized');
+  } catch (error) {
+    console.error('Error during full initialization:', error);
+    isFullyInitialized = false;
+    throw error; // Re-throw to allow caller to handle
   }
+}
   
   // Update language
   function updateLanguage(language) {
@@ -221,6 +240,19 @@ const AttributeManager = (function() {
   
   // Create query modal
   function createQueryModal() {
+    try {
+      // Verify document.body is available
+      if (!document.body) {
+        console.error('Document body not available, cannot create query modal');
+        throw new Error('Document body not available');
+      }
+      
+      // Verify modalOverlay is available
+      if (!modalOverlay) {
+        console.error('Modal overlay not available, cannot create query modal');
+        throw new Error('Modal overlay not available');
+      }
+
     if (!queryModal) {
       queryModal = document.createElement('div');
       queryModal.className = 'modal query-modal';
@@ -367,8 +399,25 @@ const AttributeManager = (function() {
       // Assemble modal
       queryModal.appendChild(modalHeader);
       queryModal.appendChild(modalBody);
+
+      // Right before appending to modalOverlay, check it's still valid
+      if (!modalOverlay || !document.body.contains(modalOverlay)) {
+        console.error('Modal overlay not in document when trying to append query modal');
+        
+        // Try to recreate it as a last resort
+        modalOverlay = document.createElement('div');
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.style.display = 'none';
+        document.body.appendChild(modalOverlay);
+      }
       
       modalOverlay.appendChild(queryModal);
+      console.log('Query modal successfully created and appended to overlay');
+    }
+      return queryModal;
+    } catch (error) {
+      console.error('Error creating query modal:', error);
+      throw error; // Re-throw to allow caller to handle
     }
   }
   
@@ -385,33 +434,70 @@ const AttributeManager = (function() {
     }
   }
 
+  // Modify ensureModalsExist to be more robust with error handling
   function ensureModalsExist() {
-    // Check if modalOverlay is in the document
-    if (!modalOverlay || !document.body.contains(modalOverlay)) {
-      console.log('Modal overlay not found in DOM, creating new one');
-      modalOverlay = document.createElement('div');
-      modalOverlay.className = 'modal-overlay';
-      modalOverlay.style.display = 'none';
-      document.body.appendChild(modalOverlay);
+    try {
+      // Check if document.body is available
+      if (!document.body) {
+        console.error('Document body not available, cannot create modals');
+        return false;
+      }
       
-      // Close modal when clicking outside
-      modalOverlay.addEventListener('click', function(e) {
-        if (e.target === modalOverlay) {
-          closeModal();
+      // Check if modalOverlay is in the document
+      if (!modalOverlay || !document.body.contains(modalOverlay)) {
+        console.log('Modal overlay not found in DOM, creating new one');
+        
+        // Save reference to existing modalOverlay if any
+        const previousOverlay = modalOverlay;
+        
+        // Create new overlay
+        modalOverlay = document.createElement('div');
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.style.display = 'none';
+        document.body.appendChild(modalOverlay);
+        
+        // Close modal when clicking outside
+        modalOverlay.addEventListener('click', function(e) {
+          if (e.target === modalOverlay) {
+            closeModal();
+          }
+        });
+        
+        // If we had an existing overlay with child nodes, move them to the new one
+        if (previousOverlay && previousOverlay.hasChildNodes()) {
+          console.log('Moving modal elements from previous overlay');
+          while (previousOverlay.firstChild) {
+            modalOverlay.appendChild(previousOverlay.firstChild);
+          }
         }
-      });
-    }
-    
-    // Recreate attribute modal if needed
-    if (!attributeModal || !modalOverlay.contains(attributeModal)) {
-      console.log('Attribute modal not found in DOM, creating new one');
-      createAttributeModal();
-    }
-    
-    // Recreate query modal if needed
-    if (!queryModal || !modalOverlay.contains(queryModal)) {
-      console.log('Query modal not found in DOM, creating new one');
-      createQueryModal();
+      }
+      
+      // Recreate attribute modal if needed
+      if (!attributeModal || !modalOverlay.contains(attributeModal)) {
+        console.log('Attribute modal not found in DOM, creating new one');
+        try {
+          createAttributeModal();
+        } catch (error) {
+          console.error('Failed to create attribute modal:', error);
+          return false;
+        }
+      }
+      
+      // Recreate query modal if needed
+      if (!queryModal || !modalOverlay.contains(queryModal)) {
+        console.log('Query modal not found in DOM, creating new one');
+        try {
+          createQueryModal();
+        } catch (error) {
+          console.error('Failed to create query modal:', error);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in ensureModalsExist:', error);
+      return false;
     }
   }
   
@@ -510,14 +596,52 @@ const AttributeManager = (function() {
   }
   
   // Open the attribute modal for a specific node
+  // Modify openModal to handle initialization errors
   async function openModal(nodeId) {
     try {
+      console.log('Opening attribute modal for node:', nodeId);
       // Ensure we're fully initialized before opening modal
       if (!isFullyInitialized) {
-        initializeFully();
+        try {
+          initializeFully();
+        } catch (initError) {
+          console.error('Failed to initialize AttributeManager:', initError);
+          alert('Error initializing modal system. Please try again.');
+          return;
+        }
+      }
+      
+      // Verify key elements exist
+      if (!document.body) {
+        console.error('Document body not available, cannot open modal');
+        return;
+      }
+      
+      // Try to ensure modals exist, with error handling
+      let modalsExist = false;
+      try {
+        modalsExist = ensureModalsExist();
+      } catch (modalError) {
+        console.error('Error ensuring modals exist:', modalError);
+      }
+      
+      if (!modalsExist) {
+        console.error('Failed to create required modals');
+        alert('Error initializing attribute modals. Please refresh and try again.');
+        return;
       }
       
       currentNodeId = nodeId;
+
+      // Additional verification before proceeding
+      if (!attributeModal || !modalOverlay) {
+        console.error('Required modal elements not available:', {
+          attributeModal: !!attributeModal,
+          modalOverlay: !!modalOverlay
+        });
+        alert('Error: Modal elements are not available. Please refresh and try again.');
+        return;
+      }
 
       // Ensure the attribute modal is in the overlay
       if (!modalOverlay.contains(attributeModal)) {

@@ -77,4 +77,26 @@ Outliner Interface:
 - Node operations (add, delete, indent, outdent, move up/down)
 - Keyboard shortcuts for efficiency
 
+Node Management:
+- Language toggle (EN/ZH bilingual support)
+- Node hierarchy manipulation
+- Linking between nodes
+- Bookmarking nodes
+- Position management and conflict resolution
 
+Specialized Views:
+- Grid view with customizable node sizes (not need to be implemented at the beginning MVP)
+- Filter manager for content filtering (not need to be implemented at the beginning MVP)
+- Breadcrumb navigation
+
+### 3. Backend API
+
+Node Operations:
+- CRUD operations for nodes
+- Hierarchical operations:
+    - Indent: Move node to become child of node above it
+    - Outdent: Move node up one level in hierarchy
+    - Move up/down: Reorder nodes at same level
+    - Add sibling: Insert new node at same level
+- Hierarchical querying (get children, ancestors)
+- Content updates with language support
