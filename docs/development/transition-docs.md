@@ -100,3 +100,59 @@ Node Operations:
     - Add sibling: Insert new node at same level
 - Hierarchical querying (get children, ancestors)
 - Content updates with language support
+
+Data Management:
+- Database backup capabilities (not need to be implemented at the beginning MVP)
+- Markdown note storage (not need to be implemented at the beginning MVP)
+- Link management between nodes
+- Node attribute metadata (not need to be implemented at the beginning MVP)
+- Blog page generation (not need to be implemented at the beginning MVP)
+
+### 4. Key Technical Implementations
+
+Node Indentation Logic:
+
+- When indenting a node:
+    1. Find the node directly above the target node
+    2. Move the target node to become a child of the node above
+    3. Update position values in both old and new parent contexts
+    4. Ensure the new parent node is expanded
+
+Node Outdentation Logic:
+
+- When outdenting a node:
+    1. Identify parent node
+    2. Determine position in parent's parent context
+    3. Move node to be a sibling of its former parent
+    4. Update position values at both levels
+
+Content Preservation:
+- Automatic content synchronization between edit sessions
+- Focus and scroll position preservation during operations
+- Bilingual content synchronization for first edits
+
+## Key Functional Requirements for New System
+
+### Critical Functionality to Preserve:
+
+1. Hierarchical Node Structure
+    - Parent-child relationships
+    - Position ordering within siblings
+    - Expand/collapse capability
+
+2. Bidirectional Linking
+    - Create and maintain links between nodes
+    - View and navigate linked nodes
+
+3. Bilingual Support
+    - Toggle between English and Chinese content
+    - Automatic language detection for proper rendering
+
+4. Node Operations
+    - Add, delete, indent, outdent
+    - Move up/down, reposition
+    - Rich editing capabilities
+
+5. Performance Optimization
+    - Efficient rendering of large node hierarchies
+    - Focus and scroll position preservation
