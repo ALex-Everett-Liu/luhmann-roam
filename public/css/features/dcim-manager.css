@@ -1,0 +1,171 @@
+/* DCIM Manager Styles */
+.dcim-modal {
+    width: 90%;
+    max-width: 1600px;
+    max-height: 90vh;
+  }
+  
+  .dcim-container {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 15px;
+    height: 100%;
+  }
+  
+  .dcim-sidebar {
+    border-right: 1px solid var(--border-color);
+    padding-right: 15px;
+  }
+  
+  .dcim-main {
+    overflow: auto;
+  }
+  
+  .dcim-image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    padding: 10px 0;
+  }
+  
+  .dcim-image-card {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    cursor: pointer;
+    background-color: var(--card-bg-color);
+  }
+  
+  .dcim-image-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dcim-thumbnail {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .dcim-image-info {
+    padding: 8px;
+    font-size: 12px;
+  }
+  
+  .dcim-image-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .dcim-image-meta {
+    color: var(--text-muted-color);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+  
+  .dcim-filters {
+    margin-bottom: 20px;
+  }
+  
+  .dcim-filter-group {
+    margin-bottom: 15px;
+  }
+  
+  .dcim-filter-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .dcim-actions {
+    margin-bottom: 20px;
+  }
+  
+  .dcim-detail-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .dcim-detail-image {
+    max-height: 300px;
+    object-fit: contain;
+    margin-bottom: 15px;
+  }
+  
+  .dcim-detail-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    overflow: auto;
+  }
+  
+  .dcim-form-group {
+    margin-bottom: 10px;
+  }
+  
+  .dcim-rating {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .dcim-star {
+    cursor: pointer;
+    font-size: 18px;
+    color: #ccc;
+  }
+  
+  .dcim-star.active {
+    color: gold;
+  }
+  
+  .dcim-detail-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  /* Empty state */
+  .dcim-empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted-color);
+  }
+  
+  /* Tag filters */
+  .dcim-tag-filter {
+    margin-bottom: 5px;
+  }
+  
+  /* Form controls */
+  .dcim-input, .dcim-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .dcim-container {
+      grid-template-columns: 1fr;
+    }
+    
+    .dcim-sidebar {
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+      padding-right: 0;
+      padding-bottom: 15px;
+    }
+    
+    .dcim-detail-form {
+      grid-template-columns: 1fr;
+    }
+  }

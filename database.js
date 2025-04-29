@@ -109,6 +109,50 @@ async function initializeDatabase() {
     )
   `);
   
+  // Create dcim_images table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS dcim_images (
+      id TEXT PRIMARY KEY,
+      filename TEXT NOT NULL,
+      url TEXT,
+      file_size INTEGER,
+      rating INTEGER,
+      ranking INTEGER,
+      tags TEXT,
+      creation_time INTEGER,
+      person TEXT,
+      location TEXT, 
+      type TEXT,
+      thumbnail_path TEXT,
+      created_at INTEGER,
+      updated_at INTEGER
+    )
+  `);
+  
+  // Create dcim_image_settings table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS dcim_image_settings (
+      id TEXT PRIMARY KEY,
+      image_id TEXT NOT NULL,
+      settings_json TEXT NOT NULL,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY (image_id) REFERENCES dcim_images (id) ON DELETE CASCADE
+    )
+  `);
+  
+  // Create dcim_directories table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS dcim_directories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      type TEXT NOT NULL,
+      created_at INTEGER,
+      updated_at INTEGER
+    )
+  `);
+  
   console.log('Database initialized');
   return db;
 }

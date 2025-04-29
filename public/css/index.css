@@ -31,6 +31,7 @@
 @import './features/cosmic-visualizer.css';
 @import './features/blog-manager.css';
 @import './features/plugin-manager.css';
+@import './features/dcim-manager.css'; 
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */

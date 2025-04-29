@@ -18,6 +18,7 @@ const blogController = require('./controllers/blogController');
 const markdownRoutes = require('./routes/markdownRoutes');
 const linkRoutes = require('./routes/linkRoutes');
 const attributeRoutes = require('./routes/attributeRoutes');
+const dcimRoutes = require('./routes/dcimRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -715,6 +716,9 @@ app.get('/blog/:slug', blogController.serveBlogPage);
 
 // Use the attribute routes
 app.use('/api/node-attributes', attributeRoutes);
+
+// Use the DCIM routes
+app.use('/api/dcim', dcimRoutes);
 
 // Start the server
 app.listen(PORT, () => {
