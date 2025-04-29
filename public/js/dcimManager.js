@@ -953,17 +953,22 @@ const DcimManager = (function() {
       const response = await fetch('/api/dcim/directories');
       const directories = await response.json();
       
-      // Find asset and thumbnail directories
-      const assetDir = directories.find(dir => dir.type === 'asset');
-      const thumbnailDir = directories.find(dir => dir.type === 'thumbnail');
-      
-      // Set values in form
-      if (assetDir) {
-        document.getElementById('asset-dir').value = assetDir.path;
-      }
-      
-      if (thumbnailDir) {
-        document.getElementById('thumbnail-dir').value = thumbnailDir.path;
+      // Check if directories is an array
+      if (Array.isArray(directories)) {
+        // Find asset and thumbnail directories
+        const assetDir = directories.find(dir => dir.type === 'asset');
+        const thumbnailDir = directories.find(dir => dir.type === 'thumbnail');
+        
+        // Set values in form
+        if (assetDir) {
+          document.getElementById('asset-dir').value = assetDir.path;
+        }
+        
+        if (thumbnailDir) {
+          document.getElementById('thumbnail-dir').value = thumbnailDir.path;
+        }
+      } else {
+        console.log('Directory data is not an array:', directories);
       }
     } catch (error) {
       console.error('Error fetching directory settings:', error);
