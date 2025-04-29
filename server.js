@@ -722,54 +722,6 @@ app.use('/api/node-attributes', attributeRoutes);
 // Use the DCIM routes
 app.use('/api/dcim', dcimRoutes);
 
-// Add a new route for the converter page
-app.get('/convert', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'convert.html'));
-});
-
-// API endpoint for image conversion
-app.post('/api/convert', upload.single('image'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image uploaded' });
-    }
-
-    const quality = parseInt(req.body.quality) || 60;
-    const originalPath = req.file.path;
-    const filename = path.basename(req.file.originalname, path.extname(req.file.originalname)) + '.webp';
-    const outputPath = path.join(getAssetDirectory(), filename);
-
-    // Get original file size
-    const originalSize = fs.statSync(originalPath).size;
-
-    // Convert image to WebP
-    await sharp(originalPath)
-      .webp({ quality: quality })
-      .toFile(outputPath);
-
-    // Get converted file size
-    const convertedSize = fs.statSync(outputPath).size;
-
-    // Delete the temporary uploaded file
-    fs.unlinkSync(originalPath);
-
-    res.json({
-      success: true,
-      originalFile: req.file.originalname,
-      convertedFile: filename,
-      originalSize: formatFileSize(originalSize),
-      convertedSize: formatFileSize(convertedSize),
-      originalSizeBytes: originalSize,
-      convertedSizeBytes: convertedSize,
-      savingsPercent: ((originalSize - convertedSize) / originalSize * 100).toFixed(2),
-      outputPath: `/attachment/dcim/${filename}`
-    });
-  } catch (error) {
-    console.error('Error converting image:', error);
-    res.status(500).json({ error: 'Error converting image: ' + error.message });
-  }
-});
-
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

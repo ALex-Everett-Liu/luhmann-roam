@@ -1234,7 +1234,7 @@ const DcimManager = (function() {
         document.getElementById('dcim-convert-form').innerHTML += '<div class="dcim-loading">Converting image...</div>';
         
         // Send the request to convert the image
-        const response = await fetch('/api/convert', {
+        const response = await fetch('/api/dcim/convert', {
           method: 'POST',
           body: formData
         });

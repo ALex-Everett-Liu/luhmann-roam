@@ -29,4 +29,7 @@ router.post('/:id/settings', dcimController.saveImageSettings);
 // Image conversion route
 router.post('/:id/convert', dcimController.convertImage);
 
+// New route for converting uploaded image
+router.post('/convert', upload.single('image'), dcimController.convertUploadedImage);
+
 module.exports = router;
