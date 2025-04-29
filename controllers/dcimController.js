@@ -6,7 +6,7 @@ const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 
 // Constants
-const THUMBNAIL_SIZE = 200;
+const THUMBNAIL_SIZE = 150;
 const DEFAULT_ASSET_DIR = path.join(__dirname, '../public/attachment/dcim');
 const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/dcim/thumbnails');
 
@@ -27,13 +27,31 @@ function getThumbnailDirectory() {
 }
 
 // Generate a thumbnail for an image
-async function generateThumbnail(imagePath, thumbPath) {
-  await sharp(imagePath)
-    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, {
-      fit: 'cover',
-      position: 'center'
-    })
-    .toFile(thumbPath);
+async function generateThumbnail(imagePath, thumbPath, maxSize = 150, quality = 60) {
+  try {
+    // Get image metadata to determine aspect ratio
+    const metadata = await sharp(imagePath).metadata();
+    const aspectRatio = metadata.width / metadata.height;
+    let resizeOptions;
+    
+    if (aspectRatio > 1) {
+      // Image is wider than it is tall
+      resizeOptions = { width: maxSize };
+    } else {
+      // Image is taller than it is wide or square
+      resizeOptions = { height: maxSize };
+    }
+    
+    // Create the thumbnail using WebP format
+    await sharp(imagePath)
+      .resize(resizeOptions)
+      .webp({ quality })
+      .toFile(thumbPath);
+      
+  } catch (err) {
+    console.error('Error generating thumbnail:', err);
+    throw err;
+  }
 }
 
 // Convert image to WebP

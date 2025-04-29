@@ -218,6 +218,7 @@ const DcimManager = (function() {
                   <div class="dcim-actions">
                     <button id="dcim-add-image" class="btn btn-primary">Add New Image</button>
                     <button id="dcim-settings" class="btn">Settings</button>
+                    <button id="dcim-webp-converter" class="btn">WebP Converter</button>
                   </div>
                   <div class="dcim-filters">
                     <div class="dcim-filter-group">
@@ -293,6 +294,21 @@ const DcimManager = (function() {
       document.getElementById('filter-ranking').addEventListener('change', applyFilters);
       document.getElementById('sort-method').addEventListener('change', applyFilters);
       document.getElementById('dcim-search').addEventListener('input', applyFilters);
+      document.getElementById('dcim-webp-converter').addEventListener('click', () => {
+        window.location.href = '/convert';
+      });
+      
+      // Add a dedicated convert button next to the other main buttons
+      const convertButton = document.createElement('button');
+      convertButton.id = 'dcim-convert-webp-btn';
+      convertButton.textContent = 'WebP Converter';
+      convertButton.className = 'btn btn-secondary';
+      convertButton.addEventListener('click', () => {
+        window.location.href = '/convert';
+      });
+      
+      // Add it to the actions section
+      document.querySelector('.dcim-actions').appendChild(convertButton);
       
       return modal;
     }
