@@ -153,6 +153,15 @@ async function initializeDatabase() {
     )
   `);
   
+  // Add file_path column to dcim_images table if it doesn't exist
+  try {
+    await db.exec(`ALTER TABLE dcim_images ADD COLUMN file_path TEXT`);
+    console.log('Added file_path column to dcim_images table');
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log('file_path column already exists or other error:', error.message);
+  }
+  
   console.log('Database initialized');
   return db;
 }

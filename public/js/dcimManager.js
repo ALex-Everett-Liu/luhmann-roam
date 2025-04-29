@@ -486,54 +486,44 @@ const DcimManager = (function() {
       gridContainer.innerHTML = '';
       
       if (images.length === 0) {
-        gridContainer.innerHTML = '<div class="dcim-empty-state">No images found. Add some images to get started.</div>';
+        gridContainer.innerHTML = `
+          <div class="dcim-empty-state">
+            <p>No images found. Add your first image to get started.</p>
+          </div>
+        `;
         return;
       }
       
-      images.forEach(img => {
+      images.forEach(image => {
         const card = document.createElement('div');
         card.className = 'dcim-image-card';
-        card.addEventListener('click', () => showImageDetail(img.id));
+        card.dataset.id = image.id;
         
-        const thumbnail = document.createElement('img');
-        thumbnail.className = 'dcim-thumbnail';
-        thumbnail.src = img.thumbnail_path || img.url || '/img/placeholder.png';
-        thumbnail.alt = img.filename;
-        
-        const info = document.createElement('div');
-        info.className = 'dcim-image-info';
-        
-        const title = document.createElement('div');
-        title.className = 'dcim-image-title';
-        title.textContent = img.filename;
-        
-        const meta = document.createElement('div');
-        meta.className = 'dcim-image-meta';
-        
-        const size = document.createElement('span');
-        size.textContent = formatFileSize(img.file_size);
-        
-        const rating = document.createElement('span');
-        rating.textContent = img.rating ? '★'.repeat(img.rating) : '';
-        
-        // Add ranking info if it exists
-        const ranking = document.createElement('span');
-        if (img.ranking) {
-          ranking.textContent = `R:${img.ranking}`;
-          ranking.style.marginLeft = '8px';
-          ranking.style.color = '#555';
+        // Show address type indicator
+        let addressIndicator = '';
+        if (image.url && image.file_path) {
+          addressIndicator = '<span class="dcim-address-indicator" title="Has both URL and local path">🔗��</span>';
+        } else if (image.url) {
+          addressIndicator = '<span class="dcim-address-indicator" title="Has URL">��</span>';
+        } else if (image.file_path) {
+          addressIndicator = '<span class="dcim-address-indicator" title="Has local path">📁</span>';
         }
-        
-        meta.appendChild(size);
-        if (img.ranking) meta.appendChild(ranking);
-        meta.appendChild(rating);
-        
-        info.appendChild(title);
-        info.appendChild(meta);
-        
-        card.appendChild(thumbnail);
-        card.appendChild(info);
-        
+
+        card.innerHTML = `
+          <img src="${image.thumbnail_path || image.url}" alt="${image.filename}" class="dcim-thumbnail" onerror="this.src='/images/default-thumbnail.jpg'">
+          <div class="dcim-image-info">
+            <div class="dcim-image-title">${image.filename} ${addressIndicator}</div>
+            <div class="dcim-image-meta">
+              <span>${formatFileSize(image.file_size || 0)}</span>
+              <span>${'★'.repeat(image.rating || 0)}</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          showImageDetail(image.id);
+        });
+
         gridContainer.appendChild(card);
       });
     }
@@ -561,12 +551,21 @@ const DcimManager = (function() {
             <h3>${image.filename}</h3>
             <button id="dcim-back-button" class="btn">Back to Gallery</button>
           </div>
-          <img class="dcim-detail-image" src="${image.url}" alt="${image.filename}">
-          <div class="dcim-detail-form">
+          <div class="dcim-address-fields">
             <div class="dcim-form-group">
-              <label>Filename</label>
-              <input type="text" id="edit-filename" value="${image.filename || ''}" class="dcim-input">
+              <label for="dcim-title">Filename:</label>
+              <input type="text" id="dcim-filename" class="dcim-input" value="${image.filename || ''}">
             </div>
+            <div class="dcim-form-group">
+              <label for="dcim-url">URL:</label>
+              <input type="text" id="dcim-url" class="dcim-input" value="${image.url || ''}" placeholder="Web URL (optional if local file exists)">
+            </div>
+            <div class="dcim-form-group">
+              <label for="dcim-file-path">Local File Path:</label>
+              <input type="text" id="dcim-file-path" class="dcim-input" value="${image.file_path || ''}" placeholder="Local file path (optional if URL exists)">
+            </div>
+          </div>
+          <div class="dcim-detail-form">
             <div class="dcim-form-group">
               <label>File Size</label>
               <input type="text" value="${formatFileSize(image.file_size)}" readonly class="dcim-input">
@@ -663,6 +662,16 @@ const DcimManager = (function() {
      */
     async function saveImageChanges(imageId) {
       try {
+        const filename = document.getElementById('dcim-filename').value.trim();
+        const url = document.getElementById('dcim-url').value.trim();
+        const filePath = document.getElementById('dcim-file-path').value.trim();
+        
+        // Validate that at least one address is provided
+        if (!url && !filePath) {
+          alert('Please provide either a URL or a local file path');
+          return;
+        }
+        
         // Get the ranking value
         const rankingInput = document.getElementById('edit-ranking');
         let ranking = null;
@@ -678,11 +687,9 @@ const DcimManager = (function() {
         }
         
         const updatedData = {
-          filename: document.getElementById('edit-filename').value,
-          tags: document.getElementById('edit-tags').value,
-          person: document.getElementById('edit-person').value,
-          location: document.getElementById('edit-location').value,
-          type: document.getElementById('edit-type').value,
+          filename,
+          url,
+          file_path: filePath,
           ranking: ranking,
           rating: document.querySelector('.dcim-star.active:last-of-type') ? 
                  parseInt(document.querySelector('.dcim-star.active:last-of-type').getAttribute('data-value')) : 0
@@ -820,14 +827,18 @@ const DcimManager = (function() {
           <h3>Add New Image</h3>
           <button id="dcim-back-from-add" class="btn">Back to Gallery</button>
         </div>
-        <form id="add-image-form" class="dcim-add-form">
+        <form id="dcim-add-image-form">
           <div class="dcim-form-group">
-            <label>Upload Image</label>
-            <input type="file" id="add-image-file" accept="image/*" class="dcim-input">
+            <label for="dcim-file-input">Upload Image File:</label>
+            <input type="file" id="dcim-file-input" accept="image/*" class="dcim-input">
           </div>
           <div class="dcim-form-group">
-            <label>Or Image URL</label>
-            <input type="text" id="add-image-url" placeholder="https://example.com/image.jpg" class="dcim-input">
+            <label for="dcim-url-input">OR Image URL:</label>
+            <input type="text" id="dcim-url-input" placeholder="https://example.com/image.jpg" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label for="dcim-file-path-input">OR Local File Path:</label>
+            <input type="text" id="dcim-file-path-input" placeholder="/path/to/local/image.jpg" class="dcim-input">
           </div>
           <div class="dcim-form-group">
             <label>Filename (optional, will use original filename if not provided)</label>
@@ -879,7 +890,7 @@ const DcimManager = (function() {
         addForm.style.display = 'none';
       });
       
-      document.getElementById('add-image-form').addEventListener('submit', function(e) {
+      document.getElementById('dcim-add-image-form').addEventListener('submit', function(e) {
         e.preventDefault();
         addNewImage();
       });
@@ -912,48 +923,55 @@ const DcimManager = (function() {
      * Adds a new image
      */
     async function addNewImage() {
-      const fileInput = document.getElementById('add-image-file');
-      const urlInput = document.getElementById('add-image-url');
-      
-      // Validate that at least one of file or URL is provided
-      if (!fileInput.files.length && !urlInput.value) {
-        alert('Please upload a file or provide an image URL');
-        return;
-      }
-      
-      // Get and validate ranking
-      const rankingInput = document.getElementById('add-image-ranking');
-      let ranking = null;
-      if (rankingInput && rankingInput.value) {
-        ranking = parseFloat(rankingInput.value);
-        if (isNaN(ranking) || ranking < 1 || ranking > 1000) {
-          alert('Ranking must be a number between 1 and 1000');
+      try {
+        const fileInput = document.getElementById('dcim-file-input');
+        const urlInput = document.getElementById('dcim-url-input').value.trim();
+        const filePathInput = document.getElementById('dcim-file-path-input').value.trim();
+        
+        // Validate that at least one address is provided
+        if (!fileInput.files.length && !urlInput && !filePathInput) {
+          alert('Please provide a file, URL, or local file path');
           return;
         }
-        // Round to one decimal place
-        ranking = Math.round(ranking * 10) / 10;
-      }
-      
-      try {
-        // Prepare form data
+        
+        // Create FormData for the request
         const formData = new FormData();
         
-        if (fileInput.files.length) {
+        // Add file if it exists
+        if (fileInput.files.length > 0) {
           formData.append('image', fileInput.files[0]);
         }
         
-        if (urlInput.value) {
-          formData.append('url', urlInput.value);
+        // Add URL if provided
+        if (urlInput) {
+          formData.append('url', urlInput);
         }
         
-        // Add other form fields
+        // Add file path if provided
+        if (filePathInput) {
+          formData.append('file_path', filePathInput);
+        }
+        
+        // Rest of the form data fields
         formData.append('filename', document.getElementById('add-image-filename').value);
         formData.append('tags', document.getElementById('add-image-tags').value);
         formData.append('person', document.getElementById('add-image-person').value);
         formData.append('location', document.getElementById('add-image-location').value);
         formData.append('type', document.getElementById('add-image-type').value);
         
-        // Add ranking if provided
+        // Get ranking
+        const rankingInput = document.getElementById('add-image-ranking');
+        let ranking = null;
+        if (rankingInput && rankingInput.value) {
+          ranking = parseFloat(rankingInput.value);
+          if (isNaN(ranking) || ranking < 1 || ranking > 1000) {
+            alert('Ranking must be a number between 1 and 1000');
+            return;
+          }
+          // Round to one decimal place
+          ranking = Math.round(ranking * 10) / 10;
+        }
+        
         if (ranking !== null) {
           formData.append('ranking', ranking);
         }
@@ -970,6 +988,7 @@ const DcimManager = (function() {
           formData.append('creation_time', new Date(creationTime).getTime().toString());
         }
         
+        // Send the request
         const response = await fetch('/api/dcim', {
           method: 'POST',
           body: formData

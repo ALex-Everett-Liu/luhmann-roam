@@ -6,7 +6,7 @@ const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 
 // Constants
-const THUMBNAIL_SIZE = 150;
+const THUMBNAIL_SIZE = 180;
 const DEFAULT_ASSET_DIR = path.join(__dirname, '../public/attachment/dcim');
 const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/dcim/thumbnails');
 
@@ -27,7 +27,7 @@ function getThumbnailDirectory() {
 }
 
 // Generate a thumbnail for an image
-async function generateThumbnail(imagePath, thumbPath, maxSize = 150, quality = 60) {
+async function generateThumbnail(imagePath, thumbPath, maxSize = 180, quality = 60) {
   try {
     // Get image metadata to determine aspect ratio
     const metadata = await sharp(imagePath).metadata();
@@ -35,11 +35,13 @@ async function generateThumbnail(imagePath, thumbPath, maxSize = 150, quality = 
     let resizeOptions;
     
     if (aspectRatio > 1) {
-      // Image is wider than it is tall
-      resizeOptions = { width: maxSize };
-    } else {
-      // Image is taller than it is wide or square
+      // Image is wider than it is tall - set the height to maxSize
+      // This ensures the shorter dimension (height) is at least maxSize
       resizeOptions = { height: maxSize };
+    } else {
+      // Image is taller than it is wide or square - set the width to maxSize
+      // This ensures the shorter dimension (width) is at least maxSize
+      resizeOptions = { width: maxSize };
     }
     
     // Create the thumbnail using WebP format
@@ -102,6 +104,7 @@ exports.addImage = async (req, res) => {
     const {
       filename, 
       url, 
+      file_path,
       file_size, 
       rating, 
       ranking, 
@@ -115,8 +118,14 @@ exports.addImage = async (req, res) => {
     // Handle file upload if file is included
     let finalFilename = filename;
     let finalUrl = url;
+    let finalFilePath = file_path;
     let thumbnailPath = null;
     let fileSize = file_size;
+    
+    // Validate that at least one address is provided
+    if (!req.file && !url && !file_path) {
+      return res.status(400).json({ error: 'Please provide a file, URL, or file path' });
+    }
     
     if (req.file) {
       const file = req.file;
@@ -141,12 +150,12 @@ exports.addImage = async (req, res) => {
     const db = await getDb();
     await db.run(
       `INSERT INTO dcim_images (
-        id, filename, url, file_size, rating, ranking, tags, 
+        id, filename, url, file_path, file_size, rating, ranking, tags, 
         creation_time, person, location, type, thumbnail_path,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, finalFilename, finalUrl, fileSize, rating, ranking, tags,
+        id, finalFilename, finalUrl, finalFilePath, fileSize, rating, ranking, tags,
         creation_time, person, location, type, thumbnailPath,
         now, now
       ]
@@ -164,7 +173,7 @@ exports.updateImage = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      filename, url, file_size, rating, ranking, tags,
+      filename, url, file_path, file_size, rating, ranking, tags,
       creation_time, person, location, type
     } = req.body;
     
@@ -175,15 +184,21 @@ exports.updateImage = async (req, res) => {
       return res.status(404).json({ error: 'Image not found' });
     }
     
+    // Validate that at least one address is provided
+    if (url === '' && file_path === '') {
+      return res.status(400).json({ error: 'Please provide either a URL or a file path' });
+    }
+    
     await db.run(
       `UPDATE dcim_images SET 
-        filename = ?, url = ?, file_size = ?, rating = ?, ranking = ?,
+        filename = ?, url = ?, file_path = ?, file_size = ?, rating = ?, ranking = ?,
         tags = ?, creation_time = ?, person = ?, location = ?, type = ?,
         updated_at = ?
       WHERE id = ?`,
       [
         filename || image.filename,
-        url || image.url,
+        url !== undefined ? url : image.url,
+        file_path !== undefined ? file_path : image.file_path,
         file_size || image.file_size,
         rating !== undefined ? rating : image.rating,
         ranking !== undefined ? ranking : image.ranking,
