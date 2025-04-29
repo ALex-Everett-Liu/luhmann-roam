@@ -275,6 +275,9 @@ const DcimManager = (function() {
                   <div id="dcim-settings-view" style="display: none;">
                     <!-- Settings will be shown here -->
                   </div>
+                  <div id="dcim-converter-view" style="display: none;">
+                    <!-- WebP converter will be shown here -->
+                  </div>
                 </div>
               </div>
             </div>
@@ -294,21 +297,7 @@ const DcimManager = (function() {
       document.getElementById('filter-ranking').addEventListener('change', applyFilters);
       document.getElementById('sort-method').addEventListener('change', applyFilters);
       document.getElementById('dcim-search').addEventListener('input', applyFilters);
-      document.getElementById('dcim-webp-converter').addEventListener('click', () => {
-        window.location.href = '/convert';
-      });
-      
-      // Add a dedicated convert button next to the other main buttons
-      const convertButton = document.createElement('button');
-      convertButton.id = 'dcim-convert-webp-btn';
-      convertButton.textContent = 'WebP Converter';
-      convertButton.className = 'btn btn-secondary';
-      convertButton.addEventListener('click', () => {
-        window.location.href = '/convert';
-      });
-      
-      // Add it to the actions section
-      document.querySelector('.dcim-actions').appendChild(convertButton);
+      document.getElementById('dcim-webp-converter').addEventListener('click', showWebPConverter);
       
       return modal;
     }
@@ -1127,6 +1116,180 @@ const DcimManager = (function() {
       if (size < 1024) return size + ' B';
       if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB';
       return (size / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    
+    /**
+     * Shows the WebP converter view
+     */
+    function showWebPConverter() {
+      const gridContainer = document.getElementById('dcim-image-grid');
+      const detailView = document.getElementById('dcim-detail-view');
+      const addForm = document.getElementById('dcim-add-form');
+      const settingsView = document.getElementById('dcim-settings-view');
+      const converterView = document.getElementById('dcim-converter-view');
+      
+      // Show converter view, hide other views
+      gridContainer.style.display = 'none';
+      detailView.style.display = 'none';
+      addForm.style.display = 'none';
+      settingsView.style.display = 'none';
+      converterView.style.display = 'block';
+      
+      // Render the converter form
+      converterView.innerHTML = `
+        <div class="dcim-form-header">
+          <h3>WebP Image Converter</h3>
+          <button id="dcim-back-from-converter" class="btn">Back to Gallery</button>
+        </div>
+        <div class="dcim-converter-container">
+          <form id="dcim-convert-form">
+            <div class="dcim-form-group">
+              <label for="convert-image-file">Select Image (PNG/JPG):</label>
+              <input type="file" id="convert-image-file" name="image" accept="image/png,image/jpeg" required class="dcim-input">
+            </div>
+            <div class="dcim-form-group">
+              <label for="convert-quality">Quality (1-100):</label>
+              <input type="number" id="convert-quality" name="quality" min="1" max="100" value="60" class="dcim-input">
+            </div>
+            <div class="dcim-form-actions">
+              <button type="submit" class="btn btn-primary">Convert to WebP</button>
+            </div>
+          </form>
+
+          <div id="dcim-conversion-result" style="display: none; margin-top: 20px;">
+            <h4>Conversion Result</h4>
+            
+            <div class="dcim-stats-container" style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+              <div class="dcim-stat-box" style="flex: 1; padding: 10px; background-color: #f5f5f5; border-radius: 5px; margin-right: 5px; text-align: center;">
+                <div>Original Size</div>
+                <strong id="dcim-original-size">-</strong>
+              </div>
+              <div class="dcim-stat-box" style="flex: 1; padding: 10px; background-color: #f5f5f5; border-radius: 5px; margin-right: 5px; text-align: center;">
+                <div>Converted Size</div>
+                <strong id="dcim-converted-size">-</strong>
+              </div>
+              <div class="dcim-stat-box" style="flex: 1; padding: 10px; background-color: #f5f5f5; border-radius: 5px; text-align: center;">
+                <div>Space Saved</div>
+                <strong id="dcim-space-saved">-</strong>
+              </div>
+            </div>
+            
+            <div class="dcim-preview-container" style="display: flex; justify-content: space-between;">
+              <div class="dcim-preview" style="flex: 1; margin-right: 10px; text-align: center;">
+                <h5>Original Image</h5>
+                <img id="dcim-original-preview" src="" alt="Original Preview" style="max-width: 100%; max-height: 200px; border: 1px solid #ddd;">
+                <p id="dcim-original-filename">-</p>
+              </div>
+              <div class="dcim-preview" style="flex: 1; text-align: center;">
+                <h5>Converted WebP</h5>
+                <img id="dcim-converted-preview" src="" alt="Converted Preview" style="max-width: 100%; max-height: 200px; border: 1px solid #ddd;">
+                <p id="dcim-converted-filename">-</p>
+              </div>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: center;">
+              <a id="dcim-download-webp" href="#" download class="btn btn-primary">Download WebP Image</a>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Add event listeners
+      document.getElementById('dcim-back-from-converter').addEventListener('click', () => {
+        gridContainer.style.display = 'grid';
+        converterView.style.display = 'none';
+      });
+      
+      document.getElementById('dcim-convert-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        convertImageToWebP();
+      });
+    }
+    
+    /**
+     * Handles converting an image to WebP format
+     */
+    async function convertImageToWebP() {
+      const fileInput = document.getElementById('convert-image-file');
+      const qualityInput = document.getElementById('convert-quality');
+      
+      if (!fileInput.files.length) {
+        alert('Please select an image to convert');
+        return;
+      }
+      
+      const quality = parseInt(qualityInput.value);
+      if (isNaN(quality) || quality < 1 || quality > 100) {
+        alert('Quality must be a number between 1 and 100');
+        return;
+      }
+      
+      try {
+        // Prepare the form data
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('quality', quality);
+        
+        // Show loading indicator
+        document.getElementById('dcim-convert-form').innerHTML += '<div class="dcim-loading">Converting image...</div>';
+        
+        // Send the request to convert the image
+        const response = await fetch('/api/convert', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error('Image conversion failed');
+        }
+        
+        const result = await response.json();
+        
+        // Update the conversion result display
+        document.getElementById('dcim-original-size').textContent = result.originalSize;
+        document.getElementById('dcim-converted-size').textContent = result.convertedSize;
+        document.getElementById('dcim-space-saved').textContent = result.savingsPercent + '%';
+        
+        document.getElementById('dcim-original-filename').textContent = result.originalFile;
+        document.getElementById('dcim-converted-filename').textContent = result.convertedFile;
+        
+        // Set up preview images
+        // For original image (using FileReader)
+        if (fileInput.files && fileInput.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            document.getElementById('dcim-original-preview').src = e.target.result;
+          };
+          reader.readAsDataURL(fileInput.files[0]);
+        }
+        
+        // For converted image
+        document.getElementById('dcim-converted-preview').src = result.outputPath;
+        
+        // Set download link
+        const downloadLink = document.getElementById('dcim-download-webp');
+        downloadLink.href = result.outputPath;
+        downloadLink.download = result.convertedFile;
+        
+        // Remove loading indicator
+        const loadingElement = document.querySelector('.dcim-loading');
+        if (loadingElement) {
+          loadingElement.remove();
+        }
+        
+        // Show the result container
+        document.getElementById('dcim-conversion-result').style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error converting image:', error);
+        alert('Failed to convert image: ' + error.message);
+        
+        // Remove loading indicator
+        const loadingElement = document.querySelector('.dcim-loading');
+        if (loadingElement) {
+          loadingElement.remove();
+        }
+      }
     }
     
     // Public API
