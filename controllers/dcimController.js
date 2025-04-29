@@ -54,7 +54,7 @@ function formatFileSize(size) {
 exports.getImages = async (req, res) => {
   try {
     const db = await getDb();
-    const images = await db.all('SELECT * FROM dcim_images ORDER BY created_at DESC');
+    const images = await db.all('SELECT * FROM dcim_images ORDER BY ranking DESC NULLS LAST, created_at DESC');
     res.json(images);
   } catch (error) {
     console.error('Error fetching images:', error);

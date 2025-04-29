@@ -221,6 +221,14 @@ const DcimManager = (function() {
                   </div>
                   <div class="dcim-filters">
                     <div class="dcim-filter-group">
+                      <div class="dcim-filter-title">Sort By</div>
+                      <select id="sort-method" class="dcim-select">
+                        <option value="ranking">Ranking (Default)</option>
+                        <option value="rating">Rating</option>
+                        <option value="date">Date Added</option>
+                      </select>
+                    </div>
+                    <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Filter by Rating</div>
                       <select id="filter-rating" class="dcim-select">
                         <option value="">All Ratings</option>
@@ -229,6 +237,16 @@ const DcimManager = (function() {
                         <option value="3">3+ Stars</option>
                         <option value="2">2+ Stars</option>
                         <option value="1">1+ Star</option>
+                      </select>
+                    </div>
+                    <div class="dcim-filter-group">
+                      <div class="dcim-filter-title">Filter by Ranking</div>
+                      <select id="filter-ranking" class="dcim-select">
+                        <option value="">All Rankings</option>
+                        <option value="800">800+</option>
+                        <option value="600">600+</option>
+                        <option value="400">400+</option>
+                        <option value="200">200+</option>
                       </select>
                     </div>
                     <div class="dcim-filter-group">
@@ -272,6 +290,8 @@ const DcimManager = (function() {
       document.getElementById('dcim-add-image').addEventListener('click', showAddImageForm);
       document.getElementById('dcim-settings').addEventListener('click', showSettings);
       document.getElementById('filter-rating').addEventListener('change', applyFilters);
+      document.getElementById('filter-ranking').addEventListener('change', applyFilters);
+      document.getElementById('sort-method').addEventListener('change', applyFilters);
       document.getElementById('dcim-search').addEventListener('input', applyFilters);
       
       return modal;
@@ -365,21 +385,30 @@ const DcimManager = (function() {
      */
     function applyFilters() {
       const ratingFilter = document.getElementById('filter-rating').value;
+      const rankingFilter = document.getElementById('filter-ranking').value;
       const searchFilter = document.getElementById('dcim-search').value.toLowerCase();
+      const sortMethod = document.getElementById('sort-method').value;
       const tagCheckboxes = document.querySelectorAll('#dcim-tag-filters input:checked');
       const selectedTags = Array.from(tagCheckboxes).map(cb => cb.value);
       
       // Store current filters
       currentFilters = {
         rating: ratingFilter,
+        ranking: rankingFilter,
         search: searchFilter,
+        sortMethod: sortMethod,
         tags: selectedTags
       };
       
       // Filter images
-      const filteredImages = currentImages.filter(img => {
+      let filteredImages = currentImages.filter(img => {
         // Rating filter
         if (ratingFilter && (!img.rating || img.rating < parseInt(ratingFilter))) {
+          return false;
+        }
+        
+        // Ranking filter
+        if (rankingFilter && (!img.ranking || img.ranking < parseInt(rankingFilter))) {
           return false;
         }
         
@@ -409,6 +438,27 @@ const DcimManager = (function() {
         
         return true;
       });
+      
+      // Apply sort based on chosen method
+      if (sortMethod === 'ranking') {
+        filteredImages.sort((a, b) => {
+          // Handle null/undefined rankings
+          const rankingA = a.ranking !== null && a.ranking !== undefined ? a.ranking : -1;
+          const rankingB = b.ranking !== null && b.ranking !== undefined ? b.ranking : -1;
+          return rankingB - rankingA; // Descending order
+        });
+      } else if (sortMethod === 'rating') {
+        filteredImages.sort((a, b) => {
+          // Handle null/undefined ratings
+          const ratingA = a.rating !== null && a.rating !== undefined ? a.rating : -1;
+          const ratingB = b.rating !== null && b.rating !== undefined ? b.rating : -1;
+          return ratingB - ratingA; // Descending order
+        });
+      } else if (sortMethod === 'date') {
+        filteredImages.sort((a, b) => {
+          return b.created_at - a.created_at; // Descending order
+        });
+      }
       
       // Render filtered images
       renderImageGrid(filteredImages);
@@ -461,7 +511,16 @@ const DcimManager = (function() {
         const rating = document.createElement('span');
         rating.textContent = img.rating ? '★'.repeat(img.rating) : '';
         
+        // Add ranking info if it exists
+        const ranking = document.createElement('span');
+        if (img.ranking) {
+          ranking.textContent = `R:${img.ranking}`;
+          ranking.style.marginLeft = '8px';
+          ranking.style.color = '#555';
+        }
+        
         meta.appendChild(size);
+        if (img.ranking) meta.appendChild(ranking);
         meta.appendChild(rating);
         
         info.appendChild(title);
@@ -508,6 +567,10 @@ const DcimManager = (function() {
               <input type="text" value="${formatFileSize(image.file_size)}" readonly class="dcim-input">
             </div>
             <div class="dcim-form-group">
+              <label>Ranking (1-1000)</label>
+              <input type="number" id="edit-ranking" value="${image.ranking || ''}" min="1" max="1000" step="0.1" class="dcim-input">
+            </div>
+            <div class="dcim-form-group">
               <label>Rating</label>
               <div class="dcim-rating" id="edit-rating">
                 <span class="dcim-star ${image.rating >= 1 ? 'active' : ''}" data-value="1">★</span>
@@ -531,494 +594,530 @@ const DcimManager = (function() {
             </div>
             <div class="dcim-form-group">
               <label>Type</label>
-              <input type="text" id="edit-type"
-                <input type="text" id="edit-type" value="${image.type || ''}" class="dcim-input">
+              <input type="text" id="edit-type" value="${image.type || ''}" class="dcim-input">
+            </div>
+            <div class="dcim-form-group">
+              <label>Creation Time</label>
+              <input type="datetime-local" id="edit-creation-time" 
+                value="${image.creation_time ? new Date(parseInt(image.creation_time)).toISOString().slice(0, 16) : ''}" 
+                class="dcim-input">
+            </div>
+          </div>
+          <div class="dcim-detail-actions">
+            <div>
+              <button id="dcim-save-image" class="btn btn-primary">Save Changes</button>
+              <button id="dcim-convert-webp" class="btn">Convert to WebP</button>
+            </div>
+            <button id="dcim-delete-image" class="btn btn-danger">Delete Image</button>
+          </div>
+        `;
+        
+        // Add event listeners
+        document.getElementById('dcim-back-button').addEventListener('click', () => {
+          document.getElementById('dcim-image-grid').style.display = 'grid';
+          detailView.style.display = 'none';
+        });
+        
+        document.getElementById('dcim-save-image').addEventListener('click', () => saveImageChanges(image.id));
+        document.getElementById('dcim-delete-image').addEventListener('click', () => deleteImage(image.id));
+        document.getElementById('dcim-convert-webp').addEventListener('click', () => convertToWebP(image.id));
+        
+        // Star rating functionality
+        const stars = document.querySelectorAll('.dcim-star');
+        stars.forEach(star => {
+          star.addEventListener('click', function() {
+            const value = parseInt(this.getAttribute('data-value'));
+            
+            // Toggle off if already active
+            const newRating = (image.rating === value) ? 0 : value;
+            
+            // Update UI
+            stars.forEach(s => {
+              const starValue = parseInt(s.getAttribute('data-value'));
+              if (starValue <= newRating) {
+                s.classList.add('active');
+              } else {
+                s.classList.remove('active');
+              }
+            });
+            
+            // Update image object
+            image.rating = newRating;
+          });
+        });
+        
+      } catch (error) {
+        console.error('Error loading image details:', error);
+        alert('Failed to load image details');
+      }
+    }
+    
+    /**
+     * Saves changes to an image
+     * @param {string} imageId - The ID of the image to update
+     */
+    async function saveImageChanges(imageId) {
+      try {
+        // Get the ranking value
+        const rankingInput = document.getElementById('edit-ranking');
+        let ranking = null;
+        if (rankingInput && rankingInput.value) {
+          ranking = parseFloat(rankingInput.value);
+          // Validate ranking value
+          if (isNaN(ranking) || ranking < 1 || ranking > 1000) {
+            alert('Ranking must be a number between 1 and 1000');
+            return;
+          }
+          // Round to one decimal place
+          ranking = Math.round(ranking * 10) / 10;
+        }
+        
+        const updatedData = {
+          filename: document.getElementById('edit-filename').value,
+          tags: document.getElementById('edit-tags').value,
+          person: document.getElementById('edit-person').value,
+          location: document.getElementById('edit-location').value,
+          type: document.getElementById('edit-type').value,
+          ranking: ranking,
+          rating: document.querySelector('.dcim-star.active:last-of-type') ? 
+                 parseInt(document.querySelector('.dcim-star.active:last-of-type').getAttribute('data-value')) : 0
+        };
+        
+        const creationTime = document.getElementById('edit-creation-time').value;
+        if (creationTime) {
+          updatedData.creation_time = new Date(creationTime).getTime();
+        }
+        
+        const response = await fetch(`/api/dcim/${imageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        });
+        
+        if (response.ok) {
+          alert('Image updated successfully');
+          
+          // Refresh image data
+          const updatedImg = await response.json();
+          
+          // Update in current images array
+          const index = currentImages.findIndex(img => img.id === imageId);
+          if (index !== -1) {
+            currentImages[index] = updatedImg;
+          }
+          
+          // Reapply filters and refresh the view
+          applyFilters();
+        } else {
+          alert('Failed to update image');
+        }
+      } catch (error) {
+        console.error('Error saving image changes:', error);
+        alert('Failed to save changes');
+      }
+    }
+    
+    /**
+     * Deletes an image
+     * @param {string} imageId - The ID of the image to delete
+     */
+    async function deleteImage(imageId) {
+      if (!confirm('Are you sure you want to delete this image? This cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/dcim/${imageId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          alert('Image deleted successfully');
+          
+          // Remove from current images array
+          currentImages = currentImages.filter(img => img.id !== imageId);
+          
+          // Go back to grid view
+          document.getElementById('dcim-image-grid').style.display = 'grid';
+          document.getElementById('dcim-detail-view').style.display = 'none';
+          
+          // Reapply filters and refresh the view
+          applyFilters();
+        } else {
+          alert('Failed to delete image');
+        }
+      } catch (error) {
+        console.error('Error deleting image:', error);
+        alert('Failed to delete image');
+      }
+    }
+    
+    /**
+     * Converts an image to WebP format
+     * @param {string} imageId - The ID of the image to convert
+     */
+    async function convertToWebP(imageId) {
+      try {
+        const quality = prompt('Enter WebP quality (1-100):', '80');
+        if (!quality) return;
+        
+        const qualityNum = parseInt(quality);
+        if (isNaN(qualityNum) || qualityNum < 1 || qualityNum > 100) {
+          alert('Please enter a valid quality number between 1 and 100');
+          return;
+        }
+        
+        const response = await fetch(`/api/dcim/${imageId}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quality: qualityNum })
+        });
+        
+        if (response.ok) {
+          const updatedImg = await response.json();
+          alert('Image converted to WebP successfully');
+          
+          // Update in current images array
+          const index = currentImages.findIndex(img => img.id === imageId);
+          if (index !== -1) {
+            currentImages[index] = updatedImg;
+          }
+          
+          // Refresh the detail view with the updated image
+          showImageDetail(imageId);
+        } else {
+          alert('Failed to convert image');
+        }
+      } catch (error) {
+        console.error('Error converting image:', error);
+        alert('Failed to convert image');
+      }
+    }
+    
+    /**
+     * Shows the add image form
+     */
+    function showAddImageForm() {
+      const gridContainer = document.getElementById('dcim-image-grid');
+      const detailView = document.getElementById('dcim-detail-view');
+      const addForm = document.getElementById('dcim-add-form');
+      const settingsView = document.getElementById('dcim-settings-view');
+      
+      // Show add form, hide other views
+      gridContainer.style.display = 'none';
+      detailView.style.display = 'none';
+      settingsView.style.display = 'none';
+      addForm.style.display = 'block';
+      
+      // Render the add form
+      addForm.innerHTML = `
+        <div class="dcim-form-header">
+          <h3>Add New Image</h3>
+          <button id="dcim-back-from-add" class="btn">Back to Gallery</button>
+        </div>
+        <form id="add-image-form" class="dcim-add-form">
+          <div class="dcim-form-group">
+            <label>Upload Image</label>
+            <input type="file" id="add-image-file" accept="image/*" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Or Image URL</label>
+            <input type="text" id="add-image-url" placeholder="https://example.com/image.jpg" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Filename (optional, will use original filename if not provided)</label>
+            <input type="text" id="add-image-filename" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Ranking (1-1000)</label>
+            <input type="number" id="add-image-ranking" min="1" max="1000" step="0.1" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Rating</label>
+            <div class="dcim-rating" id="add-rating">
+              <span class="dcim-star" data-value="1">★</span>
+              <span class="dcim-star" data-value="2">★</span>
+              <span class="dcim-star" data-value="3">★</span>
+              <span class="dcim-star" data-value="4">★</span>
+              <span class="dcim-star" data-value="5">★</span>
+            </div>
+          </div>
+          <div class="dcim-form-group">
+            <label>Tags (comma separated)</label>
+            <input type="text" id="add-image-tags" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Person</label>
+            <input type="text" id="add-image-person" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Location</label>
+            <input type="text" id="add-image-location" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Type</label>
+            <input type="text" id="add-image-type" class="dcim-input">
           </div>
           <div class="dcim-form-group">
             <label>Creation Time</label>
-            <input type="datetime-local" id="edit-creation-time" 
-              value="${image.creation_time ? new Date(parseInt(image.creation_time)).toISOString().slice(0, 16) : ''}" 
-              class="dcim-input">
+            <input type="datetime-local" id="add-image-creation-time" class="dcim-input">
           </div>
-        </div>
-        <div class="dcim-detail-actions">
-          <div>
-            <button id="dcim-save-image" class="btn btn-primary">Save Changes</button>
-            <button id="dcim-convert-webp" class="btn">Convert to WebP</button>
+          <div class="dcim-form-actions">
+            <button type="submit" class="btn btn-primary">Add Image</button>
           </div>
-          <button id="dcim-delete-image" class="btn btn-danger">Delete Image</button>
-        </div>
+        </form>
       `;
       
       // Add event listeners
-      document.getElementById('dcim-back-button').addEventListener('click', () => {
-        document.getElementById('dcim-image-grid').style.display = 'grid';
-        detailView.style.display = 'none';
+      document.getElementById('dcim-back-from-add').addEventListener('click', () => {
+        gridContainer.style.display = 'grid';
+        addForm.style.display = 'none';
       });
       
-      document.getElementById('dcim-save-image').addEventListener('click', () => saveImageChanges(image.id));
-      document.getElementById('dcim-delete-image').addEventListener('click', () => deleteImage(image.id));
-      document.getElementById('dcim-convert-webp').addEventListener('click', () => convertToWebP(image.id));
+      document.getElementById('add-image-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addNewImage();
+      });
       
-      // Star rating functionality
-      const stars = document.querySelectorAll('.dcim-star');
+      // Add star rating functionality
+      const stars = document.querySelectorAll('#add-rating .dcim-star');
+      let selectedRating = 0;
+      
       stars.forEach(star => {
         star.addEventListener('click', function() {
           const value = parseInt(this.getAttribute('data-value'));
           
-          // Toggle off if already active
-          const newRating = (image.rating === value) ? 0 : value;
+          // Toggle off if already selected
+          selectedRating = (selectedRating === value) ? 0 : value;
           
           // Update UI
           stars.forEach(s => {
             const starValue = parseInt(s.getAttribute('data-value'));
-            if (starValue <= newRating) {
+            if (starValue <= selectedRating) {
               s.classList.add('active');
             } else {
               s.classList.remove('active');
             }
           });
-          
-          // Update image object
-          image.rating = newRating;
         });
       });
-      
-    } catch (error) {
-      console.error('Error loading image details:', error);
-      alert('Failed to load image details');
-    }
-  }
-  
-  /**
-   * Saves changes to an image
-   * @param {string} imageId - The ID of the image to update
-   */
-  async function saveImageChanges(imageId) {
-    try {
-      const updatedData = {
-        filename: document.getElementById('edit-filename').value,
-        tags: document.getElementById('edit-tags').value,
-        person: document.getElementById('edit-person').value,
-        location: document.getElementById('edit-location').value,
-        type: document.getElementById('edit-type').value,
-        rating: document.querySelector('.dcim-star.active:last-of-type') ? 
-               parseInt(document.querySelector('.dcim-star.active:last-of-type').getAttribute('data-value')) : 0
-      };
-      
-      const creationTime = document.getElementById('edit-creation-time').value;
-      if (creationTime) {
-        updatedData.creation_time = new Date(creationTime).getTime();
-      }
-      
-      const response = await fetch(`/api/dcim/${imageId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData)
-      });
-      
-      if (response.ok) {
-        alert('Image updated successfully');
-        
-        // Refresh image data
-        const updatedImg = await response.json();
-        
-        // Update in current images array
-        const index = currentImages.findIndex(img => img.id === imageId);
-        if (index !== -1) {
-          currentImages[index] = updatedImg;
-        }
-        
-        // Reapply filters and refresh the view
-        applyFilters();
-      } else {
-        alert('Failed to update image');
-      }
-    } catch (error) {
-      console.error('Error saving image changes:', error);
-      alert('Failed to save changes');
-    }
-  }
-  
-  /**
-   * Deletes an image
-   * @param {string} imageId - The ID of the image to delete
-   */
-  async function deleteImage(imageId) {
-    if (!confirm('Are you sure you want to delete this image? This cannot be undone.')) {
-      return;
     }
     
-    try {
-      const response = await fetch(`/api/dcim/${imageId}`, {
-        method: 'DELETE'
-      });
+    /**
+     * Adds a new image
+     */
+    async function addNewImage() {
+      const fileInput = document.getElementById('add-image-file');
+      const urlInput = document.getElementById('add-image-url');
       
-      if (response.ok) {
-        alert('Image deleted successfully');
-        
-        // Remove from current images array
-        currentImages = currentImages.filter(img => img.id !== imageId);
-        
-        // Go back to grid view
-        document.getElementById('dcim-image-grid').style.display = 'grid';
-        document.getElementById('dcim-detail-view').style.display = 'none';
-        
-        // Reapply filters and refresh the view
-        applyFilters();
-      } else {
-        alert('Failed to delete image');
-      }
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      alert('Failed to delete image');
-    }
-  }
-  
-  /**
-   * Converts an image to WebP format
-   * @param {string} imageId - The ID of the image to convert
-   */
-  async function convertToWebP(imageId) {
-    try {
-      const quality = prompt('Enter WebP quality (1-100):', '80');
-      if (!quality) return;
-      
-      const qualityNum = parseInt(quality);
-      if (isNaN(qualityNum) || qualityNum < 1 || qualityNum > 100) {
-        alert('Please enter a valid quality number between 1 and 100');
+      // Validate that at least one of file or URL is provided
+      if (!fileInput.files.length && !urlInput.value) {
+        alert('Please upload a file or provide an image URL');
         return;
       }
       
-      const response = await fetch(`/api/dcim/${imageId}/convert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quality: qualityNum })
-      });
+      // Get and validate ranking
+      const rankingInput = document.getElementById('add-image-ranking');
+      let ranking = null;
+      if (rankingInput && rankingInput.value) {
+        ranking = parseFloat(rankingInput.value);
+        if (isNaN(ranking) || ranking < 1 || ranking > 1000) {
+          alert('Ranking must be a number between 1 and 1000');
+          return;
+        }
+        // Round to one decimal place
+        ranking = Math.round(ranking * 10) / 10;
+      }
       
-      if (response.ok) {
-        const updatedImg = await response.json();
-        alert('Image converted to WebP successfully');
+      try {
+        // Prepare form data
+        const formData = new FormData();
         
-        // Update in current images array
-        const index = currentImages.findIndex(img => img.id === imageId);
-        if (index !== -1) {
-          currentImages[index] = updatedImg;
+        if (fileInput.files.length) {
+          formData.append('image', fileInput.files[0]);
         }
         
-        // Refresh the detail view with the updated image
-        showImageDetail(imageId);
-      } else {
-        alert('Failed to convert image');
-      }
-    } catch (error) {
-      console.error('Error converting image:', error);
-      alert('Failed to convert image');
-    }
-  }
-  
-  /**
-   * Shows the add image form
-   */
-  function showAddImageForm() {
-    const gridContainer = document.getElementById('dcim-image-grid');
-    const detailView = document.getElementById('dcim-detail-view');
-    const addForm = document.getElementById('dcim-add-form');
-    const settingsView = document.getElementById('dcim-settings-view');
-    
-    // Show add form, hide other views
-    gridContainer.style.display = 'none';
-    detailView.style.display = 'none';
-    settingsView.style.display = 'none';
-    addForm.style.display = 'block';
-    
-    // Render the add form
-    addForm.innerHTML = `
-      <div class="dcim-form-header">
-        <h3>Add New Image</h3>
-        <button id="dcim-back-from-add" class="btn">Back to Gallery</button>
-      </div>
-      <form id="add-image-form" class="dcim-add-form">
-        <div class="dcim-form-group">
-          <label>Upload Image</label>
-          <input type="file" id="add-image-file" accept="image/*" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Or Image URL</label>
-          <input type="text" id="add-image-url" placeholder="https://example.com/image.jpg" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Filename (optional, will use original filename if not provided)</label>
-          <input type="text" id="add-image-filename" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Rating</label>
-          <div class="dcim-rating" id="add-rating">
-            <span class="dcim-star" data-value="1">★</span>
-            <span class="dcim-star" data-value="2">★</span>
-            <span class="dcim-star" data-value="3">★</span>
-            <span class="dcim-star" data-value="4">★</span>
-            <span class="dcim-star" data-value="5">★</span>
-          </div>
-        </div>
-        <div class="dcim-form-group">
-          <label>Tags (comma separated)</label>
-          <input type="text" id="add-image-tags" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Person</label>
-          <input type="text" id="add-image-person" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Location</label>
-          <input type="text" id="add-image-location" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Type</label>
-          <input type="text" id="add-image-type" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Creation Time</label>
-          <input type="datetime-local" id="add-image-creation-time" class="dcim-input">
-        </div>
-        <div class="dcim-form-actions">
-          <button type="submit" class="btn btn-primary">Add Image</button>
-        </div>
-      </form>
-    `;
-    
-    // Add event listeners
-    document.getElementById('dcim-back-from-add').addEventListener('click', () => {
-      gridContainer.style.display = 'grid';
-      addForm.style.display = 'none';
-    });
-    
-    document.getElementById('add-image-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      addNewImage();
-    });
-    
-    // Add star rating functionality
-    const stars = document.querySelectorAll('#add-rating .dcim-star');
-    let selectedRating = 0;
-    
-    stars.forEach(star => {
-      star.addEventListener('click', function() {
-        const value = parseInt(this.getAttribute('data-value'));
+        if (urlInput.value) {
+          formData.append('url', urlInput.value);
+        }
         
-        // Toggle off if already selected
-        selectedRating = (selectedRating === value) ? 0 : value;
+        // Add other form fields
+        formData.append('filename', document.getElementById('add-image-filename').value);
+        formData.append('tags', document.getElementById('add-image-tags').value);
+        formData.append('person', document.getElementById('add-image-person').value);
+        formData.append('location', document.getElementById('add-image-location').value);
+        formData.append('type', document.getElementById('add-image-type').value);
         
-        // Update UI
-        stars.forEach(s => {
-          const starValue = parseInt(s.getAttribute('data-value'));
-          if (starValue <= selectedRating) {
-            s.classList.add('active');
-          } else {
-            s.classList.remove('active');
-          }
+        // Add ranking if provided
+        if (ranking !== null) {
+          formData.append('ranking', ranking);
+        }
+        
+        // Get rating
+        const selectedRating = document.querySelector('#add-rating .dcim-star.active:last-of-type');
+        if (selectedRating) {
+          formData.append('rating', selectedRating.getAttribute('data-value'));
+        }
+        
+        // Get creation time
+        const creationTime = document.getElementById('add-image-creation-time').value;
+        if (creationTime) {
+          formData.append('creation_time', new Date(creationTime).getTime().toString());
+        }
+        
+        const response = await fetch('/api/dcim', {
+          method: 'POST',
+          body: formData
         });
-      });
-    });
-  }
-  
-  /**
-   * Adds a new image
-   */
-  async function addNewImage() {
-    const fileInput = document.getElementById('add-image-file');
-    const urlInput = document.getElementById('add-image-url');
-    
-    // Validate that at least one of file or URL is provided
-    if (!fileInput.files.length && !urlInput.value) {
-      alert('Please upload a file or provide an image URL');
-      return;
-    }
-    
-    try {
-      // Prepare form data
-      const formData = new FormData();
-      
-      if (fileInput.files.length) {
-        formData.append('image', fileInput.files[0]);
-      }
-      
-      if (urlInput.value) {
-        formData.append('url', urlInput.value);
-      }
-      
-      // Add other form fields
-      formData.append('filename', document.getElementById('add-image-filename').value);
-      formData.append('tags', document.getElementById('add-image-tags').value);
-      formData.append('person', document.getElementById('add-image-person').value);
-      formData.append('location', document.getElementById('add-image-location').value);
-      formData.append('type', document.getElementById('add-image-type').value);
-      
-      // Get rating
-      const selectedRating = document.querySelector('#add-rating .dcim-star.active:last-of-type');
-      if (selectedRating) {
-        formData.append('rating', selectedRating.getAttribute('data-value'));
-      }
-      
-      // Get creation time
-      const creationTime = document.getElementById('add-image-creation-time').value;
-      if (creationTime) {
-        formData.append('creation_time', new Date(creationTime).getTime().toString());
-      }
-      
-      const response = await fetch('/api/dcim', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (response.ok) {
-        const newImage = await response.json();
-        alert('Image added successfully');
         
-        // Add to current images array
-        currentImages.unshift(newImage);
-        
-        // Go back to grid view
-        document.getElementById('dcim-image-grid').style.display = 'grid';
-        document.getElementById('dcim-add-form').style.display = 'none';
-        
-        // Reapply filters and refresh the view
-        applyFilters();
-      } else {
+        if (response.ok) {
+          const newImage = await response.json();
+          alert('Image added successfully');
+          
+          // Add to current images array
+          currentImages.unshift(newImage);
+          
+          // Go back to grid view
+          document.getElementById('dcim-image-grid').style.display = 'grid';
+          document.getElementById('dcim-add-form').style.display = 'none';
+          
+          // Reapply filters and refresh the view
+          applyFilters();
+        } else {
+          alert('Failed to add image');
+        }
+      } catch (error) {
+        console.error('Error adding image:', error);
         alert('Failed to add image');
       }
-    } catch (error) {
-      console.error('Error adding image:', error);
-      alert('Failed to add image');
     }
-  }
-  
-  /**
-   * Shows the settings view
-   */
-  function showSettings() {
-    const gridContainer = document.getElementById('dcim-image-grid');
-    const detailView = document.getElementById('dcim-detail-view');
-    const addForm = document.getElementById('dcim-add-form');
-    const settingsView = document.getElementById('dcim-settings-view');
     
-    // Show settings view, hide other views
-    gridContainer.style.display = 'none';
-    detailView.style.display = 'none';
-    addForm.style.display = 'none';
-    settingsView.style.display = 'block';
-    
-    // Render the settings view
-    settingsView.innerHTML = `
-      <div class="dcim-form-header">
-        <h3>DCIM Settings</h3>
-        <button id="dcim-back-from-settings" class="btn">Back to Gallery</button>
-      </div>
-      <form id="dcim-settings-form" class="dcim-settings-form">
-        <div class="dcim-form-group">
-          <label>Asset Directory</label>
-          <input type="text" id="asset-dir" placeholder="Path to assets directory" class="dcim-input">
-        </div>
-        <div class="dcim-form-group">
-          <label>Thumbnail Directory</label>
-          <input type="text" id="thumbnail-dir" placeholder="Path to thumbnails directory" class="dcim-input">
-        </div>
-        <div class="dcim-form-actions">
-          <button type="submit" class="btn btn-primary">Save Settings</button>
-        </div>
-      </form>
-    `;
-    
-    // Add event listeners
-    document.getElementById('dcim-back-from-settings').addEventListener('click', () => {
-      gridContainer.style.display = 'grid';
-      settingsView.style.display = 'none';
-    });
-    
-    // Fetch current directory settings
-    fetchDirectorySettings();
-    
-    // Add form submit handler
-    document.getElementById('dcim-settings-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      saveDirectorySettings();
-    });
-  }
-  
-  /**
-   * Fetches the current directory settings
-   */
-  async function fetchDirectorySettings() {
-    try {
-      const response = await fetch('/api/dcim/directories');
-      const directories = await response.json();
+    /**
+     * Shows the settings view
+     */
+    function showSettings() {
+      const gridContainer = document.getElementById('dcim-image-grid');
+      const detailView = document.getElementById('dcim-detail-view');
+      const addForm = document.getElementById('dcim-add-form');
+      const settingsView = document.getElementById('dcim-settings-view');
       
-      // Check if directories is an array
-      if (Array.isArray(directories)) {
-        // Find asset and thumbnail directories
-        const assetDir = directories.find(dir => dir.type === 'asset');
-        const thumbnailDir = directories.find(dir => dir.type === 'thumbnail');
-        
-        // Set values in form
-        if (assetDir) {
-          document.getElementById('asset-dir').value = assetDir.path;
-        }
-        
-        if (thumbnailDir) {
-          document.getElementById('thumbnail-dir').value = thumbnailDir.path;
-        }
-      } else {
-        console.log('Directory data is not an array:', directories);
-      }
-    } catch (error) {
-      console.error('Error fetching directory settings:', error);
-      alert('Failed to load directory settings');
-    }
-  }
-  
-  /**
-   * Saves the directory settings
-   */
-  async function saveDirectorySettings() {
-    try {
-      const assetDir = document.getElementById('asset-dir').value;
-      const thumbnailDir = document.getElementById('thumbnail-dir').value;
+      // Show settings view, hide other views
+      gridContainer.style.display = 'none';
+      detailView.style.display = 'none';
+      addForm.style.display = 'none';
+      settingsView.style.display = 'block';
       
-      const response = await fetch('/api/dcim/directories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetDir, thumbnailDir })
+      // Render the settings view
+      settingsView.innerHTML = `
+        <div class="dcim-form-header">
+          <h3>DCIM Settings</h3>
+          <button id="dcim-back-from-settings" class="btn">Back to Gallery</button>
+        </div>
+        <form id="dcim-settings-form" class="dcim-settings-form">
+          <div class="dcim-form-group">
+            <label>Asset Directory</label>
+            <input type="text" id="asset-dir" placeholder="Path to assets directory" class="dcim-input">
+          </div>
+          <div class="dcim-form-group">
+            <label>Thumbnail Directory</label>
+            <input type="text" id="thumbnail-dir" placeholder="Path to thumbnails directory" class="dcim-input">
+          </div>
+          <div class="dcim-form-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+          </div>
+        </form>
+      `;
+      
+      // Add event listeners
+      document.getElementById('dcim-back-from-settings').addEventListener('click', () => {
+        gridContainer.style.display = 'grid';
+        settingsView.style.display = 'none';
       });
       
-      if (response.ok) {
-        alert('Settings saved successfully');
-      } else {
+      // Fetch current directory settings
+      fetchDirectorySettings();
+      
+      // Add form submit handler
+      document.getElementById('dcim-settings-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveDirectorySettings();
+      });
+    }
+    
+    /**
+     * Fetches the current directory settings
+     */
+    async function fetchDirectorySettings() {
+      try {
+        const response = await fetch('/api/dcim/directories');
+        const directories = await response.json();
+        
+        // Check if directories is an array
+        if (Array.isArray(directories)) {
+          // Find asset and thumbnail directories
+          const assetDir = directories.find(dir => dir.type === 'asset');
+          const thumbnailDir = directories.find(dir => dir.type === 'thumbnail');
+          
+          // Set values in form
+          if (assetDir) {
+            document.getElementById('asset-dir').value = assetDir.path;
+          }
+          
+          if (thumbnailDir) {
+            document.getElementById('thumbnail-dir').value = thumbnailDir.path;
+          }
+        } else {
+          console.log('Directory data is not an array:', directories);
+        }
+      } catch (error) {
+        console.error('Error fetching directory settings:', error);
+        alert('Failed to load directory settings');
+      }
+    }
+    
+    /**
+     * Saves the directory settings
+     */
+    async function saveDirectorySettings() {
+      try {
+        const assetDir = document.getElementById('asset-dir').value;
+        const thumbnailDir = document.getElementById('thumbnail-dir').value;
+        
+        const response = await fetch('/api/dcim/directories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetDir, thumbnailDir })
+        });
+        
+        if (response.ok) {
+          alert('Settings saved successfully');
+        } else {
+          alert('Failed to save settings');
+        }
+      } catch (error) {
+        console.error('Error saving directory settings:', error);
         alert('Failed to save settings');
       }
-    } catch (error) {
-      console.error('Error saving directory settings:', error);
-      alert('Failed to save settings');
     }
-  }
-  
-  /**
-   * Formats file size in a human-readable format
-   * @param {number} size - The file size in bytes
-   * @returns {string} Formatted file size
-   */
-  function formatFileSize(size) {
-    if (!size) return 'Unknown';
     
-    if (size < 1024) return size + ' B';
-    if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB';
-    return (size / (1024 * 1024)).toFixed(2) + ' MB';
-  }
-  
-  // Public API
-  return {
-    initialize: initialize,
-    openManager: openImageManager
-  };
+    /**
+     * Formats file size in a human-readable format
+     * @param {number} size - The file size in bytes
+     * @returns {string} Formatted file size
+     */
+    function formatFileSize(size) {
+      if (!size) return 'Unknown';
+      
+      if (size < 1024) return size + ' B';
+      if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB';
+      return (size / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+    
+    // Public API
+    return {
+      initialize: initialize,
+      openManager: openImageManager
+    };
 })();
 
 // Initialize the DCIM Manager when the document is loaded
