@@ -527,8 +527,16 @@ function loadCustomRankingFilters() {
       // Add custom filters
       customFilters.forEach(filter => {
         const option = document.createElement('option');
-        option.value = filter.value;
-        option.textContent = filter.name;
+        option.value = JSON.stringify({min: filter.minValue, max: filter.maxValue});
+        
+        let displayText;
+        if (filter.maxValue) {
+          displayText = `${filter.name} (${filter.minValue}-${filter.maxValue})`;
+        } else {
+          displayText = `${filter.name} (${filter.minValue}+)`;
+        }
+        
+        option.textContent = displayText;
         rankingSelect.appendChild(option);
       });
     }
@@ -558,11 +566,17 @@ function loadCustomRankingFilters() {
           <div class="modal-body">
             <div style="margin-bottom: 15px;">
               <label for="filter-name">Filter Name:</label>
-              <input type="text" id="filter-name" class="dcim-input" placeholder="e.g., Top Tier (900+)" style="width: 100%;">
+              <input type="text" id="filter-name" class="dcim-input" placeholder="e.g., Medium Tier" style="width: 100%;">
             </div>
-            <div style="margin-bottom: 15px;">
-              <label for="filter-value">Minimum Ranking Value:</label>
-              <input type="number" id="filter-value" class="dcim-input" min="1" max="1000" step="1" placeholder="e.g., 900" style="width: 100%;">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+              <div style="flex: 1;">
+                <label for="filter-min-value">Min Ranking:</label>
+                <input type="number" id="filter-min-value" class="dcim-input" min="1" max="1000" step="1" placeholder="e.g., 200" style="width: 100%;">
+              </div>
+              <div style="flex: 1;">
+                <label for="filter-max-value">Max Ranking:</label>
+                <input type="number" id="filter-max-value" class="dcim-input" min="1" max="1000" step="1" placeholder="e.g., 500" style="width: 100%;">
+              </div>
             </div>
             <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
               <button id="save-custom-filter" class="btn btn-primary">Save Filter</button>
@@ -617,8 +631,15 @@ function loadCustomRankingFilters() {
       filterItem.style.backgroundColor = '#f9f9f9';
       filterItem.style.borderRadius = '4px';
       
+      let rangeText;
+      if (filter.maxValue) {
+        rangeText = `(${filter.minValue}-${filter.maxValue})`;
+      } else {
+        rangeText = `(${filter.minValue}+)`;
+      }
+      
       filterItem.innerHTML = `
-        <span>${filter.name} (${filter.value}+)</span>
+        <span>${filter.name} ${rangeText}</span>
         <button class="btn btn-danger delete-filter" data-index="${index}" style="padding: 2px 8px;">Delete</button>
       `;
       
@@ -655,10 +676,12 @@ function loadCustomRankingFilters() {
    */
   function saveCustomFilter() {
     const nameInput = document.getElementById('filter-name');
-    const valueInput = document.getElementById('filter-value');
+    const minValueInput = document.getElementById('filter-min-value');
+    const maxValueInput = document.getElementById('filter-max-value');
     
     const name = nameInput.value.trim();
-    const value = parseInt(valueInput.value);
+    const minValue = parseInt(minValueInput.value);
+    const maxValue = parseInt(maxValueInput.value);
     
     if (!name) {
       alert('Please enter a name for the filter');
@@ -666,18 +689,36 @@ function loadCustomRankingFilters() {
       return;
     }
     
-    if (isNaN(value) || value < 1 || value > 1000) {
-      alert('Please enter a valid ranking value between 1 and 1000');
-      valueInput.focus();
+    if (isNaN(minValue) || minValue < 1 || minValue > 1000) {
+      alert('Please enter a valid minimum ranking value between 1 and 1000');
+      minValueInput.focus();
+      return;
+    }
+    
+    // Max value is optional but must be valid if provided
+    if (maxValueInput.value && (isNaN(maxValue) || maxValue < 1 || maxValue > 1000)) {
+      alert('Please enter a valid maximum ranking value between 1 and 1000');
+      maxValueInput.focus();
+      return;
+    }
+    
+    // Ensure min <= max if max is provided
+    if (maxValueInput.value && minValue > maxValue) {
+      alert('Minimum value must be less than or equal to maximum value');
+      minValueInput.focus();
       return;
     }
     
     // Load existing filters and add the new one
     const customFilters = loadCustomRankingFilters();
-    customFilters.push({ name, value });
+    customFilters.push({
+      name,
+      minValue,
+      maxValue: maxValueInput.value ? maxValue : null
+    });
     
-    // Sort by value in descending order
-    customFilters.sort((a, b) => b.value - a.value);
+    // Sort by minValue in descending order
+    customFilters.sort((a, b) => b.minValue - a.minValue);
     
     // Save to localStorage
     saveCustomRankingFilters(customFilters);
@@ -687,7 +728,8 @@ function loadCustomRankingFilters() {
     
     // Clear the inputs
     nameInput.value = '';
-    valueInput.value = '';
+    minValueInput.value = '';
+    maxValueInput.value = '';
     
     // Refresh the ranking filter dropdown
     populateRankingFilters();
@@ -728,16 +770,32 @@ function loadCustomRankingFilters() {
      */
     function applyFilters() {
       const ratingFilter = document.getElementById('filter-rating').value;
-      const rankingFilter = document.getElementById('filter-ranking').value;
+      const rankingFilterValue = document.getElementById('filter-ranking').value;
       const searchFilter = document.getElementById('dcim-search').value.toLowerCase();
       const sortMethod = document.getElementById('sort-method').value;
       const tagCheckboxes = document.querySelectorAll('#dcim-tag-filters input:checked');
       const selectedTags = Array.from(tagCheckboxes).map(cb => cb.value);
       
+      // Parse ranking filter - could be a simple number or a JSON object with min/max
+      let rankingMin = null;
+      let rankingMax = null;
+      
+      if (rankingFilterValue) {
+        try {
+          // Try to parse as JSON (for custom range filters)
+          const rangeObj = JSON.parse(rankingFilterValue);
+          rankingMin = rangeObj.min;
+          rankingMax = rangeObj.max;
+        } catch (e) {
+          // If not JSON, it's a simple threshold value (like "800")
+          rankingMin = parseInt(rankingFilterValue);
+        }
+      }
+      
       // Store current filters
       currentFilters = {
         rating: ratingFilter,
-        ranking: rankingFilter,
+        ranking: rankingFilterValue,
         search: searchFilter,
         sortMethod: sortMethod,
         tags: selectedTags
@@ -750,9 +808,16 @@ function loadCustomRankingFilters() {
           return false;
         }
         
-        // Ranking filter
-        if (rankingFilter && (!img.ranking || img.ranking < parseInt(rankingFilter))) {
-          return false;
+        // Ranking filter (with support for ranges)
+        if (rankingMin !== null) {
+          // Handle case where image has no ranking
+          if (!img.ranking) return false;
+          
+          // Check minimum value
+          if (img.ranking < rankingMin) return false;
+          
+          // Check maximum value if set
+          if (rankingMax !== null && img.ranking > rankingMax) return false;
         }
         
         // Search filter
