@@ -191,6 +191,96 @@ const DcimManager = (function() {
             grid-template-columns: 1fr;
           }
         }
+        
+        /* Image viewer styles */
+        .dcim-viewer-view {
+          height: 100%;
+          background-color: #1e1e1e;
+        }
+        
+        .dcim-viewer-toolbar {
+          padding: 10px;
+          background-color: #333;
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          z-index: 2001;
+        }
+        
+        .dcim-viewer-container {
+          flex-grow: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          overflow: hidden;
+        }
+        
+        .dcim-viewer-container img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+        
+        .dcim-viewer-zoom-control {
+          display: inline-flex;
+          align-items: center;
+          margin: 0 8px;
+        }
+        
+        .dcim-viewer-zoom-control input {
+          width: 60px;
+          padding: 6px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          text-align: right;
+        }
+        
+        .dcim-viewer-zoom-control span {
+          margin: 0 4px;
+          color: white;
+        }
+        
+        /* Fullscreen viewer styles */
+        .dcim-fullscreen-viewer {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background-color: rgba(0, 0, 0, 0.9);
+          z-index: 9000;
+        }
+        
+        .dcim-fs-container {
+          width: 100%;
+          height: calc(100% - 60px);
+          overflow: auto;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          position: relative;
+        }
+        
+        #dcim-fs-image-wrapper {
+          position: absolute;
+          transform-origin: center center;
+        }
+        
+        #dcim-fs-image {
+          display: block;
+        }
+        
+        .dcim-viewer-toolbar {
+          padding: 10px;
+          background-color: #333;
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          z-index: 9001;
+        }
       `;
       
       document.head.appendChild(styleElement);
@@ -502,9 +592,9 @@ const DcimManager = (function() {
         // Show address type indicator
         let addressIndicator = '';
         if (image.url && image.file_path) {
-          addressIndicator = '<span class="dcim-address-indicator" title="Has both URL and local path">🔗��</span>';
+          addressIndicator = '<span class="dcim-address-indicator" title="Has both URL and local path">🔗</span>';
         } else if (image.url) {
-          addressIndicator = '<span class="dcim-address-indicator" title="Has URL">��</span>';
+          addressIndicator = '<span class="dcim-address-indicator" title="Has URL">🌐</span>';
         } else if (image.file_path) {
           addressIndicator = '<span class="dcim-address-indicator" title="Has local path">📁</span>';
         }
@@ -549,7 +639,10 @@ const DcimManager = (function() {
         detailView.innerHTML = `
           <div class="dcim-detail-header">
             <h3>${image.filename}</h3>
-            <button id="dcim-back-button" class="btn">Back to Gallery</button>
+            <div>
+              <button id="dcim-view-full-image" class="btn btn-primary">View Full Image</button>
+              <button id="dcim-back-button" class="btn">Back to Gallery</button>
+            </div>
           </div>
           <div class="dcim-address-fields">
             <div class="dcim-form-group">
@@ -603,7 +696,7 @@ const DcimManager = (function() {
             <div class="dcim-form-group">
               <label>Creation Time</label>
               <input type="datetime-local" id="edit-creation-time" 
-                value="${image.creation_time ? new Date(parseInt(image.creation_time)).toISOString().slice(0, 16) : ''}" 
+                value="${image.creation_time ? new Date(parseInt(image.creation_time)).toLocaleString('sv-SE', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'}).replace(' ', 'T') : ''}"
                 class="dcim-input">
             </div>
           </div>
@@ -650,9 +743,515 @@ const DcimManager = (function() {
           });
         });
         
+        // Add an event listener for the view full image button
+        document.getElementById('dcim-view-full-image').addEventListener('click', () => {
+          showImageViewer(image);
+        });
+        
+        // Preload ViewerJS library if not loaded
+        if (!window.Viewer) {
+          const viewerCss = document.createElement('link');
+          viewerCss.rel = 'stylesheet';
+          viewerCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.3/viewer.min.css';
+          document.head.appendChild(viewerCss);
+          
+          const viewerScript = document.createElement('script');
+          viewerScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.3/viewer.min.js';
+          document.head.appendChild(viewerScript);
+        }
+        
       } catch (error) {
         console.error('Error loading image details:', error);
         alert('Failed to load image details');
+      }
+    }
+    
+    /**
+     * Shows a full image viewer with zoom and rotation controls
+     * @param {Object} image - The image object to display
+     */
+    function showImageViewer(image) {
+      const gridContainer = document.getElementById('dcim-image-grid');
+      const detailView = document.getElementById('dcim-detail-view');
+      const addForm = document.getElementById('dcim-add-form');
+      const settingsView = document.getElementById('dcim-settings-view');
+      const converterView = document.getElementById('dcim-converter-view');
+      const viewerContainer = document.getElementById('dcim-viewer-view') || createViewerContainer();
+      
+      // Hide other views, show the viewer
+      gridContainer.style.display = 'none';
+      detailView.style.display = 'none';
+      addForm.style.display = 'none';
+      settingsView.style.display = 'none';
+      converterView.style.display = 'none';
+      viewerContainer.style.display = 'flex';
+      
+      // Set image source - prefer the original URL over file path
+      const imageSrc = image.url || image.file_path;
+      if (!imageSrc) {
+        alert('No image source available');
+        return;
+      }
+      
+      // Set the image content
+      const viewerImage = document.getElementById('dcim-viewer-image');
+      viewerImage.src = imageSrc;
+      viewerImage.dataset.imageId = image.id;
+      
+      // Update title
+      document.getElementById('dcim-viewer-title').textContent = image.filename;
+      
+      // Ensure the ViewerJS is initialized
+      if (window.Viewer && !viewerImage._viewer) {
+        viewerImage._viewer = new Viewer(viewerImage, {
+          inline: true,
+          navbar: false,
+          title: false,
+          toolbar: false,
+          tooltip: false,
+          movable: true,
+          zoomable: true,
+          rotatable: true,
+          scalable: true,
+          transition: true,
+          fullscreen: false,
+          keyboard: true,
+          backdrop: false,
+          container: document.getElementById('dcim-viewer-container')
+        });
+      }
+    }
+    
+    /**
+     * Creates the viewer container if it doesn't exist
+     * @returns {HTMLElement} The viewer container element
+     */
+    function createViewerContainer() {
+      const viewerHTML = `
+        <div id="dcim-viewer-view" class="dcim-viewer-view" style="display: none; flex-direction: column; height: 100%;">
+          <div class="dcim-viewer-toolbar" style="padding: 10px; background-color: #333; color: white; display: flex; justify-content: space-between; align-items: center; z-index: 2001;">
+            <div>
+              <button id="dcim-viewer-back" class="btn">Back to Details</button>
+            </div>
+            <h3 id="dcim-viewer-title">Image Viewer</h3>
+            <div class="dcim-viewer-controls">
+              <button id="dcim-viewer-zoom-in" class="btn">Zoom In</button>
+              <button id="dcim-viewer-zoom-out" class="btn">Zoom Out</button>
+              <div class="dcim-viewer-zoom-control" style="display: inline-flex; align-items: center; margin: 0 8px;">
+                <input type="number" id="dcim-viewer-zoom-percent" style="width: 60px;" min="10" max="1000" value="100">
+                <span style="margin: 0 4px; color: white;">%</span>
+                <button id="dcim-viewer-apply-zoom" class="btn">Apply</button>
+              </div>
+              <button id="dcim-viewer-rotate-left" class="btn">Rotate Left</button>
+              <button id="dcim-viewer-rotate-right" class="btn">Rotate Right</button>
+              <button id="dcim-viewer-fullscreen" class="btn">Fullscreen</button>
+              <button id="dcim-viewer-save-settings" class="btn btn-primary">Save Settings</button>
+            </div>
+          </div>
+          <div id="dcim-viewer-container" class="dcim-viewer-container" style="flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; background-color: #1e1e1e;">
+            <img id="dcim-viewer-image" src="" alt="Image View" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+          </div>
+        </div>
+        
+        <!-- Fullscreen container that covers the entire browser window -->
+        <div id="dcim-fullscreen-viewer" class="dcim-fullscreen-viewer" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.9); z-index: 9000;">
+          <div class="dcim-viewer-toolbar" style="padding: 10px; background-color: #333; color: white; display: flex; justify-content: space-between; align-items: center; z-index: 9001;">
+            <div>
+              <button id="dcim-fs-exit" class="btn">Exit Fullscreen</button>
+            </div>
+            <h3 id="dcim-fs-title">Image Viewer</h3>
+            <div class="dcim-viewer-controls">
+              <button id="dcim-fs-zoom-in" class="btn">Zoom In</button>
+              <button id="dcim-fs-zoom-out" class="btn">Zoom Out</button>
+              <div class="dcim-viewer-zoom-control" style="display: inline-flex; align-items: center; margin: 0 8px;">
+                <input type="number" id="dcim-fs-zoom-percent" style="width: 60px;" min="10" max="1000" value="100">
+                <span style="margin: 0 4px; color: white;">%</span>
+                <button id="dcim-fs-apply-zoom" class="btn">Apply</button>
+              </div>
+              <button id="dcim-fs-rotate-left" class="btn">Rotate Left</button>
+              <button id="dcim-fs-rotate-right" class="btn">Rotate Right</button>
+              <button id="dcim-fs-save-settings" class="btn btn-primary">Save Settings</button>
+            </div>
+          </div>
+          <div id="dcim-fs-container" class="dcim-fs-container" style="width: 100%; height: calc(100% - 60px); overflow: auto; display: flex; justify-content: center; align-items: center; position: relative;">
+            <!-- Image will be positioned absolutely within this container -->
+            <div id="dcim-fs-image-wrapper" style="position: absolute; transform-origin: center center;">
+              <img id="dcim-fs-image" src="" alt="Fullscreen Image" style="display: block;">
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Add container to DOM
+      const mainContainer = document.querySelector('.dcim-main');
+      mainContainer.insertAdjacentHTML('beforeend', viewerHTML);
+      
+      // Set up event listeners for the regular viewer
+      document.getElementById('dcim-viewer-back').addEventListener('click', () => {
+        document.getElementById('dcim-viewer-view').style.display = 'none';
+        document.getElementById('dcim-detail-view').style.display = 'flex';
+      });
+      
+      document.getElementById('dcim-viewer-zoom-in').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (viewer) {
+          viewer.zoom(0.1);
+          updateViewerZoomPercentage(viewer);
+        }
+      });
+      
+      document.getElementById('dcim-viewer-zoom-out').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (viewer) {
+          viewer.zoom(-0.1);
+          updateViewerZoomPercentage(viewer);
+        }
+      });
+      
+      document.getElementById('dcim-viewer-rotate-left').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (viewer) {
+          viewer.rotate(-90);
+        }
+      });
+      
+      document.getElementById('dcim-viewer-rotate-right').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (viewer) {
+          viewer.rotate(90);
+        }
+      });
+      
+      document.getElementById('dcim-viewer-apply-zoom').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (!viewer) return;
+        
+        const zoomPercent = parseInt(document.getElementById('dcim-viewer-zoom-percent').value);
+        if (!isNaN(zoomPercent) && zoomPercent >= 10 && zoomPercent <= 1000) {
+          // Calculate the ratio to apply based on current zoom
+          const currentZoom = viewer.imageData.ratio;
+          const targetZoom = zoomPercent / 100;
+          const zoomRatio = targetZoom / currentZoom - 1;
+          
+          viewer.zoom(zoomRatio);
+        }
+      });
+      
+      document.getElementById('dcim-viewer-save-settings').addEventListener('click', () => {
+        const viewer = document.getElementById('dcim-viewer-image')._viewer;
+        if (!viewer || !viewer.imageData) return;
+        
+        const zoomPercent = Math.round(viewer.imageData.ratio * 100);
+        const rotation = viewer.imageData.rotate || 0;
+        const imageId = document.getElementById('dcim-viewer-image').dataset.imageId;
+        
+        if (!imageId) {
+          alert('Cannot save settings: No image ID found');
+          return;
+        }
+        
+        saveImageViewerSettings(imageId, { zoom: zoomPercent, rotation: rotation });
+      });
+      
+      // Add fullscreen toggle button listener
+      document.getElementById('dcim-viewer-fullscreen').addEventListener('click', () => {
+        showFullscreenViewer();
+      });
+      
+      // Set up event listeners for the fullscreen viewer
+      document.getElementById('dcim-fs-exit').addEventListener('click', () => {
+        hideFullscreenViewer();
+      });
+      
+      // Fullscreen viewer state
+      let fsScale = 1;
+      let fsRotation = 0;
+      let isDragging = false;
+      let dragStart = { x: 0, y: 0 };
+      let initialPosition = { x: 0, y: 0 };
+      let currentPosition = { x: 0, y: 0 };
+      
+      // Fullscreen zoom controls
+      document.getElementById('dcim-fs-zoom-in').addEventListener('click', () => {
+        fsScale += 0.1;
+        updateFullscreenTransform();
+        document.getElementById('dcim-fs-zoom-percent').value = Math.round(fsScale * 100);
+      });
+      
+      document.getElementById('dcim-fs-zoom-out').addEventListener('click', () => {
+        fsScale = Math.max(0.1, fsScale - 0.1);
+        updateFullscreenTransform();
+        document.getElementById('dcim-fs-zoom-percent').value = Math.round(fsScale * 100);
+      });
+      
+      document.getElementById('dcim-fs-apply-zoom').addEventListener('click', () => {
+        const zoomPercent = parseInt(document.getElementById('dcim-fs-zoom-percent').value);
+        if (!isNaN(zoomPercent) && zoomPercent >= 10 && zoomPercent <= 1000) {
+          fsScale = zoomPercent / 100;
+          updateFullscreenTransform();
+        }
+      });
+      
+      document.getElementById('dcim-fs-rotate-left').addEventListener('click', () => {
+        fsRotation -= 90;
+        updateFullscreenTransform();
+      });
+      
+      document.getElementById('dcim-fs-rotate-right').addEventListener('click', () => {
+        fsRotation += 90;
+        updateFullscreenTransform();
+      });
+      
+      document.getElementById('dcim-fs-save-settings').addEventListener('click', () => {
+        const imageId = document.getElementById('dcim-fs-image').dataset.imageId;
+        
+        if (!imageId) {
+          alert('Cannot save settings: No image ID found');
+          return;
+        }
+        
+        saveImageViewerSettings(imageId, { 
+          zoom: Math.round(fsScale * 100), 
+          rotation: fsRotation 
+        });
+      });
+      
+      // Fullscreen image pan/drag functionality
+      const imageWrapper = document.getElementById('dcim-fs-image-wrapper');
+      
+      // Mouse events for dragging
+      imageWrapper.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        initialPosition = { ...currentPosition };
+        
+        // Prevent text selection during drag
+        e.preventDefault();
+        
+        // Apply grabbing cursor
+        imageWrapper.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+      });
+      
+      document.getElementById('dcim-fs-container').addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        
+        currentPosition = {
+          x: initialPosition.x + dx,
+          y: initialPosition.y + dy
+        };
+        
+        updateFullscreenTransform();
+      });
+      
+      document.getElementById('dcim-fs-container').addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          imageWrapper.style.cursor = 'grab';
+          document.body.style.userSelect = '';
+        }
+      });
+      
+      // Double click to reset position
+      imageWrapper.addEventListener('dblclick', () => {
+        fsScale = 1;
+        fsRotation = 0;
+        currentPosition = { x: 0, y: 0 };
+        updateFullscreenTransform();
+        document.getElementById('dcim-fs-zoom-percent').value = 100;
+      });
+      
+      // Mouse wheel for zooming
+      document.getElementById('dcim-fs-container').addEventListener('wheel', (e) => {
+        e.preventDefault();
+        
+        // Determine zoom direction
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        fsScale = Math.max(0.1, fsScale + delta);
+        
+        updateFullscreenTransform();
+        document.getElementById('dcim-fs-zoom-percent').value = Math.round(fsScale * 100);
+      });
+      
+      // Function to update the transform of the fullscreen image
+      function updateFullscreenTransform() {
+        const wrapper = document.getElementById('dcim-fs-image-wrapper');
+        wrapper.style.transform = `translate(${currentPosition.x}px, ${currentPosition.y}px) scale(${fsScale}) rotate(${fsRotation}deg)`;
+      }
+      
+      // Function to show the fullscreen viewer
+      function showFullscreenViewer() {
+        const currentImage = document.getElementById('dcim-viewer-image');
+        const fsImage = document.getElementById('dcim-fs-image');
+        const fsViewer = document.getElementById('dcim-fullscreen-viewer');
+        const fsTitle = document.getElementById('dcim-fs-title');
+        
+        // Get image data
+        const imageSrc = currentImage.src;
+        const imageId = currentImage.dataset.imageId;
+        const imageTitle = document.getElementById('dcim-viewer-title').textContent;
+        
+        // Set fullscreen image data
+        fsImage.src = imageSrc;
+        fsImage.dataset.imageId = imageId;
+        fsTitle.textContent = imageTitle;
+        
+        // Reset transform values
+        fsScale = 1;
+        fsRotation = 0;
+        currentPosition = { x: 0, y: 0 };
+        document.getElementById('dcim-fs-zoom-percent').value = 100;
+        updateFullscreenTransform();
+        
+        // Show the fullscreen viewer
+        fsViewer.style.display = 'block';
+        
+        // Set cursor style for dragging
+        document.getElementById('dcim-fs-image-wrapper').style.cursor = 'grab';
+        
+        // Try to get the ViewerJS zoom and rotation values
+        const viewer = currentImage._viewer;
+        if (viewer && viewer.imageData) {
+          fsScale = viewer.imageData.ratio;
+          fsRotation = viewer.imageData.rotate || 0;
+          document.getElementById('dcim-fs-zoom-percent').value = Math.round(fsScale * 100);
+          updateFullscreenTransform();
+        }
+      }
+      
+      // Function to hide the fullscreen viewer
+      function hideFullscreenViewer() {
+        document.getElementById('dcim-fullscreen-viewer').style.display = 'none';
+      }
+      
+      // Expose these functions for use in other parts of the code
+      window.showFullscreenViewer = showFullscreenViewer;
+      window.hideFullscreenViewer = hideFullscreenViewer;
+      
+      // Add this to the event listeners in the viewer container
+      document.addEventListener('keydown', (e) => {
+        // Don't intercept Ctrl/Cmd key combinations (used by DevTools)
+        if (e.ctrlKey || e.metaKey) {
+          return;
+        }
+        
+        // Only handle keyboard events when the fullscreen viewer is visible
+        if (document.getElementById('dcim-fullscreen-viewer').style.display === 'none') {
+          return;
+        }
+        
+        // Handle ESC key to exit fullscreen
+        if (e.key === 'Escape') {
+          hideFullscreenViewer();
+        }
+      });
+      
+      return document.getElementById('dcim-viewer-view');
+    }
+    
+    /**
+     * Updates the zoom percentage display in the viewer
+     * @param {Object} viewer - The ViewerJS instance
+     */
+    function updateViewerZoomPercentage(viewer) {
+      setTimeout(() => {
+        if (viewer && viewer.imageData) {
+          const zoomPercent = Math.round(viewer.imageData.ratio * 100);
+          document.getElementById('dcim-viewer-zoom-percent').value = zoomPercent;
+        }
+      }, 50);
+    }
+    
+    /**
+     * Saves image viewer settings for an image
+     * @param {string} imageId - The ID of the image
+     * @param {Object} settings - The settings to save
+     */
+    async function saveImageViewerSettings(imageId, settings) {
+      try {
+        // Show saving indicator
+        const saveStatus = document.createElement('div');
+        saveStatus.textContent = 'Saving...';
+        saveStatus.style.position = 'fixed';
+        saveStatus.style.top = '10px';
+        saveStatus.style.right = '10px';
+        saveStatus.style.padding = '5px 10px';
+        saveStatus.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        saveStatus.style.color = 'white';
+        saveStatus.style.borderRadius = '3px';
+        saveStatus.style.zIndex = '10000';
+        document.body.appendChild(saveStatus);
+        
+        const response = await fetch(`/api/dcim/${imageId}/settings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ settings })
+        });
+        
+        if (response.ok) {
+          saveStatus.textContent = 'Settings saved!';
+        } else {
+          throw new Error('Failed to save settings');
+        }
+        
+        // Fade out and remove the status indicator
+        setTimeout(() => {
+          saveStatus.style.opacity = '0';
+          saveStatus.style.transition = 'opacity 0.5s';
+          setTimeout(() => saveStatus.remove(), 500);
+        }, 1500);
+      } catch (error) {
+        console.error('Error saving image viewer settings:', error);
+        alert('Failed to save settings: ' + error.message);
+      }
+    }
+    
+    /**
+     * Loads image viewer settings for an image
+     * @param {string} imageId - The ID of the image
+     * @param {Object} viewer - The ViewerJS instance
+     */
+    async function loadImageViewerSettings(imageId, viewer) {
+      try {
+        const response = await fetch(`/api/dcim/${imageId}/settings`);
+        const data = await response.json();
+        
+        if (data && data.settings) {
+          console.log('Loaded viewer settings:', data.settings);
+          
+          // Apply zoom if available
+          if (data.settings.zoom && viewer && viewer.imageData) {
+            const targetZoom = data.settings.zoom / 100;
+            const currentZoom = viewer.imageData.ratio || 1;
+            const zoomRatio = targetZoom / currentZoom - 1;
+            
+            // Apply the zoom after a short delay to ensure viewer is ready
+            setTimeout(() => {
+              viewer.zoom(zoomRatio);
+              document.getElementById('dcim-viewer-zoom-percent').value = data.settings.zoom;
+            }, 500);
+          }
+          
+          // Apply rotation if available
+          if (data.settings.rotation && viewer) {
+            // Calculate how much to rotate to reach the saved rotation
+            const currentRotation = viewer.imageData ? (viewer.imageData.rotate || 0) : 0;
+            const rotationNeeded = data.settings.rotation - currentRotation;
+            
+            if (rotationNeeded !== 0) {
+              setTimeout(() => {
+                viewer.rotate(rotationNeeded);
+              }, 500);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading image viewer settings:', error);
       }
     }
     
@@ -697,7 +1296,8 @@ const DcimManager = (function() {
         
         const creationTime = document.getElementById('edit-creation-time').value;
         if (creationTime) {
-          updatedData.creation_time = new Date(creationTime).getTime();
+            const localDate = new Date(creationTime);
+            updatedData.creation_time = localDate.getTime();
         }
         
         const response = await fetch(`/api/dcim/${imageId}`, {
@@ -985,7 +1585,8 @@ const DcimManager = (function() {
         // Get creation time
         const creationTime = document.getElementById('add-image-creation-time').value;
         if (creationTime) {
-          formData.append('creation_time', new Date(creationTime).getTime().toString());
+            const localDate = new Date(creationTime);
+            formData.append('creation_time', localDate.getTime().toString());
         }
         
         // Send the request
