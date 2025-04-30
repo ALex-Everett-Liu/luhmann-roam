@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const { getDb, initializeDatabase } = require('./database');
+const { getDb, initializeDatabase, updateDcimImagesRankingToReal } = require('./database');
 const fs = require('fs');
 const path = require('path');
 const taskRoutes = require('./routes/taskRoutes');
@@ -41,9 +41,17 @@ app.use((req, res, next) => {
 
 // Initialize database
 let db;
-initializeDatabase().then(database => {
-  db = database;
-});
+initializeDatabase()
+  .then(database => {
+    db = database;
+    return updateDcimImagesRankingToReal(); // Run migration after DB init
+  })
+  .then(migrationSuccess => {
+    console.log('Migration status:', migrationSuccess ? 'Success' : 'Failed');
+  })
+  .catch(err => {
+    console.error('Error during database initialization or migration:', err);
+  });
 
 // Add this middleware to provide the database connection to all routes
 app.use((req, res, next) => {

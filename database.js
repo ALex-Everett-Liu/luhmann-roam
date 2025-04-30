@@ -117,7 +117,7 @@ async function initializeDatabase() {
       url TEXT,
       file_size INTEGER,
       rating INTEGER,
-      ranking INTEGER,
+      ranking REAL,
       tags TEXT,
       creation_time INTEGER,
       person TEXT,
@@ -166,4 +166,64 @@ async function initializeDatabase() {
   return db;
 }
 
-module.exports = { getDb, initializeDatabase }; 
+/**
+ * Updates the dcim_images table to change ranking column from INTEGER to REAL
+ * @returns {Promise<boolean>} Success status
+ */
+async function updateDcimImagesRankingToReal() {
+  console.log('Running migration: Convert dcim_images.ranking from INTEGER to REAL');
+  const db = await getDb();
+  
+  try {
+    // Start a transaction for safety
+    await db.run('BEGIN TRANSACTION');
+    
+    // 1. Create a new table with the correct schema
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS dcim_images_new (
+        id TEXT PRIMARY KEY,
+        filename TEXT NOT NULL,
+        url TEXT,
+        file_path TEXT,
+        file_size INTEGER,
+        rating INTEGER,
+        ranking REAL,
+        tags TEXT,
+        creation_time INTEGER,
+        person TEXT,
+        location TEXT, 
+        type TEXT,
+        thumbnail_path TEXT,
+        created_at INTEGER,
+        updated_at INTEGER
+      )
+    `);
+    
+    // 2. Copy data from the old table to the new one
+    await db.run(`
+      INSERT INTO dcim_images_new
+      SELECT id, filename, url, file_path, file_size, rating, CAST(ranking AS REAL), 
+             tags, creation_time, person, location, type, thumbnail_path, created_at, updated_at
+      FROM dcim_images
+    `);
+    
+    // 3. Drop the old table
+    await db.run('DROP TABLE dcim_images');
+    
+    // 4. Rename the new table to the original name
+    await db.run('ALTER TABLE dcim_images_new RENAME TO dcim_images');
+    
+    // Commit the transaction
+    await db.run('COMMIT');
+    
+    console.log('Successfully converted dcim_images.ranking from INTEGER to REAL');
+    return true;
+  } catch (error) {
+    // Rollback in case of error
+    await db.run('ROLLBACK');
+    console.error('Error converting dcim_images.ranking to REAL:', error);
+    return false;
+  }
+}
+
+module.exports = { getDb, initializeDatabase, updateDcimImagesRankingToReal }; 
