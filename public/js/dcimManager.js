@@ -36,6 +36,9 @@ const DcimManager = (function() {
       // Add necessary styles
       addDcimStyles();
       
+      // Create sidebar button for Image Manager
+      createSidebarButton();
+      
       // Add keyboard event listener for closing the modal when it's open
       document.addEventListener('keydown', (e) => {
         const modal = document.getElementById('dcim-modal');
@@ -1273,7 +1276,8 @@ function loadCustomRankingFilters() {
         }
         
         // Only handle keyboard events when the fullscreen viewer is visible
-        if (document.getElementById('dcim-fullscreen-viewer').style.display === 'none') {
+        const fullscreenViewer = document.getElementById('dcim-fullscreen-viewer');
+        if (!fullscreenViewer || fullscreenViewer.style.display === 'none') {
           return;
         }
         
@@ -2147,3 +2151,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Export the module for use in other files
 window.DcimManager = DcimManager;
+
+/**
+ * Creates an Image Manager button in the sidebar
+ * Adds it after the backup database button and before the plugin manager button
+ */
+function createSidebarButton() {
+  // Check if button already exists
+  if (document.getElementById('image-manager-button')) return;
+  
+  // Get sidebar element
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  
+  // Create the image manager button
+  const imageManagerButton = document.createElement('button');
+  imageManagerButton.id = 'image-manager-button';
+  imageManagerButton.className = 'feature-toggle';
+  imageManagerButton.textContent = 'Image Manager';
+  imageManagerButton.title = 'Manage images and media';
+  
+  // Add click event
+  imageManagerButton.addEventListener('click', () => {
+    DcimManager.openManager();
+  });
+  
+  // Find the backup button and plugin manager button
+  const backupButton = document.getElementById('backup-database');
+  const pluginManagerButton = document.getElementById('plugin-manager-button');
+  
+  // Insert after backup button if it exists, otherwise at the end of sidebar
+  if (backupButton && backupButton.nextSibling) {
+    sidebar.insertBefore(imageManagerButton, backupButton.nextSibling);
+  } else if (pluginManagerButton) {
+    // If no backup button but plugin manager exists, insert before plugin manager
+    sidebar.insertBefore(imageManagerButton, pluginManagerButton);
+  } else {
+    // Just append to sidebar if neither button exists
+    sidebar.appendChild(imageManagerButton);
+  }
+}
