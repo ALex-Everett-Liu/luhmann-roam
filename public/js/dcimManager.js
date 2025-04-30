@@ -7,6 +7,7 @@ const DcimManager = (function() {
     let modalElement = null;
     let currentImages = [];
     let currentFilters = {};
+    let customRankingFilters = [];
     
     /**
      * Initialize the manager
@@ -388,6 +389,9 @@ const DcimManager = (function() {
       document.getElementById('sort-method').addEventListener('change', applyFilters);
       document.getElementById('dcim-search').addEventListener('input', applyFilters);
       document.getElementById('dcim-webp-converter').addEventListener('click', showWebPConverter);
+
+      addCustomRankingFilterButton();
+      populateRankingFilters();
       
       return modal;
     }
@@ -474,6 +478,250 @@ const DcimManager = (function() {
         tagsContainer.appendChild(tagDiv);
       });
     }
+
+    /**
+ * Loads custom ranking filters from localStorage
+ * @returns {Array} Array of custom ranking filters
+ */
+function loadCustomRankingFilters() {
+    const savedFilters = localStorage.getItem('dcim-custom-ranking-filters');
+    return savedFilters ? JSON.parse(savedFilters) : [];
+  }
+  
+  /**
+   * Saves custom ranking filters to localStorage
+   * @param {Array} filters - Array of custom ranking filters to save
+   */
+  function saveCustomRankingFilters(filters) {
+    localStorage.setItem('dcim-custom-ranking-filters', JSON.stringify(filters));
+  }
+  
+  /**
+   * Populates the ranking filter dropdown including custom filters
+   */
+  function populateRankingFilters() {
+    const rankingSelect = document.getElementById('filter-ranking');
+    
+    // Get custom filters
+    const customFilters = loadCustomRankingFilters();
+    
+    // Save the currently selected value
+    const currentValue = rankingSelect.value;
+    
+    // Clear the select and add default options
+    rankingSelect.innerHTML = `
+      <option value="">All Rankings</option>
+      <option value="800">800+</option>
+      <option value="600">600+</option>
+      <option value="400">400+</option>
+      <option value="200">200+</option>
+    `;
+    
+    // Add separator if we have custom filters
+    if (customFilters.length > 0) {
+      const separator = document.createElement('option');
+      separator.disabled = true;
+      separator.textContent = '───────────────';
+      rankingSelect.appendChild(separator);
+      
+      // Add custom filters
+      customFilters.forEach(filter => {
+        const option = document.createElement('option');
+        option.value = filter.value;
+        option.textContent = filter.name;
+        rankingSelect.appendChild(option);
+      });
+    }
+    
+    // Restore selected value if it exists
+    if (currentValue) {
+      rankingSelect.value = currentValue;
+      // If the value doesn't exist anymore, select the first option
+      if (rankingSelect.value !== currentValue) {
+        rankingSelect.selectedIndex = 0;
+      }
+    }
+  }
+  
+  /**
+   * Shows the custom ranking filter dialog
+   */
+  function showCustomRankingFilterDialog() {
+    // Create a modal dialog for adding custom filters
+    const dialogHTML = `
+      <div id="ranking-filter-dialog" class="modal-overlay" style="display: flex; z-index: 10000;">
+        <div class="modal" style="width: 400px; max-width: 95%;">
+          <div class="modal-header">
+            <h3 class="modal-title">Custom Ranking Filter</h3>
+            <button class="modal-close" id="close-ranking-dialog">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="margin-bottom: 15px;">
+              <label for="filter-name">Filter Name:</label>
+              <input type="text" id="filter-name" class="dcim-input" placeholder="e.g., Top Tier (900+)" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label for="filter-value">Minimum Ranking Value:</label>
+              <input type="number" id="filter-value" class="dcim-input" min="1" max="1000" step="1" placeholder="e.g., 900" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+              <button id="save-custom-filter" class="btn btn-primary">Save Filter</button>
+              <button id="cancel-custom-filter" class="btn">Cancel</button>
+            </div>
+            
+            <div id="existing-filters" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+              <h4>Existing Custom Filters</h4>
+              <div id="custom-filter-list" style="margin-top: 10px;">
+                <!-- Custom filters will be listed here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add dialog to DOM
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+    
+    // Display existing custom filters
+    displayExistingCustomFilters();
+    
+    // Add event listeners
+    document.getElementById('close-ranking-dialog').addEventListener('click', closeCustomRankingFilterDialog);
+    document.getElementById('cancel-custom-filter').addEventListener('click', closeCustomRankingFilterDialog);
+    document.getElementById('save-custom-filter').addEventListener('click', saveCustomFilter);
+  }
+  
+  /**
+   * Displays existing custom filters in the dialog
+   */
+  function displayExistingCustomFilters() {
+    const customFilters = loadCustomRankingFilters();
+    const filterList = document.getElementById('custom-filter-list');
+    
+    if (customFilters.length === 0) {
+      filterList.innerHTML = '<p>No custom filters yet.</p>';
+      return;
+    }
+    
+    filterList.innerHTML = '';
+    
+    customFilters.forEach((filter, index) => {
+      const filterItem = document.createElement('div');
+      filterItem.className = 'custom-filter-item';
+      filterItem.style.display = 'flex';
+      filterItem.style.justifyContent = 'space-between';
+      filterItem.style.alignItems = 'center';
+      filterItem.style.marginBottom = '8px';
+      filterItem.style.padding = '6px';
+      filterItem.style.backgroundColor = '#f9f9f9';
+      filterItem.style.borderRadius = '4px';
+      
+      filterItem.innerHTML = `
+        <span>${filter.name} (${filter.value}+)</span>
+        <button class="btn btn-danger delete-filter" data-index="${index}" style="padding: 2px 8px;">Delete</button>
+      `;
+      
+      filterList.appendChild(filterItem);
+    });
+    
+    // Add event listeners to delete buttons
+    document.querySelectorAll('.delete-filter').forEach(button => {
+      button.addEventListener('click', function() {
+        const index = parseInt(this.getAttribute('data-index'));
+        deleteCustomFilter(index);
+      });
+    });
+  }
+  
+  /**
+   * Deletes a custom filter
+   * @param {number} index - The index of the filter to delete
+   */
+  function deleteCustomFilter(index) {
+    const customFilters = loadCustomRankingFilters();
+    customFilters.splice(index, 1);
+    saveCustomRankingFilters(customFilters);
+    
+    // Refresh the display
+    displayExistingCustomFilters();
+    
+    // Refresh the ranking filter dropdown
+    populateRankingFilters();
+  }
+  
+  /**
+   * Saves a new custom filter
+   */
+  function saveCustomFilter() {
+    const nameInput = document.getElementById('filter-name');
+    const valueInput = document.getElementById('filter-value');
+    
+    const name = nameInput.value.trim();
+    const value = parseInt(valueInput.value);
+    
+    if (!name) {
+      alert('Please enter a name for the filter');
+      nameInput.focus();
+      return;
+    }
+    
+    if (isNaN(value) || value < 1 || value > 1000) {
+      alert('Please enter a valid ranking value between 1 and 1000');
+      valueInput.focus();
+      return;
+    }
+    
+    // Load existing filters and add the new one
+    const customFilters = loadCustomRankingFilters();
+    customFilters.push({ name, value });
+    
+    // Sort by value in descending order
+    customFilters.sort((a, b) => b.value - a.value);
+    
+    // Save to localStorage
+    saveCustomRankingFilters(customFilters);
+    
+    // Refresh the display
+    displayExistingCustomFilters();
+    
+    // Clear the inputs
+    nameInput.value = '';
+    valueInput.value = '';
+    
+    // Refresh the ranking filter dropdown
+    populateRankingFilters();
+  }
+  
+  /**
+   * Closes the custom ranking filter dialog
+   */
+  function closeCustomRankingFilterDialog() {
+    const dialog = document.getElementById('ranking-filter-dialog');
+    if (dialog) {
+      dialog.remove();
+    }
+  }
+  
+  /**
+   * Adds a button to customize ranking filters
+   */
+  function addCustomRankingFilterButton() {
+    const filterGroup = document.querySelector('.dcim-filter-group:nth-child(3)');
+    if (!filterGroup) return;
+    
+    const customizeButton = document.createElement('button');
+    customizeButton.id = 'customize-ranking-filters';
+    customizeButton.className = 'btn btn-small';
+    customizeButton.textContent = 'Customize...';
+    customizeButton.style.marginTop = '5px';
+    customizeButton.style.fontSize = '12px';
+    customizeButton.style.padding = '2px 8px';
+    
+    customizeButton.addEventListener('click', showCustomRankingFilterDialog);
+    
+    filterGroup.appendChild(customizeButton);
+  }
     
     /**
      * Applies current filters and updates the image grid
