@@ -139,7 +139,27 @@ const DcimManager = (function() {
                     </div>
                     <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Tags</div>
-                      <div id="dcim-tag-filters" class="dcim-tag-filters"></div>
+                      <div class="dcim-tag-search">
+                        <input type="text" id="dcim-tag-search" class="dcim-tag-search-input" placeholder="Search tags...">
+                        <button id="dcim-tag-search-clear" class="dcim-tag-search-clear" title="Clear search">×</button>
+                      </div>
+                      <div class="dcim-tag-combination">
+                        <div class="dcim-radio-group">
+                          <input type="radio" id="tag-combo-and" name="tag-combo" value="AND" checked>
+                          <label for="tag-combo-and">All tags (AND)</label>
+                        </div>
+                        <div class="dcim-radio-group">
+                          <input type="radio" id="tag-combo-or" name="tag-combo" value="OR">
+                          <label for="tag-combo-or">Any tag (OR)</label>
+                        </div>
+                      </div>
+                      <div class="dcim-tag-actions">
+                        <div class="dcim-tag-selected-count">
+                          <span id="dcim-tag-selected-count">0</span> tags selected
+                        </div>
+                        <button id="dcim-tag-clear-all" class="dcim-tag-clear-all">Clear all</button>
+                      </div>
+                      <div id="dcim-tag-filters" class="dcim-tag-filters dcim-tag-filter-container"></div>
                     </div>
                     <div id="dcim-filter-count" class="dcim-filter-count"></div>
                   </div>
@@ -174,6 +194,13 @@ const DcimManager = (function() {
       document.getElementById('filter-type').addEventListener('input', debounce(applyFilters, 300));
       document.getElementById('dcim-search').addEventListener('input', debounce(applyFilters, 300));
       document.getElementById('sort-method').addEventListener('change', applyFilters);
+      
+      // Add tag search and filter listeners
+      document.getElementById('dcim-tag-search').addEventListener('input', debounce(filterTagList, 300));
+      document.getElementById('dcim-tag-search-clear').addEventListener('click', clearTagSearch);
+      document.getElementById('dcim-tag-clear-all').addEventListener('click', clearAllTags);
+      document.getElementById('tag-combo-and').addEventListener('change', applyFilters);
+      document.getElementById('tag-combo-or').addEventListener('change', applyFilters);
       
       // Initialize ranking filters
       populateRankingFilters();
@@ -227,13 +254,17 @@ const DcimManager = (function() {
     function populateTagFilters(images) {
       const tagsContainer = document.getElementById('dcim-tag-filters');
       const allTags = new Set();
+      const tagCounts = {};
       
-      // Collect all unique tags
+      // Collect all unique tags and count occurrences
       images.forEach(img => {
         if (img.tags) {
           img.tags.split(',').forEach(tag => {
             const trimmedTag = tag.trim();
-            if (trimmedTag) allTags.add(trimmedTag);
+            if (trimmedTag) {
+              allTags.add(trimmedTag);
+              tagCounts[trimmedTag] = (tagCounts[trimmedTag] || 0) + 1;
+            }
           });
         }
       });
@@ -252,16 +283,28 @@ const DcimManager = (function() {
         checkbox.type = 'checkbox';
         checkbox.id = `tag-${tag}`;
         checkbox.value = tag;
-        checkbox.addEventListener('change', applyFilters);
+        checkbox.addEventListener('change', () => {
+          updateSelectedTagCount();
+          applyFilters();
+        });
         
         const label = document.createElement('label');
         label.htmlFor = `tag-${tag}`;
         label.textContent = tag;
         
+        // Add count indicator
+        const countSpan = document.createElement('span');
+        countSpan.className = 'dcim-tag-count';
+        countSpan.textContent = `(${tagCounts[tag]})`;
+        
+        label.appendChild(countSpan);
         tagDiv.appendChild(checkbox);
         tagDiv.appendChild(label);
         tagsContainer.appendChild(tagDiv);
       });
+      
+      // Initialize the selected tag count
+      updateSelectedTagCount();
     }
 
     /**
@@ -561,6 +604,7 @@ function loadCustomRankingFilters() {
       const sortMethod = document.getElementById('sort-method').value;
       const tagCheckboxes = document.querySelectorAll('#dcim-tag-filters input:checked');
       const selectedTags = Array.from(tagCheckboxes).map(cb => cb.value);
+      const tagCombination = document.querySelector('input[name="tag-combo"]:checked').value;
       
       // Parse ranking filter - could be a simple number or a JSON object with min/max
       let rankingMin = null;
@@ -585,7 +629,8 @@ function loadCustomRankingFilters() {
         search: searchFilter,
         type: typeFilter,
         sortMethod: sortMethod,
-        tags: selectedTags
+        tags: selectedTags,
+        tagCombination: tagCombination
       };
       
       // Step 1: Filter by type first
@@ -629,12 +674,22 @@ function loadCustomRankingFilters() {
           }
         }
         
-        // Tag filter
+        // Tag filter with combination logic (AND/OR)
         if (selectedTags.length > 0 && img.tags) {
           const imageTags = img.tags.split(',').map(t => t.trim());
-          const hasAllSelectedTags = selectedTags.every(tag => imageTags.includes(tag));
-          if (!hasAllSelectedTags) {
-            return false;
+          
+          if (tagCombination === 'AND') {
+            // All selected tags must be present (AND logic)
+            const hasAllSelectedTags = selectedTags.every(tag => imageTags.includes(tag));
+            if (!hasAllSelectedTags) {
+              return false;
+            }
+          } else {
+            // At least one selected tag must be present (OR logic)
+            const hasAnySelectedTag = selectedTags.some(tag => imageTags.includes(tag));
+            if (!hasAnySelectedTag) {
+              return false;
+            }
           }
         }
         
@@ -2190,4 +2245,71 @@ function createSidebarButton() {
     // Just append to sidebar if neither button exists
     sidebar.appendChild(imageManagerButton);
   }
+}
+
+// Add these new functions for tag filtering
+
+/**
+ * Filters the tag list based on search input
+ */
+function filterTagList() {
+  const searchText = document.getElementById('dcim-tag-search').value.toLowerCase();
+  const tagElements = document.querySelectorAll('.dcim-tag-filter');
+  
+  let matchCount = 0;
+  
+  tagElements.forEach(tagElement => {
+    const labelText = tagElement.querySelector('label').textContent.toLowerCase();
+    
+    if (searchText === '' || labelText.includes(searchText)) {
+      tagElement.classList.remove('hidden');
+      matchCount++;
+    } else {
+      tagElement.classList.add('hidden');
+    }
+  });
+  
+  // Show message if no matches
+  const noMatchesElement = document.getElementById('no-tag-matches');
+  if (matchCount === 0 && searchText !== '') {
+    if (!noMatchesElement) {
+      const message = document.createElement('div');
+      message.id = 'no-tag-matches';
+      message.className = 'dcim-empty-state';
+      message.style.padding = '10px';
+      message.textContent = 'No matching tags found';
+      document.getElementById('dcim-tag-filters').appendChild(message);
+    }
+  } else if (noMatchesElement) {
+    noMatchesElement.remove();
+  }
+}
+
+/**
+ * Clears the tag search input
+ */
+function clearTagSearch() {
+  document.getElementById('dcim-tag-search').value = '';
+  filterTagList();
+}
+
+/**
+ * Clears all selected tags
+ */
+function clearAllTags() {
+  const tagCheckboxes = document.querySelectorAll('#dcim-tag-filters input[type="checkbox"]');
+  tagCheckboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  updateSelectedTagCount();
+  applyFilters();
+}
+
+/**
+ * Updates the count of selected tags
+ */
+function updateSelectedTagCount() {
+  const selectedCount = document.querySelectorAll('#dcim-tag-filters input[type="checkbox"]:checked').length;
+  document.getElementById('dcim-tag-selected-count').textContent = selectedCount;
 }

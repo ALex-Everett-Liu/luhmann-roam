@@ -265,3 +265,96 @@
   #dcim-fs-image {
     display: block;
   }
+
+  /* Tag search and filter styles */
+  .dcim-tag-search {
+    margin-bottom: 10px;
+    position: relative;
+  }
+
+  .dcim-tag-search-input {
+    width: 100%;
+    padding: 8px;
+    padding-right: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+  }
+
+  .dcim-tag-search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted-color);
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .dcim-tag-filter {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+  }
+
+  .dcim-tag-filter-container {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-bottom: 10px;
+  }
+
+  .dcim-tag-combination {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dcim-tag-combination .dcim-radio-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .dcim-tag-combination .dcim-radio-group label {
+    margin-left: 3px;
+    cursor: pointer;
+  }
+
+  .dcim-tag-count {
+    font-size: 11px;
+    color: var(--text-muted-color);
+    margin-left: 5px;
+  }
+
+  .dcim-tag-filter.hidden {
+    display: none;
+  }
+
+  .dcim-tag-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .dcim-tag-selected-count {
+    font-size: 12px;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .dcim-tag-clear-all {
+    font-size: 12px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    text-decoration: underline;
+    padding: 0;
+  }
