@@ -696,7 +696,7 @@ const DcimManager = (function() {
             <div class="dcim-form-group">
               <label>Creation Time</label>
               <input type="datetime-local" id="edit-creation-time" 
-                value="${image.creation_time ? new Date(parseInt(image.creation_time)).toLocaleString('sv-SE', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'}).replace(' ', 'T') : ''}"
+                value="${image.creation_time ? formatDateTimeForInput(parseInt(image.creation_time)) : ''}"
                 class="dcim-input">
             </div>
           </div>
@@ -1296,8 +1296,21 @@ const DcimManager = (function() {
         
         const creationTime = document.getElementById('edit-creation-time').value;
         if (creationTime) {
-            const localDate = new Date(creationTime);
+            // Ensure we're working with local time interpretation
+            const [datePart, timePart] = creationTime.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hours, minutes] = timePart.split(':').map(Number);
+            
+            // Create date using local time components
+            const localDate = new Date(year, month-1, day, hours, minutes);
             updatedData.creation_time = localDate.getTime();
+            
+            console.log('Saving date:', {
+                input: creationTime,
+                components: { year, month, day, hours, minutes },
+                timestamp: localDate.getTime(),
+                localString: localDate.toString()
+            });
         }
         
         const response = await fetch(`/api/dcim/${imageId}`, {
@@ -1585,8 +1598,21 @@ const DcimManager = (function() {
         // Get creation time
         const creationTime = document.getElementById('add-image-creation-time').value;
         if (creationTime) {
-            const localDate = new Date(creationTime);
+            // Ensure we're working with local time interpretation
+            const [datePart, timePart] = creationTime.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hours, minutes] = timePart.split(':').map(Number);
+            
+            // Create date using local time components
+            const localDate = new Date(year, month-1, day, hours, minutes);
             formData.append('creation_time', localDate.getTime().toString());
+            
+            console.log('Adding date:', {
+                input: creationTime,
+                components: { year, month, day, hours, minutes },
+                timestamp: localDate.getTime(),
+                localString: localDate.toString()
+            });
         }
         
         // Send the request
@@ -1910,6 +1936,28 @@ const DcimManager = (function() {
           loadingElement.remove();
         }
       }
+    }
+    
+    /**
+     * Formats a timestamp for datetime-local input
+     * Properly handles local timezone
+     * @param {number} timestamp - The timestamp to format
+     * @returns {string} Formatted date string
+     */
+    function formatDateTimeForInput(timestamp) {
+      const date = new Date(timestamp);
+      
+      // Get year, month and day
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      // Get hours and minutes
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      // Return formatted string (YYYY-MM-DDThh:mm)
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
     
     // Public API

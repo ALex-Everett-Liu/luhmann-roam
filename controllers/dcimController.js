@@ -176,6 +176,9 @@ exports.updateImage = async (req, res) => {
       filename, url, file_path, file_size, rating, ranking, tags,
       creation_time, person, location, type
     } = req.body;
+
+    // Debug logging to see what's coming in
+    console.log('Received creation_time:', creation_time);
     
     const db = await getDb();
     const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
@@ -213,6 +216,7 @@ exports.updateImage = async (req, res) => {
     );
     
     const updatedImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    console.log('Updated image creation_time:', updatedImage.creation_time);
     res.json(updatedImage);
   } catch (error) {
     console.error('Error updating image:', error);
