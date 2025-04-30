@@ -348,7 +348,7 @@ const CommandPaletteManager = (function() {
     }
     
     /**
-     * Collect and register commands from all modules
+     * Register all commands from all modules
      */
     function registerAllCommands() {
         // Clear existing commands to start fresh
@@ -368,6 +368,9 @@ const CommandPaletteManager = (function() {
         
         // Register Plugin Manager commands
         registerPluginManagerCommands();
+        
+        // Register DCIM Manager commands
+        registerDcimManagerCommands();
         
         // Register other module commands
         registerModuleCommands();
@@ -898,6 +901,117 @@ const CommandPaletteManager = (function() {
                     keywords: [plugin.name.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
                 });
             }
+        }
+    }
+    
+    /**
+     * Register DCIM (Image) Manager commands
+     */
+    function registerDcimManagerCommands() {
+        // Check if DcimManager exists
+        if (window.DcimManager) {
+            registerCommand({
+                name: 'Open Image Manager',
+                action: () => {
+                    if (window.DcimManager.openManager) {
+                        window.DcimManager.openManager();
+                    }
+                },
+                category: 'Images',
+                shortcut: 'Alt+M',
+                keywords: ['image', 'photo', 'picture', 'dcim', 'manager', 'gallery']
+            });
+            
+            // For the following commands, we need to ensure modal exists first
+            registerCommand({
+                name: 'Add New Image',
+                action: () => {
+                    // Ensure modal is open before interacting with it
+                    if (window.DcimManager.openManager) {
+                        window.DcimManager.openManager();
+                        
+                        // Use a longer delay to ensure modal is fully rendered
+                        setTimeout(() => {
+                            // Find and click the button directly
+                            const addButton = document.getElementById('add-image');
+                            if (addButton) {
+                                addButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Images',
+                keywords: ['add', 'upload', 'new', 'image', 'photo']
+            });
+            
+            registerCommand({
+                name: 'Image Settings',
+                action: () => {
+                    // Ensure modal is open before interacting with it
+                    if (window.DcimManager.openManager) {
+                        window.DcimManager.openManager();
+                        
+                        // Use a longer delay to ensure modal is fully rendered
+                        setTimeout(() => {
+                            // Find and click the button directly
+                            const settingsButton = document.getElementById('show-settings');
+                            if (settingsButton) {
+                                settingsButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Images',
+                keywords: ['settings', 'configuration', 'image', 'directory', 'storage']
+            });
+            
+            registerCommand({
+                name: 'WebP Image Converter',
+                action: () => {
+                    // Ensure modal is open before interacting with it
+                    if (window.DcimManager.openManager) {
+                        window.DcimManager.openManager();
+                        
+                        // Use a longer delay to ensure modal is fully rendered
+                        setTimeout(() => {
+                            // Find and click the button directly
+                            const webpButton = document.getElementById('show-webp-converter');
+                            if (webpButton) {
+                                webpButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Images',
+                keywords: ['webp', 'convert', 'optimize', 'compress', 'image']
+            });
+            
+            registerCommand({
+                name: 'Manage Custom Ranking Filters',
+                action: () => {
+                    // Ensure modal is open before interacting with it
+                    if (window.DcimManager.openManager) {
+                        window.DcimManager.openManager();
+                        
+                        // Use a longer delay to ensure modal is fully rendered
+                        setTimeout(() => {
+                            // Find and click the button directly
+                            const customizeButton = document.getElementById('customize-ranking-filter');
+                            if (customizeButton) {
+                                customizeButton.click();
+                            } else {
+                                // Fallback: try to find via querySelector if ID approach fails
+                                const filterButton = document.querySelector('.customize-icon')?.closest('button');
+                                if (filterButton) {
+                                    filterButton.click();
+                                }
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Images',
+                keywords: ['ranking', 'filter', 'custom', 'range', 'image']
+            });
         }
     }
     

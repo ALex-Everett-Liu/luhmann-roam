@@ -8,32 +8,49 @@ const DcimManager = (function() {
     let currentImages = [];
     let currentFilters = {};
     let customRankingFilters = [];
+
+    /**
+     * Creates a debounced function that delays invoking func until after wait milliseconds
+     * @param {Function} func - The function to debounce
+     * @param {number} wait - The number of milliseconds to delay
+     * @returns {Function} The debounced function
+     */
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+    }
     
     /**
      * Initialize the manager
      */
     function initialize() {
-      // Add DCIM UI link to sidebar if it doesn't exist
-      if (!document.getElementById('dcim-link')) {
-        const sidebar = document.querySelector('.sidebar');
-        const dcimButton = document.createElement('button');
-        dcimButton.id = 'dcim-link';
-        dcimButton.textContent = 'Image Manager';
-        dcimButton.addEventListener('click', openImageManager);
-        
-        // Insert before backup button if it exists
-        const backupButton = document.getElementById('backup-database');
-        if (backupButton) {
-          sidebar.insertBefore(dcimButton, backupButton);
-        } else {
-          sidebar.appendChild(dcimButton);
-        }
+      // Check if modal already exists, don't create duplicate
+      if (document.getElementById('dcim-modal')) {
+        return;
       }
       
-      // Add DCIM styles
+      // Add necessary styles
       addDcimStyles();
       
-      console.log('DCIM Manager initialized');
+      // Add keyboard event listener for closing the modal when it's open
+      document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('dcim-modal');
+        if (e.key === 'Escape' && modal && modal.style.display === 'block') {
+          closeModal();
+        }
+      });
+      
+      // Make sure custom ranking filters are loaded
+      if (!localStorage.getItem('customRankingFilters')) {
+        localStorage.setItem('customRankingFilters', JSON.stringify([]));
+      }
+      
+      // DO NOT create the modal or load images here
+      // They will be created when openImageManager is called
     }
     
     /**
@@ -292,6 +309,7 @@ const DcimManager = (function() {
      * @returns {HTMLElement} The modal element
      */
     function createModal() {
+      // Check if modal already exists
       if (document.getElementById('dcim-modal')) {
         return document.getElementById('dcim-modal');
       }
@@ -321,54 +339,52 @@ const DcimManager = (function() {
                       </select>
                     </div>
                     <div class="dcim-filter-group">
-                      <div class="dcim-filter-title">Filter by Rating</div>
-                      <select id="filter-rating" class="dcim-select">
-                        <option value="">All Ratings</option>
-                        <option value="5">5 Stars</option>
-                        <option value="4">4+ Stars</option>
-                        <option value="3">3+ Stars</option>
-                        <option value="2">2+ Stars</option>
-                        <option value="1">1+ Star</option>
-                      </select>
-                    </div>
-                    <div class="dcim-filter-group">
-                      <div class="dcim-filter-title">Filter by Ranking</div>
-                      <select id="filter-ranking" class="dcim-select">
-                        <option value="">All Rankings</option>
-                        <option value="800">800+</option>
-                        <option value="600">600+</option>
-                        <option value="400">400+</option>
-                        <option value="200">200+</option>
-                      </select>
-                    </div>
-                    <div class="dcim-filter-group">
-                      <div class="dcim-filter-title">Search</div>
-                      <input type="text" id="dcim-search" placeholder="Search images..." class="dcim-input">
+                      <div class="dcim-filter-title">Filter By</div>
+                      <div>
+                        <label>Rating:</label>
+                        <select id="filter-rating" class="dcim-select">
+                          <option value="">All Ratings</option>
+                          <option value="5">★★★★★</option>
+                          <option value="4">★★★★+</option>
+                          <option value="3">★★★+</option>
+                          <option value="2">★★+</option>
+                          <option value="1">★+</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label>Ranking:</label>
+                        <select id="filter-ranking" class="dcim-select">
+                          <option value="">All Rankings</option>
+                          <option value="800">800+</option>
+                          <option value="600">600+</option>
+                          <option value="400">400+</option>
+                          <option value="200">200+</option>
+                        </select>
+                        <button id="customize-ranking-filter" class="btn btn-small customize-icon" title="Customize ranking filters">⚙️</button>
+                      </div>
+                      <div>
+                        <label>Type:</label>
+                        <input type="text" id="filter-type" class="dcim-input" placeholder="Filter by type...">
+                      </div>
+                      <div>
+                        <label>Search:</label>
+                        <input type="text" id="dcim-search" class="dcim-input" placeholder="Search images...">
+                      </div>
                     </div>
                     <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Tags</div>
-                      <div id="dcim-tag-filters">
-                        <!-- Tags will be dynamically added here -->
-                      </div>
+                      <div id="dcim-tag-filters" class="dcim-tag-filters"></div>
                     </div>
+                    <div id="dcim-filter-count" class="dcim-filter-count"></div>
                   </div>
                 </div>
                 <div class="dcim-main">
-                  <div id="dcim-image-grid" class="dcim-image-grid">
-                    <!-- Images will be loaded here -->
-                  </div>
-                  <div id="dcim-detail-view" class="dcim-detail-view" style="display: none;">
-                    <!-- Image details will be shown here -->
-                  </div>
-                  <div id="dcim-add-form" style="display: none;">
-                    <!-- Add image form will be shown here -->
-                  </div>
-                  <div id="dcim-settings-view" style="display: none;">
-                    <!-- Settings will be shown here -->
-                  </div>
-                  <div id="dcim-converter-view" style="display: none;">
-                    <!-- WebP converter will be shown here -->
-                  </div>
+                  <div id="dcim-image-grid" class="dcim-image-grid"></div>
+                  <div id="dcim-detail-view" class="dcim-detail-view" style="display: none;"></div>
+                  <div id="dcim-add-form" class="dcim-form" style="display: none;"></div>
+                  <div id="dcim-settings-view" class="dcim-form" style="display: none;"></div>
+                  <div id="dcim-converter-view" class="dcim-form" style="display: none;"></div>
+                  <div id="dcim-viewer-container" class="viewer-container" style="display: none;"></div>
                 </div>
               </div>
             </div>
@@ -376,32 +392,35 @@ const DcimManager = (function() {
         </div>
       `;
       
+      // Add modal to DOM
       document.body.insertAdjacentHTML('beforeend', modalHTML);
       
-      const modal = document.getElementById('dcim-modal');
-      
-      // Set up event listeners
+      // Add event listeners
       document.getElementById('close-dcim-modal').addEventListener('click', closeModal);
       document.getElementById('dcim-add-image').addEventListener('click', showAddImageForm);
       document.getElementById('dcim-settings').addEventListener('click', showSettings);
+      document.getElementById('dcim-webp-converter').addEventListener('click', showWebPConverter);
+      document.getElementById('customize-ranking-filter').addEventListener('click', showCustomRankingFilterDialog);
+      
+      // Add filter change listeners
       document.getElementById('filter-rating').addEventListener('change', applyFilters);
       document.getElementById('filter-ranking').addEventListener('change', applyFilters);
+      document.getElementById('filter-type').addEventListener('input', debounce(applyFilters, 300));
+      document.getElementById('dcim-search').addEventListener('input', debounce(applyFilters, 300));
       document.getElementById('sort-method').addEventListener('change', applyFilters);
-      document.getElementById('dcim-search').addEventListener('input', applyFilters);
-      document.getElementById('dcim-webp-converter').addEventListener('click', showWebPConverter);
-
-      addCustomRankingFilterButton();
+      
+      // Initialize ranking filters
       populateRankingFilters();
       
-      return modal;
+      return document.getElementById('dcim-modal');
     }
     
     /**
      * Opens the Image Manager modal
      */
     function openImageManager() {
-      modalElement = createModal();
-      modalElement.style.display = 'flex';
+        modalElement = createModal();
+        modalElement.style.display = 'flex';
       
       // Load images
       loadImages();
@@ -772,6 +791,7 @@ function loadCustomRankingFilters() {
       const ratingFilter = document.getElementById('filter-rating').value;
       const rankingFilterValue = document.getElementById('filter-ranking').value;
       const searchFilter = document.getElementById('dcim-search').value.toLowerCase();
+      const typeFilter = document.getElementById('filter-type').value.toLowerCase();
       const sortMethod = document.getElementById('sort-method').value;
       const tagCheckboxes = document.querySelectorAll('#dcim-tag-filters input:checked');
       const selectedTags = Array.from(tagCheckboxes).map(cb => cb.value);
@@ -797,12 +817,21 @@ function loadCustomRankingFilters() {
         rating: ratingFilter,
         ranking: rankingFilterValue,
         search: searchFilter,
+        type: typeFilter,
         sortMethod: sortMethod,
         tags: selectedTags
       };
       
-      // Filter images
-      let filteredImages = currentImages.filter(img => {
+      // Step 1: Filter by type first
+      let typeFilteredImages = currentImages;
+      if (typeFilter) {
+        typeFilteredImages = currentImages.filter(img => {
+          return img.type && img.type.toLowerCase().includes(typeFilter);
+        });
+      }
+      
+      // Step 2: Now apply all other filters to the type-filtered results
+      let filteredImages = typeFilteredImages.filter(img => {
         // Rating filter
         if (ratingFilter && (!img.rating || img.rating < parseInt(ratingFilter))) {
           return false;
@@ -820,14 +849,13 @@ function loadCustomRankingFilters() {
           if (rankingMax !== null && img.ranking > rankingMax) return false;
         }
         
-        // Search filter
+        // Search filter (applies to all searchable fields except type, which was filtered in step 1)
         if (searchFilter) {
           const searchFields = [
             img.filename,
             img.tags,
             img.person,
-            img.location,
-            img.type
+            img.location
           ].filter(Boolean).join(' ').toLowerCase();
           
           if (!searchFields.includes(searchFilter)) {
@@ -847,28 +875,38 @@ function loadCustomRankingFilters() {
         return true;
       });
       
-      // Apply sort based on chosen method
-      if (sortMethod === 'ranking') {
-        filteredImages.sort((a, b) => {
-          // Handle null/undefined rankings
-          const rankingA = a.ranking !== null && a.ranking !== undefined ? a.ranking : -1;
-          const rankingB = b.ranking !== null && b.ranking !== undefined ? b.ranking : -1;
-          return rankingB - rankingA; // Descending order
-        });
-      } else if (sortMethod === 'rating') {
-        filteredImages.sort((a, b) => {
-          // Handle null/undefined ratings
-          const ratingA = a.rating !== null && a.rating !== undefined ? a.rating : -1;
-          const ratingB = b.rating !== null && b.rating !== undefined ? b.rating : -1;
-          return ratingB - ratingA; // Descending order
-        });
-      } else if (sortMethod === 'date') {
-        filteredImages.sort((a, b) => {
-          return b.created_at - a.created_at; // Descending order
-        });
+      // Apply sort method
+      switch (sortMethod) {
+        case 'ranking_desc':
+          filteredImages.sort((a, b) => (b.ranking || 0) - (a.ranking || 0));
+          break;
+        case 'ranking_asc':
+          filteredImages.sort((a, b) => (a.ranking || 0) - (b.ranking || 0));
+          break;
+        case 'date_desc':
+          filteredImages.sort((a, b) => (b.creation_time || 0) - (a.creation_time || 0));
+          break;
+        case 'date_asc':
+          filteredImages.sort((a, b) => (a.creation_time || 0) - (b.creation_time || 0));
+          break;
+        case 'rating_desc':
+          filteredImages.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          break;
+        case 'rating_asc':
+          filteredImages.sort((a, b) => (a.rating || 0) - (b.rating || 0));
+          break;
+        default:
+          // Default sort by date newest first
+          filteredImages.sort((a, b) => b.created_at - a.created_at);
       }
       
-      // Render filtered images
+      // Update UI to show filter counts
+      const countElement = document.getElementById('dcim-filter-count');
+      if (countElement) {
+        countElement.textContent = `Showing ${filteredImages.length} of ${currentImages.length} images`;
+      }
+      
+      // Render the filtered images
       renderImageGrid(filteredImages);
     }
     
@@ -878,12 +916,13 @@ function loadCustomRankingFilters() {
      */
     function renderImageGrid(images) {
       const gridContainer = document.getElementById('dcim-image-grid');
+      const viewerContainer = document.getElementById('dcim-viewer-container');
       
-      // Show grid, hide detail view
+      // Show grid, hide viewer container
       gridContainer.style.display = 'grid';
-      document.getElementById('dcim-detail-view').style.display = 'none';
-      document.getElementById('dcim-add-form').style.display = 'none';
-      document.getElementById('dcim-settings-view').style.display = 'none';
+      if (viewerContainer) {
+        viewerContainer.style.display = 'none';
+      }
       
       // Clear grid and render images
       gridContainer.innerHTML = '';
@@ -940,15 +979,34 @@ function loadCustomRankingFilters() {
         const response = await fetch(`/api/dcim/${imageId}`);
         const image = await response.json();
         
-        const detailView = document.getElementById('dcim-detail-view');
+        // Create the detail view container if it doesn't exist
+        let detailView = document.getElementById('dcim-detail-view');
+        if (!detailView) {
+          detailView = document.createElement('div');
+          detailView.id = 'dcim-detail-view';
+          detailView.style.display = 'none';
+          document.querySelector('.modal-body').appendChild(detailView);
+        }
         
         // Show detail view, hide other views
         document.getElementById('dcim-image-grid').style.display = 'none';
-        document.getElementById('dcim-add-form').style.display = 'none';
-        document.getElementById('dcim-settings-view').style.display = 'none';
+        
+        // Hide other containers if they exist
+        const viewerContainer = document.getElementById('dcim-viewer-container');
+        if (viewerContainer) viewerContainer.style.display = 'none';
+        
+        const addForm = document.getElementById('dcim-add-form');
+        if (addForm) addForm.style.display = 'none';
+        
+        const settingsView = document.getElementById('dcim-settings-view');
+        if (settingsView) settingsView.style.display = 'none';
+        
+        const converterView = document.getElementById('dcim-converter-view');
+        if (converterView) converterView.style.display = 'none';
+        
         detailView.style.display = 'flex';
         
-        // Render detail view
+        // Render detail view (rest of the function remains the same)
         detailView.innerHTML = `
           <div class="dcim-detail-header">
             <h3>${image.filename}</h3>
@@ -1571,6 +1629,13 @@ function loadCustomRankingFilters() {
     /**
      * Saves changes to an image
      * @param {string} imageId - The ID of the image to update
+     *
+     * IMPORTANT: All available image fields must be collected from the form and included in updatedData:
+     * - Basic info: filename, url, file_path
+     * - Metadata: ranking, rating, creation_time
+     * - Content tags: tags, person, location, type
+     * 
+     * Any field not included in updatedData will NOT be saved to the database!
      */
     async function saveImageChanges(imageId) {
       try {
@@ -1598,13 +1663,21 @@ function loadCustomRankingFilters() {
           ranking = Math.round(ranking * 10) / 10;
         }
         
+        // IMPORTANT: Collect ALL form fields to prevent silent data loss
         const updatedData = {
           filename,
           url,
           file_path: filePath,
+          // Metadata
           ranking: ranking,
           rating: document.querySelector('.dcim-star.active:last-of-type') ? 
-                 parseInt(document.querySelector('.dcim-star.active:last-of-type').getAttribute('data-value')) : 0
+                 parseInt(document.querySelector('.dcim-star.active:last-of-type').getAttribute('data-value')) : 0,
+          // Add these missing fields:
+          // Content tags - all must be included to prevent data loss!
+          tags: document.getElementById('edit-tags').value.trim(),
+          person: document.getElementById('edit-person').value.trim(),
+          location: document.getElementById('edit-location').value.trim(),
+          type: document.getElementById('edit-type').value.trim()
         };
         
         const creationTime = document.getElementById('edit-creation-time').value;
@@ -2273,6 +2346,21 @@ function loadCustomRankingFilters() {
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
     
+    // Utility to ensure all form fields are being captured
+    function validateAllFieldsCollected() {
+      const requiredFields = ['dcim-filename', 'dcim-url', 'dcim-file-path', 
+                              'edit-ranking', 'edit-tags', 'edit-person', 
+                              'edit-location', 'edit-type', 'edit-creation-time'];
+      
+      const missingFields = requiredFields.filter(field => 
+        !document.getElementById(field) && console.warn(`Missing field: ${field}`)
+      );
+      
+      if (missingFields.length > 0) {
+        console.error('Some form fields could not be collected!', missingFields);
+      }
+    }
+    
     // Public API
     return {
       initialize: initialize,
@@ -2282,7 +2370,16 @@ function loadCustomRankingFilters() {
 
 // Initialize the DCIM Manager when the document is loaded
 document.addEventListener('DOMContentLoaded', function() {
+  // Only initialize, don't open
   DcimManager.initialize();
+  
+  // Look for an image manager button and add click handler if it exists
+  const imageManagerButton = document.getElementById('image-manager-button');
+  if (imageManagerButton) {
+    imageManagerButton.addEventListener('click', function() {
+      DcimManager.openManager();
+    });
+  }
 });
 
 // Export the module for use in other files
