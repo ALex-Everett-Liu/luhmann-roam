@@ -32,4 +32,18 @@ router.post('/:id/convert', dcimController.convertImage);
 // New route for converting uploaded image
 router.post('/convert', upload.single('image'), dcimController.convertUploadedImage);
 
+// Add these new routes to handle subsidiary images
+
+// Get subsidiary images for a parent image
+router.get('/:id/subsidiaries', dcimController.getSubsidiaryImages);
+
+// Add a new subsidiary image
+router.post('/subsidiary', upload.single('image'), dcimController.addSubsidiaryImage);
+
+// Promote a subsidiary to be the main image
+router.post('/:id/promote', dcimController.promoteSubsidiaryImage);
+
+// Remove subsidiary relationship
+router.post('/:id/detach', dcimController.detachSubsidiaryImage);
+
 module.exports = router;

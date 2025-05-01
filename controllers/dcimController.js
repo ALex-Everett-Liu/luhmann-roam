@@ -482,3 +482,195 @@ exports.convertUploadedImage = async (req, res) => {
     res.status(500).json({ error: 'Error converting image: ' + error.message });
   }
 };
+
+/**
+ * Get all subsidiary images for a parent image
+ */
+exports.getSubsidiaryImages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await getDb();
+    
+    // Check if the parent image exists
+    const parentImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    if (!parentImage) {
+      return res.status(404).json({ error: 'Parent image not found' });
+    }
+    
+    // Get all subsidiary images
+    const subsidiaries = await db.all(
+      'SELECT * FROM dcim_images WHERE parent_id = ? ORDER BY created_at DESC', 
+      id
+    );
+    
+    res.json(subsidiaries);
+  } catch (error) {
+    console.error('Error fetching subsidiary images:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Add a new subsidiary image
+ */
+exports.addSubsidiaryImage = async (req, res) => {
+  try {
+    const { parent_id, filename, url, file_path, inherit_metadata } = req.body;
+    
+    // Validate parent image exists
+    const db = await getDb();
+    const parentImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', parent_id);
+    
+    if (!parentImage) {
+      return res.status(404).json({ error: 'Parent image not found' });
+    }
+    
+    // Handle file upload if file is included
+    let finalFilename = filename;
+    let finalUrl = url;
+    let finalFilePath = file_path;
+    let thumbnailPath = null;
+    let fileSize = null;
+    
+    // Validate that at least one address is provided
+    if (!req.file && !url && !file_path) {
+      return res.status(400).json({ error: 'Please provide a file, URL, or file path' });
+    }
+    
+    if (req.file) {
+      const file = req.file;
+      finalFilename = filename || file.originalname || crypto.randomUUID() + path.extname(file.originalname);
+      const assetPath = path.join(getAssetDirectory(), finalFilename);
+      
+      // If uploading a file rather than a URL
+      fs.writeFileSync(assetPath, file.buffer);
+      finalUrl = `/attachment/dcim/${finalFilename}`;
+      fileSize = file.size;
+      
+      // Generate thumbnail
+      const thumbFilename = `thumb_${finalFilename}`;
+      const thumbPath = path.join(getThumbnailDirectory(), thumbFilename);
+      await generateThumbnail(assetPath, thumbPath);
+      thumbnailPath = `/attachment/dcim/thumbnails/${thumbFilename}`;
+    }
+    
+    const id = uuidv4();
+    const now = Date.now();
+    
+    // Prepare data for the new image
+    const newImageData = {
+      id,
+      filename: finalFilename,
+      url: finalUrl,
+      file_path: finalFilePath,
+      file_size: fileSize,
+      parent_id,
+      thumbnail_path: thumbnailPath,
+      created_at: now,
+      updated_at: now
+    };
+    
+    // If inheriting metadata, copy from parent
+    if (inherit_metadata === 'true') {
+      newImageData.rating = parentImage.rating;
+      newImageData.ranking = parentImage.ranking;
+      newImageData.tags = parentImage.tags;
+      newImageData.creation_time = parentImage.creation_time;
+      newImageData.person = parentImage.person;
+      newImageData.location = parentImage.location;
+      newImageData.type = parentImage.type;
+    }
+    
+    // Insert the new subsidiary image
+    const columns = Object.keys(newImageData).join(', ');
+    const placeholders = Object.keys(newImageData).map(() => '?').join(', ');
+    const values = Object.values(newImageData);
+    
+    await db.run(
+      `INSERT INTO dcim_images (${columns}) VALUES (${placeholders})`,
+      values
+    );
+    
+    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    res.status(201).json(image);
+  } catch (error) {
+    console.error('Error adding subsidiary image:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Promote a subsidiary image to be the main image
+ * This swaps the parent-child relationship
+ */
+exports.promoteSubsidiaryImage = async (req, res) => {
+  try {
+    const { id } = req.params; // subsidiary ID
+    const { parent_id } = req.body; // current parent ID
+    
+    const db = await getDb();
+    
+    // Validate both images exist
+    const subsidiaryImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    const parentImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', parent_id);
+    
+    if (!subsidiaryImage || !parentImage) {
+      return res.status(404).json({ error: 'One or both images not found' });
+    }
+    
+    // Start a transaction for the swap
+    await db.run('BEGIN TRANSACTION');
+    
+    try {
+      // Make the subsidiary image have no parent
+      await db.run('UPDATE dcim_images SET parent_id = NULL WHERE id = ?', id);
+      
+      // Make the former parent a subsidiary of the promoted image
+      await db.run('UPDATE dcim_images SET parent_id = ? WHERE id = ?', id, parent_id);
+      
+      // Make any other subsidiaries of the original parent now point to the new parent
+      await db.run(
+        'UPDATE dcim_images SET parent_id = ? WHERE parent_id = ? AND id != ?',
+        id, parent_id, id
+      );
+      
+      // Commit the transaction
+      await db.run('COMMIT');
+      
+      res.json({ success: true });
+    } catch (error) {
+      // If any error occurs, roll back the transaction
+      await db.run('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error promoting subsidiary image:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Remove the subsidiary relationship (detach from parent)
+ */
+exports.detachSubsidiaryImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const db = await getDb();
+    
+    // Validate the image exists
+    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Remove the parent relationship
+    await db.run('UPDATE dcim_images SET parent_id = NULL WHERE id = ?', id);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error detaching subsidiary image:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -161,6 +161,16 @@ async function initializeDatabase() {
     // Column likely already exists, which is fine
     console.log('file_path column already exists or other error:', error.message);
   }
+
+  // Add parent_id column to dcim_images table for subsidiary images
+  try {
+    await db.exec(`ALTER TABLE dcim_images ADD COLUMN parent_id TEXT`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_parent_id ON dcim_images(parent_id)`);
+    console.log('Added parent_id column to dcim_images table');
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log('parent_id column already exists or other error:', error.message);
+  }
   
   console.log('Database initialized');
   return db;
