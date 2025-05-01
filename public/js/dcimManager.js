@@ -162,6 +162,13 @@ const DcimManager = (function() {
                       <div id="dcim-tag-filters" class="dcim-tag-filters dcim-tag-filter-container"></div>
                     </div>
                     <div id="dcim-filter-count" class="dcim-filter-count"></div>
+                    <div class="dcim-toggle-filter">
+                      <label for="filter-major-only">Show:</label>
+                      <div class="dcim-toggle-switch">
+                        <input type="checkbox" id="filter-major-only" class="dcim-toggle-checkbox">
+                        <span class="dcim-toggle-label" data-on="Major Only" data-off="All Images"></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="dcim-main">
@@ -205,6 +212,9 @@ const DcimManager = (function() {
       // Initialize ranking filters
       populateRankingFilters();
       
+      // Add major images toggle listener
+      document.getElementById('filter-major-only').addEventListener('change', applyFilters);
+      
       return document.getElementById('dcim-modal');
     }
     
@@ -238,6 +248,14 @@ const DcimManager = (function() {
         
         // Populate tag filters
         populateTagFilters(currentImages);
+        
+        // Set default filter state (show all images)
+        const majorOnlyFilter = document.getElementById('filter-major-only');
+        if (majorOnlyFilter) {
+          // Check localStorage for saved preference
+          const savedPreference = localStorage.getItem('dcim-show-major-only');
+          majorOnlyFilter.checked = savedPreference === 'true';
+        }
         
         // Render the images
         renderImageGrid(currentImages);
@@ -641,6 +659,15 @@ function loadCustomRankingFilters() {
         });
       }
       
+      // Apply major-only filter if enabled
+      const showMajorOnly = document.getElementById('filter-major-only').checked;
+      
+      // Store user preference in localStorage
+      localStorage.setItem('dcim-show-major-only', showMajorOnly);
+      
+      // Store in current filters
+      currentFilters.showMajorOnly = showMajorOnly;
+      
       // Step 2: Now apply all other filters to the type-filtered results
       let filteredImages = typeFilteredImages.filter(img => {
         // Rating filter
@@ -691,6 +718,11 @@ function loadCustomRankingFilters() {
               return false;
             }
           }
+        }
+        
+        // Apply major-only filter if enabled
+        if (showMajorOnly) {
+          return img.parent_id === null || img.parent_id === undefined;
         }
         
         return true;
@@ -772,8 +804,15 @@ function loadCustomRankingFilters() {
           addressIndicator = '<span class="dcim-address-indicator" title="Has local path">📁</span>';
         }
 
+        // Show subsidiary indicator if the image has a parent
+        let subsidiaryIndicator = '';
+        if (image.parent_id) {
+          subsidiaryIndicator = '<span class="dcim-subsidiary-badge" title="Subsidiary Image">Subsidiary</span>';
+        }
+
         card.innerHTML = `
           <img src="${image.thumbnail_path || image.url}" alt="${image.filename}" class="dcim-thumbnail" onerror="this.src='/images/default-thumbnail.jpg'">
+          ${subsidiaryIndicator}
           <div class="dcim-image-info">
             <div class="dcim-image-title">${image.filename} ${addressIndicator}</div>
             <div class="dcim-image-meta">
