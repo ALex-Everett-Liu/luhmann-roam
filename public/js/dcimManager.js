@@ -164,9 +164,9 @@ const DcimManager = (function() {
                     <div id="dcim-filter-count" class="dcim-filter-count"></div>
                     <div class="dcim-toggle-filter">
                       <label for="filter-major-only">Show:</label>
-                      <div class="dcim-toggle-switch">
-                        <input type="checkbox" id="filter-major-only" class="dcim-toggle-checkbox">
-                        <span class="dcim-toggle-label" data-on="Major Only" data-off="All Images"></span>
+                      <div class="dcim-toggle-switch" id="toggle-switch-container">
+                          <input type="checkbox" id="filter-major-only" class="dcim-toggle-checkbox">
+                          <label for="filter-major-only" class="dcim-toggle-label" data-on="Major Only" data-off="All Images"></label>
                       </div>
                     </div>
                   </div>
@@ -214,6 +214,19 @@ const DcimManager = (function() {
       
       // Add major images toggle listener
       document.getElementById('filter-major-only').addEventListener('change', applyFilters);
+
+      // Add click handler for the toggle switch container for better UX
+      document.getElementById('toggle-switch-container').addEventListener('click', (e) => {
+        // Only handle clicks on the container itself, not on the checkbox
+        if (e.target.id === 'toggle-switch-container') {
+          const checkbox = document.getElementById('filter-major-only');
+          checkbox.checked = !checkbox.checked;
+          
+          // Manually trigger change event
+          const event = new Event('change');
+          checkbox.dispatchEvent(event);
+        }
+      });
       
       return document.getElementById('dcim-modal');
     }
@@ -762,6 +775,60 @@ function loadCustomRankingFilters() {
       // Render the filtered images
       renderImageGrid(filteredImages);
     }
+
+    // Add this function after the applyFilters function
+
+/**
+ * Debugs the toggle button interactions
+ */
+function debugToggleButton() {
+    const checkbox = document.getElementById('filter-major-only');
+    if (!checkbox) return;
+    
+    console.log('Setting up toggle debug...');
+    
+    // Add visual indicator for clicks
+    const toggleSwitch = document.getElementById('toggle-switch-container');
+    if (toggleSwitch) {
+      toggleSwitch.addEventListener('click', () => {
+        console.log('Toggle container clicked');
+        // Add visual flash to show click registered
+        toggleSwitch.style.outline = '2px solid red';
+        setTimeout(() => {
+          toggleSwitch.style.outline = '';
+        }, 300);
+      });
+    }
+    
+    // Monitor checkbox state changes
+    checkbox.addEventListener('change', () => {
+      console.log('Checkbox state changed to:', checkbox.checked);
+      
+      // Add UI notification for easier debugging
+      const notification = document.createElement('div');
+      notification.textContent = `Toggle changed: ${checkbox.checked ? 'Major Only' : 'All Images'}`;
+      notification.style.position = 'fixed';
+      notification.style.bottom = '20px';
+      notification.style.right = '20px';
+      notification.style.padding = '10px';
+      notification.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      notification.style.color = 'white';
+      notification.style.borderRadius = '4px';
+      notification.style.zIndex = '9999';
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 2000);
+    });
+  }
+  
+  // Call this in the openImageManager function, right after loadImages()
+  // loadImages();
+  // debugToggleButton();
+  
+  
     
     /**
      * Renders the image grid with given images

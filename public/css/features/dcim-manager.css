@@ -465,27 +465,35 @@
   .dcim-toggle-filter {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
     border-bottom: 1px solid #eee;
   }
 
   .dcim-toggle-filter label {
     margin-right: 10px;
     font-size: 14px;
+    cursor: pointer;
   }
 
   .dcim-toggle-switch {
     position: relative;
     display: inline-block;
     width: 120px;
-    height: 26px;
+    height: 30px;
+    cursor: pointer;
   }
 
   .dcim-toggle-checkbox {
+    position: absolute;
     opacity: 0;
-    width: 0;
-    height: 0;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 10; /* Ensure it's above other elements for clicking */
   }
 
   .dcim-toggle-label {
@@ -497,24 +505,25 @@
     bottom: 0;
     background-color: #f0f0f0;
     border: 1px solid #ddd;
-    transition: .4s;
+    transition: .3s;
     border-radius: 15px;
     display: flex;
     align-items: center;
     padding: 0 8px;
     font-size: 12px;
+    pointer-events: none; /* This prevents the label from capturing clicks that should go to the checkbox */
   }
 
   .dcim-toggle-label:before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 2px;
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 3px;
     background-color: white;
     border-radius: 50%;
-    transition: .4s;
+    transition: .3s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
 
@@ -524,6 +533,7 @@
     right: 10px;
     color: #666;
     font-weight: 500;
+    transition: .3s;
   }
 
   .dcim-toggle-checkbox:checked + .dcim-toggle-label {
@@ -532,7 +542,7 @@
   }
 
   .dcim-toggle-checkbox:checked + .dcim-toggle-label:before {
-    transform: translateX(94px);
+    transform: translateX(88px);
   }
 
   .dcim-toggle-checkbox:checked + .dcim-toggle-label:after {
@@ -540,6 +550,22 @@
     left: 10px;
     right: auto;
     color: white;
+  }
+
+  /* Add a visual hover effect to improve UX */
+  .dcim-toggle-switch:hover .dcim-toggle-label {
+    border-color: #bbb;
+    background-color: #e8e8e8;
+  }
+
+  .dcim-toggle-switch:hover .dcim-toggle-checkbox:checked + .dcim-toggle-label {
+    background-color: #1a86db;
+  }
+
+  /* Make the checkbox fill the entire toggle area to increase clickable area */
+  .dcim-toggle-checkbox {
+    cursor: pointer;
+    z-index: 2;
   }
 
   /* Show subsidiary badge on image cards */
