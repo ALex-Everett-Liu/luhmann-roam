@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 // Constants
 const THUMBNAIL_SIZE = 180;
 const DEFAULT_ASSET_DIR = path.join(__dirname, '../public/attachment/dcim');
-const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/dcim/thumbnails');
+const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/thumbnails');
 
 // Ensure directories exist
 [DEFAULT_ASSET_DIR, DEFAULT_THUMB_DIR].forEach(dir => {
@@ -18,11 +18,47 @@ const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/dcim/thumbn
 });
 
 // Utility functions
-function getAssetDirectory() {
+async function getAssetDirectory() {
+  try {
+    const db = await getDb();
+    const assetDir = await db.get('SELECT path FROM dcim_directories WHERE type = "asset"');
+    
+    if (assetDir && assetDir.path) {
+      // Ensure directory exists
+      if (!fs.existsSync(assetDir.path)) {
+        fs.mkdirSync(assetDir.path, { recursive: true });
+      }
+      console.log('Using custom asset directory:', assetDir.path);
+      return assetDir.path;
+    }
+  } catch (error) {
+    console.error('Error getting asset directory:', error);
+  }
+  
+  // Fallback to default
+  console.log('Using default asset directory:', DEFAULT_ASSET_DIR);
   return DEFAULT_ASSET_DIR;
 }
 
-function getThumbnailDirectory() {
+async function getThumbnailDirectory() {
+  try {
+    const db = await getDb();
+    const thumbDir = await db.get('SELECT path FROM dcim_directories WHERE type = "thumbnail"');
+    
+    if (thumbDir && thumbDir.path) {
+      // Ensure directory exists
+      if (!fs.existsSync(thumbDir.path)) {
+        fs.mkdirSync(thumbDir.path, { recursive: true });
+      }
+      console.log('Using custom thumbnail directory:', thumbDir.path);
+      return thumbDir.path;
+    }
+  } catch (error) {
+    console.error('Error getting thumbnail directory:', error);
+  }
+  
+  // Fallback to default
+  console.log('Using default thumbnail directory:', DEFAULT_THUMB_DIR);
   return DEFAULT_THUMB_DIR;
 }
 
@@ -130,18 +166,47 @@ exports.addImage = async (req, res) => {
     if (req.file) {
       const file = req.file;
       finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname);
-      const assetPath = path.join(getAssetDirectory(), finalFilename);
       
-      // If uploading a file rather than a URL
+      // Get the custom asset directory
+      const assetDir = await getAssetDirectory();
+      const assetPath = path.join(assetDir, finalFilename);
+      
+      // Write the buffer to the file system
       fs.writeFileSync(assetPath, file.buffer);
-      finalUrl = `/attachment/dcim/${finalFilename}`;
+      
+      // Always store the actual file path
+      finalFilePath = assetPath;
+      
+      // Only set URL if it's in the public directory
+      const publicDirPrefix = path.join(__dirname, '../public');
+      if (assetDir.startsWith(publicDirPrefix)) {
+        const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+        finalUrl = `${relativePath}/${finalFilename}`;
+      } else {
+        finalUrl = null;
+      }
+      
       fileSize = file.size;
       
       // Generate thumbnail
       const thumbFilename = `thumb_${finalFilename}`;
-      const thumbPath = path.join(getThumbnailDirectory(), thumbFilename);
-      await generateThumbnail(assetPath, thumbPath);
-      thumbnailPath = `/attachment/dcim/thumbnails/${thumbFilename}`;
+      const thumbDir = await getThumbnailDirectory();
+      const thumbPath = path.join(thumbDir, thumbFilename);
+      
+      try {
+        await generateThumbnail(assetPath, thumbPath);
+        
+        // Set thumbnail path based on directory location
+        if (thumbDir.startsWith(publicDirPrefix)) {
+          const relativePath = thumbDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+          thumbnailPath = `${relativePath}/${thumbFilename}`;
+        } else {
+          thumbnailPath = thumbPath;
+        }
+      } catch (thumbError) {
+        console.error('Error generating thumbnail:', thumbError);
+        // Continue without thumbnail
+      }
     }
     
     const id = uuidv4();
@@ -324,28 +389,48 @@ exports.convertImage = async (req, res) => {
       return res.status(404).json({ error: 'Image not found' });
     }
     
-    if (!image.url || !image.url.startsWith('/attachment/')) {
-      return res.status(400).json({ error: 'Cannot convert remote images' });
+    // Determine source path - prefer file_path over url
+    let sourcePath;
+    if (image.file_path) {
+      sourcePath = image.file_path;
+    } else if (image.url && image.url.startsWith('/')) {
+      sourcePath = path.join(__dirname, '../public', image.url);
+    } else {
+      return res.status(400).json({ error: 'Cannot convert image without local file path' });
     }
     
-    const sourcePath = path.join(__dirname, '../public', image.url);
-    const filename = path.basename(image.filename, path.extname(image.filename));
-    const outputFilename = `${filename}.webp`;
-    const outputPath = path.join(getAssetDirectory(), outputFilename);
+    if (!fs.existsSync(sourcePath)) {
+      return res.status(400).json({ error: 'Source file does not exist' });
+    }
+    
+    const filename = path.basename(image.filename, path.extname(image.filename)) + '.webp';
+    const assetDir = await getAssetDirectory();
+    const outputPath = path.join(assetDir, filename);
     
     await convertToWebP(sourcePath, outputPath, quality || 80);
     
     // Update the database with new image info
     const stats = fs.statSync(outputPath);
-    const webpUrl = `/attachment/dcim/${outputFilename}`;
+    
+    // Store file_path by default
+    const newFilePath = outputPath;
+    
+    // Only set URL if in public directory
+    let newUrl = null;
+    const publicDirPrefix = path.join(__dirname, '../public');
+    if (assetDir.startsWith(publicDirPrefix)) {
+      const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+      newUrl = `${relativePath}/${filename}`;
+    }
     
     await db.run(
       `UPDATE dcim_images SET 
-        filename = ?, url = ?, file_size = ?, updated_at = ?
+        filename = ?, url = ?, file_path = ?, file_size = ?, updated_at = ?
       WHERE id = ?`,
       [
-        outputFilename,
-        webpUrl,
+        filename,
+        newUrl,
+        newFilePath,
         stats.size,
         Date.now(),
         id
@@ -353,10 +438,19 @@ exports.convertImage = async (req, res) => {
     );
     
     // Generate a new thumbnail
-    const thumbFilename = `thumb_${outputFilename}`;
-    const thumbPath = path.join(getThumbnailDirectory(), thumbFilename);
+    const thumbFilename = `thumb_${filename}`;
+    const thumbDir = await getThumbnailDirectory();
+    const thumbPath = path.join(thumbDir, thumbFilename);
     await generateThumbnail(outputPath, thumbPath);
-    const thumbnailPath = `/attachment/dcim/thumbnails/${thumbFilename}`;
+    
+    // Set thumbnail path or URL based on directory
+    let thumbnailPath;
+    if (thumbDir.startsWith(publicDirPrefix)) {
+      const relativePath = thumbDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+      thumbnailPath = `${relativePath}/${thumbFilename}`;
+    } else {
+      thumbnailPath = thumbPath;
+    }
     
     await db.run(
       'UPDATE dcim_images SET thumbnail_path = ? WHERE id = ?',
@@ -450,7 +544,8 @@ exports.convertUploadedImage = async (req, res) => {
     const quality = parseInt(req.body.quality) || 60;
     const originalPath = req.file.path;
     const filename = path.basename(req.file.originalname, path.extname(req.file.originalname)) + '.webp';
-    const outputPath = path.join(getAssetDirectory(), filename);
+    const assetDir = await getAssetDirectory();
+    const outputPath = path.join(assetDir, filename);
 
     // Get original file size
     const originalSize = fs.statSync(originalPath).size;
@@ -466,6 +561,14 @@ exports.convertUploadedImage = async (req, res) => {
     // Delete the temporary uploaded file
     fs.unlinkSync(originalPath);
 
+    // Get relative path or full path based on directory location
+    let outputUrl = null;
+    const publicDirPrefix = path.join(__dirname, '../public');
+    if (assetDir.startsWith(publicDirPrefix)) {
+      const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+      outputUrl = `${relativePath}/${filename}`;
+    }
+
     res.json({
       success: true,
       originalFile: req.file.originalname,
@@ -475,7 +578,8 @@ exports.convertUploadedImage = async (req, res) => {
       originalSizeBytes: originalSize,
       convertedSizeBytes: convertedSize,
       savingsPercent: ((originalSize - convertedSize) / originalSize * 100).toFixed(2),
-      outputPath: `/attachment/dcim/${filename}`
+      outputPath: outputUrl || outputPath, // Return URL if available, otherwise path
+      file_path: outputPath // Always include the file path
     });
   } catch (error) {
     console.error('Error converting image:', error);
@@ -517,6 +621,16 @@ exports.addSubsidiaryImage = async (req, res) => {
   try {
     const { parent_id, filename, url, file_path, inherit_metadata } = req.body;
     
+    // Debug incoming data
+    console.log('Subsidiary image upload request:', {
+      parentId: parent_id,
+      hasFile: !!req.file,
+      url,
+      filePath: file_path,
+      filename,
+      inheritMetadata: inherit_metadata
+    });
+    
     // Validate parent image exists
     const db = await getDb();
     const parentImage = await db.get('SELECT * FROM dcim_images WHERE id = ?', parent_id);
@@ -539,19 +653,57 @@ exports.addSubsidiaryImage = async (req, res) => {
     
     if (req.file) {
       const file = req.file;
-      finalFilename = filename || file.originalname || crypto.randomUUID() + path.extname(file.originalname);
-      const assetPath = path.join(getAssetDirectory(), finalFilename);
+      // Use provided filename or generate one from original filename
+      finalFilename = filename || file.originalname || `${crypto.randomUUID()}${path.extname(file.originalname)}`;
       
-      // If uploading a file rather than a URL
-      fs.writeFileSync(assetPath, file.buffer);
-      finalUrl = `/attachment/dcim/${finalFilename}`;
-      fileSize = file.size;
+      // Get the custom asset directory
+      const assetDir = await getAssetDirectory();
+      const assetPath = path.join(assetDir, finalFilename);
       
-      // Generate thumbnail
-      const thumbFilename = `thumb_${finalFilename}`;
-      const thumbPath = path.join(getThumbnailDirectory(), thumbFilename);
-      await generateThumbnail(assetPath, thumbPath);
-      thumbnailPath = `/attachment/dcim/thumbnails/${thumbFilename}`;
+      // Write the buffer to the file system
+      try {
+        fs.writeFileSync(assetPath, file.buffer);
+        
+        // Store the actual file path instead of URL
+        finalFilePath = assetPath;
+        
+        // Only set URL if it's in the public directory and can be accessed via web
+        const publicDirPrefix = path.join(__dirname, '../public');
+        if (assetDir.startsWith(publicDirPrefix)) {
+          // This is accessible via web, so set the URL as a convenience
+          const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+          finalUrl = `${relativePath}/${finalFilename}`;
+        } else {
+          // Not in public directory, no URL available
+          finalUrl = null;
+        }
+        
+        fileSize = file.size;
+        
+        // Generate thumbnail
+        try {
+          const thumbFilename = `thumb_${finalFilename}`;
+          const thumbDir = await getThumbnailDirectory();
+          const thumbPath = path.join(thumbDir, thumbFilename);
+          await generateThumbnail(assetPath, thumbPath);
+          
+          // Format the thumbnail path or URL based on directory structure
+          if (thumbDir.startsWith(publicDirPrefix)) {
+            // Web accessible - store URL
+            const relativePath = thumbDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+            thumbnailPath = `${relativePath}/${thumbFilename}`;
+          } else {
+            // Not web accessible - store file path
+            thumbnailPath = thumbPath;
+          }
+        } catch (thumbError) {
+          console.error('Error generating thumbnail:', thumbError);
+          // Continue without thumbnail
+        }
+      } catch (writeError) {
+        console.error('Error writing file:', writeError);
+        return res.status(500).json({ error: `Failed to save uploaded file: ${writeError.message}` });
+      }
     }
     
     const id = uuidv4();
@@ -581,18 +733,26 @@ exports.addSubsidiaryImage = async (req, res) => {
       newImageData.type = parentImage.type;
     }
     
+    console.log('Creating new subsidiary image:', newImageData);
+    
     // Insert the new subsidiary image
     const columns = Object.keys(newImageData).join(', ');
     const placeholders = Object.keys(newImageData).map(() => '?').join(', ');
     const values = Object.values(newImageData);
     
-    await db.run(
-      `INSERT INTO dcim_images (${columns}) VALUES (${placeholders})`,
-      values
-    );
-    
-    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
-    res.status(201).json(image);
+    try {
+      await db.run(
+        `INSERT INTO dcim_images (${columns}) VALUES (${placeholders})`,
+        values
+      );
+      
+      const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+      console.log('Successfully created subsidiary image:', image);
+      res.status(201).json(image);
+    } catch (dbError) {
+      console.error('Database error creating subsidiary:', dbError);
+      res.status(500).json({ error: `Database error: ${dbError.message}` });
+    }
   } catch (error) {
     console.error('Error adding subsidiary image:', error);
     res.status(500).json({ error: error.message });

@@ -14,7 +14,7 @@ const AttributeManager = (function() {
   
   // Common attribute keys for autocompletion
   const commonAttributes = [
-    'type', 'source', 'author', 'rating', 'url', 'tags', 'category', 'status', 'priority'
+    'type', 'source', 'author', 'rating', 'url', 'tags', 'category', 'status', 'priority', 'release_time', 'ranking', 'repeat', 'singer'
   ];
   
   // Initialize the module - only core functionality

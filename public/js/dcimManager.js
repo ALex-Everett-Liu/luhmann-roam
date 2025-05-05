@@ -1853,25 +1853,30 @@ async function loadSubsidiaryImages(parentId) {
       // Add file if it exists
       if (fileInput.files.length > 0) {
         formData.append('image', fileInput.files[0]);
+        console.log('File appended:', fileInput.files[0].name, fileInput.files[0].size);
       }
       
       // Add URL if provided
       if (urlInput) {
         formData.append('url', urlInput);
+        console.log('URL appended:', urlInput);
       }
       
       // Add file path if provided
       if (filePathInput) {
         formData.append('file_path', filePathInput);
+        console.log('File path appended:', filePathInput);
       }
       
       // Add parent ID and inherit metadata flag
       formData.append('parent_id', parentId);
       formData.append('inherit_metadata', inheritMetadata);
+      console.log('Parent ID:', parentId, 'Inherit metadata:', inheritMetadata);
       
       // Add filename if provided
       if (filenameInput) {
         formData.append('filename', filenameInput);
+        console.log('Filename appended:', filenameInput);
       }
       
       // Show loading state
@@ -1879,17 +1884,24 @@ async function loadSubsidiaryImages(parentId) {
       addButton.textContent = 'Adding...';
       addButton.disabled = true;
       
+      console.log('About to send request to /api/dcim/subsidiary');
+      
       // Send the request
       const response = await fetch('/api/dcim/subsidiary', {
         method: 'POST',
         body: formData
       });
       
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to add subsidiary image');
+        const errorData = await response.json();
+        console.error('Server error response:', errorData);
+        throw new Error(errorData.error || 'Failed to add subsidiary image');
       }
       
       const newImage = await response.json();
+      console.log('Subsidiary image added successfully:', newImage);
       
       // Close the dialog
       closeSubsidiaryDialog();
