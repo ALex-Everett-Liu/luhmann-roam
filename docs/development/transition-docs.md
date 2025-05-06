@@ -156,3 +156,25 @@ Content Preservation:
 5. Performance Optimization
     - Efficient rendering of large node hierarchies
     - Focus and scroll position preservation
+
+### Improvement Opportunities:
+1. Modern Architecture
+    - TypeScript for better type safety
+    - Component-based UI architecture
+    - Improved state management
+
+2. Enhanced UX
+    - More intuitive drag-and-drop  (not need to be implemented at the beginning MVP)
+    - Improved visual hierarchy
+    - Better mobile support  (not need to be implemented at the beginning MVP)
+
+3. Extended Features
+    - Enhanced markdown support  (not need to be implemented at the beginning MVP)
+    - Improved search capabilities
+    - Better visualization of node relationships
+
+4. Technical Improvements
+    - More robust database transactions
+    - Better error handling and recovery
+    - Automated testing
+

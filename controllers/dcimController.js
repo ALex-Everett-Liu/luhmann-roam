@@ -18,6 +18,7 @@ const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/thumbnails'
 });
 
 // Utility functions
+// retrieves the custom asset directory path from a database
 async function getAssetDirectory() {
   try {
     const db = await getDb();
@@ -541,25 +542,32 @@ exports.convertUploadedImage = async (req, res) => {
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
+    console.log('Converting uploaded file:', req.file);
     const quality = parseInt(req.body.quality) || 60;
-    const originalPath = req.file.path;
+    
+    // When using multer memoryStorage, file is in buffer instead of path
+    const originalBuffer = req.file.buffer;
+    if (!originalBuffer) {
+      return res.status(400).json({ error: 'No file buffer found' });
+    }
+    
+    // Create filename for the output
     const filename = path.basename(req.file.originalname, path.extname(req.file.originalname)) + '.webp';
     const assetDir = await getAssetDirectory();
     const outputPath = path.join(assetDir, filename);
+    
+    console.log('Will convert and save to:', outputPath);
 
-    // Get original file size
-    const originalSize = fs.statSync(originalPath).size;
+    // Calculate original size from buffer
+    const originalSize = originalBuffer.length;
 
-    // Convert image to WebP
-    await sharp(originalPath)
+    // Convert directly from buffer to WebP
+    await sharp(originalBuffer)
       .webp({ quality: quality })
       .toFile(outputPath);
 
     // Get converted file size
     const convertedSize = fs.statSync(outputPath).size;
-
-    // Delete the temporary uploaded file
-    fs.unlinkSync(originalPath);
 
     // Get relative path or full path based on directory location
     let outputUrl = null;
@@ -568,6 +576,13 @@ exports.convertUploadedImage = async (req, res) => {
       const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
       outputUrl = `${relativePath}/${filename}`;
     }
+
+    console.log('Conversion successful:', {
+      originalSize,
+      convertedSize,
+      outputPath,
+      outputUrl
+    });
 
     res.json({
       success: true,
