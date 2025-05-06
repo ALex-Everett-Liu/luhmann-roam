@@ -8,6 +8,9 @@ const DcimManager = (function() {
     let currentImages = [];
     let currentFilters = {};
     let customRankingFilters = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    const imagesPerPage = 36;
 
     /**
      * Creates a debounced function that delays invoking func until after wait milliseconds
@@ -99,9 +102,12 @@ const DcimManager = (function() {
                     <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Sort By</div>
                       <select id="sort-method" class="dcim-select">
-                        <option value="ranking">Ranking (Default)</option>
-                        <option value="rating">Rating</option>
-                        <option value="date">Date Added</option>
+                        <option value="ranking_desc">Ranking (Highest First)</option>
+                        <option value="ranking_asc">Ranking (Lowest First)</option>
+                        <option value="rating_desc">Rating (Highest First)</option>
+                        <option value="rating_asc">Rating (Lowest First)</option>
+                        <option value="date_desc">Date (Newest First)</option>
+                        <option value="date_asc">Date (Oldest First)</option>
                       </select>
                     </div>
                     <div class="dcim-filter-group">
@@ -178,6 +184,18 @@ const DcimManager = (function() {
                   <div id="dcim-settings-view" class="dcim-form" style="display: none;"></div>
                   <div id="dcim-converter-view" class="dcim-form" style="display: none;"></div>
                   <div id="dcim-viewer-container" class="viewer-container" style="display: none;"></div>
+                  <div class="dcim-pagination">
+                    <div class="dcim-pagination-info">
+                      <span id="dcim-pagination-info">Page 1 of 1</span>
+                    </div>
+                    <div class="dcim-pagination-controls">
+                      <button id="dcim-page-first" class="btn btn-small" disabled>&laquo;</button>
+                      <button id="dcim-page-prev" class="btn btn-small" disabled>&lsaquo;</button>
+                      <span id="dcim-page-current">1</span>
+                      <button id="dcim-page-next" class="btn btn-small" disabled>&rsaquo;</button>
+                      <button id="dcim-page-last" class="btn btn-small" disabled>&raquo;</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -214,6 +232,8 @@ const DcimManager = (function() {
       
       // Add major images toggle listener
       document.getElementById('filter-major-only').addEventListener('change', applyFilters);
+
+      setupPaginationHandlers();
 
       // Add click handler for the toggle switch container for better UX
       document.getElementById('toggle-switch-container').addEventListener('click', (e) => {
@@ -664,7 +684,7 @@ function loadCustomRankingFilters() {
         tagCombination: tagCombination
       };
       
-      // Step 1: Filter by type first
+      // Apply filters (same as before)
       let typeFilteredImages = currentImages;
       if (typeFilter) {
         typeFilteredImages = currentImages.filter(img => {
@@ -681,7 +701,7 @@ function loadCustomRankingFilters() {
       // Store in current filters
       currentFilters.showMajorOnly = showMajorOnly;
       
-      // Step 2: Now apply all other filters to the type-filtered results
+      // Apply all other filters
       let filteredImages = typeFilteredImages.filter(img => {
         // Rating filter
         if (ratingFilter && (!img.rating || img.rating < parseInt(ratingFilter))) {
@@ -700,7 +720,7 @@ function loadCustomRankingFilters() {
           if (rankingMax !== null && img.ranking > rankingMax) return false;
         }
         
-        // Search filter (applies to all searchable fields except type, which was filtered in step 1)
+        // Search filter
         if (searchFilter) {
           const searchFields = [
             img.filename,
@@ -714,18 +734,16 @@ function loadCustomRankingFilters() {
           }
         }
         
-        // Tag filter with combination logic (AND/OR)
+        // Tag filter with combination logic
         if (selectedTags.length > 0 && img.tags) {
           const imageTags = img.tags.split(',').map(t => t.trim());
           
           if (tagCombination === 'AND') {
-            // All selected tags must be present (AND logic)
             const hasAllSelectedTags = selectedTags.every(tag => imageTags.includes(tag));
             if (!hasAllSelectedTags) {
               return false;
             }
           } else {
-            // At least one selected tag must be present (OR logic)
             const hasAnySelectedTag = selectedTags.some(tag => imageTags.includes(tag));
             if (!hasAnySelectedTag) {
               return false;
@@ -766,19 +784,84 @@ function loadCustomRankingFilters() {
           filteredImages.sort((a, b) => b.created_at - a.created_at);
       }
       
+      // Calculate pagination
+      totalPages = Math.ceil(filteredImages.length / imagesPerPage);
+      
+      // Reset to page 1 if current page is out of bounds
+      if (currentPage > totalPages) {
+        currentPage = 1;
+      }
+      
       // Update UI to show filter counts
       const countElement = document.getElementById('dcim-filter-count');
       if (countElement) {
         countElement.textContent = `Showing ${filteredImages.length} of ${currentImages.length} images`;
       }
       
-      // Render the filtered images
-      renderImageGrid(filteredImages);
+      // Update pagination info
+      updatePaginationControls(filteredImages.length);
+      
+      // Get current page of images
+      const startIndex = (currentPage - 1) * imagesPerPage;
+      const endIndex = startIndex + imagesPerPage;
+      const paginatedImages = filteredImages.slice(startIndex, endIndex);
+      
+      // Render the filtered images for current page
+      renderImageGrid(paginatedImages);
     }
 
-    // Add this function after the applyFilters function
+    // Add this function to update pagination controls
+    function updatePaginationControls(totalItems) {
+      const pageInfoElement = document.getElementById('dcim-pagination-info');
+      const currentPageElement = document.getElementById('dcim-page-current');
+      const firstButton = document.getElementById('dcim-page-first');
+      const prevButton = document.getElementById('dcim-page-prev');
+      const nextButton = document.getElementById('dcim-page-next');
+      const lastButton = document.getElementById('dcim-page-last');
+      
+      // Update page info
+      pageInfoElement.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} images)`;
+      currentPageElement.textContent = currentPage;
+      
+      // Update button states
+      firstButton.disabled = currentPage === 1;
+      prevButton.disabled = currentPage === 1;
+      nextButton.disabled = currentPage === totalPages || totalPages === 0;
+      lastButton.disabled = currentPage === totalPages || totalPages === 0;
+    }
 
-/**
+    // Add pagination event handlers
+    function setupPaginationHandlers() {
+      document.getElementById('dcim-page-first').addEventListener('click', () => {
+        if (currentPage !== 1) {
+          currentPage = 1;
+          applyFilters();
+        }
+      });
+      
+      document.getElementById('dcim-page-prev').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          applyFilters();
+        }
+      });
+      
+      document.getElementById('dcim-page-next').addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          applyFilters();
+        }
+      });
+      
+      document.getElementById('dcim-page-last').addEventListener('click', () => {
+        if (currentPage !== totalPages) {
+          currentPage = totalPages;
+          applyFilters();
+        }
+      });
+    }
+
+    /**
  * Debugs the toggle button interactions
  */
 function debugToggleButton() {
