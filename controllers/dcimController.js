@@ -300,23 +300,52 @@ exports.deleteImage = async (req, res) => {
       return res.status(404).json({ error: 'Image not found' });
     }
     
-    // Delete physical files if they exist
-    if (image.url && image.url.startsWith('/attachment/')) {
-      const assetPath = path.join(__dirname, '../public', image.url);
-      if (fs.existsSync(assetPath)) {
-        fs.unlinkSync(assetPath);
-      }
-    }
+    // Start a transaction to ensure all operations succeed or fail together
+    await db.run('BEGIN TRANSACTION');
     
-    if (image.thumbnail_path) {
-      const thumbPath = path.join(__dirname, '../public', image.thumbnail_path);
-      if (fs.existsSync(thumbPath)) {
-        fs.unlinkSync(thumbPath);
+    try {
+      // Check if this image has any subsidiary images
+      const subsidiaries = await db.all('SELECT id FROM dcim_images WHERE parent_id = ?', id);
+      
+      // If it has subsidiaries, either remove their relationship or delete them
+      if (subsidiaries.length > 0) {
+        // Option 1: Make subsidiaries independent (no parent)
+        await db.run('UPDATE dcim_images SET parent_id = NULL WHERE parent_id = ?', id);
+        
+        // Option 2 (alternative): Delete all subsidiaries 
+        // This would be done instead of the UPDATE above if you want to delete subsidiaries too
+        // for (const sub of subsidiaries) {
+        //   await db.run('DELETE FROM dcim_images WHERE id = ?', sub.id);
+        // }
       }
+      
+      // Delete physical files if they exist
+      if (image.url && image.url.startsWith('/')) {
+        const assetPath = path.join(__dirname, '../public', image.url);
+        if (fs.existsSync(assetPath)) {
+          fs.unlinkSync(assetPath);
+        }
+      }
+      
+      if (image.thumbnail_path && image.thumbnail_path.startsWith('/')) {
+        const thumbPath = path.join(__dirname, '../public', image.thumbnail_path);
+        if (fs.existsSync(thumbPath)) {
+          fs.unlinkSync(thumbPath);
+        }
+      }
+      
+      // Now delete the image record
+      await db.run('DELETE FROM dcim_images WHERE id = ?', id);
+      
+      // If everything succeeded, commit the transaction
+      await db.run('COMMIT');
+      
+      res.json({ success: true });
+    } catch (error) {
+      // If any error occurs, roll back the transaction
+      await db.run('ROLLBACK');
+      throw error;
     }
-    
-    await db.run('DELETE FROM dcim_images WHERE id = ?', id);
-    res.json({ success: true });
   } catch (error) {
     console.error('Error deleting image:', error);
     res.status(500).json({ error: error.message });
