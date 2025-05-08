@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const { supabase } = require('./supabase');
 const { getDb, initializeDatabase } = require('./supabase');
 const fs = require('fs');
 const path = require('path');
@@ -693,7 +694,7 @@ app.post('/api/backup', async (req, res) => {
     for (const table of tables) {
       const { data, error } = await supabase.from(table).select('*');
       if (error) throw new Error(`Error backing up ${table}: ${error.message}`);
-      backupData[table] = data;
+      backupData[table] = data || [];
     }
     
     // Write to JSON file

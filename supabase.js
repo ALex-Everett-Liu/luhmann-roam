@@ -28,11 +28,14 @@ class SupabaseWrapper {
         }
       }
       
-      // Limit to single row
-      const { data, error } = await queryBuilder.limit(1).single();
+      // First try to get a single record
+      // but handle the case when no records or multiple records are returned
+      const { data, error } = await queryBuilder.limit(1);
       
       if (error) throw error;
-      return data || null;
+      
+      // Return the first item if available, otherwise null
+      return data && data.length > 0 ? data[0] : null;
     } catch (error) {
       console.error(`Supabase get error: ${error.message}`, { query, params });
       throw error;
@@ -44,6 +47,58 @@ class SupabaseWrapper {
     const parsedQuery = this.parseQuery(query, params);
     
     try {
+      // Special case for node query with link_count subquery
+      if (query.includes('SELECT n.*') && 
+          query.includes('COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id') &&
+          query.includes('FROM nodes n')) {
+        
+        // Get the base nodes
+        let nodeQuery = this.client.from('nodes').select('*');
+        
+        // Add parent condition if needed
+        if (query.includes('WHERE n.parent_id IS NULL')) {
+          nodeQuery = nodeQuery.is('parent_id', null);
+        } else if (query.includes('WHERE n.parent_id =')) {
+          // Extract parent_id from query
+          const parentMatch = query.match(/WHERE\s+n\.parent_id\s+=\s+['"']?([^'"\s]+)['"']?/i) || 
+                              query.match(/WHERE\s+n\.parent_id\s+=\s+\?/i);
+          
+          if (parentMatch && params.length > 0) {
+            const parentId = params[0];
+            nodeQuery = nodeQuery.eq('parent_id', parentId);
+          }
+        }
+        
+        // Add ordering
+        if (query.includes('ORDER BY n.position')) {
+          nodeQuery = nodeQuery.order('position', { ascending: true });
+        }
+        
+        // Execute the query
+        const { data: nodes, error: nodesError } = await nodeQuery;
+        
+        if (nodesError) throw nodesError;
+        if (!nodes || nodes.length === 0) return [];
+        
+        // Get all links
+        const { data: links, error: linksError } = await this.client.from('links').select('*');
+        if (linksError) throw linksError;
+        
+        // Calculate link_count for each node
+        const result = nodes.map(node => {
+          const linkCount = links ? links.filter(link => 
+            link.from_node_id === node.id || link.to_node_id === node.id
+          ).length : 0;
+          
+          return {
+            ...node,
+            link_count: linkCount
+          };
+        });
+        
+        return result;
+      }
+      
       // Special handling for JOIN queries
       if (parsedQuery.isJoinQuery) {
         // For bookmarks JOIN query
@@ -128,7 +183,32 @@ class SupabaseWrapper {
       
       switch (operation) {
         case 'INSERT':
-          result = await this.client.from(table).insert(insertData);
+          // Special handling for tasks table - this is where the issue is
+          if (table === 'tasks' && params.length === 1 && Array.isArray(params[0])) {
+            // Handle the case where params are passed as a nested array
+            const taskParams = params[0];
+            
+            // Extract column names from the query
+            const columnsMatch = query.match(/\(([^)]+)\)\s+VALUES/i);
+            let columns = [];
+            if (columnsMatch) {
+              columns = columnsMatch[1].split(',').map(col => col.trim());
+            }
+            
+            // Create proper insert data object
+            const properInsertData = {};
+            for (let i = 0; i < columns.length; i++) {
+              properInsertData[columns[i]] = taskParams[i];
+            }
+            
+            console.log('Inserting task with data:', properInsertData);
+            
+            // Use the properly formatted insert data
+            result = await this.client.from(table).insert(properInsertData);
+          } else {
+            // Regular insert
+            result = await this.client.from(table).insert(insertData);
+          }
           break;
         case 'UPDATE':
           let updateBuilder = this.client.from(table).update(updateData);
@@ -247,17 +327,38 @@ class SupabaseWrapper {
     // Extract conditions (WHERE clause)
     if (query.includes('WHERE')) {
       result.conditions = [];
-      // This is a simplification - in a real app you'd need more sophisticated SQL parsing
       const whereMatch = query.match(/WHERE\s+(.+?)(?:ORDER BY|LIMIT|$)/i);
       if (whereMatch) {
         const whereClause = whereMatch[1];
         
-        // Find WHERE conditions with placeholders and map to params
+        // Track parameter index
         let paramIndex = 0;
+        
         // Handle basic WHERE id = ? conditions
-        const idCondition = whereClause.match(/(\w+)\s*=\s*\?/);
-        if (idCondition) {
-          result.conditions.push([idCondition[1], 'eq', params[paramIndex++]]);
+        const equalsConditions = whereClause.match(/(\w+)\s*=\s*\?/g);
+        if (equalsConditions) {
+          equalsConditions.forEach(condition => {
+            const column = condition.match(/(\w+)\s*=/)[1];
+            result.conditions.push([column, 'eq', params[paramIndex++]]);
+          });
+        }
+        
+        // Handle IS NULL conditions
+        const nullConditions = whereClause.match(/(\w+)\s+IS\s+NULL/gi);
+        if (nullConditions) {
+          nullConditions.forEach(condition => {
+            const column = condition.match(/(\w+)\s+IS/i)[1];
+            result.conditions.push([column, 'is', null]);
+          });
+        }
+        
+        // Handle IS NOT NULL conditions
+        const notNullConditions = whereClause.match(/(\w+)\s+IS\s+NOT\s+NULL/gi);
+        if (notNullConditions) {
+          notNullConditions.forEach(condition => {
+            const column = condition.match(/(\w+)\s+IS/i)[1];
+            result.conditions.push([column, 'not.is', null]);
+          });
         }
       }
     }
