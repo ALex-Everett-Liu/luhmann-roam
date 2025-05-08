@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const { getDb, initializeDatabase } = require('./database');
+const { getDb, initializeDatabase } = require('./supabase');
 const fs = require('fs');
 const path = require('path');
 const taskRoutes = require('./routes/taskRoutes');
@@ -663,11 +663,9 @@ app.get('/api/links/:id', async (req, res) => {
   }
 });
 
-// Add these routes if not already present (similar to what you have)
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 
-// Add this to your existing routes
 app.post('/api/backup', async (req, res) => {
   try {
     const fs = require('fs');
@@ -684,13 +682,24 @@ app.post('/api/backup', async (req, res) => {
       .replace(/:/g, '-')  // Replace colons with hyphens for valid filename
       .replace(/\..+/, ''); // Remove milliseconds
     
-    // Define source and destination paths
-    const dbPath = path.join(__dirname, 'outliner.db');
-    const backupFilename = `outliner-${timestamp}.db`;
-    const backupPath = path.join(backupDir, backupFilename);
+    // Get all data from Supabase tables
+    const backupData = {};
+    const tables = [
+      'nodes', 'links', 'tasks', 'node_attributes', 
+      'bookmarks', 'blog_pages', 'dcim_images', 
+      'dcim_image_settings', 'dcim_directories'
+    ];
     
-    // Copy the database file
-    fs.copyFileSync(dbPath, backupPath);
+    for (const table of tables) {
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) throw new Error(`Error backing up ${table}: ${error.message}`);
+      backupData[table] = data;
+    }
+    
+    // Write to JSON file
+    const backupFilename = `outliner-${timestamp}.json`;
+    const backupPath = path.join(backupDir, backupFilename);
+    fs.writeFileSync(backupPath, JSON.stringify(backupData, null, 2));
     
     console.log(`Database backup created: ${backupFilename}`);
     
