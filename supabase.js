@@ -176,15 +176,17 @@ class SupabaseWrapper {
   async run(query, ...params) {
     // Determine operation type (INSERT, UPDATE, DELETE)
     const operation = query.trim().split(' ')[0].toUpperCase();
-    const { table, conditions, updateData, insertData } = this.parseQuery(query, params);
     
     try {
       let result;
       
       switch (operation) {
         case 'INSERT':
-          // Special handling for tasks table - this is where the issue is
-          if (table === 'tasks' && params.length === 1 && Array.isArray(params[0])) {
+          // Handle insert - existing code is fine
+          const { table: insertTable, insertData } = this.parseQuery(query, params);
+          
+          // Special handling for tasks table
+          if (insertTable === 'tasks' && params.length === 1 && Array.isArray(params[0])) {
             // Handle the case where params are passed as a nested array
             const taskParams = params[0];
             
@@ -204,30 +206,111 @@ class SupabaseWrapper {
             console.log('Inserting task with data:', properInsertData);
             
             // Use the properly formatted insert data
-            result = await this.client.from(table).insert(properInsertData);
+            result = await this.client.from(insertTable).insert(properInsertData);
           } else {
             // Regular insert
+            const { table, insertData } = this.parseQuery(query, params);
             result = await this.client.from(table).insert(insertData);
           }
           break;
+        
         case 'UPDATE':
-          let updateBuilder = this.client.from(table).update(updateData);
-          if (conditions) {
-            for (const [column, operator, value] of conditions) {
-              updateBuilder = updateBuilder.filter(column, operator, value);
+          // For UPDATE queries, we need to handle queries with WHERE clauses specially
+          // Special case for UPDATE tasks SET is_active = 0, updated_at = ? WHERE is_active = 1
+          if (query.includes('UPDATE tasks') && query.includes('WHERE is_active = 1')) {
+            // Set all active tasks to inactive
+            const updateData = {};
+            
+            // Extract the SET clause
+            const setMatch = query.match(/SET\s+(.+?)\s+WHERE/i);
+            if (setMatch) {
+              const setClauses = setMatch[1].split(',').map(clause => clause.trim());
+              
+              // Build update data
+              let paramIndex = 0;
+              for (const clause of setClauses) {
+                const parts = clause.split('=').map(part => part.trim());
+                if (parts.length === 2) {
+                  if (parts[1] === '?') {
+                    updateData[parts[0]] = params[paramIndex++];
+                  } else {
+                    // Handle literal values like is_active = 0
+                    updateData[parts[0]] = parts[1] === '0' ? false : 
+                                          parts[1] === '1' ? true : 
+                                          parts[1];
+                  }
+                }
+              }
+            }
+            
+            // Apply the update to all rows where is_active is true
+            result = await this.client.from('tasks')
+              .update(updateData)
+              .eq('is_active', true);
+          } 
+          // Special case for UPDATE tasks SET is_active = 1, start_time = ?, updated_at = ? WHERE id = ?
+          else if (query.includes('UPDATE tasks') && query.includes('SET is_active = 1') && query.includes('WHERE id =')) {
+            // Parse the WHERE id = ? clause
+            const idMatch = query.match(/WHERE\s+id\s+=\s+\?/i);
+            const idParamIndex = params.length - 1; // Last parameter is usually the ID
+            const taskId = params[idParamIndex];
+            
+            // Extract the SET clause
+            const setMatch = query.match(/SET\s+(.+?)\s+WHERE/i);
+            if (setMatch) {
+              const setClauses = setMatch[1].split(',').map(clause => clause.trim());
+              
+              // Build update data
+              const updateData = {};
+              let paramIndex = 0;
+              for (const clause of setClauses) {
+                const parts = clause.split('=').map(part => part.trim());
+                if (parts.length === 2) {
+                  if (parts[1] === '?') {
+                    updateData[parts[0]] = params[paramIndex++];
+                  } else {
+                    // Handle literal values like is_active = 1
+                    updateData[parts[0]] = parts[1] === '0' ? false : 
+                                          parts[1] === '1' ? true : 
+                                          parts[1];
+                  }
+                }
+              }
+              
+              result = await this.client.from('tasks')
+                .update(updateData)
+                .eq('id', taskId);
             }
           }
-          result = await updateBuilder;
+          // Handle the more general case
+          else {
+            const { table, conditions, updateData } = this.parseQuery(query, params);
+            
+            let updateBuilder = this.client.from(table).update(updateData);
+            
+            if (conditions && conditions.length > 0) {
+              for (const [column, operator, value] of conditions) {
+                updateBuilder = updateBuilder.filter(column, operator, value);
+              }
+            }
+            
+            result = await updateBuilder;
+          }
           break;
+        
         case 'DELETE':
-          let deleteBuilder = this.client.from(table).delete();
-          if (conditions) {
-            for (const [column, operator, value] of conditions) {
+          // DELETE handling remains the same
+          const { table: deleteTable, conditions: deleteConditions } = this.parseQuery(query, params);
+          
+          let deleteBuilder = this.client.from(deleteTable).delete();
+          if (deleteConditions) {
+            for (const [column, operator, value] of deleteConditions) {
               deleteBuilder = deleteBuilder.filter(column, operator, value);
             }
           }
           result = await deleteBuilder;
           break;
+        
         default:
           throw new Error(`Unsupported operation: ${operation}`);
       }
