@@ -25,4 +25,6 @@ router.post('/:id/start', taskController.startTask);
 // Pause timing a task
 router.post('/:id/pause', taskController.pauseTask);
 
+router.get('/sequence/:sequence_id', taskController.getTaskBySequenceId);
+
 module.exports = router;

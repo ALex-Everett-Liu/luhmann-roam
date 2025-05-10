@@ -19,8 +19,21 @@ function createWindow() {
 
   mainWindow.loadURL('http://localhost:3003');
   
-  // Uncomment to open DevTools automatically
-  mainWindow.webContents.openDevTools();
+  // Try multiple approaches to open DevTools
+  try {
+    console.log("Attempting to open DevTools...");
+    mainWindow.webContents.openDevTools();
+    
+    // Alternative approach with delay
+    setTimeout(() => {
+      if (mainWindow) {
+        console.log("Trying again to open DevTools after delay...");
+        mainWindow.webContents.openDevTools();
+      }
+    }, 2000);
+  } catch (error) {
+    console.error("Error opening DevTools:", error);
+  }
 
   mainWindow.on('closed', function () {
     mainWindow = null;

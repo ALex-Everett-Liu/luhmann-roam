@@ -46,4 +46,6 @@ router.post('/:id/promote', dcimController.promoteSubsidiaryImage);
 // Remove subsidiary relationship
 router.post('/:id/detach', dcimController.detachSubsidiaryImage);
 
+router.get('/sequence/:sequence_id', dcimController.getImageBySequenceId);
+
 module.exports = router;

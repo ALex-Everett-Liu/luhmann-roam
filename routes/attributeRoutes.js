@@ -13,4 +13,6 @@ router.put('/:id', attributeController.updateAttribute);
 // Delete an attribute
 router.delete('/:id', attributeController.deleteAttribute);
 
+router.get('/sequence/:sequence_id', attributeController.getAttributeBySequenceId);
+
 module.exports = router;

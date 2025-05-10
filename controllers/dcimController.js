@@ -878,3 +878,31 @@ exports.detachSubsidiaryImage = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Get a single image by sequence ID
+ * GET /api/dcim/sequence/:sequence_id
+ */
+exports.getImageBySequenceId = async (req, res) => {
+  try {
+    const { sequence_id } = req.params;
+    
+    // Validate input
+    const sequenceIdNum = parseInt(sequence_id);
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
+      return res.status(400).json({ error: 'Invalid sequence ID format' });
+    }
+    
+    const db = await getDb();
+    const image = await db.get('SELECT * FROM dcim_images WHERE sequence_id = ?', sequenceIdNum);
+    
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found with the provided sequence ID' });
+    }
+    
+    res.json(image);
+  } catch (error) {
+    console.error(`Error retrieving image by sequence ID ${req.params.sequence_id}:`, error);
+    res.status(500).json({ error: 'Database error when retrieving image by sequence ID' });
+  }
+};

@@ -390,3 +390,31 @@ function compareValues(attrValue, operator, queryValue) {
       return attrValue.toLowerCase() === queryValue.toLowerCase();
   }
 }
+
+/**
+ * Get a single attribute by sequence ID
+ * GET /api/node-attributes/sequence/:sequence_id
+ */
+exports.getAttributeBySequenceId = async (req, res) => {
+  try {
+    const { sequence_id } = req.params;
+    
+    // Validate input
+    const sequenceIdNum = parseInt(sequence_id);
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
+      return res.status(400).json({ error: 'Invalid sequence ID format' });
+    }
+    
+    const db = req.db;
+    const attribute = await db.get('SELECT * FROM node_attributes WHERE sequence_id = ?', sequenceIdNum);
+    
+    if (!attribute) {
+      return res.status(404).json({ error: 'Attribute not found with the provided sequence ID' });
+    }
+    
+    res.json(attribute);
+  } catch (error) {
+    console.error(`Error retrieving attribute by sequence ID ${req.params.sequence_id}:`, error);
+    res.status(500).json({ error: 'Database error when retrieving attribute by sequence ID' });
+  }
+};

@@ -256,3 +256,31 @@ exports.getTaskDates = async (req, res) => {
     res.status(500).json({ error: 'Failed to get task dates' });
   }
 };
+
+/**
+ * Get a single task by sequence ID
+ * GET /api/tasks/sequence/:sequence_id
+ */
+exports.getTaskBySequenceId = async (req, res) => {
+  try {
+    const { sequence_id } = req.params;
+    
+    // Validate input
+    const sequenceIdNum = parseInt(sequence_id);
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
+      return res.status(400).json({ error: 'Invalid sequence ID format' });
+    }
+    
+    const db = req.db;
+    const task = await db.get('SELECT * FROM tasks WHERE sequence_id = ?', sequenceIdNum);
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found with the provided sequence ID' });
+    }
+    
+    res.json(task);
+  } catch (error) {
+    console.error(`Error retrieving task by sequence ID ${req.params.sequence_id}:`, error);
+    res.status(500).json({ error: 'Database error when retrieving task by sequence ID' });
+  }
+};
