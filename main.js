@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session, Menu } = require('electron');
 const path = require('path');
 const url = require('url');
 
@@ -6,6 +6,10 @@ const url = require('url');
 require('./server');
 
 let mainWindow;
+
+// Add before the createWindow function
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-software-rasterizer');
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,28 +23,65 @@ function createWindow() {
 
   mainWindow.loadURL('http://localhost:3003');
   
-  // Try multiple approaches to open DevTools
-  try {
-    console.log("Attempting to open DevTools...");
-    mainWindow.webContents.openDevTools();
-    
-    // Alternative approach with delay
+  // Wait for everything to load before attempting DevTools
+  mainWindow.webContents.on('did-finish-load', () => {
+    // Give the app a moment to stabilize
     setTimeout(() => {
-      if (mainWindow) {
-        console.log("Trying again to open DevTools after delay...");
+      try {
+        console.log("Opening DevTools after page load");
         mainWindow.webContents.openDevTools();
+      } catch (error) {
+        console.error("Error opening DevTools after load:", error);
       }
-    }, 2000);
-  } catch (error) {
-    console.error("Error opening DevTools:", error);
-  }
+    }, 5000); // 5 second delay
+  });
 
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
+
+  // Create custom menu with reliable DevTools option
+  const menuTemplate = [
+    {
+      label: 'Developer',
+      submenu: [
+        {
+          label: 'Force Open DevTools',
+          click: () => {
+            if (mainWindow) {
+              console.log("Force opening DevTools via menu");
+              try {
+                mainWindow.webContents.openDevTools({ mode: 'detach' });
+              } catch (error) {
+                console.error("Menu DevTools error:", error);
+              }
+            }
+          },
+          accelerator: 'F12'
+        }
+      ]
+    }
+  ];
+  
+  const menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(Menu.getApplicationMenu().append(menu));
 }
 
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  // Configure session to handle missing source maps gracefully
+  session.defaultSession.webRequest.onErrorOccurred(
+    {urls: ['*://*/*']},
+    (details) => {
+      if (details.error === 'net::ERR_FILE_NOT_FOUND' && 
+          details.url.endsWith('.map')) {
+        // Silently ignore missing source map errors
+        console.log(`Ignored missing source map: ${details.url}`);
+      }
+    }
+  );
+  
+  createWindow();
+});
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();

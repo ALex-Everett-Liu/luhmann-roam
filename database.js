@@ -2,6 +2,8 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
 
+let isInitialized = false;
+
 // Create a database connection
 async function getDb() {
   return open({
@@ -12,6 +14,12 @@ async function getDb() {
 
 // Initialize database
 async function initializeDatabase() {
+
+  if (isInitialized) {
+    console.log('Database already initialized, skipping');
+    return db;
+  }
+
   const db = await getDb();
   
   // Create nodes table
@@ -313,6 +321,7 @@ async function initializeDatabase() {
   }
   
   console.log('Database initialized');
+  isInitialized = true;
   return db;
 }
 
