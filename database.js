@@ -172,8 +172,131 @@ async function initializeDatabase() {
     console.log('parent_id column already exists or other error:', error.message);
   }
   
+  // Add sequence_id column to nodes table
+  try {
+    await db.exec(`ALTER TABLE nodes ADD COLUMN sequence_id INTEGER;`);
+    console.log('Added sequence_id column to nodes table');
+    
+    // Create an index on the new column for better query performance
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_nodes_sequence_id ON nodes(sequence_id);`);
+  } catch (error) {
+    console.log('sequence_id column or index already exists or other error:', error.message);
+  }
+  
+  // Create triggers for auto-assigning sequence IDs in all tables
+  try {
+    const tables = [
+      'nodes',
+      'links', 
+      'node_attributes',
+      'tasks',
+      'bookmarks',
+      'blog_pages',
+      'dcim_images'
+    ];
+    
+    for (const table of tables) {
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
+        AFTER INSERT ON ${table}
+        FOR EACH ROW
+        WHEN NEW.sequence_id IS NULL
+        BEGIN
+          UPDATE ${table} 
+          SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
+          WHERE id = NEW.id;
+        END;
+      `);
+      console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
+    }
+  } catch (error) {
+    console.log('Some triggers might already exist:', error.message);
+  }
+  
+  // Create compound indices for common query patterns
+  try {
+    // Index for fast retrieval of children ordered by position
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_nodes_parent_position 
+      ON nodes(parent_id, position);
+    `);
+    
+    // Index for timestamp-based queries with sequence ID
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_nodes_created_sequence 
+      ON nodes(created_at, sequence_id);
+    `);
+    
+    console.log('Created compound indices for improved performance');
+  } catch (error) {
+    console.log('Some indices may already exist:', error.message);
+  }
+  
+  // Add sequence_id columns to all tables
+  try {
+    // Tables that need sequence_id columns
+    const tables = [
+      'links',
+      'node_attributes',
+      'tasks',
+      'bookmarks',
+      'blog_pages',
+      'dcim_images'
+    ];
+    
+    for (const table of tables) {
+      await db.exec(`ALTER TABLE ${table} ADD COLUMN sequence_id INTEGER;`);
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+      console.log(`Added sequence_id column and index to ${table} table`);
+    }
+  } catch (error) {
+    console.log('Some sequence_id columns might already exist:', error.message);
+  }
+  
   console.log('Database initialized');
   return db;
 }
 
-module.exports = { getDb, initializeDatabase }; 
+async function populateSequenceIds() {
+  const db = await getDb();
+  
+  // Start a transaction for consistency
+  await db.run('BEGIN TRANSACTION');
+  
+  try {
+    // First check if we need to populate sequence IDs
+    const unpopulatedCount = await db.get(
+      'SELECT COUNT(*) as count FROM nodes WHERE sequence_id IS NULL'
+    );
+    
+    if (unpopulatedCount.count > 0) {
+      console.log(`Found ${unpopulatedCount.count} nodes without sequence IDs. Populating...`);
+      
+      // Get nodes ordered by created_at timestamp
+      const nodes = await db.all(
+        'SELECT id FROM nodes ORDER BY created_at ASC'
+      );
+      
+      // Assign sequence IDs sequentially
+      for (let i = 0; i < nodes.length; i++) {
+        await db.run(
+          'UPDATE nodes SET sequence_id = ? WHERE id = ?',
+          [i + 1, nodes[i].id]
+        );
+      }
+      
+      console.log(`Successfully populated sequence IDs for ${nodes.length} nodes`);
+    } else {
+      console.log('All nodes already have sequence IDs');
+    }
+    
+    await db.run('COMMIT');
+    return true;
+  } catch (error) {
+    await db.run('ROLLBACK');
+    console.error('Error populating sequence IDs:', error);
+    return false;
+  }
+}
+
+module.exports = { getDb, initializeDatabase , populateSequenceIds }; 

@@ -45,6 +45,8 @@ router.get('/:id/attributes', attributeController.getNodeAttributes);
 // Query nodes by attributes
 router.post('/query', attributeController.queryNodesByAttributes);
 
+router.get('/sequence/:sequence_id', nodeController.getNodeBySequenceId);
+
 // Add additional routes for other node operations...
 // (Routes for indenting, outdenting, fixing positions, etc.)
 

@@ -16,7 +16,7 @@ exports.getAllRootNodes = async (req, res) => {
     
     // Get nodes with link counts
     const nodes = await db.all(`
-      SELECT n.*, 
+      SELECT n.*, n.sequence_id,
         (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count
       FROM nodes n 
       WHERE n.parent_id IS NULL 
@@ -72,7 +72,7 @@ exports.createNode = async (req, res) => {
     const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
     res.status(201).json(node);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message }); // If there was a duplicate, the database would reject it with a UNIQUE constraint error
   }
 };
 
@@ -402,6 +402,26 @@ exports.searchNodes = async (req, res) => {
   } catch (error) {
     console.error('Error searching nodes:', error);
     res.status(500).json({ error: 'Error searching nodes' });
+  }
+};
+
+/**
+ * Get a single node by sequence ID
+ * GET /api/nodes/sequence/:sequence_id
+ */
+exports.getNodeBySequenceId = async (req, res) => {
+  try {
+    const { sequence_id } = req.params;
+    const db = req.db;
+    const node = await db.get('SELECT * FROM nodes WHERE sequence_id = ?', parseInt(sequence_id));
+    
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    res.json(node);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 

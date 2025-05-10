@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const { getDb, initializeDatabase } = require('./database');
+const { getDb, initializeDatabase, populateSequenceIds } = require('./database');
 const fs = require('fs');
 const path = require('path');
 const taskRoutes = require('./routes/taskRoutes');
@@ -45,9 +45,13 @@ initializeDatabase()
   .then(database => {
     db = database;
     console.log('Database initialized successfully');
+    return populateSequenceIds();
+  })
+  .then(result => {
+    console.log('Sequence IDs populated:', result);
   })
   .catch(err => {
-    console.error('Error during database initialization:', err);
+    console.error('Error during initialization:', err);
   });
 
 // Add this middleware to provide the database connection to all routes
