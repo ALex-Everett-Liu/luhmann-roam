@@ -412,16 +412,24 @@ exports.searchNodes = async (req, res) => {
 exports.getNodeBySequenceId = async (req, res) => {
   try {
     const { sequence_id } = req.params;
+    
+    // Validate input
+    const sequenceIdNum = parseInt(sequence_id);
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
+      return res.status(400).json({ error: 'Invalid sequence ID format' });
+    }
+    
     const db = req.db;
-    const node = await db.get('SELECT * FROM nodes WHERE sequence_id = ?', parseInt(sequence_id));
+    const node = await db.get('SELECT * FROM nodes WHERE sequence_id = ?', sequenceIdNum);
     
     if (!node) {
-      return res.status(404).json({ error: 'Node not found' });
+      return res.status(404).json({ error: 'Node not found with the provided sequence ID' });
     }
     
     res.json(node);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`Error retrieving node by sequence ID ${req.params.sequence_id}:`, error);
+    res.status(500).json({ error: 'Database error when retrieving node by sequence ID' });
   }
 };
 

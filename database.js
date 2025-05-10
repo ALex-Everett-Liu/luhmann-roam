@@ -253,6 +253,65 @@ async function initializeDatabase() {
     console.log('Some sequence_id columns might already exist:', error.message);
   }
   
+  // Add compound indices for better performance on each table
+  try {
+    // Nodes table (you already have these)
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_nodes_parent_position 
+      ON nodes(parent_id, position);
+    `);
+    
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_nodes_created_sequence 
+      ON nodes(created_at, sequence_id);
+    `);
+    
+    // Links table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_links_from_to 
+      ON links(from_node_id, to_node_id);
+    `);
+    
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_links_created_sequence 
+      ON links(created_at, sequence_id);
+    `);
+    
+    // Node attributes table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_node_attributes_node_key 
+      ON node_attributes(node_id, key);
+    `);
+    
+    // Tasks table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_date_completed 
+      ON tasks(date, is_completed);
+    `);
+    
+    // Bookmarks table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_bookmarks_added_sequence 
+      ON bookmarks(added_at, sequence_id);
+    `);
+    
+    // Blog pages table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_blog_pages_node 
+      ON blog_pages(node_id);
+    `);
+    
+    // DCIM images table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_dcim_images_creation_sequence 
+      ON dcim_images(creation_time, sequence_id);
+    `);
+    
+    console.log('Created compound indices for improved performance on all tables');
+  } catch (error) {
+    console.log('Some indices may already exist:', error.message);
+  }
+  
   console.log('Database initialized');
   return db;
 }
@@ -264,30 +323,47 @@ async function populateSequenceIds() {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // First check if we need to populate sequence IDs
-    const unpopulatedCount = await db.get(
-      'SELECT COUNT(*) as count FROM nodes WHERE sequence_id IS NULL'
-    );
+    // Tables that need sequence IDs
+    const tables = [
+      'nodes',
+      'links', 
+      'node_attributes',
+      'tasks',
+      'bookmarks',
+      'blog_pages',
+      'dcim_images'
+    ];
     
-    if (unpopulatedCount.count > 0) {
-      console.log(`Found ${unpopulatedCount.count} nodes without sequence IDs. Populating...`);
-      
-      // Get nodes ordered by created_at timestamp
-      const nodes = await db.all(
-        'SELECT id FROM nodes ORDER BY created_at ASC'
+    // Process each table
+    for (const table of tables) {
+      // First check if we need to populate sequence IDs for this table
+      const unpopulatedCount = await db.get(
+        `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`
       );
       
-      // Assign sequence IDs sequentially
-      for (let i = 0; i < nodes.length; i++) {
-        await db.run(
-          'UPDATE nodes SET sequence_id = ? WHERE id = ?',
-          [i + 1, nodes[i].id]
+      if (unpopulatedCount.count > 0) {
+        console.log(`Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`);
+        
+        // Get records ordered by created_at timestamp (or another appropriate column)
+        // Adapt the ORDER BY column if some tables don't have created_at
+        const orderByColumn = table === 'blog_pages' ? 'created_at' : 'created_at';
+        
+        const records = await db.all(
+          `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
         );
+        
+        // Assign sequence IDs sequentially
+        for (let i = 0; i < records.length; i++) {
+          await db.run(
+            `UPDATE ${table} SET sequence_id = ? WHERE id = ?`,
+            [i + 1, records[i].id]
+          );
+        }
+        
+        console.log(`Successfully populated sequence IDs for ${records.length} records in ${table}`);
+      } else {
+        console.log(`All records in ${table} already have sequence IDs`);
       }
-      
-      console.log(`Successfully populated sequence IDs for ${nodes.length} nodes`);
-    } else {
-      console.log('All nodes already have sequence IDs');
     }
     
     await db.run('COMMIT');

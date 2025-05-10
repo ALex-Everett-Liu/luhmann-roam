@@ -133,3 +133,27 @@ exports.deleteLink = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getLinkBySequenceId = async (req, res) => {
+  try {
+    const { sequence_id } = req.params;
+    
+    // Validate input
+    const sequenceIdNum = parseInt(sequence_id);
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
+      return res.status(400).json({ error: 'Invalid sequence ID format' });
+    }
+    
+    const db = req.db;
+    const link = await db.get('SELECT * FROM links WHERE sequence_id = ?', sequenceIdNum);
+    
+    if (!link) {
+      return res.status(404).json({ error: 'Link not found with the provided sequence ID' });
+    }
+    
+    res.json(link);
+  } catch (error) {
+    console.error(`Error retrieving link by sequence ID ${req.params.sequence_id}:`, error);
+    res.status(500).json({ error: 'Database error when retrieving link by sequence ID' });
+  }
+};

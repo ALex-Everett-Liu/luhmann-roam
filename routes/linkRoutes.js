@@ -13,4 +13,6 @@ router.put('/:id', linkController.updateLink);
 // Delete a link
 router.delete('/:id', linkController.deleteLink);
 
+router.get('/sequence/:sequence_id', linkController.getLinkBySequenceId);
+
 module.exports = router;
