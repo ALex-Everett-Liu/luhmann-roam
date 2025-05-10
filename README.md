@@ -18,8 +18,13 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Position Management**: Precisely adjust node positions and hierarchy
 - **Node Attributes**: Add, edit, and query custom attributes for nodes
 - **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails
-- **Code Analysis**: Visualize and analyze the codebase structure
+- **Bookmark Management**: Save and organize important nodes for quick access
+- **Command Palette**: Access commands and features with a searchable interface
 - **Keyboard Shortcuts**: Comprehensive hotkey system for efficient workflows
+- **2D Cosmic Visualization**: Visualize node relationships in an interactive cosmic view
+- **Image Management**: Organize and optimize images with the DCIM Manager
+- **Blog Publishing**: Convert and publish notes as blog posts
+- **Code Analysis**: Visualize and analyze the codebase structure
 - **Optimized Performance**: Smart DOM updates for improved responsiveness
 
 ## Screenshots
@@ -125,11 +130,41 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Click the home icon to return to the full view
 - Focus mode helps concentrate on specific branches of your hierarchy
 
+### Using Bookmarks
+- Press Alt+B to bookmark the focused node
+- Click on bookmarked nodes in the sidebar for quick access
+- Bookmarks display usage statistics and can be sorted by frequency
+- Remove bookmarks with a single click
+
+### Using Command Palette
+- Press Ctrl+P (or Cmd+P on Mac) to open the command palette
+- Search for commands by name, category, or keywords
+- Execute commands with the Enter key
+- View keyboard shortcuts for frequently used commands
+
 ### Using Keyboard Shortcuts
 - Press ? to view all available shortcuts
 - Use arrow keys to navigate between nodes
 - Press specific letter keys to trigger actions when in hotkey mode
 - Combine keys for advanced operations
+
+### Using Cosmic Visualization
+- Click Alt+C to open the 2D cosmic visualization of a node
+- Explore node hierarchies in a solar system-like view
+- Navigate between linked nodes through visual portals
+- Pan, zoom, and interact with the visualization
+
+### Managing Images
+- Access the DCIM Manager to organize your images
+- Upload, tag, and categorize images
+- Convert images to WebP format for optimization
+- Create custom ranking filters for image sorting
+
+### Publishing Blog Posts
+- Convert nodes to blog posts with formatting preserved
+- Manage and organize published content
+- Preview content before publishing
+- Access blog posts through dedicated routes
 
 ### Task Management
 - Create daily tasks in the sidebar
@@ -171,6 +206,11 @@ luhmann-roam/
 │   │   ├── linkManager.js         # Link management functionality
 │   │   ├── searchManager.js       # Search functionality
 │   │   ├── filterManager.js       # Filter functionality
+│   │   ├── bookmarkManager.js     # Bookmark management functionality
+│   │   ├── commandPaletteManager.js # Command palette functionality
+│   │   ├── cosmicNodeVisualizer2D.js # 2D visualization of nodes
+│   │   ├── dcimManager.js         # Digital content image management
+│   │   ├── blogManager.js         # Blog publishing functionality
 │   │   ├── taskManager.js         # Task management functionality
 │   │   ├── timestampManager.js    # Timestamp display functionality
 │   │   ├── positionManager.js     # Node positioning functionality
@@ -183,6 +223,11 @@ luhmann-roam/
 │   │   ├── nodeOperationsManager.js # Core node operations
 │   │   └── dragDropManager.js     # Drag and drop functionality
 │   └── attachment/    # Uploaded images and attachments
+├── routes/            # Express route handlers
+│   ├── nodeRoutes.js  # Node-related API endpoints
+│   ├── linkRoutes.js  # Link-related API endpoints
+│   ├── blogRoutes.js  # Blog publishing endpoints
+│   └── imageRoutes.js # Image management endpoints
 └── README.md          # This file
 ```
 

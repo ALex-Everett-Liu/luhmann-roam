@@ -6,8 +6,6 @@ const url = require('url');
 require('./server');
 
 let mainWindow;
-
-// Add before the createWindow function
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 
@@ -42,6 +40,9 @@ function createWindow() {
 
   // Create custom menu with reliable DevTools option
   const menuTemplate = [
+    // Get existing menu items first
+    ...(Menu.getApplicationMenu()?.items || []),
+    // Then add your developer menu
     {
       label: 'Developer',
       submenu: [
@@ -64,7 +65,7 @@ function createWindow() {
   ];
   
   const menu = Menu.buildFromTemplate(menuTemplate);
-  Menu.setApplicationMenu(Menu.getApplicationMenu().append(menu));
+  Menu.setApplicationMenu(menu);
 }
 
 app.on('ready', async () => {
