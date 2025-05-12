@@ -11,6 +11,9 @@ const DcimManager = (function() {
     let currentPage = 1;
     let totalPages = 1;
     const imagesPerPage = 36;
+    let currentTagPage = 1;
+    let totalTagPages = 1;
+    const tagsPerPage = 30; // Adjust this number to fit your UI
 
     /**
      * Creates a debounced function that delays invoking func until after wait milliseconds
@@ -299,7 +302,7 @@ const DcimManager = (function() {
     }
     
     /**
-     * Populates tag filters based on available tags
+     * Populates tag filters based on available tags with pagination
      * @param {Array} images - The array of image objects
      */
     function populateTagFilters(images) {
@@ -323,10 +326,23 @@ const DcimManager = (function() {
       // Sort tags alphabetically
       const sortedTags = Array.from(allTags).sort();
       
+      // Calculate pagination for tags
+      totalTagPages = Math.ceil(sortedTags.length / tagsPerPage);
+      
+      // Reset to page 1 if current page is out of bounds
+      if (currentTagPage > totalTagPages) {
+        currentTagPage = 1;
+      }
+      
+      // Get current page of tags
+      const startIndex = (currentTagPage - 1) * tagsPerPage;
+      const endIndex = startIndex + tagsPerPage;
+      const paginatedTags = sortedTags.slice(startIndex, endIndex);
+      
       // Create tag filter checkboxes
       tagsContainer.innerHTML = '';
       
-      sortedTags.forEach(tag => {
+      paginatedTags.forEach(tag => {
         const tagDiv = document.createElement('div');
         tagDiv.className = 'dcim-tag-filter';
         
@@ -353,6 +369,9 @@ const DcimManager = (function() {
         tagDiv.appendChild(label);
         tagsContainer.appendChild(tagDiv);
       });
+      
+      // Add pagination controls for tags
+      addTagPaginationControls(sortedTags.length);
       
       // Initialize the selected tag count
       updateSelectedTagCount();
@@ -2395,7 +2414,7 @@ function debugToggleButton() {
     // Around line ~2117 (before the "// Public API" comment)
 
     /**
-     * Filters the tag list based on search input
+     * Filters the tag list based on search input while maintaining pagination
      */
     function filterTagList() {
       const searchText = document.getElementById('dcim-tag-search').value.toLowerCase();
@@ -2457,6 +2476,68 @@ function debugToggleButton() {
     function updateSelectedTagCount() {
       const selectedCount = document.querySelectorAll('#dcim-tag-filters input[type="checkbox"]:checked').length;
       document.getElementById('dcim-tag-selected-count').textContent = selectedCount;
+    }
+
+    /**
+     * Adds pagination controls for the tag filters
+     * @param {number} totalTags - The total number of tags
+     */
+    function addTagPaginationControls(totalTags) {
+      const tagsContainer = document.getElementById('dcim-tag-filters');
+      
+      // Create pagination container if it doesn't exist
+      let tagPagination = document.getElementById('dcim-tag-pagination');
+      if (!tagPagination) {
+        tagPagination = document.createElement('div');
+        tagPagination.id = 'dcim-tag-pagination';
+        tagPagination.className = 'dcim-tag-pagination';
+        
+        // Add after the tags container
+        tagsContainer.parentNode.insertBefore(tagPagination, tagsContainer.nextSibling);
+      }
+      
+      // Update pagination info and controls
+      tagPagination.innerHTML = `
+        <div class="dcim-tag-pagination-info">
+          Page ${currentTagPage} of ${totalTagPages} (${totalTags} tags)
+        </div>
+        <div class="dcim-tag-pagination-controls">
+          <button id="dcim-tag-page-first" class="btn btn-small" ${currentTagPage === 1 ? 'disabled' : ''}>&laquo;</button>
+          <button id="dcim-tag-page-prev" class="btn btn-small" ${currentTagPage === 1 ? 'disabled' : ''}>&lsaquo;</button>
+          <span id="dcim-tag-page-current">${currentTagPage}</span>
+          <button id="dcim-tag-page-next" class="btn btn-small" ${currentTagPage === totalTagPages || totalTagPages === 0 ? 'disabled' : ''}>&rsaquo;</button>
+          <button id="dcim-tag-page-last" class="btn btn-small" ${currentTagPage === totalTagPages || totalTagPages === 0 ? 'disabled' : ''}>&raquo;</button>
+        </div>
+      `;
+      
+      // Add event listeners for tag pagination buttons
+      document.getElementById('dcim-tag-page-first').addEventListener('click', () => {
+        if (currentTagPage !== 1) {
+          currentTagPage = 1;
+          populateTagFilters(currentImages);
+        }
+      });
+      
+      document.getElementById('dcim-tag-page-prev').addEventListener('click', () => {
+        if (currentTagPage > 1) {
+          currentTagPage--;
+          populateTagFilters(currentImages);
+        }
+      });
+      
+      document.getElementById('dcim-tag-page-next').addEventListener('click', () => {
+        if (currentTagPage < totalTagPages) {
+          currentTagPage++;
+          populateTagFilters(currentImages);
+        }
+      });
+      
+      document.getElementById('dcim-tag-page-last').addEventListener('click', () => {
+        if (currentTagPage !== totalTagPages) {
+          currentTagPage = totalTagPages;
+          populateTagFilters(currentImages);
+        }
+      });
     }
     
     // Public API

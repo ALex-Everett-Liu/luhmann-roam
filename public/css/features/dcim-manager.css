@@ -621,3 +621,48 @@
     border-radius: 3px;
     font-weight: bold;
   }
+
+  /* Tag pagination styles */
+  .dcim-tag-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding: 5px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  .dcim-tag-pagination-info {
+    color: #555;
+  }
+
+  .dcim-tag-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .dcim-tag-pagination-controls button {
+    padding: 2px 6px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+
+  .dcim-tag-pagination-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  #dcim-tag-page-current {
+    padding: 2px 6px;
+    background-color: #2196F3;
+    color: white;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 10px;
+  }
