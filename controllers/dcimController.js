@@ -108,6 +108,7 @@ function formatFileSize(size) {
 }
 
 // Controller methods
+// retrieves all images from the database. The main image grid uses getImages for the gallery view.
 exports.getImages = async (req, res) => {
   try {
     const db = await getDb();
@@ -115,15 +116,16 @@ exports.getImages = async (req, res) => {
     res.json(images);
   } catch (error) {
     console.error('Error fetching images:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message }); // always returns a success response (with an empty array if no images exist).
   }
 };
 
+// The detailed view for a single image uses getImage when you click on a specific image.
 exports.getImage = async (req, res) => {
   try {
     const { id } = req.params;
     const db = await getDb();
-    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id); // It connects to the database and executes a parameterized query to find a specific image by its ID.
     
     if (!image) {
       return res.status(404).json({ error: 'Image not found' });
