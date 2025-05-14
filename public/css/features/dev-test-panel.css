@@ -99,6 +99,8 @@
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
+    width: 100%;
+    margin-top: 10px;
   }
   
   .filter-controls select {
@@ -345,4 +347,71 @@
   /* Edit entry modal */
   .edit-entry-modal {
     max-width: 700px;
+  }
+  
+  /* Add these styles to your dev-test-panel.css file */
+  
+  .search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+  }
+  
+  .search-input {
+    width: 250px;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .clear-search-button {
+    position: absolute;
+    right: 5px;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 50%;
+  }
+  
+  .clear-search-button:hover {
+    background-color: rgba(0,0,0,0.05);
+  }
+  
+  /* Modify the filter-controls to accommodate the search bar */
+  .filter-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .search-input {
+      width: 100%;
+    }
+    
+    .filter-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .search-container {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+  }
+  
+  /* Highlight search matches */
+  .search-highlight {
+    background-color: rgba(255, 230, 0, 0.3);
+    padding: 0 2px;
+    border-radius: 2px;
   }

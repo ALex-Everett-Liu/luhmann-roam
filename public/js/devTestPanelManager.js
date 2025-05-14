@@ -150,6 +150,10 @@ const DevTestPanelManager = (function() {
         <div class="entries-header">
           <h3>Test Entries</h3>
           <div class="filter-controls">
+            <div class="search-container">
+              <input type="text" id="entry-search" placeholder="Search entries..." class="search-input">
+              <button id="clear-search" class="clear-search-button">&times;</button>
+            </div>
             <select id="type-filter">
               <option value="">All Types</option>
               <option value="function">Functions</option>
@@ -287,7 +291,34 @@ const DevTestPanelManager = (function() {
             setTimeout(loadStatistics, 50); // Delay to ensure DOM is updated
           });
         }
+        
+        // Add search functionality
+        const searchInput = modalElement.querySelector('#entry-search');
+        if (searchInput) {
+          searchInput.addEventListener('input', debounce(filterEntries, 300));
+        }
+        
+        // Add clear search button functionality
+        const clearSearchButton = modalElement.querySelector('#clear-search');
+        if (clearSearchButton) {
+          clearSearchButton.addEventListener('click', () => {
+            const searchInput = document.getElementById('entry-search');
+            if (searchInput) {
+              searchInput.value = '';
+              filterEntries();
+            }
+          });
+        }
       }, 0);
+    }
+    
+    // Simple debounce function to prevent too many searches while typing
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+      };
     }
     
     /**
@@ -696,6 +727,8 @@ const DevTestPanelManager = (function() {
         
         const categorySection = document.createElement('div');
         categorySection.className = 'entry-category';
+        // Reset display property to ensure all categories are visible after reloading
+        categorySection.style.display = ''; 
         
         const categoryHeader = document.createElement('h4');
         categoryHeader.className = 'category-header';
@@ -710,6 +743,8 @@ const DevTestPanelManager = (function() {
           const entryItem = document.createElement('div');
           entryItem.className = `entry-item entry-status-${entry.status || 'pending'}`;
           entryItem.dataset.id = entry.id;
+          // Reset display property to ensure all entries are visible after reloading
+          entryItem.style.display = '';
           
           // Create entry header
           const entryHeader = document.createElement('div');
@@ -795,13 +830,89 @@ const DevTestPanelManager = (function() {
         categorySection.appendChild(entriesContainer);
         entriesList.appendChild(categorySection);
       });
+      
+      // Apply search filter if there's a search term
+      const searchInput = document.getElementById('entry-search');
+      if (searchInput && searchInput.value.trim()) {
+        filterEntries();
+      }
     }
 
     /**
-     * Filters entries based on selected type and category
+     * Filters entries based on search term, type and category
      */
     function filterEntries() {
-      loadEntries();
+      const searchInput = document.getElementById('entry-search');
+      const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+      
+      // If there's a search term, filter entries locally
+      if (searchTerm) {
+        // Filter entries without reloading from server
+        const entriesList = document.getElementById('entries-list');
+        if (!entriesList) return;
+        
+        // Get all entry items
+        const entryItems = entriesList.querySelectorAll('.entry-item');
+        
+        // Loop through each entry and check if it matches search
+        entryItems.forEach(item => {
+          const title = item.querySelector('.entry-title');
+          const description = item.querySelector('.entry-description');
+          const testData = item.querySelector('.entry-test-data');
+          const testResult = item.querySelector('.entry-test-result');
+          
+          const titleText = title ? title.textContent.toLowerCase() : '';
+          const descText = description ? description.textContent.toLowerCase() : '';
+          const dataText = testData ? testData.textContent.toLowerCase() : '';
+          const resultText = testResult ? testResult.textContent.toLowerCase() : '';
+          
+          // Check if any of the text contains search term
+          const matches = titleText.includes(searchTerm) || 
+                          descText.includes(searchTerm) || 
+                          dataText.includes(searchTerm) || 
+                          resultText.includes(searchTerm);
+          
+          // Show or hide based on match
+          item.style.display = matches ? 'block' : 'none';
+          
+          // Also handle parent category visibility
+          const parentCategory = item.closest('.entry-category');
+          if (parentCategory) {
+            // Check if any items in this category are visible
+            const visibleItems = parentCategory.querySelectorAll('.entry-item[style="display: block;"]');
+            parentCategory.style.display = visibleItems.length > 0 ? 'block' : 'none';
+          }
+        });
+        
+        // Check if any entries are visible, show empty state if not
+        const visibleEntries = entriesList.querySelectorAll('.entry-item[style="display: block;"]');
+        if (visibleEntries.length === 0) {
+          // If no entries match, show empty state
+          const emptyState = document.createElement('div');
+          emptyState.className = 'empty-state';
+          emptyState.id = 'search-empty-state';
+          emptyState.innerHTML = `
+            <p>No entries match your search for "${searchTerm}"</p>
+          `;
+          
+          // Remove existing empty state if it exists
+          const existingEmptyState = entriesList.querySelector('#search-empty-state');
+          if (existingEmptyState) {
+            entriesList.removeChild(existingEmptyState);
+          }
+          
+          entriesList.appendChild(emptyState);
+        } else {
+          // Remove empty state if it exists
+          const existingEmptyState = entriesList.querySelector('#search-empty-state');
+          if (existingEmptyState) {
+            entriesList.removeChild(existingEmptyState);
+          }
+        }
+      } else {
+        // If no search term, reload entries normally
+        loadEntries();
+      }
     }
     
     /**
