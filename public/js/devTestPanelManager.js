@@ -1052,7 +1052,6 @@ const DevTestPanelManager = (function() {
      * Handles adding a new entry
      */
     async function handleAddEntry(e) {
-      console.log('Submitting entry data:', entryData);
       e.preventDefault();
       
       try {

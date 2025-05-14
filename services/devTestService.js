@@ -8,47 +8,11 @@ const { getDb } = require('../database');
  */
 exports.initializeDevTestTable = async function() {
   try {
+    // The actual table creation is now handled in database.js
+    // We might still want to create indices or other operations specific to this service
     const db = await getDb();
     
-    // Create dev_test_entries table with additional fields for variables
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS dev_test_entries (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        status TEXT DEFAULT 'pending',
-        test_data TEXT,
-        test_result TEXT,
-        
-        /* Variable-specific fields */
-        variable_value TEXT,
-        variable_method TEXT,
-        variable_params TEXT,
-        variable_source_file TEXT,
-        variable_line_number INTEGER,
-        
-        created_at INTEGER,
-        updated_at INTEGER,
-        sequence_id INTEGER
-      )
-    `);
-    
-    // Create trigger for auto-assigning sequence IDs
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_dev_test_entries
-      AFTER INSERT ON dev_test_entries
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE dev_test_entries 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM dev_test_entries)
-        WHERE id = NEW.id;
-      END;
-    `);
-    
-    // Create index for performance
+    // Create index for performance if not exists
     await db.exec(`
       CREATE INDEX IF NOT EXISTS idx_dev_test_entries_type_category 
       ON dev_test_entries(type, category);

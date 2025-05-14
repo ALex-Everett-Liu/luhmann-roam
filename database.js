@@ -322,11 +322,29 @@ async function initializeDatabase() {
 
   // Add variable-specific columns to dev_test_entries table
   try {
-    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_value TEXT`);
-    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_method TEXT`);
-    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_params TEXT`);
-    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_source_file TEXT`);
-    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_line_number INTEGER`);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS dev_test_entries (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT,
+        status TEXT DEFAULT 'pending',
+        test_data TEXT,
+        test_result TEXT,
+        
+        /* Variable-specific fields */
+        variable_value TEXT,
+        variable_method TEXT,
+        variable_params TEXT,
+        variable_source_file TEXT,
+        variable_line_number INTEGER,
+        
+        created_at INTEGER,
+        updated_at INTEGER,
+        sequence_id INTEGER
+      )
+    `);
     console.log('Added variable-specific columns to dev_test_entries table');
   } catch (error) {
     // Columns likely already exist, which is fine
