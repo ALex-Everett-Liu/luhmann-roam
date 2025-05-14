@@ -319,6 +319,19 @@ async function initializeDatabase() {
   } catch (error) {
     console.log('Some indices may already exist:', error.message);
   }
+
+  // Add variable-specific columns to dev_test_entries table
+  try {
+    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_value TEXT`);
+    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_method TEXT`);
+    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_params TEXT`);
+    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_source_file TEXT`);
+    await db.exec(`ALTER TABLE dev_test_entries ADD COLUMN variable_line_number INTEGER`);
+    console.log('Added variable-specific columns to dev_test_entries table');
+  } catch (error) {
+    // Columns likely already exist, which is fine
+    console.log('Variable-specific columns may already exist or other error:', error.message);
+  }
   
   console.log('Database initialized');
   isInitialized = true;

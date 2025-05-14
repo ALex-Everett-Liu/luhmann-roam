@@ -213,16 +213,42 @@ const DevTestPanelManager = (function() {
           </div>
           <div class="form-group">
             <label for="entry-name">Name:</label>
-            <input type="text" id="entry-name" required placeholder="e.g. fetchNodes or /api/nodes/:id">
+            <input type="text" id="entry-name" required placeholder="e.g. fetchNodes or THUMBNAIL_SIZE">
           </div>
           <div class="form-group">
             <label for="entry-category">Category:</label>
-            <input type="text" id="entry-category" placeholder="e.g. Node Operations">
+            <input type="text" id="entry-category" placeholder="e.g. Node Operations or File Paths">
           </div>
           <div class="form-group">
             <label for="entry-description">Description:</label>
-            <textarea id="entry-description" rows="3" placeholder="What does this function/API do?"></textarea>
+            <textarea id="entry-description" rows="3" placeholder="What does this function/API/variable do?"></textarea>
           </div>
+          
+          <!-- Variable-specific fields (initially hidden) -->
+          <div id="variable-fields" style="display: none;">
+            <div class="form-group">
+              <label for="variable-value">Value:</label>
+              <input type="text" id="variable-value" placeholder="e.g. 180">
+            </div>
+            <div class="form-group">
+              <label for="variable-method">Method:</label>
+              <input type="text" id="variable-method" placeholder="e.g. path.join">
+            </div>
+            <div class="form-group">
+              <label for="variable-params">Parameters (JSON):</label>
+              <textarea id="variable-params" rows="2" placeholder='["__dirname", "../public/attachment/dcim"]'></textarea>
+            </div>
+            <div class="form-group">
+              <label for="variable-source-file">Source File:</label>
+              <input type="text" id="variable-source-file" placeholder="e.g. controllers/dcimController.js">
+            </div>
+            <div class="form-group">
+              <label for="variable-line-number">Line Number:</label>
+              <input type="number" id="variable-line-number" placeholder="e.g. 10">
+            </div>
+          </div>
+          
+          <!-- Other fields for all types -->
           <div class="form-group">
             <label for="entry-test-data">Test Data (JSON):</label>
             <textarea id="entry-test-data" rows="5" placeholder='{"param1": "value1"}'></textarea>
@@ -361,6 +387,17 @@ const DevTestPanelManager = (function() {
             if (e.key === 'Enter') {
               e.preventDefault();
               addFolderFilter('exclude');
+            }
+          });
+        }
+        
+        // Add this to the setupModalEventListeners function
+        const typeSelect = modalElement.querySelector('#entry-type');
+        if (typeSelect) {
+          typeSelect.addEventListener('change', function() {
+            const variableFields = document.getElementById('variable-fields');
+            if (variableFields) {
+              variableFields.style.display = this.value === 'variable' ? 'block' : 'none';
             }
           });
         }
@@ -873,6 +910,36 @@ const DevTestPanelManager = (function() {
             entryContent.appendChild(testResultEl);
           }
           
+          // Display variable-specific info
+          if (entry.type === 'variable') {
+            const variableDetails = document.createElement('div');
+            variableDetails.className = 'variable-details';
+            
+            if (entry.variable_value) {
+              variableDetails.innerHTML += `<div><strong>Value:</strong> ${entry.variable_value}</div>`;
+            }
+            
+            if (entry.variable_method) {
+              variableDetails.innerHTML += `<div><strong>Method:</strong> ${entry.variable_method}</div>`;
+            }
+            
+            if (entry.variable_params) {
+              variableDetails.innerHTML += `<div><strong>Parameters:</strong> <pre>${entry.variable_params}</pre></div>`;
+            }
+            
+            if (entry.variable_source_file) {
+              variableDetails.innerHTML += `<div><strong>Source:</strong> ${entry.variable_source_file}`;
+              
+              if (entry.variable_line_number) {
+                variableDetails.innerHTML += `:${entry.variable_line_number}`;
+              }
+              
+              variableDetails.innerHTML += `</div>`;
+            }
+            
+            entryContent.appendChild(variableDetails);
+          }
+          
           // Status badge
           const statusBadge = document.createElement('div');
           statusBadge.className = `status-badge status-${entry.status || 'pending'}`;
@@ -985,6 +1052,7 @@ const DevTestPanelManager = (function() {
      * Handles adding a new entry
      */
     async function handleAddEntry(e) {
+      console.log('Submitting entry data:', entryData);
       e.preventDefault();
       
       try {
@@ -994,21 +1062,38 @@ const DevTestPanelManager = (function() {
         const descriptionInput = document.getElementById('entry-description');
         const testDataInput = document.getElementById('entry-test-data');
         
+        // Get variable-specific inputs
+        const variableValueInput = document.getElementById('variable-value');
+        const variableMethodInput = document.getElementById('variable-method');
+        const variableParamsInput = document.getElementById('variable-params');
+        const variableSourceFileInput = document.getElementById('variable-source-file');
+        const variableLineNumberInput = document.getElementById('variable-line-number');
+        
         // Validate required fields
         if (!typeInput.value || !nameInput.value) {
           alert('Type and name are required fields');
           return;
         }
         
-        // Validate JSON test data
+        // Validate JSON fields
         let testData = null;
         if (testDataInput.value) {
           try {
             testData = JSON.parse(testDataInput.value);
-            // Re-stringify to ensure proper formatting
             testDataInput.value = JSON.stringify(testData, null, 2);
           } catch (error) {
             alert(`Invalid JSON in test data: ${error.message}`);
+            return;
+          }
+        }
+        
+        let variableParams = null;
+        if (typeInput.value === 'variable' && variableParamsInput.value) {
+          try {
+            variableParams = JSON.parse(variableParamsInput.value);
+            variableParamsInput.value = JSON.stringify(variableParams, null, 2);
+          } catch (error) {
+            alert(`Invalid JSON in variable parameters: ${error.message}`);
             return;
           }
         }
@@ -1022,12 +1107,33 @@ const DevTestPanelManager = (function() {
           test_data: testDataInput.value
         };
         
+        // Add variable-specific fields if type is variable
+        if (typeInput.value === 'variable') {
+          entryData.variable_value = variableValueInput.value;
+          entryData.variable_method = variableMethodInput.value;
+          
+          // Fix for variable_params
+          if (variableParamsInput.value) {
+            try {
+              const parsedParams = JSON.parse(variableParamsInput.value);
+              entryData.variable_params = JSON.stringify(parsedParams);
+            } catch (error) {
+              alert(`Invalid JSON in variable parameters: ${error.message}`);
+              return;
+            }
+          } else {
+            entryData.variable_params = null;
+          }
+          
+          entryData.variable_source_file = variableSourceFileInput.value;
+          entryData.variable_line_number = variableLineNumberInput.value ? 
+            parseInt(variableLineNumberInput.value) : null;
+        }
+        
         // Send request to create entry
         const response = await fetch('/api/dev-test/entries', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entryData)
         });
         
@@ -1177,6 +1283,31 @@ const DevTestPanelManager = (function() {
               <label for="edit-entry-description">Description:</label>
               <textarea id="edit-entry-description" rows="3">${entry.description || ''}</textarea>
             </div>
+            
+            <!-- Variable-specific fields (shown/hidden based on type) -->
+            <div id="edit-variable-fields" style="display: ${entry.type === 'variable' ? 'block' : 'none'}">
+              <div class="form-group">
+                <label for="edit-variable-value">Value:</label>
+                <input type="text" id="edit-variable-value" value="${entry.variable_value || ''}">
+              </div>
+              <div class="form-group">
+                <label for="edit-variable-method">Method:</label>
+                <input type="text" id="edit-variable-method" value="${entry.variable_method || ''}">
+              </div>
+              <div class="form-group">
+                <label for="edit-variable-params">Parameters (JSON):</label>
+                <textarea id="edit-variable-params" rows="2">${entry.variable_params || ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label for="edit-variable-source-file">Source File:</label>
+                <input type="text" id="edit-variable-source-file" value="${entry.variable_source_file || ''}">
+              </div>
+              <div class="form-group">
+                <label for="edit-variable-line-number">Line Number:</label>
+                <input type="number" id="edit-variable-line-number" value="${entry.variable_line_number || ''}">
+              </div>
+            </div>
+            
             <div class="form-group">
               <label for="edit-entry-test-data">Test Data (JSON):</label>
               <textarea id="edit-entry-test-data" rows="5">${entry.test_data || ''}</textarea>
@@ -1197,6 +1328,18 @@ const DevTestPanelManager = (function() {
           </form>
         `;
         
+        // Add this after creating the modal but before adding it to body
+        // Add listener to show/hide variable fields when type changes
+        const editTypeSelect = modalContent.querySelector('#edit-entry-type');
+        if (editTypeSelect) {
+          editTypeSelect.addEventListener('change', function() {
+            const variableFields = modalContent.querySelector('#edit-variable-fields');
+            if (variableFields) {
+              variableFields.style.display = this.value === 'variable' ? 'block' : 'none';
+            }
+          });
+        }
+        
         // Assemble modal
         modalContent.appendChild(modalHeader);
         modalContent.appendChild(modalBody);
@@ -1216,6 +1359,34 @@ const DevTestPanelManager = (function() {
             const testData = document.getElementById('edit-entry-test-data').value;
             const status = document.getElementById('edit-entry-status').value;
             
+            // Get variable-specific data if type is variable
+            let variableData = {};
+            if (type === 'variable') {
+              const variableValue = document.getElementById('edit-variable-value').value;
+              const variableMethod = document.getElementById('edit-variable-method').value;
+              const variableParams = document.getElementById('edit-variable-params').value;
+              const variableSourceFile = document.getElementById('edit-variable-source-file').value;
+              const variableLineNumber = document.getElementById('edit-variable-line-number').value;
+              
+              // Validate JSON
+              if (variableParams) {
+                try {
+                  JSON.parse(variableParams);
+                } catch (error) {
+                  alert(`Invalid JSON in variable parameters: ${error.message}`);
+                  return;
+                }
+              }
+              
+              variableData = {
+                variable_value: variableValue,
+                variable_method: variableMethod,
+                variable_params: variableParams,
+                variable_source_file: variableSourceFile,
+                variable_line_number: variableLineNumber ? parseInt(variableLineNumber) : null
+              };
+            }
+            
             // Validate JSON test data
             if (testData) {
               try {
@@ -1226,7 +1397,7 @@ const DevTestPanelManager = (function() {
               }
             }
             
-            // Send update request
+            // Send update request with all data
             const response = await fetch(`/api/dev-test/entries/${entryId}`, {
               method: 'PUT',
               headers: {
@@ -1238,7 +1409,8 @@ const DevTestPanelManager = (function() {
                 category,
                 description,
                 test_data: testData,
-                status
+                status,
+                ...variableData  // Spread the variable data if it exists
               })
             });
             

@@ -10,7 +10,7 @@ exports.initializeDevTestTable = async function() {
   try {
     const db = await getDb();
     
-    // Create dev_test_entries table
+    // Create dev_test_entries table with additional fields for variables
     await db.exec(`
       CREATE TABLE IF NOT EXISTS dev_test_entries (
         id TEXT PRIMARY KEY,
@@ -21,6 +21,14 @@ exports.initializeDevTestTable = async function() {
         status TEXT DEFAULT 'pending',
         test_data TEXT,
         test_result TEXT,
+        
+        /* Variable-specific fields */
+        variable_value TEXT,
+        variable_method TEXT,
+        variable_params TEXT,
+        variable_source_file TEXT,
+        variable_line_number INTEGER,
+        
         created_at INTEGER,
         updated_at INTEGER,
         sequence_id INTEGER
@@ -97,7 +105,11 @@ exports.getDevTestEntries = async function(type = null, category = null) {
 exports.createDevTestEntry = async function(entryData) {
   try {
     const db = await getDb();
-    const { type, name, description, category, test_data } = entryData;
+    const { 
+      type, name, description, category, test_data,
+      variable_value, variable_method, variable_params, 
+      variable_source_file, variable_line_number 
+    } = entryData;
     
     if (!type || !name) {
       throw new Error('Type and name are required fields');
@@ -108,9 +120,14 @@ exports.createDevTestEntry = async function(entryData) {
     
     await db.run(
       `INSERT INTO dev_test_entries 
-       (id, type, name, description, category, test_data, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, type, name, description || null, category || null, test_data || null, now, now]
+       (id, type, name, description, category, test_data, 
+        variable_value, variable_method, variable_params, variable_source_file, variable_line_number,
+        created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, type, name, description || null, category || null, test_data || null,
+       variable_value || null, variable_method || null, variable_params || null, 
+       variable_source_file || null, variable_line_number || null,
+       now, now]
     );
     
     return await db.get('SELECT * FROM dev_test_entries WHERE id = ?', id);
@@ -129,7 +146,11 @@ exports.updateDevTestEntry = async function(id, entryData) {
     const now = Date.now();
     
     // Build update query dynamically based on provided fields
-    const allowedFields = ['type', 'name', 'description', 'category', 'status', 'test_data', 'test_result'];
+    const allowedFields = [
+      'type', 'name', 'description', 'category', 'status', 'test_data', 'test_result',
+      'variable_value', 'variable_method', 'variable_params', 
+      'variable_source_file', 'variable_line_number'
+    ];
     const updates = [];
     const params = [];
     

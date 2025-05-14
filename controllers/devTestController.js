@@ -37,10 +37,11 @@ exports.getEntries = async (req, res) => {
  */
 exports.createEntry = async (req, res) => {
   try {
+    console.log('Received entry data:', req.body);
     const entry = await devTestService.createDevTestEntry(req.body);
     res.status(201).json(entry);
   } catch (error) {
-    console.error('Error creating dev test entry:', error);
+    console.error('Error details in controller:', error);
     res.status(500).json({ error: 'Failed to create dev test entry' });
   }
 };
