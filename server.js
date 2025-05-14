@@ -21,6 +21,7 @@ const attributeRoutes = require('./routes/attributeRoutes');
 const dcimRoutes = require('./routes/dcimRoutes');
 const sharp = require('sharp');
 const upload = require('./middleware/upload');
+const devTestRoutes = require('./routes/devTestRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -730,6 +731,9 @@ app.use('/api/node-attributes', attributeRoutes);
 
 // Use the DCIM routes
 app.use('/api/dcim', dcimRoutes);
+
+// Use the dev test routes
+app.use('/api/dev-test', devTestRoutes);
 
 // Start the server
 app.listen(PORT, () => {

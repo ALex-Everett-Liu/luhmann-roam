@@ -32,6 +32,7 @@
 @import './features/blog-manager.css';
 @import './features/plugin-manager.css';
 @import './features/dcim-manager.css'; 
+@import './features/dev-test-panel.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */

@@ -100,7 +100,7 @@ async function convertToWebP(imagePath, outputPath, quality = 80) {
     .toFile(outputPath);
 }
 
-// Format file size
+// Format file size. A utility that converts a file size in bytes into a more user-friendly format, either in bytes, kilobytes, or megabytes, depending on the size of the file.
 function formatFileSize(size) {
   if (size < 1024) return size + ' B';
   if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB';
@@ -152,9 +152,9 @@ exports.addImage = async (req, res) => {
       person, 
       location, 
       type
-    } = req.body;
+    } = req.body; // It extracts various properties from the request body (req.body), which are expected to be sent by the client when adding a new image.
     
-    // Handle file upload if file is included
+    // Handle file upload if file is included. Several variables are initialized to hold the final values that will be used later in the function.
     let finalFilename = filename;
     let finalUrl = url;
     let finalFilePath = file_path;
@@ -168,7 +168,7 @@ exports.addImage = async (req, res) => {
     
     if (req.file) {
       const file = req.file;
-      finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname);
+      finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname); // If the filename is not provided, it generates a unique filename using crypto.randomUUID() and appends the original file's extension.
       
       // Get the custom asset directory
       const assetDir = await getAssetDirectory();

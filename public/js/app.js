@@ -932,6 +932,11 @@ document.addEventListener('DOMContentLoaded', () => {
     CodeAnalyzerManager.initialize();
   }
 
+  // Initialize the DevTestPanelManager
+  if (window.DevTestPanelManager) {
+    DevTestPanelManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
