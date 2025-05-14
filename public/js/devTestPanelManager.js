@@ -13,20 +13,25 @@ const DevTestPanelManager = (function() {
      * Initializes the dev test panel
      */
     function initialize() {
+      // Create UI first, then add to DOM
       createDevTestUI();
       
       // Add to sidebar
       const sidebar = document.querySelector('.sidebar');
-      const devTestButton = document.createElement('button');
-      devTestButton.textContent = 'Dev Test Panel';
-      devTestButton.id = 'dev-test-button';
-      devTestButton.addEventListener('click', openModal);
-      sidebar.appendChild(devTestButton);
-      
-      // Initialize the database table if needed
-      initializeDatabase();
-      
-      initialized = true;
+      if (sidebar) {
+        const devTestButton = document.createElement('button');
+        devTestButton.textContent = 'Dev Test Panel';
+        devTestButton.id = 'dev-test-button';
+        devTestButton.addEventListener('click', openModal);
+        sidebar.appendChild(devTestButton);
+        
+        // Initialize the database table if needed
+        initializeDatabase();
+        
+        initialized = true;
+      } else {
+        console.error('Cannot find sidebar element');
+      }
     }
     
     /**
@@ -223,27 +228,65 @@ const DevTestPanelManager = (function() {
           
           // Add active class to clicked tab
           tab.classList.add('active');
-          document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
-          
-          // Load data for the tab if needed
-          if (tab.dataset.tab === 'stats' && !statistics.totalFiles) {
-            loadStatistics();
-          } else if (tab.dataset.tab === 'entries' && entries.length === 0) {
-            loadEntries();
+          const tabPane = document.getElementById(`${tab.dataset.tab}-tab`);
+          if (tabPane) {
+            tabPane.classList.add('active');
           }
         });
       });
       
-      // Add event listeners for forms and buttons
+      // Add the modal to the document body
       document.body.appendChild(modalElement);
       
-      // Add event listeners after the modal is added to the DOM
+      // Add event listeners once the modal is in the DOM
+      setupModalEventListeners();
+    }
+    
+    /**
+     * Set up event listeners for elements inside the modal
+     */
+    function setupModalEventListeners() {
+      // Wait for next tick to ensure DOM is fully updated
       setTimeout(() => {
-        modalElement.querySelector('#refresh-statistics')?.addEventListener('click', loadStatistics);
-        modalElement.querySelector('#refresh-entries')?.addEventListener('click', loadEntries);
-        modalElement.querySelector('#type-filter')?.addEventListener('change', filterEntries);
-        modalElement.querySelector('#category-filter')?.addEventListener('change', filterEntries);
-        modalElement.querySelector('#add-entry-form')?.addEventListener('submit', handleAddEntry);
+        const refreshStatsButton = modalElement.querySelector('#refresh-statistics');
+        if (refreshStatsButton) {
+          refreshStatsButton.addEventListener('click', loadStatistics);
+        }
+        
+        const refreshEntriesButton = modalElement.querySelector('#refresh-entries');
+        if (refreshEntriesButton) {
+          refreshEntriesButton.addEventListener('click', loadEntries);
+        }
+        
+        const typeFilter = modalElement.querySelector('#type-filter');
+        if (typeFilter) {
+          typeFilter.addEventListener('change', filterEntries);
+        }
+        
+        const categoryFilter = modalElement.querySelector('#category-filter');
+        if (categoryFilter) {
+          categoryFilter.addEventListener('change', filterEntries);
+        }
+        
+        const addEntryForm = modalElement.querySelector('#add-entry-form');
+        if (addEntryForm) {
+          addEntryForm.addEventListener('submit', handleAddEntry);
+        }
+        
+        // Set up tab click handlers to load data
+        const entriesTab = modalElement.querySelector('.tab[data-tab="entries"]');
+        if (entriesTab) {
+          entriesTab.addEventListener('click', function() {
+            setTimeout(loadEntries, 50); // Delay to ensure DOM is updated
+          });
+        }
+        
+        const statsTab = modalElement.querySelector('.tab[data-tab="stats"]');
+        if (statsTab) {
+          statsTab.addEventListener('click', function() {
+            setTimeout(loadStatistics, 50); // Delay to ensure DOM is updated
+          });
+        }
       }, 0);
     }
     
@@ -251,23 +294,35 @@ const DevTestPanelManager = (function() {
      * Opens the dev test panel modal
      */
     function openModal() {
+      if (!modalElement) {
+        console.error('Modal element not initialized');
+        return;
+      }
+      
       modalElement.style.display = 'flex';
       
-      // Load data if not already loaded
-      if (!statistics.totalFiles) {
-        loadStatistics();
-      }
-      
-      if (entries.length === 0) {
-        loadEntries();
-      }
+      // Wait for modal to be visible before accessing elements
+      setTimeout(() => {
+        // Load data based on active tab
+        const activeTab = modalElement.querySelector('.tab.active');
+        if (activeTab) {
+          const tabName = activeTab.dataset.tab;
+          if (tabName === 'stats') {
+            loadStatistics();
+          } else if (tabName === 'entries') {
+            loadEntries();
+          }
+        }
+      }, 100); // Longer delay to ensure modal is fully rendered
     }
     
     /**
      * Closes the modal
      */
     function closeModal() {
-      modalElement.style.display = 'none';
+      if (modalElement) {
+        modalElement.style.display = 'none';
+      }
     }
     
     /**
@@ -275,30 +330,54 @@ const DevTestPanelManager = (function() {
      */
     async function loadStatistics() {
       try {
-        const statisticsContainer = document.getElementById('statistics-container');
-        statisticsContainer.style.display = 'none';
+        // Find DOM elements safely
+        const statsTab = document.getElementById('stats-tab');
+        if (!statsTab) {
+          console.error('Stats tab not found in DOM');
+          return;
+        }
         
-        const loadingIndicator = document.querySelector('#stats-tab .loading-indicator');
+        // Find child elements safely
+        const statisticsContainer = statsTab.querySelector('#statistics-container');
+        const loadingIndicator = statsTab.querySelector('.loading-indicator');
+        
+        if (!statisticsContainer || !loadingIndicator) {
+          console.error('Cannot find statistics container or loading indicator');
+          return;
+        }
+        
+        // Show loading indicator, hide container
+        statisticsContainer.style.display = 'none';
         loadingIndicator.style.display = 'block';
         
+        // Fetch statistics
         const response = await fetch('/api/dev-test/statistics');
         statistics = await response.json();
         
         renderStatistics();
         
+        // Hide loading indicator, show container
         loadingIndicator.style.display = 'none';
         statisticsContainer.style.display = 'block';
       } catch (error) {
         console.error('Error loading statistics:', error);
-        const statisticsContainer = document.getElementById('statistics-container');
-        statisticsContainer.innerHTML = `
+        
+        // Find statsTab safely
+        const statsTab = document.getElementById('stats-tab');
+        if (!statsTab) return;
+        
+        // Handle error
+        statsTab.innerHTML = `
           <div class="error-message">
             Error loading statistics: ${error.message}
             <button id="retry-statistics" class="btn btn-primary">Retry</button>
           </div>
         `;
         
-        document.getElementById('retry-statistics')?.addEventListener('click', loadStatistics);
+        const retryButton = document.getElementById('retry-statistics');
+        if (retryButton) {
+          retryButton.addEventListener('click', loadStatistics);
+        }
       }
     }
     
@@ -306,8 +385,21 @@ const DevTestPanelManager = (function() {
      * Renders the statistics in the UI
      */
     function renderStatistics() {
-      // Render summary
+      // Find DOM elements safely
       const statsSummary = document.getElementById('stats-summary');
+      if (!statsSummary) {
+        console.error('Cannot find stats-summary element');
+        return;
+      }
+      
+      // Ensure statistics data exists
+      if (!statistics || !statistics.totalFiles) {
+        console.error('Statistics data is missing or incomplete');
+        statsSummary.innerHTML = '<div class="error-message">Invalid statistics data</div>';
+        return;
+      }
+      
+      // Render summary
       statsSummary.innerHTML = `
         <div class="stat-item">
           <div class="stat-value">${statistics.totalFiles}</div>
@@ -327,9 +419,26 @@ const DevTestPanelManager = (function() {
         </div>
       `;
       
-      // Render files table
-      const filesTable = document.getElementById('files-table').querySelector('tbody');
-      filesTable.innerHTML = '';
+      // Find and render files table safely
+      const filesTable = document.getElementById('files-table');
+      if (!filesTable) {
+        console.error('Cannot find files-table element');
+        return;
+      }
+      
+      const tableBody = filesTable.querySelector('tbody');
+      if (!tableBody) {
+        console.error('Cannot find table body element');
+        return;
+      }
+      
+      tableBody.innerHTML = '';
+      
+      // Ensure files array exists
+      if (!statistics.files || !Array.isArray(statistics.files)) {
+        console.error('Files data is missing or not an array');
+        return;
+      }
       
       // Sort files by function count and take top 20
       const topFiles = [...statistics.files]
@@ -344,35 +453,48 @@ const DevTestPanelManager = (function() {
           <td>${file.variables}</td>
           <td>${file.lines}</td>
         `;
-        filesTable.appendChild(row);
+        tableBody.appendChild(row);
       });
       
-      // Render chart
-      renderStatisticsChart(topFiles);
+      // Render chart with a delay to ensure canvas is ready
+      setTimeout(() => renderStatisticsChart(topFiles), 50);
     }
     
     /**
      * Renders a chart of file statistics
      */
     function renderStatisticsChart(files) {
+      // Find canvas safely
+      const canvas = document.getElementById('stats-canvas');
+      if (!canvas) {
+        console.error('Cannot find stats-canvas element');
+        return;
+      }
+      
       // Check if Chart.js is available
       if (typeof Chart === 'undefined') {
         // Load Chart.js dynamically if not already available
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = () => createStatisticsChart(files);
+        script.onload = () => createStatisticsChart(files, canvas);
         document.head.appendChild(script);
       } else {
-        createStatisticsChart(files);
+        createStatisticsChart(files, canvas);
       }
     }
     
     /**
      * Creates the statistics chart
      */
-    function createStatisticsChart(files) {
-      const canvas = document.getElementById('stats-canvas');
+    function createStatisticsChart(files, canvas) {
       if (!canvas) return;
+      
+      // Check if canvas parent exists
+      const canvasParent = canvas.parentNode;
+      if (!canvasParent) {
+        console.error('Canvas parent node is null');
+        return;
+      }
       
       // Prepare data for chart
       const labels = files.map(file => {
@@ -392,8 +514,8 @@ const DevTestPanelManager = (function() {
       const variableColor = 'rgba(255, 99, 132, 0.7)';
       
       // Set canvas size
-      canvas.parentNode.style.height = '400px';
-      canvas.parentNode.style.width = '100%';
+      canvasParent.style.height = '400px';
+      canvasParent.style.width = '100%';
       
       // Destroy previous chart if exists
       if (window.devTestStatChart) {
@@ -457,17 +579,29 @@ const DevTestPanelManager = (function() {
      */
     async function loadEntries() {
       try {
-        const entriesList = document.getElementById('entries-list');
+        // Find entries list element safely
+        const entriesTab = document.getElementById('entries-tab');
+        if (!entriesTab) {
+          console.error('Entries tab not found in DOM');
+          return;
+        }
+        
+        const entriesList = entriesTab.querySelector('#entries-list');
+        if (!entriesList) {
+          console.error('Cannot find entries-list element in the DOM');
+          return;
+        }
+        
         entriesList.innerHTML = '<div class="loading-indicator">Loading entries...</div>';
         
         // Get type and category filters
-        const typeFilter = document.getElementById('type-filter')?.value;
-        const categoryFilter = document.getElementById('category-filter')?.value;
+        const typeFilter = document.getElementById('type-filter');
+        const categoryFilter = document.getElementById('category-filter');
         
         // Build query string
         let queryParams = new URLSearchParams();
-        if (typeFilter) queryParams.append('type', typeFilter);
-        if (categoryFilter) queryParams.append('category', categoryFilter);
+        if (typeFilter && typeFilter.value) queryParams.append('type', typeFilter.value);
+        if (categoryFilter && categoryFilter.value) queryParams.append('category', categoryFilter.value);
         
         const response = await fetch(`/api/dev-test/entries?${queryParams}`);
         entries = await response.json();
@@ -476,7 +610,14 @@ const DevTestPanelManager = (function() {
         updateCategoryFilter();
       } catch (error) {
         console.error('Error loading entries:', error);
-        const entriesList = document.getElementById('entries-list');
+        
+        // Find entries list safely
+        const entriesTab = document.getElementById('entries-tab');
+        if (!entriesTab) return;
+        
+        const entriesList = entriesTab.querySelector('#entries-list');
+        if (!entriesList) return;
+        
         entriesList.innerHTML = `
           <div class="error-message">
             Error loading entries: ${error.message}
@@ -484,7 +625,10 @@ const DevTestPanelManager = (function() {
           </div>
         `;
         
-        document.getElementById('retry-entries')?.addEventListener('click', loadEntries);
+        const retryButton = document.getElementById('retry-entries');
+        if (retryButton) {
+          retryButton.addEventListener('click', loadEntries);
+        }
       }
     }
     
@@ -653,341 +797,341 @@ const DevTestPanelManager = (function() {
       });
     }
 
-  /**
-   * Filters entries based on selected type and category
-   */
-  function filterEntries() {
-    loadEntries();
-  }
-  
-  /**
-   * Handles adding a new entry
-   */
-  async function handleAddEntry(e) {
-    e.preventDefault();
+    /**
+     * Filters entries based on selected type and category
+     */
+    function filterEntries() {
+      loadEntries();
+    }
     
-    try {
-      const typeInput = document.getElementById('entry-type');
-      const nameInput = document.getElementById('entry-name');
-      const categoryInput = document.getElementById('entry-category');
-      const descriptionInput = document.getElementById('entry-description');
-      const testDataInput = document.getElementById('entry-test-data');
+    /**
+     * Handles adding a new entry
+     */
+    async function handleAddEntry(e) {
+      e.preventDefault();
       
-      // Validate required fields
-      if (!typeInput.value || !nameInput.value) {
-        alert('Type and name are required fields');
-        return;
-      }
-      
-      // Validate JSON test data
-      let testData = null;
-      if (testDataInput.value) {
-        try {
-          testData = JSON.parse(testDataInput.value);
-          // Re-stringify to ensure proper formatting
-          testDataInput.value = JSON.stringify(testData, null, 2);
-        } catch (error) {
-          alert(`Invalid JSON in test data: ${error.message}`);
+      try {
+        const typeInput = document.getElementById('entry-type');
+        const nameInput = document.getElementById('entry-name');
+        const categoryInput = document.getElementById('entry-category');
+        const descriptionInput = document.getElementById('entry-description');
+        const testDataInput = document.getElementById('entry-test-data');
+        
+        // Validate required fields
+        if (!typeInput.value || !nameInput.value) {
+          alert('Type and name are required fields');
           return;
         }
-      }
-      
-      // Prepare entry data
-      const entryData = {
-        type: typeInput.value,
-        name: nameInput.value,
-        category: categoryInput.value,
-        description: descriptionInput.value,
-        test_data: testDataInput.value
-      };
-      
-      // Send request to create entry
-      const response = await fetch('/api/dev-test/entries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(entryData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create entry');
-      }
-      
-      // Reset form
-      document.getElementById('add-entry-form').reset();
-      
-      // Reload entries
-      loadEntries();
-      
-      // Switch to entries tab
-      document.querySelector('.tab[data-tab="entries"]').click();
-      
-      // Show success message
-      alert('Entry created successfully');
-      
-    } catch (error) {
-      console.error('Error creating entry:', error);
-      alert(`Error creating entry: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Runs a test for an entry
-   */
-  async function runTest(entryId) {
-    try {
-      // Get the entry element
-      const entryElement = document.querySelector(`.entry-item[data-id="${entryId}"]`);
-      if (!entryElement) return;
-      
-      // Update UI to show running state
-      entryElement.classList.add('running');
-      const statusBadge = entryElement.querySelector('.status-badge');
-      if (statusBadge) {
-        statusBadge.className = 'status-badge status-running';
-        statusBadge.textContent = 'running';
-      }
-      
-      // Expand the entry to show results
-      const entryContent = entryElement.querySelector('.entry-content');
-      if (entryContent) {
-        entryContent.style.display = 'block';
-      }
-      entryElement.classList.add('expanded');
-      
-      // Run the test
-      const response = await fetch(`/api/dev-test/entries/${entryId}/run`, {
-        method: 'POST'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Test execution failed');
-      }
-      
-      const result = await response.json();
-      
-      // Update entry with results
-      await loadEntries();
-      
-      // Find and expand the updated entry
-      const updatedEntry = document.querySelector(`.entry-item[data-id="${entryId}"]`);
-      if (updatedEntry) {
-        updatedEntry.classList.add('expanded');
-        const updatedContent = updatedEntry.querySelector('.entry-content');
-        if (updatedContent) {
-          updatedContent.style.display = 'block';
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error running test:', error);
-      alert(`Error running test: ${error.message}`);
-      
-      // Reset the entry to its previous state
-      loadEntries();
-    }
-  }
-  
-  /**
-   * Edits an entry
-   */
-  async function editEntry(entryId) {
-    try {
-      // Get the entry from our cached list
-      const entry = entries.find(e => e.id === entryId);
-      if (!entry) {
-        throw new Error('Entry not found');
-      }
-      
-      // Create edit modal
-      const editModal = document.createElement('div');
-      editModal.className = 'modal-overlay';
-      editModal.style.display = 'flex';
-      
-      // Create modal content
-      const modalContent = document.createElement('div');
-      modalContent.className = 'modal edit-entry-modal';
-      
-      // Create modal header
-      const modalHeader = document.createElement('div');
-      modalHeader.className = 'modal-header';
-      
-      const modalTitle = document.createElement('h2');
-      modalTitle.className = 'modal-title';
-      modalTitle.textContent = 'Edit Test Entry';
-      
-      const closeButton = document.createElement('button');
-      closeButton.className = 'modal-close';
-      closeButton.innerHTML = '&times;';
-      closeButton.addEventListener('click', () => {
-        document.body.removeChild(editModal);
-      });
-      
-      modalHeader.appendChild(modalTitle);
-      modalHeader.appendChild(closeButton);
-      
-      // Create modal body
-      const modalBody = document.createElement('div');
-      modalBody.className = 'modal-body';
-      
-      modalBody.innerHTML = `
-        <form id="edit-entry-form" class="dev-test-form">
-          <div class="form-group">
-            <label for="edit-entry-type">Type:</label>
-            <select id="edit-entry-type" required>
-              <option value="function" ${entry.type === 'function' ? 'selected' : ''}>Function</option>
-              <option value="api" ${entry.type === 'api' ? 'selected' : ''}>API</option>
-              <option value="variable" ${entry.type === 'variable' ? 'selected' : ''}>Variable</option>
-              <option value="parameter" ${entry.type === 'parameter' ? 'selected' : ''}>Parameter</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="edit-entry-name">Name:</label>
-            <input type="text" id="edit-entry-name" required value="${entry.name || ''}">
-          </div>
-          <div class="form-group">
-            <label for="edit-entry-category">Category:</label>
-            <input type="text" id="edit-entry-category" value="${entry.category || ''}">
-          </div>
-          <div class="form-group">
-            <label for="edit-entry-description">Description:</label>
-            <textarea id="edit-entry-description" rows="3">${entry.description || ''}</textarea>
-          </div>
-          <div class="form-group">
-            <label for="edit-entry-test-data">Test Data (JSON):</label>
-            <textarea id="edit-entry-test-data" rows="5">${entry.test_data || ''}</textarea>
-          </div>
-          <div class="form-group">
-            <label for="edit-entry-status">Status:</label>
-            <select id="edit-entry-status">
-              <option value="pending" ${entry.status === 'pending' || !entry.status ? 'selected' : ''}>Pending</option>
-              <option value="passed" ${entry.status === 'passed' ? 'selected' : ''}>Passed</option>
-              <option value="failed" ${entry.status === 'failed' ? 'selected' : ''}>Failed</option>
-              <option value="error" ${entry.status === 'error' ? 'selected' : ''}>Error</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-            <button type="button" class="cancel-button btn btn-secondary">Cancel</button>
-          </div>
-        </form>
-      `;
-      
-      // Assemble modal
-      modalContent.appendChild(modalHeader);
-      modalContent.appendChild(modalBody);
-      editModal.appendChild(modalContent);
-      
-      // Add event listeners
-      const form = modalContent.querySelector('#edit-entry-form');
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
         
-        try {
-          // Get form data
-          const type = document.getElementById('edit-entry-type').value;
-          const name = document.getElementById('edit-entry-name').value;
-          const category = document.getElementById('edit-entry-category').value;
-          const description = document.getElementById('edit-entry-description').value;
-          const testData = document.getElementById('edit-entry-test-data').value;
-          const status = document.getElementById('edit-entry-status').value;
-          
-          // Validate JSON test data
-          if (testData) {
-            try {
-              JSON.parse(testData);
-            } catch (error) {
-              alert(`Invalid JSON in test data: ${error.message}`);
-              return;
-            }
+        // Validate JSON test data
+        let testData = null;
+        if (testDataInput.value) {
+          try {
+            testData = JSON.parse(testDataInput.value);
+            // Re-stringify to ensure proper formatting
+            testDataInput.value = JSON.stringify(testData, null, 2);
+          } catch (error) {
+            alert(`Invalid JSON in test data: ${error.message}`);
+            return;
           }
-          
-          // Send update request
-          const response = await fetch(`/api/dev-test/entries/${entryId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              type,
-              name,
-              category,
-              description,
-              test_data: testData,
-              status
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to update entry');
-          }
-          
-          // Close modal
-          document.body.removeChild(editModal);
-          
-          // Reload entries
-          loadEntries();
-          
-        } catch (error) {
-          console.error('Error updating entry:', error);
-          alert(`Error updating entry: ${error.message}`);
         }
-      });
-      
-      // Cancel button handler
-      const cancelButton = modalContent.querySelector('.cancel-button');
-      cancelButton.addEventListener('click', () => {
-        document.body.removeChild(editModal);
-      });
-      
-      // Add the modal to the body
-      document.body.appendChild(editModal);
-      
-    } catch (error) {
-      console.error('Error editing entry:', error);
-      alert(`Error editing entry: ${error.message}`);
-    }
-  }
-  
-  /**
-   * Deletes an entry
-   */
-  async function deleteEntry(entryId) {
-    try {
-      // Confirm deletion
-      if (!confirm('Are you sure you want to delete this entry?')) {
-        return;
+        
+        // Prepare entry data
+        const entryData = {
+          type: typeInput.value,
+          name: nameInput.value,
+          category: categoryInput.value,
+          description: descriptionInput.value,
+          test_data: testDataInput.value
+        };
+        
+        // Send request to create entry
+        const response = await fetch('/api/dev-test/entries', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(entryData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create entry');
+        }
+        
+        // Reset form
+        document.getElementById('add-entry-form').reset();
+        
+        // Reload entries
+        loadEntries();
+        
+        // Switch to entries tab
+        document.querySelector('.tab[data-tab="entries"]').click();
+        
+        // Show success message
+        alert('Entry created successfully');
+        
+      } catch (error) {
+        console.error('Error creating entry:', error);
+        alert(`Error creating entry: ${error.message}`);
       }
-      
-      // Send delete request
-      const response = await fetch(`/api/dev-test/entries/${entryId}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete entry');
-      }
-      
-      // Reload entries
-      loadEntries();
-      
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-      alert(`Error deleting entry: ${error.message}`);
     }
-  }
-  
-  // Public API
-  return {
-    initialize,
-    openModal,
-    loadStatistics,
-    loadEntries
-  };
+    
+    /**
+     * Runs a test for an entry
+     */
+    async function runTest(entryId) {
+      try {
+        // Get the entry element
+        const entryElement = document.querySelector(`.entry-item[data-id="${entryId}"]`);
+        if (!entryElement) return;
+        
+        // Update UI to show running state
+        entryElement.classList.add('running');
+        const statusBadge = entryElement.querySelector('.status-badge');
+        if (statusBadge) {
+          statusBadge.className = 'status-badge status-running';
+          statusBadge.textContent = 'running';
+        }
+        
+        // Expand the entry to show results
+        const entryContent = entryElement.querySelector('.entry-content');
+        if (entryContent) {
+          entryContent.style.display = 'block';
+        }
+        entryElement.classList.add('expanded');
+        
+        // Run the test
+        const response = await fetch(`/api/dev-test/entries/${entryId}/run`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Test execution failed');
+        }
+        
+        const result = await response.json();
+        
+        // Update entry with results
+        await loadEntries();
+        
+        // Find and expand the updated entry
+        const updatedEntry = document.querySelector(`.entry-item[data-id="${entryId}"]`);
+        if (updatedEntry) {
+          updatedEntry.classList.add('expanded');
+          const updatedContent = updatedEntry.querySelector('.entry-content');
+          if (updatedContent) {
+            updatedContent.style.display = 'block';
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error running test:', error);
+        alert(`Error running test: ${error.message}`);
+        
+        // Reset the entry to its previous state
+        loadEntries();
+      }
+    }
+    
+    /**
+     * Edits an entry
+     */
+    async function editEntry(entryId) {
+      try {
+        // Get the entry from our cached list
+        const entry = entries.find(e => e.id === entryId);
+        if (!entry) {
+          throw new Error('Entry not found');
+        }
+        
+        // Create edit modal
+        const editModal = document.createElement('div');
+        editModal.className = 'modal-overlay';
+        editModal.style.display = 'flex';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal edit-entry-modal';
+        
+        // Create modal header
+        const modalHeader = document.createElement('div');
+        modalHeader.className = 'modal-header';
+        
+        const modalTitle = document.createElement('h2');
+        modalTitle.className = 'modal-title';
+        modalTitle.textContent = 'Edit Test Entry';
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'modal-close';
+        closeButton.innerHTML = '&times;';
+        closeButton.addEventListener('click', () => {
+          document.body.removeChild(editModal);
+        });
+        
+        modalHeader.appendChild(modalTitle);
+        modalHeader.appendChild(closeButton);
+        
+        // Create modal body
+        const modalBody = document.createElement('div');
+        modalBody.className = 'modal-body';
+        
+        modalBody.innerHTML = `
+          <form id="edit-entry-form" class="dev-test-form">
+            <div class="form-group">
+              <label for="edit-entry-type">Type:</label>
+              <select id="edit-entry-type" required>
+                <option value="function" ${entry.type === 'function' ? 'selected' : ''}>Function</option>
+                <option value="api" ${entry.type === 'api' ? 'selected' : ''}>API</option>
+                <option value="variable" ${entry.type === 'variable' ? 'selected' : ''}>Variable</option>
+                <option value="parameter" ${entry.type === 'parameter' ? 'selected' : ''}>Parameter</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-entry-name">Name:</label>
+              <input type="text" id="edit-entry-name" required value="${entry.name || ''}">
+            </div>
+            <div class="form-group">
+              <label for="edit-entry-category">Category:</label>
+              <input type="text" id="edit-entry-category" value="${entry.category || ''}">
+            </div>
+            <div class="form-group">
+              <label for="edit-entry-description">Description:</label>
+              <textarea id="edit-entry-description" rows="3">${entry.description || ''}</textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-entry-test-data">Test Data (JSON):</label>
+              <textarea id="edit-entry-test-data" rows="5">${entry.test_data || ''}</textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-entry-status">Status:</label>
+              <select id="edit-entry-status">
+                <option value="pending" ${entry.status === 'pending' || !entry.status ? 'selected' : ''}>Pending</option>
+                <option value="passed" ${entry.status === 'passed' ? 'selected' : ''}>Passed</option>
+                <option value="failed" ${entry.status === 'failed' ? 'selected' : ''}>Failed</option>
+                <option value="error" ${entry.status === 'error' ? 'selected' : ''}>Error</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="button" class="cancel-button btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        `;
+        
+        // Assemble modal
+        modalContent.appendChild(modalHeader);
+        modalContent.appendChild(modalBody);
+        editModal.appendChild(modalContent);
+        
+        // Add event listeners
+        const form = modalContent.querySelector('#edit-entry-form');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            // Get form data
+            const type = document.getElementById('edit-entry-type').value;
+            const name = document.getElementById('edit-entry-name').value;
+            const category = document.getElementById('edit-entry-category').value;
+            const description = document.getElementById('edit-entry-description').value;
+            const testData = document.getElementById('edit-entry-test-data').value;
+            const status = document.getElementById('edit-entry-status').value;
+            
+            // Validate JSON test data
+            if (testData) {
+              try {
+                JSON.parse(testData);
+              } catch (error) {
+                alert(`Invalid JSON in test data: ${error.message}`);
+                return;
+              }
+            }
+            
+            // Send update request
+            const response = await fetch(`/api/dev-test/entries/${entryId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                type,
+                name,
+                category,
+                description,
+                test_data: testData,
+                status
+              })
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to update entry');
+            }
+            
+            // Close modal
+            document.body.removeChild(editModal);
+            
+            // Reload entries
+            loadEntries();
+            
+          } catch (error) {
+            console.error('Error updating entry:', error);
+            alert(`Error updating entry: ${error.message}`);
+          }
+        });
+        
+        // Cancel button handler
+        const cancelButton = modalContent.querySelector('.cancel-button');
+        cancelButton.addEventListener('click', () => {
+          document.body.removeChild(editModal);
+        });
+        
+        // Add the modal to the body
+        document.body.appendChild(editModal);
+        
+      } catch (error) {
+        console.error('Error editing entry:', error);
+        alert(`Error editing entry: ${error.message}`);
+      }
+    }
+    
+    /**
+     * Deletes an entry
+     */
+    async function deleteEntry(entryId) {
+      try {
+        // Confirm deletion
+        if (!confirm('Are you sure you want to delete this entry?')) {
+          return;
+        }
+        
+        // Send delete request
+        const response = await fetch(`/api/dev-test/entries/${entryId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete entry');
+        }
+        
+        // Reload entries
+        loadEntries();
+        
+      } catch (error) {
+        console.error('Error deleting entry:', error);
+        alert(`Error deleting entry: ${error.message}`);
+      }
+    }
+    
+    // Public API
+    return {
+      initialize,
+      openModal,
+      loadStatistics,
+      loadEntries
+    };
 })();
 
 // Export the module
