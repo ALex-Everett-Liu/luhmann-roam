@@ -252,14 +252,24 @@ exports.runTest = async function(id, testData = null) {
 
 /**
  * Get statistics about code structure
+ * @param {Array<string>} includeFolders - Folders to include in analysis
+ * @param {Array<string>} excludeFolders - Folders to exclude from analysis
  */
-exports.getCodeStatistics = async function() {
-  // This is a simplified version that could be expanded
+exports.getCodeStatistics = async function(includeFolders = [], excludeFolders = []) {
   const baseDir = path.join(__dirname, '..');
   
   try {
+    // Convert include/exclude patterns to absolute paths
+    const includePatterns = includeFolders.map(folder => 
+      path.isAbsolute(folder) ? folder : path.join(baseDir, folder)
+    );
+    
+    const excludePatterns = excludeFolders.map(folder => 
+      path.isAbsolute(folder) ? folder : path.join(baseDir, folder)
+    );
+    
     // Get list of JavaScript files
-    const jsFiles = await findFiles(baseDir, '.js');
+    const jsFiles = await findFiles(baseDir, '.js', includePatterns, excludePatterns);
     
     // Analyze files
     let totalFunctions = 0;
@@ -307,21 +317,39 @@ exports.getCodeStatistics = async function() {
 
 /**
  * Helper function to find files recursively
+ * @param {string} dir - Directory to search
+ * @param {string} ext - File extension to find
+ * @param {Array<string>} includePatterns - Paths to include
+ * @param {Array<string>} excludePatterns - Paths to exclude
  */
-async function findFiles(dir, ext) {
+async function findFiles(dir, ext, includePatterns = [], excludePatterns = []) {
   try {
+    // If directory is explicitly excluded, skip it
+    if (excludePatterns.some(pattern => dir.startsWith(pattern))) {
+      return [];
+    }
+    
+    // If include patterns are specified and this directory doesn't match any, skip it
+    // unless it's a parent of an included path
+    if (includePatterns.length > 0 && 
+        !includePatterns.some(pattern => 
+          dir.startsWith(pattern) || pattern.startsWith(dir)
+        )) {
+      return [];
+    }
+    
     const entries = await fs.promises.readdir(dir, { withFileTypes: true });
     
     // Process each file
     const files = await Promise.all(entries.map(async entry => {
       const fullPath = path.join(dir, entry.name);
       
-      // Skip node_modules and .git directories
+      // Skip node_modules and .git directories (always exclude these)
       if (entry.isDirectory()) {
         if (entry.name === 'node_modules' || entry.name === '.git') {
           return [];
         }
-        return findFiles(fullPath, ext);
+        return findFiles(fullPath, ext, includePatterns, excludePatterns);
       } else if (entry.name.endsWith(ext)) {
         return [fullPath];
       }

@@ -8,6 +8,8 @@ const DevTestPanelManager = (function() {
     let entries = [];
     let statistics = {};
     let initialized = false;
+    let includeFolders = [];
+    let excludeFolders = [];
     
     /**
      * Initializes the dev test panel
@@ -121,6 +123,27 @@ const DevTestPanelManager = (function() {
             <h3>Code Statistics</h3>
             <button id="refresh-statistics" class="btn btn-primary">Refresh</button>
           </div>
+          
+          <div class="folder-filters">
+            <div class="filter-group">
+              <label>Include Folders:</label>
+              <div class="tag-input-container">
+                <input type="text" id="include-folder" placeholder="Add folder (e.g. services)">
+                <button id="add-include">Add</button>
+              </div>
+              <div id="include-folder-tags" class="folder-tags"></div>
+            </div>
+            
+            <div class="filter-group">
+              <label>Exclude Folders:</label>
+              <div class="tag-input-container">
+                <input type="text" id="exclude-folder" placeholder="Add folder to exclude">
+                <button id="add-exclude">Add</button>
+              </div>
+              <div id="exclude-folder-tags" class="folder-tags"></div>
+            </div>
+          </div>
+          
           <div id="stats-summary" class="stats-summary"></div>
           <div id="stats-chart" class="chart-container">
             <canvas id="stats-canvas"></canvas>
@@ -309,6 +332,38 @@ const DevTestPanelManager = (function() {
             }
           });
         }
+        
+        // Add folder filter functionality
+        const addIncludeButton = modalElement.querySelector('#add-include');
+        if (addIncludeButton) {
+          addIncludeButton.addEventListener('click', () => addFolderFilter('include'));
+        }
+        
+        const addExcludeButton = modalElement.querySelector('#add-exclude');
+        if (addExcludeButton) {
+          addExcludeButton.addEventListener('click', () => addFolderFilter('exclude'));
+        }
+        
+        // Handle Enter key in folder input fields
+        const includeFolderInput = modalElement.querySelector('#include-folder');
+        if (includeFolderInput) {
+          includeFolderInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addFolderFilter('include');
+            }
+          });
+        }
+        
+        const excludeFolderInput = modalElement.querySelector('#exclude-folder');
+        if (excludeFolderInput) {
+          excludeFolderInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addFolderFilter('exclude');
+            }
+          });
+        }
       }, 0);
     }
     
@@ -381,8 +436,19 @@ const DevTestPanelManager = (function() {
         statisticsContainer.style.display = 'none';
         loadingIndicator.style.display = 'block';
         
-        // Fetch statistics
-        const response = await fetch('/api/dev-test/statistics');
+        // Build query parameters
+        const queryParams = new URLSearchParams();
+        
+        if (includeFolders.length > 0) {
+          queryParams.append('include', includeFolders.join(','));
+        }
+        
+        if (excludeFolders.length > 0) {
+          queryParams.append('exclude', excludeFolders.join(','));
+        }
+        
+        // Fetch statistics with filters
+        const response = await fetch(`/api/dev-test/statistics?${queryParams}`);
         statistics = await response.json();
         
         renderStatistics();
@@ -1234,6 +1300,88 @@ const DevTestPanelManager = (function() {
         console.error('Error deleting entry:', error);
         alert(`Error deleting entry: ${error.message}`);
       }
+    }
+    
+    /**
+     * Adds a folder to the include or exclude list
+     */
+    function addFolderFilter(type) {
+      const inputElement = document.getElementById(`${type}-folder`);
+      if (!inputElement) return;
+      
+      const folder = inputElement.value.trim();
+      if (!folder) return;
+      
+      // Determine which list to update
+      const folderList = type === 'include' ? includeFolders : excludeFolders;
+      
+      // Check if already in the list
+      if (folderList.includes(folder)) {
+        inputElement.value = '';
+        return;
+      }
+      
+      // Add to list
+      folderList.push(folder);
+      
+      // Update UI
+      renderFolderTags(type);
+      
+      // Clear input
+      inputElement.value = '';
+    }
+    
+    /**
+     * Removes a folder from the include or exclude list
+     */
+    function removeFolderFilter(type, folder) {
+      // Determine which list to update
+      const folderList = type === 'include' ? includeFolders : excludeFolders;
+      
+      // Remove from list
+      const index = folderList.indexOf(folder);
+      if (index !== -1) {
+        if (type === 'include') {
+          includeFolders.splice(index, 1);
+        } else {
+          excludeFolders.splice(index, 1);
+        }
+      }
+      
+      // Update UI
+      renderFolderTags(type);
+    }
+    
+    /**
+     * Renders the folder tags
+     */
+    function renderFolderTags(type) {
+      const tagsContainer = document.getElementById(`${type}-folder-tags`);
+      if (!tagsContainer) return;
+      
+      // Clear container
+      tagsContainer.innerHTML = '';
+      
+      // Get folder list
+      const folderList = type === 'include' ? includeFolders : excludeFolders;
+      
+      // Create tags
+      folderList.forEach(folder => {
+        const tag = document.createElement('div');
+        tag.className = 'folder-tag';
+        tag.innerHTML = `
+          <span>${folder}</span>
+          <button class="remove-tag" title="Remove folder">&times;</button>
+        `;
+        
+        // Add remove handler
+        const removeButton = tag.querySelector('.remove-tag');
+        if (removeButton) {
+          removeButton.addEventListener('click', () => removeFolderFilter(type, folder));
+        }
+        
+        tagsContainer.appendChild(tag);
+      });
     }
     
     // Public API

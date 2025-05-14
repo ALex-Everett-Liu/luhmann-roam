@@ -96,7 +96,11 @@ exports.runTest = async (req, res) => {
  */
 exports.getStatistics = async (req, res) => {
   try {
-    const statistics = await devTestService.getCodeStatistics();
+    // Get include and exclude folders from query parameters
+    const includeFolders = req.query.include ? req.query.include.split(',') : [];
+    const excludeFolders = req.query.exclude ? req.query.exclude.split(',') : [];
+    
+    const statistics = await devTestService.getCodeStatistics(includeFolders, excludeFolders);
     res.json(statistics);
   } catch (error) {
     console.error('Error getting code statistics:', error);
