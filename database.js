@@ -2,8 +2,6 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
 
-let isInitialized = false;
-
 // Create a database connection
 async function getDb(vaultName) {
   const dbName = vaultName || global.currentVault || 'main';
@@ -21,11 +19,20 @@ async function getDb(vaultName) {
 async function initializeDatabase(vaultName) {
   const db = await getDb(vaultName);
   
-  if (isInitialized) {
-    console.log('Database already initialized, skipping');
-    return db;
+  // Check if the database already has tables instead of using a global flag
+  try {
+    // Try to query the nodes table to see if it exists
+    await db.get('SELECT count(*) as count FROM sqlite_master WHERE type="table" AND name="nodes"');
+    
+    // If we get here, the database already has tables
+    console.log(`Database ${vaultName} already initialized, checking tables...`);
+  } catch (error) {
+    // If we get an error, the database doesn't have tables yet
+    console.log(`Initializing database for vault: ${vaultName}`);
   }
-
+  
+  // Always proceed with ensuring all tables exist (won't harm if they already do)
+  
   // Create nodes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS nodes (
@@ -355,8 +362,7 @@ async function initializeDatabase(vaultName) {
     console.log('Variable-specific columns may already exist or other error:', error.message);
   }
   
-  console.log('Database initialized');
-  isInitialized = true;
+  console.log(`Database for vault: ${vaultName} initialized`);
   return db;
 }
 

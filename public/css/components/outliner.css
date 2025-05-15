@@ -126,55 +126,69 @@ button:hover {
   opacity: 0.8;
 }
 
+/* Node actions tooltip - improved design */
 .node-actions {
   opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity 0.2s ease-in-out, transform 0.15s ease-out;
   position: absolute;
   right: 10px;
   top: 50%;
-  transform: translateY(-50%);
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transform: translateY(-50%) scale(0.95);
+  background-color: #fff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
   z-index: 100;
-  display: flex;
-  flex-wrap: wrap;
-  max-width: 150px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  max-width: 155px;
   pointer-events: none;
 }
 
 .node-content:hover .node-actions {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(-50%) scale(1);
 }
 
-/* Fix for hotkey hints positioning for node action buttons */
-.node-content:hover .hotkey-hint {
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
-/* Ensure hotkey hints are visible even when attached to node action buttons */
-.node-actions .hotkey-hint {
-  z-index: 10001;
-  position: absolute;
-}
-
-/* Make buttons in the tooltip smaller and more compact */
+/* Buttons in the node actions tooltip */
 .node-actions button {
-  padding: 4px;
-  margin: 2px;
-  font-size: 14px;
+  padding: 6px;
+  margin: 1px;
+  font-size: 16px;
   background-color: transparent;
   color: #555;
   border: none;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .node-actions button:hover {
-  background-color: #f0f0f0;
-  color: #000;
+  background-color: #f5f7fa;
+  color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+/* Dark theme support */
+body.dark-theme .node-actions {
+  background-color: var(--dark-surface-color);
+  border-color: var(--dark-border-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+}
+
+body.dark-theme .node-actions button {
+  color: var(--dark-text-secondary);
+}
+
+body.dark-theme .node-actions button:hover {
+  background-color: var(--dark-light-gray);
+  color: var(--primary-color);
 }
 
 .language-toggle {

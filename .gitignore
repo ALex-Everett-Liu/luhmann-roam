@@ -4,6 +4,7 @@ logs/
 *.db
 markdown/
 backups/
+vaults/
 public/attachment
 public/blog
 public/fonts

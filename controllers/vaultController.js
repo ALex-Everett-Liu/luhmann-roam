@@ -56,11 +56,8 @@ exports.createVault = async (req, res) => {
       fs.mkdirSync(vaultsDir);
     }
     
-    // Create a new database file for the vault
-    const dbConnection = await getDb(name);
-    
-    // Initialize the database schema
-    await initializeDatabase(dbConnection);
+    // FIX: Pass the vault name, not the connection object
+    await initializeDatabase(name);
     
     // Store vault metadata
     const metadataPath = path.join(vaultsDir, `${name}.json`);
