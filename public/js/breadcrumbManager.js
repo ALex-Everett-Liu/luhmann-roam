@@ -52,17 +52,30 @@ const BreadcrumbManager = (function() {
       return;
     }
     
-    currentFocusedNodeId = nodeId;
-    isFocusMode = true;
-    
-    // Update the breadcrumb trail
-    await updateBreadcrumbTrail(nodeId);
-    
-    // Hide all nodes except the focused node and its descendants
-    await filterToNodeAndDescendants(nodeId);
-    
-    // Highlight the focused node
-    highlightFocusedNode(nodeId);
+    try {
+      // Check if the node exists in the current vault
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      if (response.status === 404) {
+        console.log(`Node ${nodeId} not found in current vault, clearing focus`);
+        clearFocus();
+        return;
+      }
+      
+      currentFocusedNodeId = nodeId;
+      isFocusMode = true;
+      
+      // Update the breadcrumb trail
+      await updateBreadcrumbTrail(nodeId);
+      
+      // Hide all nodes except the focused node and its descendants
+      await filterToNodeAndDescendants(nodeId);
+      
+      // Highlight the focused node
+      highlightFocusedNode(nodeId);
+    } catch (error) {
+      console.error('Error focusing on node:', error);
+      clearFocus();
+    }
   }
   
   /**

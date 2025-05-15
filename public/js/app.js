@@ -40,23 +40,40 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isInitialLoading && defaultFocusNodeId && window.BreadcrumbManager) {
         console.log(`Loading with default focus on node: ${defaultFocusNodeId}`);
         
-        // Just get the focused node and its children
-        const focusNodeResponse = await fetch(`/api/nodes/${defaultFocusNodeId}?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ''}`);
-        const focusNode = await focusNodeResponse.json();
-        
-        // Empty the nodes array and just add this node
-        nodes = [focusNode];
-        
-        // Render the outliner with just this node
-        await renderOutliner();
-        
-        // Focus on this node after rendering
-        setTimeout(() => {
-          window.BreadcrumbManager.focusOnNode(defaultFocusNodeId);
-          isInitialLoading = false;
-        }, 100);
-        
-        return;
+        try {
+          // Try to get the focused node and its children
+          const focusNodeResponse = await fetch(`/api/nodes/${defaultFocusNodeId}?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ''}`);
+          
+          // Check if node exists in this vault
+          if (focusNodeResponse.status === 404) {
+            console.log(`Default focus node ${defaultFocusNodeId} not found in vault ${vault}, loading all nodes instead`);
+            // Load all nodes instead
+            const allNodesResponse = await fetch(`/api/nodes?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ''}`);
+            nodes = await allNodesResponse.json();
+            await renderOutliner();
+            isInitialLoading = false;
+            return;
+          }
+          
+          const focusNode = await focusNodeResponse.json();
+          
+          // Empty the nodes array and just add this node
+          nodes = [focusNode];
+          
+          // Render the outliner with just this node
+          await renderOutliner();
+          
+          // Focus on this node after rendering
+          setTimeout(() => {
+            window.BreadcrumbManager.focusOnNode(defaultFocusNodeId);
+            isInitialLoading = false;
+          }, 100);
+          
+          return;
+        } catch (error) {
+          console.error('Error loading default focus node, falling back to all nodes:', error);
+          // Fall back to loading all nodes
+        }
       }
       
       // Normal loading without focus
