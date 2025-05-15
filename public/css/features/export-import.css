@@ -23,75 +23,78 @@
     background-color: var(--error-color, #f44336);
   }
   
-  /* Modal overlay - separate element */
+  /* Modal Overlay */
   .database-export-overlay, .database-import-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+    z-index: var(--z-index-modal, 2000); /* Ensure it's high enough, but below modal */
+    display: none; /* Initially hidden */
   }
   
-  /* Modal styles */
+  /* Modal Container - Styled like plugin-manager-modal */
   #export-modal, #import-modal {
-    position: relative; /* Changed from fixed to relative */
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: calc(var(--z-index-modal, 2000) + 1); /* Above overlay */
     background-color: white;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    width: 90% !important; /* Force width with !important */
-    max-width: 500px !important; /* Force max-width with !important */
-    max-height: 80vh;
-    overflow-y: auto;
-    margin: 0 auto; /* Center the modal */
-    z-index: 1001; /* Higher than overlay */
-    box-sizing: border-box; /* Include padding in width calculation */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh; /* Control maximum height */
+    overflow: hidden; /* Important: scrolling handled by modal-content */
+    display: none; /* Initially hidden, JS toggles to 'flex' */
+    flex-direction: column; /* For internal layout of header, content, footer */
   }
   
-  /* Remove the pseudo-element overlay as we're using a separate element */
-  #export-modal::before, #import-modal::before {
-    display: none;
+  /* Modal Content Area - This will contain all inner elements and be scrollable */
+  #export-modal .modal-content, 
+  #import-modal .modal-content {
+    padding: 20px; /* Inner padding */
+    flex-grow: 1; /* Allow content to take available space */
+    overflow-y: auto; /* Enable vertical scrolling for content */
+    display: flex;
+    flex-direction: column;
+    background-color: white; /* Ensure solid background */
   }
   
-  #export-modal .modal-content, #import-modal .modal-content {
-    padding: 20px;
-    position: relative;
-    width: 100% !important; /* Force width with !important */
-    box-sizing: border-box; /* Include padding in width calculation */
-  }
-  
-  #export-modal .close-button, #import-modal .close-button {
-    position: absolute;
-    top: 10px;
-    right: 15px;
+  #export-modal .close-button, 
+  #import-modal .close-button {
+    position: absolute; /* Position relative to modal-content */
+    top: 15px; /* Adjust for padding */
+    right: 15px; /* Adjust for padding */
     font-size: 24px;
     font-weight: bold;
     cursor: pointer;
     color: #666;
     background: none;
     border: none;
-    z-index: 1002; /* Higher than modal */
+    line-height: 1;
+    padding: 0;
   }
-  
-  #export-modal .close-button:hover, #import-modal .close-button:hover {
+  #export-modal .close-button:hover, 
+  #import-modal .close-button:hover {
     color: #000;
   }
   
-  #export-modal h2, #import-modal h2 {
+  #export-modal h2, 
+  #import-modal h2 {
     margin-top: 0;
     margin-bottom: 20px;
     font-size: 20px;
     color: #333;
-    padding-right: 30px; /* Make room for close button */
+    padding-right: 20px; /* Space for close button if it overlaps */
   }
   
-  #export-modal .tables-list, #import-modal .tables-list {
+  #export-modal .tables-list { /* No #import-modal .tables-list needed */
     margin: 15px 0;
-    max-height: 300px;
+    max-height: 250px; /* Adjusted max-height */
     overflow-y: auto;
     border: 1px solid #ddd;
     padding: 10px;
@@ -99,62 +102,121 @@
     background-color: #f9f9f9;
   }
   
-  #export-modal .table-row, #import-modal .table-row {
+  #export-modal .table-row {
     padding: 8px 0;
     display: flex;
     align-items: center;
   }
-  
-  #export-modal .table-row input[type="checkbox"], #import-modal .table-row input[type="checkbox"] {
+  #export-modal .table-row input[type="checkbox"] {
     margin-right: 10px;
   }
   
-  #export-modal .button-row, #import-modal .button-row {
+  #export-modal .button-row {
     display: flex;
     gap: 10px;
     margin: 15px 0;
   }
+  /* Style buttons inside button-row specifically if needed */
+  #export-modal .button-row button {
+    flex-grow: 1; /* Make buttons share space */
+    padding: 8px 10px;
+  }
   
-  #export-modal .export-action-button, #import-modal .import-action-button {
-    padding: 8px 15px;
+  #export-modal .export-action-button, 
+  #import-modal .import-action-button {
+    padding: 10px 15px; /* Slightly larger padding */
     background-color: var(--primary-color);
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 15px;
+    margin-top: 20px; /* More space above action button */
     font-weight: bold;
-    width: 100%;
+    width: 100%; /* Full width */
+    box-sizing: border-box;
   }
-  
-  #export-modal .export-action-button:hover, #import-modal .import-action-button:hover {
+  #export-modal .export-action-button:hover, 
+  #import-modal .import-action-button:hover {
     background-color: var(--primary-hover-color);
   }
-  
-  #export-modal .export-action-button:disabled, #import-modal .import-action-button:disabled {
+  #export-modal .export-action-button:disabled, 
+  #import-modal .import-action-button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
   }
   
   #import-modal .import-options {
     margin: 15px 0;
+    display: flex;
+    flex-direction: column; /* Stack options vertically */
+    gap: 15px; /* Space between option rows */
   }
-  
   #import-modal .option-row {
-    margin: 10px 0;
+    margin: 0; /* Remove default margin */
     display: flex;
     align-items: center;
     gap: 10px;
   }
-  
   #import-modal #conflict-strategy {
-    padding: 5px;
+    padding: 8px; /* Better padding */
     border-radius: 4px;
     border: 1px solid #ddd;
+    flex-grow: 1; /* Allow select to take space */
+  }
+  #import-modal #json-file-input {
+    padding: 10px 0; /* Add some padding to file input area */
+    width: 100%;
+    border: 1px dashed #ccc; /* Visual cue for file input */
+    padding: 10px;
+    border-radius: 4px;
+    box-sizing: border-box;
+    background-color: #f9f9f9;
+    text-align: center;
   }
   
-  /* File input styling */
-  #import-modal #json-file-input {
-    padding: 10px 0;
-    width: 100%;
+  /* Dark theme adjustments */
+  body.dark-theme #export-modal,
+  body.dark-theme #import-modal {
+    background-color: var(--dark-surface-color, #1e1e1e);
+    color: var(--dark-text-color, #e0e0e0);
+  }
+  
+  body.dark-theme #export-modal .modal-content,
+  body.dark-theme #import-modal .modal-content {
+    background-color: var(--dark-surface-color, #1e1e1e); /* Match modal background */
+  }
+  
+  body.dark-theme #export-modal h2,
+  body.dark-theme #import-modal h2 {
+    color: var(--dark-text-color, #e0e0e0);
+  }
+  
+  body.dark-theme #export-modal .close-button,
+  body.dark-theme #import-modal .close-button {
+    color: var(--dark-text-secondary, #aaaaaa);
+  }
+  body.dark-theme #export-modal .close-button:hover,
+  body.dark-theme #import-modal .close-button:hover {
+    color: var(--dark-text-color, #e0e0e0);
+  }
+  
+  body.dark-theme #export-modal .tables-list {
+    background-color: var(--dark-light-gray, #2a2a2a);
+    border-color: var(--dark-border-color, #444444);
+  }
+  body.dark-theme #export-modal .table-row label,
+  body.dark-theme #import-modal .option-row label,
+  body.dark-theme #import-modal p {
+    color: var(--dark-text-secondary, #aaaaaa);
+  }
+  
+  body.dark-theme #import-modal #conflict-strategy {
+    background-color: var(--dark-elevated-surface, #272727);
+    color: var(--dark-text-color, #e0e0e0);
+    border-color: var(--dark-border-color, #444444);
+  }
+  body.dark-theme #import-modal #json-file-input {
+    background-color: var(--dark-elevated-surface, #272727);
+    border-color: var(--dark-border-color, #444444);
+    color: var(--dark-text-secondary, #aaaaaa);
   }
