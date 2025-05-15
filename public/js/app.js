@@ -937,6 +937,11 @@ document.addEventListener('DOMContentLoaded', () => {
     DevTestPanelManager.initialize();
   }
 
+  // Add this to the initialization section in app.js where other managers are initialized
+  if (window.DatabaseExportImportManager) {
+    DatabaseExportImportManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 

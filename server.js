@@ -22,6 +22,7 @@ const dcimRoutes = require('./routes/dcimRoutes');
 const sharp = require('sharp');
 const upload = require('./middleware/upload');
 const devTestRoutes = require('./routes/devTestRoutes');
+const databaseExportImportRoutes = require('./routes/databaseExportImportRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -734,6 +735,9 @@ app.use('/api/dcim', dcimRoutes);
 
 // Use the dev test routes
 app.use('/api/dev-test', devTestRoutes);
+
+// Use the database export/import routes
+app.use('/api/database', databaseExportImportRoutes);
 
 // Start the server
 app.listen(PORT, () => {
