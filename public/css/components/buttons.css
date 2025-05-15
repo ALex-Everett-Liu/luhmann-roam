@@ -108,3 +108,77 @@ button:hover {
 .default-focus-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
+
+/* Sidebar Button Styling - with specific scoping to avoid breaking other components */
+.sidebar > button, 
+.sidebar > .feature-toggle {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Primary action buttons */
+.sidebar > #add-root-node,
+.sidebar > #save-changes {
+  background-color: var(--primary-color);
+  color: white;
+  margin-bottom: 5px;
+}
+
+/* Secondary functional buttons */
+.sidebar > .feature-toggle {
+  background-color: #f5f7fa;
+  color: #333;
+  border: 1px solid #e0e3e8;
+  margin-bottom: 4px;
+}
+
+.sidebar > .feature-toggle:hover {
+  background-color: #e8edf5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Special buttons */
+.sidebar > .backup-button,
+.sidebar > #export-database, 
+.sidebar > #import-database {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+/* Node action buttons - focused styling just for the set default focus button */
+.default-focus-button {
+  background-color: transparent;
+  color: var(--secondary-color);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.default-focus-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme support */
+body.dark-theme .sidebar > button,
+body.dark-theme .sidebar > .feature-toggle {
+  background-color: var(--dark-light-gray);
+  color: var(--dark-text-color);
+  border-color: var(--dark-border-color);
+}
+
+body.dark-theme .sidebar > .feature-toggle:hover {
+  background-color: var(--dark-medium-gray);
+}
