@@ -98,8 +98,9 @@ exports.switchVault = async (req, res) => {
       return res.status(404).json({ error: 'Vault not found' });
     }
     
-    // Update current vault
+    // Update current vault in app.locals AND global for database access
     req.app.locals.currentVault = vault;
+    global.currentVault = vault;
     
     res.json({ 
       success: true, 

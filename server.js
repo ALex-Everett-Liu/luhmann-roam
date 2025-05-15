@@ -57,14 +57,16 @@ initializeDatabase()
     console.error('Error during initialization:', err);
   });
 
-// Add this middleware to provide the database connection to all routes
-app.use((req, res, next) => {
-  req.db = db;
-  next();
+// Add this middleware to create a fresh db connection for each request
+app.use(async (req, res, next) => {
+  try {
+    req.db = await getDb();  // This will use the current global.currentVault
+    next();
+  } catch (err) {
+    console.error('Error creating database connection:', err);
+    res.status(500).json({ error: 'Database connection error' });
+  }
 });
-
-// Make sure this middleware is placed BEFORE your routes are defined
-// but AFTER the database is initialized
 
 // Routes
 
@@ -75,7 +77,7 @@ app.use('/api/nodes', nodeRoutes);
 app.get('/api/nodes/:id/above', async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await req.db.get('SELECT * FROM nodes WHERE id = ?', id);
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -85,13 +87,13 @@ app.get('/api/nodes/:id/above', async (req, res) => {
     
     if (node.parent_id) {
       // If it has a parent, get siblings with position less than current node
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id = ? AND position < ? ORDER BY position DESC LIMIT 1',
         [node.parent_id, node.position]
       );
     } else {
       // If it's a root node, get the root node above it
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id IS NULL AND position < ? ORDER BY position DESC LIMIT 1',
         [node.position]
       );
@@ -111,7 +113,7 @@ app.get('/api/nodes/:id/above', async (req, res) => {
 app.post('/api/nodes/:id/indent', async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await req.db.get('SELECT * FROM nodes WHERE id = ?', id);
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -126,13 +128,13 @@ app.post('/api/nodes/:id/indent', async (req, res) => {
     
     if (node.parent_id) {
       // If it has a parent, get siblings with position less than current node
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id = ? AND position < ? ORDER BY position DESC LIMIT 1',
         [node.parent_id, node.position]
       );
     } else {
       // If it's a root node, get the root node above it
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id IS NULL AND position < ? ORDER BY position DESC LIMIT 1',
         [node.position]
       );
@@ -143,42 +145,42 @@ app.post('/api/nodes/:id/indent', async (req, res) => {
     }
     
     // Get children of the node above
-    const children = await db.all('SELECT * FROM nodes WHERE parent_id = ? ORDER BY position', nodeAbove.id);
+    const children = await req.db.all('SELECT * FROM nodes WHERE parent_id = ? ORDER BY position', nodeAbove.id);
     const maxPosition = children.length;
     
     // Start a transaction
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // Update positions of nodes in old parent
     if (node.parent_id) {
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position > ?',
         [node.parent_id, node.position]
       );
     } else {
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET position = position - 1 WHERE parent_id IS NULL AND position > ?',
         node.position
       );
     }
     
     // Update the node itself
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?',
       [nodeAbove.id, maxPosition, Date.now(), id]
     );
     
     // Ensure the parent is expanded
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET is_expanded = 1, updated_at = ? WHERE id = ?',
       [Date.now(), nodeAbove.id]
     );
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ success: true });
   } catch (error) {
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });
@@ -187,7 +189,7 @@ app.post('/api/nodes/:id/indent', async (req, res) => {
 app.post('/api/nodes/:id/outdent', async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await req.db.get('SELECT * FROM nodes WHERE id = ?', id);
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -199,13 +201,13 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
     }
     
     // Get the parent node
-    const parentNode = await db.get('SELECT * FROM nodes WHERE id = ?', node.parent_id);
+    const parentNode = await req.db.get('SELECT * FROM nodes WHERE id = ?', node.parent_id);
     
     // Start a transaction
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // Update positions of nodes in old parent
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position > ?',
       [node.parent_id, node.position]
     );
@@ -214,7 +216,7 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
     
     if (parentNode.parent_id) {
       // Parent has a parent, find parent's next sibling position
-      const parentSiblings = await db.all(
+      const parentSiblings = await req.db.all(
         'SELECT * FROM nodes WHERE parent_id = ? AND position > ? ORDER BY position',
         [parentNode.parent_id, parentNode.position]
       );
@@ -224,7 +226,7 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
         targetPosition = parentNode.position + 1;
         
         // Shift parent's siblings
-        await db.run(
+        await req.db.run(
           'UPDATE nodes SET position = position + 1 WHERE parent_id = ? AND position > ?',
           [parentNode.parent_id, parentNode.position]
         );
@@ -234,27 +236,27 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
       }
       
       // Update the node
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?',
         [parentNode.parent_id, targetPosition, Date.now(), id]
       );
     } else {
       // Parent is a root node, find position for new root node
-      const rootCount = await db.get('SELECT COUNT(*) as count FROM nodes WHERE parent_id IS NULL');
+      const rootCount = await req.db.get('SELECT COUNT(*) as count FROM nodes WHERE parent_id IS NULL');
       targetPosition = rootCount.count;
       
       // Update the node to be a root node
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET parent_id = NULL, position = ?, updated_at = ? WHERE id = ?',
         [targetPosition, Date.now(), id]
       );
     }
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ success: true });
   } catch (error) {
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });
@@ -263,7 +265,7 @@ app.post('/api/nodes/:id/outdent', async (req, res) => {
 app.post('/api/nodes/:id/move-up', async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await req.db.get('SELECT * FROM nodes WHERE id = ?', id);
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -275,43 +277,43 @@ app.post('/api/nodes/:id/move-up', async (req, res) => {
     }
     
     // Start a transaction
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // Find the node directly above this one
     let nodeAbove;
     if (node.parent_id) {
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id = ? AND position = ?',
         [node.parent_id, node.position - 1]
       );
     } else {
-      nodeAbove = await db.get(
+      nodeAbove = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id IS NULL AND position = ?',
         [node.position - 1]
       );
     }
     
     if (!nodeAbove) {
-      await db.run('ROLLBACK');
+      await req.db.run('ROLLBACK');
       return res.status(400).json({ error: 'No node above to swap with' });
     }
     
     // Swap positions
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
       [node.position, Date.now(), nodeAbove.id]
     );
     
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
       [node.position - 1, Date.now(), id]
     );
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ success: true });
   } catch (error) {
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });
@@ -320,7 +322,7 @@ app.post('/api/nodes/:id/move-up', async (req, res) => {
 app.post('/api/nodes/:id/move-down', async (req, res) => {
   try {
     const { id } = req.params;
-    const node = await db.get('SELECT * FROM nodes WHERE id = ?', id);
+    const node = await req.db.get('SELECT * FROM nodes WHERE id = ?', id);
     
     if (!node) {
       return res.status(404).json({ error: 'Node not found' });
@@ -329,12 +331,12 @@ app.post('/api/nodes/:id/move-down', async (req, res) => {
     // Find the node directly below this one
     let nodeBelow;
     if (node.parent_id) {
-      nodeBelow = await db.get(
+      nodeBelow = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id = ? AND position = ?',
         [node.parent_id, node.position + 1]
       );
     } else {
-      nodeBelow = await db.get(
+      nodeBelow = await req.db.get(
         'SELECT * FROM nodes WHERE parent_id IS NULL AND position = ?',
         [node.position + 1]
       );
@@ -346,24 +348,24 @@ app.post('/api/nodes/:id/move-down', async (req, res) => {
     }
     
     // Start a transaction
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // Swap positions
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
       [node.position, Date.now(), nodeBelow.id]
     );
     
-    await db.run(
+    await req.db.run(
       'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
       [node.position + 1, Date.now(), id]
     );
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ success: true });
   } catch (error) {
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });
@@ -441,30 +443,30 @@ app.post('/api/nodes/fix-positions', async (req, res) => {
     const { parentId, conflicts } = req.body;
     
     // Start a transaction to ensure all updates succeed or fail together
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // First, get all nodes at this level
     let siblings;
     if (parentId) {
-      siblings = await db.all(
+      siblings = await req.db.all(
         'SELECT id, position FROM nodes WHERE parent_id = ? ORDER BY position, id',
         parentId
       );
     } else {
-      siblings = await db.all(
+      siblings = await req.db.all(
         'SELECT id, position FROM nodes WHERE parent_id IS NULL ORDER BY position, id'
       );
     }
     
     // Assign new sequential positions
     for (let i = 0; i < siblings.length; i++) {
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
         [i, Date.now(), siblings[i].id]
       );
     }
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ 
       success: true, 
@@ -472,7 +474,7 @@ app.post('/api/nodes/fix-positions', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fixing positions:', error);
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: 'Failed to fix positions' });
   }
 });
@@ -483,7 +485,7 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
     const { parentId, nodeId, position, conflictingNodes } = req.body;
     
     // Start a transaction to ensure all updates succeed or fail together
-    await db.run('BEGIN TRANSACTION');
+    await req.db.run('BEGIN TRANSACTION');
     
     // Keep the chosen node at its position
     // For all conflicting nodes, find empty positions and assign them
@@ -491,12 +493,12 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
     // Get all siblings to find available positions
     let siblings;
     if (parentId) {
-      siblings = await db.all(
+      siblings = await req.db.all(
         'SELECT id, position FROM nodes WHERE parent_id = ? ORDER BY position',
         parentId
       );
     } else {
-      siblings = await db.all(
+      siblings = await req.db.all(
         'SELECT id, position FROM nodes WHERE parent_id IS NULL ORDER BY position'
       );
     }
@@ -518,7 +520,7 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
       }
       
       // Update the node with the new position
-      await db.run(
+      await req.db.run(
         'UPDATE nodes SET position = ?, updated_at = ? WHERE id = ?',
         [nextPosition, Date.now(), cNodeId]
       );
@@ -530,7 +532,7 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
       nextPosition++;
     }
     
-    await db.run('COMMIT');
+    await req.db.run('COMMIT');
     
     res.json({ 
       success: true, 
@@ -538,7 +540,7 @@ app.post('/api/nodes/fix-position-conflict', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fixing position conflict:', error);
-    await db.run('ROLLBACK');
+    await req.db.run('ROLLBACK');
     res.status(500).json({ error: 'Failed to fix position conflict' });
   }
 });
@@ -752,11 +754,13 @@ if (!fs.existsSync(vaultsDir)) {
 
 // Modify the database connection to support multiple vaults
 let currentVault = 'main'; // Default to main database
+global.currentVault = 'main'; // Also set the global variable
 
 // New middleware to set the current vault based on request
 app.use((req, res, next) => {
   if (req.query.vault) {
     currentVault = req.query.vault;
+    global.currentVault = req.query.vault;  // Add this line
   }
   req.currentVault = currentVault;
   next();
