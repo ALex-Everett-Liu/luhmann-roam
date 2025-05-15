@@ -402,10 +402,44 @@ window.DatabaseExportImportManager = (function() {
       }
     }
     
+    // Load available tables from the server
+    async function loadAvailableTables() {
+      try {
+        const response = await fetch('/api/database/tables');
+        if (!response.ok) {
+          throw new Error('Failed to fetch table list');
+        }
+        
+        const data = await response.json();
+        return data.tables;
+      } catch (error) {
+        console.error('Error loading tables:', error);
+        return [];
+      }
+    }
+    
+    // Get schema information for a specific table
+    async function getTableSchema(tableName) {
+      try {
+        const response = await fetch(`/api/database/schema/${tableName}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch table schema');
+        }
+        
+        const data = await response.json();
+        return data.schema;
+      } catch (error) {
+        console.error(`Error loading schema for ${tableName}:`, error);
+        return [];
+      }
+    }
+    
     // Public API
     return {
       initialize,
       exportTables,
-      importFile
+      importFile,
+      loadAvailableTables,
+      getTableSchema
     };
   })();

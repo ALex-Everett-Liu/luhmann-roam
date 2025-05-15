@@ -1,0 +1,97 @@
+/* CSS for database export/import functionality */
+.export-button, .import-button {
+    display: block;
+    margin: 10px 0;
+    padding: 8px 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .export-button:hover, .import-button:hover {
+    background-color: var(--primary-hover-color);
+  }
+  
+  .export-button.success, .import-button.success {
+    background-color: var(--success-color, #4caf50);
+  }
+  
+  .export-button.error, .import-button.error {
+    background-color: var(--error-color, #f44336);
+  }
+  
+  /* Modal styles */
+  #export-modal, #import-modal {
+    max-width: 500px;
+  }
+  
+  .tables-list {
+    margin: 15px 0;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .table-row {
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+  }
+  
+  .table-row input[type="checkbox"] {
+    margin-right: 10px;
+  }
+  
+  .button-row {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+  }
+  
+  .export-action-button, .import-action-button {
+    padding: 8px 15px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  
+  .export-action-button:hover, .import-action-button:hover {
+    background-color: var(--primary-hover-color);
+  }
+  
+  .export-action-button:disabled, .import-action-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .import-options {
+    margin: 15px 0;
+  }
+  
+  .option-row {
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  #conflict-strategy {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  
+  /* File input styling */
+  #json-file-input {
+    padding: 10px 0;
+    width: 100%;
+  }
