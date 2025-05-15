@@ -395,11 +395,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.BookmarkManager) {
       BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
     }
-    
+
     // Default focus button
     const defaultFocusButton = document.createElement('button');
     defaultFocusButton.className = 'default-focus-button';
-    defaultFocusButton.innerHTML = '��';
+    defaultFocusButton.innerHTML = '🔍';
     defaultFocusButton.title = 'Set as default focus node on startup';
     defaultFocusButton.addEventListener('click', () => setDefaultFocusNode(node.id));
     nodeActions.appendChild(defaultFocusButton);
@@ -843,6 +843,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set up resizable sidebar
   setupResizableSidebar();
 
+  // Define this function at the top of the file, after other variable declarations
+  function addButtonToSidebar(button) {
+    const sidebarElement = document.querySelector('.sidebar');
+    if (sidebarElement) {
+      sidebarElement.appendChild(button);
+    }
+  }
+
+  // Add clear default focus button (just once)
+  const clearDefaultFocusButton = document.createElement('button');
+  clearDefaultFocusButton.id = 'clear-default-focus';
+  clearDefaultFocusButton.className = 'feature-toggle';
+  clearDefaultFocusButton.textContent = 'Clear Default Focus';
+  clearDefaultFocusButton.title = 'Clear the default focus node setting';
+  clearDefaultFocusButton.addEventListener('click', () => {
+    const vault = window.VaultManager?.getCurrentVault() || 'main';
+    localStorage.removeItem(`${vault}_default_focus_node`);
+    alert('Default focus cleared. All nodes will load on next startup.');
+  });
+
+  // Add to sidebar using helper function
+  addButtonToSidebar(clearDefaultFocusButton);
+
   // Initialize the FilterManager - make sure it's after I18n initialization
   function initializeFilterManager() {
     if (window.FilterManager) {
@@ -1042,11 +1065,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Add to sidebar
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar) {
-    sidebar.appendChild(toggleCosmicButton);
-  }
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggleCosmicButton);
 
   // Add a toggle button for the 2D cosmic visualizer
   const toggle2DCosmicButton = document.createElement('button');
@@ -1122,10 +1142,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Add to sidebar
-  if (sidebar) {
-    sidebar.appendChild(toggle2DCosmicButton);
-  }
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggle2DCosmicButton);
 
   // Initialize the BlogManager
   if (window.BlogManager) {

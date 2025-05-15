@@ -612,6 +612,38 @@ const CommandPaletteManager = (function() {
                 keywords: ['search', 'find', 'lookup']
             });
         }
+        
+        // Set current node as default focus
+        registerCommand({
+            name: 'Set Current Node as Default Focus',
+            action: () => {
+                const focusedNode = document.querySelector('.node-text:focus');
+                if (focusedNode) {
+                    const nodeId = focusedNode.closest('.node').dataset.id;
+                    if (nodeId && window.setDefaultFocusNode) {
+                        window.setDefaultFocusNode(nodeId);
+                    } else {
+                        alert('Please focus on a node first');
+                    }
+                } else {
+                    alert('Please focus on a node first');
+                }
+            },
+            category: 'Navigation',
+            keywords: ['default', 'focus', 'startup', 'performance', 'initial']
+        });
+        
+        // Clear default focus
+        registerCommand({
+            name: 'Clear Default Focus',
+            action: () => {
+                const vault = window.VaultManager?.getCurrentVault() || 'main';
+                localStorage.removeItem(`${vault}_default_focus_node`);
+                alert('Default focus cleared. All nodes will load on next startup.');
+            },
+            category: 'Navigation',
+            keywords: ['clear', 'default', 'focus', 'startup', 'reset']
+        });
     }
     
     /**
