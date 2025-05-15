@@ -95,4 +95,16 @@ button:hover {
   background-color: #ea4335; /* Google red */
 }
 
+.default-focus-button {
+  background-color: transparent;
+  color: var(--secondary-color);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
 
+.default-focus-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}

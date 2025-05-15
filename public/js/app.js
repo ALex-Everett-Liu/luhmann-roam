@@ -9,9 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Variables and state
   let nodes = [];
   let currentModalNodeId = null;
-  
-  // Add this variable to track the currently focused node
-  let lastFocusedNodeId = null;
+  let lastFocusedNodeId = null; // Add this variable to track the currently focused node
+  let isInitialLoading = true; // Flag to indicate initial loading
   
   // Application functions
   // Update language toggle button text
@@ -20,14 +19,47 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleButton.textContent = I18n.t('switchToLanguage');
   }
   
+  // Add this function to save the current focus as default
+  function setDefaultFocusNode(nodeId) {
+    const vault = window.VaultManager?.getCurrentVault() || 'main';
+    localStorage.setItem(`${vault}_default_focus_node`, nodeId);
+    alert('This node is now set as the default focus on startup.');
+  }
+  
   // Fetch top-level nodes
   async function fetchNodes(forceFresh = false) {
-    // Save scroll position before updating
     const scrollPosition = window.scrollY;
     console.log(`Saving scroll position: ${scrollPosition}px`);
     
     try {
-      // Add cache-busting parameter to prevent stale data
+      // Get default focus node if initial loading
+      const vault = window.VaultManager?.getCurrentVault() || 'main';
+      const defaultFocusNodeId = localStorage.getItem(`${vault}_default_focus_node`);
+      
+      // If we have a default focus node and this is initial loading, only load that subtree
+      if (isInitialLoading && defaultFocusNodeId && window.BreadcrumbManager) {
+        console.log(`Loading with default focus on node: ${defaultFocusNodeId}`);
+        
+        // Just get the focused node and its children
+        const focusNodeResponse = await fetch(`/api/nodes/${defaultFocusNodeId}?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ''}`);
+        const focusNode = await focusNodeResponse.json();
+        
+        // Empty the nodes array and just add this node
+        nodes = [focusNode];
+        
+        // Render the outliner with just this node
+        await renderOutliner();
+        
+        // Focus on this node after rendering
+        setTimeout(() => {
+          window.BreadcrumbManager.focusOnNode(defaultFocusNodeId);
+          isInitialLoading = false;
+        }, 100);
+        
+        return;
+      }
+      
+      // Normal loading without focus
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : '';
       const currentLanguage = I18n.getCurrentLanguage();
       console.log(`Fetching nodes with lang=${currentLanguage}${forceFresh ? ' (forced fresh load)' : ''}`);
@@ -35,23 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
       nodes = await response.json();
       await renderOutliner();
       
+      // Set initial loading to false after first load
+      isInitialLoading = false;
+      
       // Reapply filters after rendering
       if (window.FilterManager) {
         FilterManager.applyFilters();
       }
       
-      // Restore scroll position after rendering is complete
+      // Restore scroll position
       setTimeout(() => {
         console.log(`Restoring scroll position to: ${scrollPosition}px`);
         window.scrollTo(0, scrollPosition);
-        
-        // Verify the scroll position was actually set
-        setTimeout(() => {
-          console.log(`Current scroll position after restore: ${window.scrollY}px`);
-        }, 50);
       }, 10);
     } catch (error) {
       console.error('Error fetching nodes:', error);
+      isInitialLoading = false;
     }
   }
   
@@ -364,6 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.BookmarkManager) {
       BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
     }
+    
+    // Default focus button
+    const defaultFocusButton = document.createElement('button');
+    defaultFocusButton.className = 'default-focus-button';
+    defaultFocusButton.innerHTML = '��';
+    defaultFocusButton.title = 'Set as default focus node on startup';
+    defaultFocusButton.addEventListener('click', () => setDefaultFocusNode(node.id));
+    nodeActions.appendChild(defaultFocusButton);
     
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
