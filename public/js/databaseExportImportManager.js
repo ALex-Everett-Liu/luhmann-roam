@@ -71,7 +71,8 @@ window.DatabaseExportImportManager = (function() {
       // modal.className = 'modal'; // The ID is specific enough for styling
 
       const modalContent = document.createElement('div');
-      modalContent.className = 'modal-content'; // This will be the main padded/scrollable area
+      modalContent.className = 'modal-content';
+      modalContent.style.cssText = 'width: 500px !important; max-width: 500px !important; box-sizing: border-box; margin: 0; padding: 20px; background-color: white;';
 
       const header = document.createElement('h2');
       header.textContent = 'Export Database Tables';
@@ -250,6 +251,7 @@ window.DatabaseExportImportManager = (function() {
 
       const modalContent = document.createElement('div');
       modalContent.className = 'modal-content';
+      modalContent.style.cssText = 'width: 500px !important; max-width: 500px !important; box-sizing: border-box; margin: 0; padding: 20px; background-color: white;';
 
       const header = document.createElement('h2');
       header.textContent = 'Import Database Tables';

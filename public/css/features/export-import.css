@@ -45,8 +45,8 @@
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    width: 90%;
-    max-width: 500px;
+    width: 500px; /* Set explicit width */
+    max-width: 90%; /* Still be responsive on small screens */
     max-height: 80vh; /* Control maximum height */
     overflow: hidden; /* Important: scrolling handled by modal-content */
     display: none; /* Initially hidden, JS toggles to 'flex' */
@@ -54,14 +54,14 @@
   }
   
   /* Modal Content Area - This will contain all inner elements and be scrollable */
-  #export-modal .modal-content, 
+  #export-modal > .modal-content, 
   #import-modal .modal-content {
-    padding: 20px; /* Inner padding */
-    flex-grow: 1; /* Allow content to take available space */
-    overflow-y: auto; /* Enable vertical scrolling for content */
-    display: flex;
-    flex-direction: column;
-    background-color: white; /* Ensure solid background */
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    flex: 1 !important;
+    background-color: white !important;
   }
   
   #export-modal .close-button, 
