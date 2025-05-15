@@ -50,15 +50,34 @@ window.DatabaseExportImportManager = (function() {
       return button;
     }
     
-    // Open export modal with table selection options
+    // Updated openExportModal function with improved modal handling
     function openExportModal() {
+      // Remove any existing modals first
+      const existingModal = document.getElementById('export-modal');
+      const existingOverlay = document.querySelector('.database-export-overlay');
+      
+      if (existingModal) {
+        document.body.removeChild(existingModal.parentElement); // Remove the overlay which contains the modal
+      } else if (existingOverlay) {
+        document.body.removeChild(existingOverlay);
+      }
+
+      // Prevent scrolling on the body while modal is open
+      document.body.style.overflow = 'hidden';
+
+      // Create overlay first
+      const overlay = document.createElement('div');
+      overlay.className = 'database-export-overlay';
+      
       // Create modal container
       const modal = document.createElement('div');
-      modal.className = 'modal';
       modal.id = 'export-modal';
+      modal.style.width = '90%';
+      modal.style.maxWidth = '500px';
       
       const modalContent = document.createElement('div');
       modalContent.className = 'modal-content';
+      modalContent.style.width = '100%';
       
       const header = document.createElement('h2');
       header.textContent = 'Export Database Tables';
@@ -66,38 +85,73 @@ window.DatabaseExportImportManager = (function() {
       const closeButton = document.createElement('span');
       closeButton.className = 'close-button';
       closeButton.innerHTML = '&times;';
-      closeButton.onclick = () => document.body.removeChild(modal);
       
+      // Improved close modal function
+      const closeModal = () => {
+        document.body.removeChild(overlay);
+        document.body.style.overflow = ''; // Restore scrolling
+      };
+      
+      closeButton.onclick = closeModal;
+      
+      // Close modal when clicking on the overlay
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          closeModal();
+        }
+      });
+      
+      // Close modal with escape key
+      document.addEventListener('keydown', function escapeHandler(e) {
+        if (e.key === 'Escape') {
+          closeModal();
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      });
+
+      // Rest of the modal content
       const tablesList = document.createElement('div');
       tablesList.className = 'tables-list';
       
-      // List all available tables with checkboxes
-      const tables = [
-        { id: 'nodes', name: 'Nodes' },
-        { id: 'links', name: 'Links' },
-        { id: 'tasks', name: 'Tasks' },
-        { id: 'node_attributes', name: 'Node Attributes' },
-        { id: 'bookmarks', name: 'Bookmarks' },
-        { id: 'blog_pages', name: 'Blog Pages' },
-        { id: 'dcim_images', name: 'DCIM Images' }
-      ];
+      // Loading message
+      const loadingMsg = document.createElement('p');
+      loadingMsg.textContent = 'Loading available tables...';
+      tablesList.appendChild(loadingMsg);
       
-      tables.forEach(table => {
-        const tableRow = document.createElement('div');
-        tableRow.className = 'table-row';
+      // Load tables dynamically from the server if available
+      loadAvailableTables().then(tables => {
+        tablesList.innerHTML = '';
         
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `export-${table.id}`;
-        checkbox.value = table.id;
+        if (!tables || tables.length === 0) {
+          // If server endpoint fails or returns empty, use hardcoded list
+          tables = [
+            { id: 'nodes', name: 'Nodes' },
+            { id: 'links', name: 'Links' },
+            { id: 'tasks', name: 'Tasks' },
+            { id: 'node_attributes', name: 'Node Attributes' },
+            { id: 'bookmarks', name: 'Bookmarks' },
+            { id: 'blog_pages', name: 'Blog Pages' },
+            { id: 'dcim_images', name: 'DCIM Images' }
+          ];
+        }
         
-        const label = document.createElement('label');
-        label.htmlFor = checkbox.id;
-        label.textContent = table.name;
-        
-        tableRow.appendChild(checkbox);
-        tableRow.appendChild(label);
-        tablesList.appendChild(tableRow);
+        tables.forEach(table => {
+          const tableRow = document.createElement('div');
+          tableRow.className = 'table-row';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `export-${table.id || table}`;
+          checkbox.value = table.id || table;
+          
+          const label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.textContent = table.name || table;
+          
+          tableRow.appendChild(checkbox);
+          tableRow.appendChild(label);
+          tablesList.appendChild(tableRow);
+        });
       });
       
       // Select/Deselect All buttons
@@ -133,7 +187,7 @@ window.DatabaseExportImportManager = (function() {
         }
         
         exportTables(selectedTables);
-        document.body.removeChild(modal);
+        closeModal();
       };
       
       // Assemble modal
@@ -143,8 +197,9 @@ window.DatabaseExportImportManager = (function() {
       modalContent.appendChild(selectAllRow);
       modalContent.appendChild(exportActionButton);
       modal.appendChild(modalContent);
+      overlay.appendChild(modal);
       
-      document.body.appendChild(modal);
+      document.body.appendChild(overlay);
     }
     
     // Export selected tables to JSON file
@@ -212,15 +267,34 @@ window.DatabaseExportImportManager = (function() {
       }
     }
     
-    // Open import modal
+    // Updated openImportModal function with improved modal handling
     function openImportModal() {
+      // Remove any existing modals first
+      const existingModal = document.getElementById('import-modal');
+      const existingOverlay = document.querySelector('.database-import-overlay');
+      
+      if (existingModal) {
+        document.body.removeChild(existingModal.parentElement); // Remove the overlay which contains the modal
+      } else if (existingOverlay) {
+        document.body.removeChild(existingOverlay);
+      }
+
+      // Prevent scrolling on the body while modal is open
+      document.body.style.overflow = 'hidden';
+
+      // Create overlay first
+      const overlay = document.createElement('div');
+      overlay.className = 'database-import-overlay';
+      
       // Create modal container
       const modal = document.createElement('div');
-      modal.className = 'modal';
       modal.id = 'import-modal';
+      modal.style.width = '90%';
+      modal.style.maxWidth = '500px';
       
       const modalContent = document.createElement('div');
       modalContent.className = 'modal-content';
+      modalContent.style.width = '100%';
       
       const header = document.createElement('h2');
       header.textContent = 'Import Database Tables';
@@ -228,7 +302,29 @@ window.DatabaseExportImportManager = (function() {
       const closeButton = document.createElement('span');
       closeButton.className = 'close-button';
       closeButton.innerHTML = '&times;';
-      closeButton.onclick = () => document.body.removeChild(modal);
+      
+      // Improved close modal function
+      const closeModal = () => {
+        document.body.removeChild(overlay);
+        document.body.style.overflow = ''; // Restore scrolling
+      };
+      
+      closeButton.onclick = closeModal;
+      
+      // Close modal when clicking on the overlay
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          closeModal();
+        }
+      });
+      
+      // Close modal with escape key
+      document.addEventListener('keydown', function escapeHandler(e) {
+        if (e.key === 'Escape') {
+          closeModal();
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      });
       
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
@@ -259,6 +355,10 @@ window.DatabaseExportImportManager = (function() {
       const conflictOption = document.createElement('div');
       conflictOption.className = 'option-row';
       
+      const conflictLabel = document.createElement('label');
+      conflictLabel.htmlFor = 'conflict-strategy';
+      conflictLabel.textContent = 'Conflict resolution:';
+      
       const conflictSelect = document.createElement('select');
       conflictSelect.id = 'conflict-strategy';
       
@@ -275,13 +375,14 @@ window.DatabaseExportImportManager = (function() {
         conflictSelect.appendChild(optionElement);
       });
       
-      const conflictLabel = document.createElement('label');
-      conflictLabel.htmlFor = 'conflict-strategy';
-      conflictLabel.textContent = 'Conflict resolution:';
-      
       conflictOption.appendChild(conflictLabel);
       conflictOption.appendChild(conflictSelect);
       importOptions.appendChild(conflictOption);
+      
+      // File description text
+      const fileDescription = document.createElement('p');
+      fileDescription.textContent = 'Select a JSON file previously exported from this application.';
+      fileDescription.style.marginBottom = '10px';
       
       // Import button
       const importActionButton = document.createElement('button');
@@ -305,18 +406,20 @@ window.DatabaseExportImportManager = (function() {
         const conflictStrategy = conflictSelect.value;
         
         importFile(file, regenerateIds, conflictStrategy);
-        document.body.removeChild(modal);
+        closeModal();
       };
       
       // Assemble modal
       modalContent.appendChild(closeButton);
       modalContent.appendChild(header);
+      modalContent.appendChild(fileDescription);
       modalContent.appendChild(fileInput);
       modalContent.appendChild(importOptions);
       modalContent.appendChild(importActionButton);
       modal.appendChild(modalContent);
+      overlay.appendChild(modal);
       
-      document.body.appendChild(modal);
+      document.body.appendChild(overlay);
     }
     
     // Import data from JSON file
