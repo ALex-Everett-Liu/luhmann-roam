@@ -677,10 +677,13 @@ app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 
 // Add this to your existing routes
-app.post('/api/backup', async (req, res) => {
+app.post('/api/backup/:vault?', async (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
+    
+    // Get vault name from params or use current vault
+    const vaultName = req.params.vault || global.currentVault || 'main';
     
     // Create backups directory if it doesn't exist
     const backupDir = path.join(__dirname, 'backups');
@@ -694,8 +697,14 @@ app.post('/api/backup', async (req, res) => {
       .replace(/\..+/, ''); // Remove milliseconds
     
     // Define source and destination paths
-    const dbPath = path.join(__dirname, 'outliner.db');
-    const backupFilename = `outliner-${timestamp}.db`;
+    let dbPath;
+    if (vaultName === 'main') {
+      dbPath = path.join(__dirname, 'outliner.db');
+    } else {
+      dbPath = path.join(__dirname, 'vaults', `${vaultName}.db`);
+    }
+    
+    const backupFilename = `${vaultName}-${timestamp}.db`;
     const backupPath = path.join(backupDir, backupFilename);
     
     // Copy the database file
@@ -706,6 +715,7 @@ app.post('/api/backup', async (req, res) => {
     res.status(200).json({
       success: true,
       filename: backupFilename,
+      vault: vaultName,
       timestamp: timestamp
     });
   } catch (error) {
