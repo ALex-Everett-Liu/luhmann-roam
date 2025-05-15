@@ -5,23 +5,27 @@ const path = require('path');
 let isInitialized = false;
 
 // Create a database connection
-async function getDb() {
+async function getDb(vaultName) {
+  const dbName = vaultName || global.currentVault || 'main';
+  const dbPath = dbName === 'main' 
+    ? path.join(__dirname, 'outliner.db')
+    : path.join(__dirname, 'vaults', `${dbName}.db`);
+  
   return open({
-    filename: path.join(__dirname, 'outliner.db'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 }
 
 // Initialize database
-async function initializeDatabase() {
-
+async function initializeDatabase(vaultName) {
+  const db = await getDb(vaultName);
+  
   if (isInitialized) {
     console.log('Database already initialized, skipping');
     return db;
   }
 
-  const db = await getDb();
-  
   // Create nodes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS nodes (

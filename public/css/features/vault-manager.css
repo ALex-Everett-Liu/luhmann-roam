@@ -1,0 +1,204 @@
+/* Vault Manager Styles */
+.vault-manager-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+  }
+  
+  #vault-manager-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    width: 500px;
+    max-width: 90%;
+    max-height: 80vh;
+    display: none;
+    flex-direction: column;
+  }
+  
+  #vault-manager-modal .modal-content {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  
+  #vault-manager-modal .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #666;
+  }
+  
+  #vault-manager-modal h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  #vault-manager-modal h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+  }
+  
+  .vault-list-section, .new-vault-section, .vault-transfer-section {
+    margin-bottom: 30px;
+  }
+  
+  .vault-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+  }
+  
+  .vault-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .vault-item:last-child {
+    border-bottom: none;
+  }
+  
+  .vault-item.active {
+    background-color: #f0f7ff;
+    font-weight: bold;
+  }
+  
+  .vault-item.active .vault-name {
+    color: var(--primary-color);
+  }
+  
+  .vault-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .switch-vault-button, .delete-vault-button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .switch-vault-button {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .switch-vault-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .delete-vault-button {
+    background-color: var(--error-color, #f44336);
+    color: white;
+  }
+  
+  .vault-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .vault-form input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .create-vault-button {
+    padding: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  .export-import-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+  }
+  
+  .export-import-buttons button {
+    flex: 1;
+    padding: 10px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .vault-indicator {
+    margin-top: 15px;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  
+  /* Loading indicator */
+  body.loading::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  body.loading::before {
+    content: "Switching vault...";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2001;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Dark theme adjustments */
+  body.dark-theme #vault-manager-modal {
+    background-color: var(--dark-surface-color, #1e1e1e);
+    color: var(--dark-text-color, #e0e0e0);
+  }
+  
+  body.dark-theme .vault-indicator {
+    background-color: var(--dark-light-gray, #2a2a2a);
+    color: var(--dark-text-secondary, #aaaaaa);
+  }

@@ -23,6 +23,7 @@ const sharp = require('sharp');
 const upload = require('./middleware/upload');
 const devTestRoutes = require('./routes/devTestRoutes');
 const databaseExportImportRoutes = require('./routes/databaseExportImportRoutes');
+const vaultRoutes = require('./routes/vaultRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -738,6 +739,29 @@ app.use('/api/dev-test', devTestRoutes);
 
 // Use the database export/import routes
 app.use('/api/database', databaseExportImportRoutes);
+
+// Use the vault routes
+app.use('/api/vaults', vaultRoutes);
+
+// Add this after the database initialization
+// Create vaults directory if it doesn't exist
+const vaultsDir = path.join(__dirname, 'vaults');
+if (!fs.existsSync(vaultsDir)) {
+  fs.mkdirSync(vaultsDir);
+}
+
+// Modify the database connection to support multiple vaults
+let currentVault = 'main'; // Default to main database
+
+// New middleware to set the current vault based on request
+app.use((req, res, next) => {
+  if (req.query.vault) {
+    currentVault = req.query.vault;
+  }
+  req.currentVault = currentVault;
+  next();
+});
+
 
 // Start the server
 app.listen(PORT, () => {

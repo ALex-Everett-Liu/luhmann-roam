@@ -3,6 +3,7 @@ dist/
 logs/
 *.db
 markdown/
+backups/
 public/attachment
 public/blog
 public/fonts

@@ -942,6 +942,10 @@ document.addEventListener('DOMContentLoaded', () => {
     DatabaseExportImportManager.initialize();
   }
 
+  if (window.VaultManager) {
+    VaultManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 

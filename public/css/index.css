@@ -34,6 +34,7 @@
 @import './features/dcim-manager.css'; 
 @import './features/dev-test-panel.css';
 @import './features/export-import.css';
+@import './features/vault-manager.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */
