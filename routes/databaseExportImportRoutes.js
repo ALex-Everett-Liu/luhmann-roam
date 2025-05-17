@@ -15,4 +15,7 @@ router.get('/tables', databaseController.listTables);
 // Get table schema
 router.get('/schema/:table', databaseController.getTableSchema);
 
+// Export node tree
+router.post('/export-node-tree', databaseController.exportNodeTree);
+
 module.exports = router;

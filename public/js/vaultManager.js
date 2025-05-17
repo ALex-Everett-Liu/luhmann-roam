@@ -8,6 +8,18 @@ window.VaultManager = (function() {
     function initialize() {
       console.log('Initializing VaultManager');
       
+      // Get the vault from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlVault = urlParams.get('vault');
+      
+      if (urlVault) {
+        // Update the currentVault variable
+        currentVault = urlVault;
+        console.log(`Initialized VaultManager with vault from URL: ${currentVault}`);
+      } else {
+        console.log(`Initialized VaultManager with default vault: ${currentVault}`);
+      }
+      
       // Add vault manager button to sidebar
       const sidebar = document.querySelector('.sidebar');
       if (sidebar) {

@@ -421,6 +421,11 @@ document.addEventListener('DOMContentLoaded', () => {
     defaultFocusButton.addEventListener('click', () => setDefaultFocusNode(node.id));
     nodeActions.appendChild(defaultFocusButton);
     
+    // Export tree button
+    if (window.DatabaseExportImportManager && DatabaseExportImportManager.addExportTreeButtonToNodeActions) {
+      DatabaseExportImportManager.addExportTreeButtonToNodeActions(nodeActions, node.id);
+    }
+    
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
     

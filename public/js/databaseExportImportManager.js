@@ -471,12 +471,92 @@ window.DatabaseExportImportManager = (function() {
       }
     }
     
+    // Add this function to the DatabaseExportImportManager module
+    function addExportTreeButtonToNodeActions(nodeActions, nodeId) {
+      const exportButton = document.createElement('button');
+      exportButton.className = 'export-tree-button';
+      exportButton.innerHTML = '📤';
+      exportButton.title = 'Export this node and all descendants';
+      exportButton.addEventListener('click', () => exportNodeTree(nodeId));
+      nodeActions.appendChild(exportButton);
+    }
+
+    // Function to export a node tree
+    async function exportNodeTree(nodeId) {
+      try {
+        // Show loading state
+        const node = document.querySelector(`.node[data-id="${nodeId}"]`);
+        if (!node) return;
+        
+        const exportButton = node.querySelector('.export-tree-button');
+        if (exportButton) {
+          const originalHTML = exportButton.innerHTML;
+          exportButton.innerHTML = '⏳';
+          exportButton.disabled = true;
+          
+          setTimeout(() => {
+            // Call the export node tree API endpoint
+            fetch('/api/database/export-node-tree', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ nodeId })
+            })
+            .then(response => {
+              if (!response.ok) {
+                return response.json().then(errorData => {
+                  throw new Error(errorData.error || 'Export failed');
+                });
+              }
+              return response.json();
+            })
+            .then(jsonData => {
+              // Create and download the JSON file
+              const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+              const fileName = `node-tree-export-${timestamp}.json`;
+              
+              const dataStr = JSON.stringify(jsonData, null, 2);
+              const dataBlob = new Blob([dataStr], { type: 'application/json' });
+              const dataUrl = URL.createObjectURL(dataBlob);
+              
+              const downloadLink = document.createElement('a');
+              downloadLink.href = dataUrl;
+              downloadLink.download = fileName;
+              downloadLink.click();
+              
+              URL.revokeObjectURL(dataUrl);
+              
+              // Show success state
+              exportButton.innerHTML = '✅';
+              setTimeout(() => {
+                exportButton.innerHTML = originalHTML;
+                exportButton.disabled = false;
+              }, 2000);
+            })
+            .catch(error => {
+              console.error('Error exporting node tree:', error);
+              exportButton.innerHTML = '❌';
+              setTimeout(() => {
+                exportButton.innerHTML = originalHTML;
+                exportButton.disabled = false;
+              }, 2000);
+            });
+          }, 100);
+        }
+      } catch (error) {
+        console.error('Error preparing node tree export:', error);
+      }
+    }
+    
     // Public API
     return {
       initialize,
       exportTables,
       importFile,
       loadAvailableTables,
-      getTableSchema
+      getTableSchema,
+      addExportTreeButtonToNodeActions,
+      exportNodeTree
     };
   })();

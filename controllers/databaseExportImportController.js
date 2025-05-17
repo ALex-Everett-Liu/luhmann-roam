@@ -248,3 +248,115 @@ exports.getTableSchema = async (req, res) => {
     res.status(500).json({ error: 'Failed to get table schema: ' + error.message });
   }
 };
+
+/**
+ * Export node tree - a node and all its descendants
+ * POST /api/database/export-node-tree
+ */
+exports.exportNodeTree = async (req, res) => {
+  try {
+    const { nodeId, includeTables = ['nodes', 'links', 'node_attributes'] } = req.body;
+    
+    if (!nodeId) {
+      return res.status(400).json({ error: 'No node ID specified for export' });
+    }
+    
+    const db = await getDb();
+    const exportData = {};
+    
+    // Start a transaction for consistent read
+    await db.run('BEGIN TRANSACTION');
+    
+    try {
+      // First get all descendant node IDs using recursive query
+      const descendantNodes = await db.all(`
+        WITH RECURSIVE descendants AS (
+          -- Start with the selected node
+          SELECT id FROM nodes WHERE id = ?
+          
+          UNION ALL
+          
+          -- Add all descendants
+          SELECT n.id FROM nodes n
+          JOIN descendants d ON n.parent_id = d.id
+        )
+        SELECT id FROM descendants
+      `, nodeId);
+      
+      // Extract just the IDs into an array
+      const nodeIds = descendantNodes.map(node => node.id);
+      
+      if (nodeIds.length === 0) {
+        return res.status(404).json({ error: 'Node not found' });
+      }
+      
+      // Process each requested table
+      for (const table of includeTables) {
+        // Validate table name to prevent SQL injection
+        const validTables = [
+          'nodes', 'links', 'tasks', 'node_attributes', 
+          'bookmarks', 'blog_pages', 'dcim_images', 
+          'dcim_image_settings', 'dcim_directories', 'dev_test_entries'
+        ];
+        
+        if (!validTables.includes(table)) {
+          console.warn(`Invalid table name requested: ${table}`);
+          continue;
+        }
+        
+        let records;
+        
+        // Fetch records based on table type
+        if (table === 'nodes') {
+          // Get all nodes in the tree
+          const placeholders = nodeIds.map(() => '?').join(',');
+          records = await db.all(
+            `SELECT * FROM ${table} WHERE id IN (${placeholders})`, 
+            nodeIds
+          );
+        } else if (table === 'links') {
+          // Get all links where both nodes are in the tree
+          const placeholders = nodeIds.map(() => '?').join(',');
+          records = await db.all(
+            `SELECT * FROM ${table} 
+             WHERE from_node_id IN (${placeholders}) 
+             AND to_node_id IN (${placeholders})`,
+            [...nodeIds, ...nodeIds]
+          );
+        } else if (table === 'node_attributes') {
+          // Get attributes for all nodes in the tree
+          const placeholders = nodeIds.map(() => '?').join(',');
+          records = await db.all(
+            `SELECT * FROM ${table} WHERE node_id IN (${placeholders})`,
+            nodeIds
+          );
+        } else {
+          // For other tables, skip as they're not directly related to the node tree
+          continue;
+        }
+        
+        exportData[table] = records;
+      }
+      
+      await db.run('COMMIT');
+      
+      // Add metadata to the export
+      exportData.metadata = {
+        exportDate: new Date().toISOString(),
+        version: '1.0',
+        exportType: 'node-tree',
+        rootNodeId: nodeId,
+        nodeCount: nodeIds.length,
+        applicationName: 'Luhmann-Roam'
+      };
+      
+      res.json(exportData);
+    } catch (error) {
+      await db.run('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Node tree export error:', error);
+    res.status(500).json({ error: 'Failed to export node tree: ' + error.message });
+  }
+};
