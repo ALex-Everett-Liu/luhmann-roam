@@ -407,6 +407,7 @@ const MetroMapVisualizer = (function() {
     // Toggle edit mode
     function toggleEditMode() {
         editMode = !editMode;
+        console.log('Edit mode toggled to:', editMode);
         
         // Show/hide edit mode banner
         if (editMode) {
@@ -415,9 +416,11 @@ const MetroMapVisualizer = (function() {
             banner.id = 'edit-mode-banner';
             banner.textContent = 'EDIT MODE';
             container.appendChild(banner);
+            console.log('Edit mode banner added');
         } else {
             const banner = document.getElementById('edit-mode-banner');
             if (banner) banner.remove();
+            console.log('Edit mode banner removed');
         }
         
         // Redraw the map
@@ -546,6 +549,12 @@ const MetroMapVisualizer = (function() {
         // Adjust for the center, zoom, and offset
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
         const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
+        
+        // Just after calculating adjustedX and adjustedY
+        console.log('Clicked coordinates:', {
+            original: { x, y },
+            adjusted: { x: adjustedX, y: adjustedY }
+        });
         
         // Check if clicking on a station
         for (const station of stations) {
@@ -1527,12 +1536,29 @@ const MetroMapVisualizer = (function() {
     
     // Add this function to handle map clicks in edit mode
     function setupEditModeHandlers() {
-        canvas.addEventListener('click', handleEditModeClick);
+        console.log('Setting up edit mode handlers');
+        console.log('Canvas element exists:', !!canvas);
+        
+        canvas.addEventListener('click', function(event) {
+            console.log('Raw canvas click detected');
+            handleEditModeClick(event);
+        });
     }
     
     // Handle clicks in edit mode
     async function handleEditModeClick(event) {
-        if (!editMode) return;
+        console.log('Edit mode click detected', {
+            editMode,
+            button: event.button,
+            x: event.clientX,
+            y: event.clientY,
+            stations: stations.length
+        });
+        
+        if (!editMode) {
+            console.log('Edit mode is disabled, ignoring click');
+            return;
+        }
         
         // If right click or middle click, don't handle as edit
         if (event.button !== 0) return;
@@ -1549,6 +1575,12 @@ const MetroMapVisualizer = (function() {
         // Adjust for the center, zoom, and offset
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
         const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
+        
+        // Just after calculating adjustedX and adjustedY
+        console.log('Clicked coordinates:', {
+            original: { x, y },
+            adjusted: { x: adjustedX, y: adjustedY }
+        });
         
         // Check if clicking on an existing station first
         for (const station of stations) {
@@ -1594,11 +1626,15 @@ const MetroMapVisualizer = (function() {
     // Open a node selector to associate with new station
     async function openNodeSelectorForNewStation(mapX, mapY, screenX, screenY) {
         try {
+            console.log('Opening node selector for new station', { mapX, mapY, screenX, screenY });
+            
             // Create a new element for node selection
             const selectorContainer = document.createElement('div');
             selectorContainer.className = 'metro-edit-menu';
             selectorContainer.style.left = `${screenX}px`;
             selectorContainer.style.top = `${screenY}px`;
+            selectorContainer.style.position = 'absolute'; // Ensure it's absolutely positioned
+            selectorContainer.style.zIndex = '3000'; // Ensure it's on top
             
             selectorContainer.innerHTML = `
                 <h3>Create New Station</h3>
@@ -1611,27 +1647,58 @@ const MetroMapVisualizer = (function() {
             `;
             
             container.appendChild(selectorContainer);
+            console.log('Selector container added to DOM');
             
             // Fetch available nodes
-            const response = await fetch('/api/nodes');
-            const availableNodes = await response.json();
+            console.log('Fetching available nodes');
+            let availableNodes = [];
+            try {
+                const response = await fetch('/api/nodes');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch nodes: ${response.status}`);
+                }
+                availableNodes = await response.json();
+                console.log(`Fetched ${availableNodes.length} nodes`);
+            } catch (fetchError) {
+                console.error('Error fetching nodes:', fetchError);
+                // If we can't fetch nodes, add some error handling UI
+                selectorContainer.innerHTML = `
+                    <h3>Error Loading Nodes</h3>
+                    <p>Could not load nodes from the server. Please try again.</p>
+                    <button id="metro-cancel">Cancel</button>
+                `;
+                document.getElementById('metro-cancel').addEventListener('click', () => {
+                    selectorContainer.remove();
+                });
+                return;
+            }
             
             // Populate selector
             const selector = document.getElementById('metro-node-selector');
+            if (!selector) {
+                console.error('Could not find node selector element');
+                return;
+            }
+            
             selector.innerHTML = '';
             
-            for (const node of availableNodes) {
-                // Skip nodes that already have stations
-                if (stations.some(s => s.node_id === node.id)) continue;
-                
-                const option = document.createElement('option');
-                option.value = node.id;
-                option.textContent = node.content;
-                selector.appendChild(option);
+            if (availableNodes.length === 0) {
+                // Add a warning if no nodes are available
+                selector.innerHTML = '<option value="">No available nodes found</option>';
+            } else {
+                for (const node of availableNodes) {
+                    // Skip nodes that already have stations
+                    if (stations.some(s => s.node_id === node.id)) continue;
+                    
+                    const option = document.createElement('option');
+                    option.value = node.id;
+                    option.textContent = node.content || `Node ${node.id}`;
+                    selector.appendChild(option);
+                }
             }
             
             // Add event listeners
-            document.getElementById('metro-create-station').addEventListener('click', () => {
+            document.getElementById('metro-create-station')?.addEventListener('click', () => {
                 const selectedNodeId = selector.value;
                 if (!selectedNodeId) {
                     alert('Please select a node');
@@ -1642,27 +1709,35 @@ const MetroMapVisualizer = (function() {
                 selectorContainer.remove();
             });
             
-            document.getElementById('metro-cancel').addEventListener('click', () => {
+            document.getElementById('metro-cancel')?.addEventListener('click', () => {
                 selectorContainer.remove();
             });
         } catch (error) {
             console.error('Error opening node selector:', error);
+            alert('An error occurred while trying to create a new station. See console for details.');
         }
     }
     
     // Create a new station
     async function createNewStation(nodeId, x, y) {
         try {
+            console.log('Creating new station for node:', nodeId, 'at position:', { x, y });
+            
             // Get node details
             const response = await fetch(`/api/nodes/${nodeId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to get node data: ${response.status}`);
+            }
+            
             const node = await response.json();
+            console.log('Fetched node data:', node);
             
             // Create a station object
             const stationId = `station_${nodeId}`;
             const newStation = {
                 id: stationId,
                 node_id: nodeId,
-                name: node.content,
+                name: node.content || `Node ${nodeId}`,
                 x: Math.round(x),
                 y: Math.round(y),
                 interchange: false,
@@ -1670,20 +1745,25 @@ const MetroMapVisualizer = (function() {
                 description: ''
             };
             
+            console.log('Created new station object:', newStation);
+            
             // Save to database
+            console.log('Saving station to database');
             await saveStationToDatabase(newStation);
             
             // Add to stations array
             stations.push(newStation);
+            console.log('Station added to stations array, now has', stations.length, 'stations');
             
             // Open station edit menu
+            console.log('Opening edit menu for new station');
             openStationEditMenu(newStation, x, y);
             
             // Redraw
             drawMap();
         } catch (error) {
             console.error('Error creating station:', error);
-            alert('Failed to create station');
+            alert(`Failed to create station: ${error.message}`);
         }
     }
     
@@ -2367,7 +2447,7 @@ const MetroMapVisualizer = (function() {
     
     // Public API
     return {
-        initialize,
+        initialize,  // This exposes initialize to be called as MetroMapVisualizer.initialize()
         show,
         hide,
         isVisible,
@@ -2380,7 +2460,7 @@ const MetroMapVisualizer = (function() {
 // Initialize the module when it's loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the module
-    initialize();
+    MetroMapVisualizer.initialize(); // Call through the public API
     console.log('MetroMapVisualizer initialized');
 });
 
