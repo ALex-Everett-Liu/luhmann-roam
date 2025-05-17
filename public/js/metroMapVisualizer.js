@@ -1024,8 +1024,18 @@ const MetroMapVisualizer = (function() {
                 return;
             }
             
-            // Add station to line
-            line.stations.push(stationId);
+               // Add this check before using line.stations.push
+                if (typeof line.stations === 'string') {
+                    line.stations = JSON.parse(line.stations);
+                }
+                
+                // Ensure it's an array
+                if (!Array.isArray(line.stations)) {
+                    line.stations = [];
+                }
+                
+                // Now it's safe to push
+                line.stations.push(stationId);
             
             // Check if this is an interchange station
             const stationLines = findLinesForStation(stationId);
@@ -1111,6 +1121,26 @@ const MetroMapVisualizer = (function() {
                 stations = await stationsResponse.json();
                 lines = await linesResponse.json();
             }
+            
+            // Ensure all lines have stations as arrays, not JSON strings
+            lines = lines.map(line => {
+                // If stations is a string, parse it
+                if (typeof line.stations === 'string') {
+                    try {
+                        line.stations = JSON.parse(line.stations || '[]');
+                    } catch (error) {
+                        console.error('Error parsing stations for line:', line.id, error);
+                        line.stations = [];
+                    }
+                }
+                
+                // If stations is not an array after parsing, initialize as empty array
+                if (!Array.isArray(line.stations)) {
+                    line.stations = [];
+                }
+                
+                return line;
+            });
             
             console.log('Loaded metro map data:', { stations, lines });
         } catch (error) {
@@ -2606,6 +2636,28 @@ const MetroMapVisualizer = (function() {
             console.error('Error in createNewNode:', error);
             throw error;
         }
+    }
+    
+    // Helper function to ensure line.stations is always an array
+    function ensureLineStationsArray(line) {
+        if (!line) return line;
+        
+        // If stations is a string, parse it
+        if (typeof line.stations === 'string') {
+            try {
+                line.stations = JSON.parse(line.stations || '[]');
+            } catch (error) {
+                console.error('Error parsing stations for line:', line.id, error);
+                line.stations = [];
+            }
+        }
+        
+        // If stations is not an array after parsing, initialize as empty array
+        if (!Array.isArray(line.stations)) {
+            line.stations = [];
+        }
+        
+        return line;
     }
     
     // Public API
