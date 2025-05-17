@@ -190,6 +190,71 @@ async function initializeDatabase(vaultName) {
     // Column likely already exists, which is fine
     console.log('parent_id column already exists or other error:', error.message);
   }
+
+// Create metro_stations table
+await db.exec(`
+  CREATE TABLE IF NOT EXISTS metro_stations (
+    id TEXT PRIMARY KEY,
+    node_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    x REAL,
+    y REAL,
+    interchange BOOLEAN DEFAULT 0,
+    terminal BOOLEAN DEFAULT 0,
+    description TEXT,
+    created_at INTEGER,
+    updated_at INTEGER,
+    sequence_id INTEGER,
+    FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE
+  )
+`);
+
+// Create metro_lines table
+await db.exec(`
+  CREATE TABLE IF NOT EXISTS metro_lines (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT,
+    stations TEXT,
+    curved BOOLEAN DEFAULT 0,
+    description TEXT,
+    created_at INTEGER,
+    updated_at INTEGER,
+    sequence_id INTEGER
+  )
+`);
+
+  // Add indices for better performance
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_metro_stations_node_id ON metro_stations(node_id);
+    CREATE INDEX IF NOT EXISTS idx_metro_stations_sequence_id ON metro_stations(sequence_id);
+    CREATE INDEX IF NOT EXISTS idx_metro_lines_sequence_id ON metro_lines(sequence_id);
+  `);
+
+  // Add triggers for auto-assigning sequence IDs
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS assign_sequence_id_metro_stations
+    AFTER INSERT ON metro_stations
+    FOR EACH ROW
+    WHEN NEW.sequence_id IS NULL
+    BEGIN
+      UPDATE metro_stations 
+      SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM metro_stations)
+      WHERE id = NEW.id;
+    END;
+  `);
+
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS assign_sequence_id_metro_lines
+    AFTER INSERT ON metro_lines
+    FOR EACH ROW
+    WHEN NEW.sequence_id IS NULL
+    BEGIN
+      UPDATE metro_lines 
+      SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM metro_lines)
+      WHERE id = NEW.id;
+    END;
+  `);
   
   // Add sequence_id column to nodes table
   try {

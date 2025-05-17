@@ -24,6 +24,7 @@ const upload = require('./middleware/upload');
 const devTestRoutes = require('./routes/devTestRoutes');
 const databaseExportImportRoutes = require('./routes/databaseExportImportRoutes');
 const vaultRoutes = require('./routes/vaultRoutes');
+const metroMapRoutes = require('./routes/metroMapRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -754,6 +755,9 @@ app.use('/api/database', databaseExportImportRoutes);
 
 // Use the vault routes
 app.use('/api/vaults', vaultRoutes);
+
+// In server.js, add this with other route registrations
+app.use('/api/metro-map', metroMapRoutes);
 
 // Add this after the database initialization
 // Create vaults directory if it doesn't exist
