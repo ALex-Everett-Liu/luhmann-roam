@@ -268,6 +268,9 @@ const MetroMapVisualizer = (function() {
         // Set up pan and zoom
         setupPanAndZoom();
         
+        // Set up edit mode handlers
+        setupEditModeHandlers();
+        
         // Prevent context menu on canvas
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         
@@ -1522,6 +1525,846 @@ const MetroMapVisualizer = (function() {
         return _isVisible;
     }
     
+    // Add this function to handle map clicks in edit mode
+    function setupEditModeHandlers() {
+        canvas.addEventListener('click', handleEditModeClick);
+    }
+    
+    // Handle clicks in edit mode
+    async function handleEditModeClick(event) {
+        if (!editMode) return;
+        
+        // If right click or middle click, don't handle as edit
+        if (event.button !== 0) return;
+        
+        // Get click coordinates adjusted for zoom and pan
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // Apply inverse transformation to get actual map coordinates
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        
+        // Adjust for the center, zoom, and offset
+        const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
+        const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
+        
+        // Check if clicking on an existing station first
+        for (const station of stations) {
+            const dx = adjustedX - station.x;
+            const dy = adjustedY - station.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            const stationRadius = station.interchange ? INTERCHANGE_RADIUS : STATION_RADIUS;
+            
+            if (distance <= stationRadius) {
+                // Open station edit menu
+                openStationEditMenu(station, x, y);
+                return;
+            }
+        }
+        
+        // Check if clicking on a line
+        for (const line of lines) {
+            // Check each segment of the line
+            for (let i = 0; i < line.stations.length - 1; i++) {
+                const station1 = findStationById(line.stations[i]);
+                const station2 = findStationById(line.stations[i + 1]);
+                
+                if (station1 && station2) {
+                    if (isPointNearLineSegment(
+                        adjustedX, adjustedY,
+                        station1.x, station1.y,
+                        station2.x, station2.y,
+                        LINE_WIDTH
+                    )) {
+                        // Open line edit menu
+                        openLineEditMenu(line, x, y);
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // If not clicking on anything, add a new station
+        openNodeSelectorForNewStation(adjustedX, adjustedY, x, y);
+    }
+    
+    // Open a node selector to associate with new station
+    async function openNodeSelectorForNewStation(mapX, mapY, screenX, screenY) {
+        try {
+            // Create a new element for node selection
+            const selectorContainer = document.createElement('div');
+            selectorContainer.className = 'metro-edit-menu';
+            selectorContainer.style.left = `${screenX}px`;
+            selectorContainer.style.top = `${screenY}px`;
+            
+            selectorContainer.innerHTML = `
+                <h3>Create New Station</h3>
+                <p>Select a node to associate with this station:</p>
+                <select id="metro-node-selector" style="width: 100%; margin-bottom: 10px;">
+                    <option value="">Loading nodes...</option>
+                </select>
+                <button id="metro-create-station">Create Station</button>
+                <button id="metro-cancel">Cancel</button>
+            `;
+            
+            container.appendChild(selectorContainer);
+            
+            // Fetch available nodes
+            const response = await fetch('/api/nodes');
+            const availableNodes = await response.json();
+            
+            // Populate selector
+            const selector = document.getElementById('metro-node-selector');
+            selector.innerHTML = '';
+            
+            for (const node of availableNodes) {
+                // Skip nodes that already have stations
+                if (stations.some(s => s.node_id === node.id)) continue;
+                
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.content;
+                selector.appendChild(option);
+            }
+            
+            // Add event listeners
+            document.getElementById('metro-create-station').addEventListener('click', () => {
+                const selectedNodeId = selector.value;
+                if (!selectedNodeId) {
+                    alert('Please select a node');
+                    return;
+                }
+                
+                createNewStation(selectedNodeId, mapX, mapY);
+                selectorContainer.remove();
+            });
+            
+            document.getElementById('metro-cancel').addEventListener('click', () => {
+                selectorContainer.remove();
+            });
+        } catch (error) {
+            console.error('Error opening node selector:', error);
+        }
+    }
+    
+    // Create a new station
+    async function createNewStation(nodeId, x, y) {
+        try {
+            // Get node details
+            const response = await fetch(`/api/nodes/${nodeId}`);
+            const node = await response.json();
+            
+            // Create a station object
+            const stationId = `station_${nodeId}`;
+            const newStation = {
+                id: stationId,
+                node_id: nodeId,
+                name: node.content,
+                x: Math.round(x),
+                y: Math.round(y),
+                interchange: false,
+                terminal: false,
+                description: ''
+            };
+            
+            // Save to database
+            await saveStationToDatabase(newStation);
+            
+            // Add to stations array
+            stations.push(newStation);
+            
+            // Open station edit menu
+            openStationEditMenu(newStation, x, y);
+            
+            // Redraw
+            drawMap();
+        } catch (error) {
+            console.error('Error creating station:', error);
+            alert('Failed to create station');
+        }
+    }
+    
+    // Open menu to edit station properties
+    function openStationEditMenu(station, x, y) {
+        // Create a new element for station editing
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        
+        menuContainer.innerHTML = `
+            <h3>Edit Station: ${station.name}</h3>
+            <label>
+                Description:
+                <input type="text" id="station-description" value="${station.description || ''}" style="width: 100%;">
+            </label>
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="station-interchange" ${station.interchange ? 'checked' : ''}>
+                    Interchange Station
+                </label>
+            </div>
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="station-terminal" ${station.terminal ? 'checked' : ''}>
+                    Terminal Station
+                </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                <button id="edit-station-save">Save</button>
+                <button id="edit-station-delete">Delete</button>
+                <button id="edit-station-cancel">Cancel</button>
+            </div>
+            <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <button id="add-to-line">Add to Line</button>
+                <button id="create-new-line">Create New Line</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Add event listeners
+        document.getElementById('edit-station-save').addEventListener('click', async () => {
+            // Get updated values
+            station.description = document.getElementById('station-description').value;
+            station.interchange = document.getElementById('station-interchange').checked;
+            station.terminal = document.getElementById('station-terminal').checked;
+            
+            // Save to database
+            await updateStationInDatabase(station);
+            
+            // Remove menu and redraw
+            menuContainer.remove();
+            drawMap();
+        });
+        
+        document.getElementById('edit-station-delete').addEventListener('click', async () => {
+            if (confirm('Are you sure you want to delete this station?')) {
+                // Remove station from lines
+                for (const line of lines) {
+                    line.stations = line.stations.filter(id => id !== station.id);
+                    if (line.stations.length > 0) {
+                        await updateLineInDatabase(line);
+                    }
+                }
+                
+                // Remove station from array
+                stations = stations.filter(s => s.id !== station.id);
+                
+                // Remove from database (we don't have a dedicated delete function, 
+                // but we can handle this through node attributes for now)
+                if (station.node_id) {
+                    try {
+                        const attrResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
+                        if (attrResponse.ok) {
+                            const attributes = await attrResponse.json();
+                            const stationAttr = attributes.find(a => a.key === 'metro_station');
+                            
+                            if (stationAttr) {
+                                // Delete the attribute
+                                await fetch(`/api/node-attributes/${stationAttr.id}`, {
+                                    method: 'DELETE'
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error deleting station attribute:', error);
+                    }
+                }
+                
+                // Remove menu and redraw
+                menuContainer.remove();
+                drawMap();
+            }
+        });
+        
+        document.getElementById('edit-station-cancel').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+        
+        document.getElementById('add-to-line').addEventListener('click', () => {
+            menuContainer.remove();
+            openAddToLineMenu(station, x, y);
+        });
+        
+        document.getElementById('create-new-line').addEventListener('click', () => {
+            menuContainer.remove();
+            openCreateLineMenu(station, x, y);
+        });
+    }
+    
+    // Open menu to add station to an existing line
+    function openAddToLineMenu(station, x, y) {
+        if (lines.length === 0) {
+            alert('No lines exist. Create a new line first.');
+            openCreateLineMenu(station, x, y);
+            return;
+        }
+        
+        // Create a new element for line selection
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        
+        let lineOptionsHTML = '';
+        for (const line of lines) {
+            const lineColor = line.color || '#666';
+            lineOptionsHTML += `
+                <div style="margin: 5px 0;">
+                    <label>
+                        <input type="radio" name="line-select" value="${line.id}">
+                        <span class="metro-line-badge" style="background-color:${lineColor}"></span>
+                        ${line.name}
+                    </label>
+                </div>
+            `;
+        }
+        
+        menuContainer.innerHTML = `
+            <h3>Add to Line</h3>
+            <p>Select a line to add this station to:</p>
+            <form id="line-select-form">
+                ${lineOptionsHTML}
+            </form>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button id="add-to-line-save">Add</button>
+                <button id="add-to-line-cancel">Cancel</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Add event listeners
+        document.getElementById('add-to-line-save').addEventListener('click', async () => {
+            const selectedLine = document.querySelector('input[name="line-select"]:checked');
+            if (!selectedLine) {
+                alert('Please select a line');
+                return;
+            }
+            
+            const lineId = selectedLine.value;
+            const line = lines.find(l => l.id === lineId);
+            
+            if (line) {
+                // Don't add if already in the line
+                if (line.stations.includes(station.id)) {
+                    alert('This station is already on this line');
+                    menuContainer.remove();
+                    return;
+                }
+                
+                // Add station to line
+                line.stations.push(station.id);
+                
+                // Update line in database
+                await updateLineInDatabase(line);
+                
+                // Check if this is now an interchange station
+                const stationLines = lines.filter(l => l.stations.includes(station.id));
+                if (stationLines.length > 1 && !station.interchange) {
+                    station.interchange = true;
+                    await updateStationInDatabase(station);
+                }
+                
+                // Remove menu and redraw
+                menuContainer.remove();
+                drawMap();
+            }
+        });
+        
+        document.getElementById('add-to-line-cancel').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+    }
+    
+    // Open menu to create a new line starting with the given station
+    function openCreateLineMenu(station, x, y) {
+        // Create a new element for creating a line
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        
+        // Create color picker options
+        let colorOptionsHTML = '';
+        for (const color of LINE_COLORS) {
+            colorOptionsHTML += `
+                <div style="display: inline-block; margin: 5px;">
+                    <label>
+                        <input type="radio" name="line-color" value="${color}">
+                        <span style="display: inline-block; width: 20px; height: 20px; background-color:${color}; border-radius: 50%;"></span>
+                    </label>
+                </div>
+            `;
+        }
+        
+        menuContainer.innerHTML = `
+            <h3>Create New Line</h3>
+            <label>
+                Line Name:
+                <input type="text" id="line-name" placeholder="Line Name" style="width: 100%;">
+            </label>
+            <div style="margin: 10px 0;">
+                <p>Line Color:</p>
+                <div style="margin: 5px 0;">
+                    ${colorOptionsHTML}
+                </div>
+            </div>
+            <label>
+                Description:
+                <input type="text" id="line-description" placeholder="Line Description" style="width: 100%;">
+            </label>
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="line-curved">
+                    Use curved line segments
+                </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button id="create-line-save">Create</button>
+                <button id="create-line-cancel">Cancel</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Select the first color by default
+        const firstColorOption = menuContainer.querySelector('input[name="line-color"]');
+        if (firstColorOption) firstColorOption.checked = true;
+        
+        // Add event listeners
+        document.getElementById('create-line-save').addEventListener('click', async () => {
+            const lineName = document.getElementById('line-name').value.trim();
+            if (!lineName) {
+                alert('Please enter a line name');
+                return;
+            }
+            
+            const lineColor = document.querySelector('input[name="line-color"]:checked')?.value || LINE_COLORS[0];
+            const lineDescription = document.getElementById('line-description').value.trim();
+            const lineCurved = document.getElementById('line-curved').checked;
+            
+            // Create a new line
+            const lineId = `line_${Date.now().toString(36)}${Math.random().toString(36).substr(2, 5)}`;
+            const newLine = {
+                id: lineId,
+                name: lineName,
+                color: lineColor,
+                stations: [station.id],
+                curved: lineCurved,
+                description: lineDescription
+            };
+            
+            // Save to database
+            await saveLineToDatabase(newLine);
+            
+            // Add to lines array
+            lines.push(newLine);
+            
+            // Remove menu and redraw
+            menuContainer.remove();
+            drawMap();
+        });
+        
+        document.getElementById('create-line-cancel').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+    }
+    
+    // Open menu to edit a line
+    function openLineEditMenu(line, x, y) {
+        // Create a new element for editing a line
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        
+        // Create color picker options
+        let colorOptionsHTML = '';
+        for (const color of LINE_COLORS) {
+            colorOptionsHTML += `
+                <div style="display: inline-block; margin: 5px;">
+                    <label>
+                        <input type="radio" name="line-color" value="${color}" ${line.color === color ? 'checked' : ''}>
+                        <span style="display: inline-block; width: 20px; height: 20px; background-color:${color}; border-radius: 50%;"></span>
+                    </label>
+                </div>
+            `;
+        }
+        
+        menuContainer.innerHTML = `
+            <h3>Edit Line: ${line.name}</h3>
+            <label>
+                Line Name:
+                <input type="text" id="line-name" value="${line.name}" style="width: 100%;">
+            </label>
+            <div style="margin: 10px 0;">
+                <p>Line Color:</p>
+                <div style="margin: 5px 0;">
+                    ${colorOptionsHTML}
+                </div>
+            </div>
+            <label>
+                Description:
+                <input type="text" id="line-description" value="${line.description || ''}" style="width: 100%;">
+            </label>
+            <div style="margin: 10px 0;">
+                <label>
+                    <input type="checkbox" id="line-curved" ${line.curved ? 'checked' : ''}>
+                    Use curved line segments
+                </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button id="edit-line-save">Save</button>
+                <button id="edit-line-delete">Delete</button>
+                <button id="edit-line-cancel">Cancel</button>
+            </div>
+            <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <p>Stations on this line: ${line.stations.length}</p>
+                <button id="manage-line-stations">Manage Stations</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Add event listeners
+        document.getElementById('edit-line-save').addEventListener('click', async () => {
+            // Get updated values
+            line.name = document.getElementById('line-name').value.trim();
+            line.color = document.querySelector('input[name="line-color"]:checked')?.value || line.color;
+            line.description = document.getElementById('line-description').value.trim();
+            line.curved = document.getElementById('line-curved').checked;
+            
+            // Save to database
+            await updateLineInDatabase(line);
+            
+            // Remove menu and redraw
+            menuContainer.remove();
+            drawMap();
+        });
+        
+        document.getElementById('edit-line-delete').addEventListener('click', async () => {
+            if (confirm('Are you sure you want to delete this line?')) {
+                // Remove line from array
+                lines = lines.filter(l => l.id !== line.id);
+                
+                // Remove from database (we don't have a dedicated delete function, 
+                // but we can handle this through node attributes for now)
+                if (line.stations && line.stations.length > 0) {
+                    try {
+                        const stationId = line.stations[0];
+                        const station = stations.find(s => s.id === stationId);
+                        
+                        if (station && station.node_id) {
+                            const attrResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
+                            if (attrResponse.ok) {
+                                const attributes = await attrResponse.json();
+                                const lineAttr = attributes.find(a => a.key === 'metro_line');
+                                
+                                if (lineAttr) {
+                                    // Delete the attribute
+                                    await fetch(`/api/node-attributes/${lineAttr.id}`, {
+                                        method: 'DELETE'
+                                    });
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error deleting line attribute:', error);
+                    }
+                }
+                
+                // Check if any stations are no longer interchanges
+                for (const station of stations) {
+                    const stationLines = lines.filter(l => l.stations.includes(station.id));
+                    if (stationLines.length <= 1 && station.interchange) {
+                        station.interchange = false;
+                        await updateStationInDatabase(station);
+                    }
+                }
+                
+                // Remove menu and redraw
+                menuContainer.remove();
+                drawMap();
+            }
+        });
+        
+        document.getElementById('edit-line-cancel').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+        
+        document.getElementById('manage-line-stations').addEventListener('click', () => {
+            menuContainer.remove();
+            openManageLineStationsMenu(line, x, y);
+        });
+    }
+    
+    // Open menu to manage stations on a line
+    function openManageLineStationsMenu(line, x, y) {
+        // Create a new element for managing stations
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        menuContainer.style.width = '300px';  // Make it wider
+        
+        // Build list of stations on this line with drag handles
+        let stationListHTML = '';
+        for (let i = 0; i < line.stations.length; i++) {
+            const stationId = line.stations[i];
+            const station = stations.find(s => s.id === stationId);
+            
+            if (station) {
+                stationListHTML += `
+                    <div class="line-station-item" data-station-id="${station.id}" style="display: flex; justify-content: space-between; align-items: center; margin: 5px 0; padding: 5px; border: 1px solid #ddd; background: #f8f8f8;">
+                        <span class="station-drag-handle" style="cursor: grab; margin-right: 10px;">≡</span>
+                        <span>${station.name}</span>
+                        <button class="remove-station-btn" data-station-id="${station.id}" style="background: none; border: none; color: red; cursor: pointer;">×</button>
+                    </div>
+                `;
+            }
+        }
+        
+        menuContainer.innerHTML = `
+            <h3>Manage Stations on ${line.name}</h3>
+            <p>Drag to reorder stations:</p>
+            <div id="line-stations-list" style="max-height: 300px; overflow-y: auto;">
+                ${stationListHTML}
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="add-more-stations">Add More Stations</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button id="save-station-order">Save Order</button>
+                <button id="cancel-station-manage">Cancel</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Set up event listeners
+        setupStationDragHandlers(menuContainer, line);
+        
+        document.getElementById('save-station-order').addEventListener('click', async () => {
+            // Save the new order
+            const stationElements = menuContainer.querySelectorAll('.line-station-item');
+            const newOrder = Array.from(stationElements).map(el => el.dataset.stationId);
+            
+            // Update line stations
+            line.stations = newOrder;
+            
+            // Save to database
+            await updateLineInDatabase(line);
+            
+            // Remove menu and redraw
+            menuContainer.remove();
+            drawMap();
+        });
+        
+        document.getElementById('cancel-station-manage').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+        
+        document.getElementById('add-more-stations').addEventListener('click', () => {
+            menuContainer.remove();
+            openAddStationsToLineMenu(line, x, y);
+        });
+        
+        // Add event listeners for remove buttons
+        menuContainer.querySelectorAll('.remove-station-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const stationId = this.dataset.stationId;
+                
+                // Remove station from line
+                line.stations = line.stations.filter(id => id !== stationId);
+                
+                // If line has no stations left, delete it
+                if (line.stations.length === 0) {
+                    if (confirm('This line has no stations left. Delete the line?')) {
+                        // Remove line from array
+                        lines = lines.filter(l => l.id !== line.id);
+                        menuContainer.remove();
+                        drawMap();
+                        return;
+                    }
+                }
+                
+                // Check if this station is still an interchange
+                const station = stations.find(s => s.id === stationId);
+                if (station) {
+                    const stationLines = lines.filter(l => l.stations.includes(stationId));
+                    if (stationLines.length <= 1 && station.interchange) {
+                        station.interchange = false;
+                        await updateStationInDatabase(station);
+                    }
+                }
+                
+                // Update line
+                await updateLineInDatabase(line);
+                
+                // Refresh this menu
+                menuContainer.remove();
+                openManageLineStationsMenu(line, x, y);
+            });
+        });
+    }
+    
+    // Set up drag and drop for station reordering
+    function setupStationDragHandlers(menuContainer, line) {
+        const stationsList = menuContainer.querySelector('#line-stations-list');
+        let draggedItem = null;
+        
+        // Add event listeners to each drag handle
+        menuContainer.querySelectorAll('.station-drag-handle').forEach(handle => {
+            const item = handle.closest('.line-station-item');
+            
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                draggedItem = item;
+                item.style.opacity = '0.5';
+                
+                // Add a class to indicate we're dragging
+                item.classList.add('dragging');
+                
+                // Create a function for the drag move
+                const moveAt = function(pageY) {
+                    const rect = stationsList.getBoundingClientRect();
+                    const scrollTop = stationsList.scrollTop;
+                    const relativeY = pageY - rect.top + scrollTop;
+                    
+                    // Auto-scroll if near edges
+                    if (pageY < rect.top + 30) {
+                        stationsList.scrollTop -= 10;
+                    } else if (pageY > rect.bottom - 30) {
+                        stationsList.scrollTop += 10;
+                    }
+                    
+                    // Find item we're hovering over
+                    const items = Array.from(stationsList.querySelectorAll('.line-station-item:not(.dragging)'));
+                    
+                    for (const currentItem of items) {
+                        const currentRect = currentItem.getBoundingClientRect();
+                        const currentMiddle = currentRect.top + currentRect.height / 2;
+                        
+                        if (pageY < currentMiddle) {
+                            stationsList.insertBefore(draggedItem, currentItem);
+                            return;
+                        }
+                    }
+                    
+                    // If we get here, append to the end
+                    stationsList.appendChild(draggedItem);
+                };
+                
+                // Add the mousemove event to the document
+                function onMouseMove(e) {
+                    moveAt(e.pageY);
+                }
+                
+                document.addEventListener('mousemove', onMouseMove);
+                
+                // Add mouseup to stop dragging
+                document.addEventListener('mouseup', function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    
+                    if (draggedItem) {
+                        draggedItem.style.opacity = '1';
+                        draggedItem.classList.remove('dragging');
+                        draggedItem = null;
+                    }
+                });
+            });
+        });
+    }
+    
+    // Open menu to add more stations to a line
+    function openAddStationsToLineMenu(line, x, y) {
+        // Create a new element for adding stations
+        const menuContainer = document.createElement('div');
+        menuContainer.className = 'metro-edit-menu';
+        menuContainer.style.left = `${x}px`;
+        menuContainer.style.top = `${y}px`;
+        menuContainer.style.width = '300px';  // Make it wider
+        
+        // Find stations not on this line
+        const availableStations = stations.filter(station => !line.stations.includes(station.id));
+        
+        if (availableStations.length === 0) {
+            alert('All stations are already on this line. Create a new station first.');
+            menuContainer.remove();
+            return;
+        }
+        
+        let stationOptionsHTML = '';
+        for (const station of availableStations) {
+            stationOptionsHTML += `
+                <div style="margin: 5px 0;">
+                    <label>
+                        <input type="checkbox" name="add-station" value="${station.id}">
+                        ${station.name}
+                    </label>
+                </div>
+            `;
+        }
+        
+        menuContainer.innerHTML = `
+            <h3>Add Stations to ${line.name}</h3>
+            <p>Select stations to add:</p>
+            <div style="max-height: 300px; overflow-y: auto;">
+                ${stationOptionsHTML}
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button id="add-stations-save">Add Selected</button>
+                <button id="add-stations-cancel">Cancel</button>
+            </div>
+        `;
+        
+        container.appendChild(menuContainer);
+        
+        // Add event listeners
+        document.getElementById('add-stations-save').addEventListener('click', async () => {
+            const selectedStations = Array.from(
+                menuContainer.querySelectorAll('input[name="add-station"]:checked')
+            ).map(input => input.value);
+            
+            if (selectedStations.length === 0) {
+                alert('Please select at least one station to add');
+                return;
+            }
+            
+            // Add stations to line
+            line.stations = [...line.stations, ...selectedStations];
+            
+            // Update interchange status for added stations
+            for (const stationId of selectedStations) {
+                const station = stations.find(s => s.id === stationId);
+                if (station) {
+                    const stationLines = lines.filter(l => l.stations.includes(stationId));
+                    if (stationLines.length > 1 && !station.interchange) {
+                        station.interchange = true;
+                        await updateStationInDatabase(station);
+                    }
+                }
+            }
+            
+            // Save to database
+            await updateLineInDatabase(line);
+            
+            // Remove menu and redraw
+            menuContainer.remove();
+            drawMap();
+        });
+        
+        document.getElementById('add-stations-cancel').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+    }
+    
     // Public API
     return {
         initialize,
@@ -1533,6 +2376,13 @@ const MetroMapVisualizer = (function() {
         addStationToLine
     };
 })();
+
+// Initialize the module when it's loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the module
+    initialize();
+    console.log('MetroMapVisualizer initialized');
+});
 
 // Make the module globally accessible (crucial step!)
 window.MetroMapVisualizer = MetroMapVisualizer;
