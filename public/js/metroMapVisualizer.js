@@ -498,11 +498,10 @@ const MetroMapVisualizer = (function() {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
-        // Adjust for the center, zoom, and offset
+        // Adjust for the center, zoom, and offset with inverted Y
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
-        const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
+        const adjustedY = -((y - centerY) / zoomLevel + offsetY / zoomLevel - centerY); // Invert Y
         
-        // Just after calculating adjustedX and adjustedY
         console.log('Clicked coordinates:', {
             original: { x, y },
             adjusted: { x: adjustedX, y: adjustedY }
@@ -616,9 +615,9 @@ const MetroMapVisualizer = (function() {
         // Translate to the center
         ctx.translate(centerX, centerY);
         // Apply zoom centered on the canvas
-        ctx.scale(zoomLevel, zoomLevel);
+        ctx.scale(zoomLevel, -zoomLevel); // Negative scale for Y to invert the axis
         // Apply pan offset
-        ctx.translate(offsetX / zoomLevel, offsetY / zoomLevel);
+        ctx.translate(offsetX / zoomLevel, -offsetY / zoomLevel); // Negate offsetY
         // Translate back from the center
         ctx.translate(-centerX, -centerY);
         
@@ -768,19 +767,28 @@ const MetroMapVisualizer = (function() {
             ctx.fill();
             ctx.stroke();
             
-            // Draw station name
+            // Save context before text rendering
+            ctx.save();
+            
+            // Invert Y-axis again for text (so it's not drawn upside-down)
+            ctx.scale(1, -1);
+            
+            // Draw station name (with inverted Y position)
             ctx.font = `${Math.round(12 * textScaleFactor)}px Arial`;
             ctx.fillStyle = '#000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillText(station.name, x, y + radius + 4);
+            ctx.fillText(station.name, x, -y - radius - 4 - 12); // Note the negative Y
             
             // Draw station marker if in edit mode
             if (editMode) {
                 ctx.font = `${Math.round(10 * textScaleFactor)}px Arial`;
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillText(`[${Math.round(x)},${Math.round(y)}]`, x, y + radius + 20);
+                ctx.fillText(`[${Math.round(x)},${Math.round(y)}]`, x, -y - radius - 20 - 10); // Note the negative Y
             }
+            
+            // Restore context after text rendering
+            ctx.restore();
         }
     }
     
