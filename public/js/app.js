@@ -1233,4 +1233,60 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.CosmicNodeVisualizer2D) {
     CosmicNodeVisualizer2D.initialize();
   }
+
+  // Add a toggle button for the metro map visualizer
+  const toggleMetroMapButton = document.createElement('button');
+  toggleMetroMapButton.id = 'toggle-metro-map';
+  toggleMetroMapButton.className = 'feature-toggle';
+  toggleMetroMapButton.textContent = 'Metro Map View';
+  toggleMetroMapButton.title = 'View nodes as a metro/subway map';
+
+  toggleMetroMapButton.addEventListener('click', function() {
+    console.log('Metro Map button clicked');
+    console.log('MetroMapVisualizer exists:', !!window.MetroMapVisualizer);
+    
+    if (window.MetroMapVisualizer) {
+      const isVisible = MetroMapVisualizer.isVisible();
+      console.log('Is currently visible:', isVisible);
+      
+      if (isVisible) {
+        console.log('Hiding metro map');
+        MetroMapVisualizer.hide();
+      } else {
+        // Get current node ID using similar logic to 2D cosmic view
+        let nodeToShow = lastFocusedNodeId;
+        console.log('Initial nodeToShow:', nodeToShow);
+        
+        if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
+          nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
+          console.log('Got nodeId from BreadcrumbManager:', nodeToShow);
+        }
+        
+        // If still no node ID, get the first visible node
+        if (!nodeToShow && nodes.length > 0) {
+          nodeToShow = nodes[0].id;
+          console.log('Falling back to first visible node:', nodeToShow);
+        }
+        
+        console.log('Final nodeToShow:', nodeToShow);
+        
+        if (nodeToShow) {
+          try {
+            console.log('Calling MetroMapVisualizer.show()');
+            MetroMapVisualizer.show(nodeToShow);
+          } catch (error) {
+            console.error('Error calling show():', error);
+          }
+        } else {
+          console.warn('No node selected');
+          alert('Please select a node first');
+        }
+      }
+    } else {
+      console.error('MetroMapVisualizer is not available');
+    }
+  });
+
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggleMetroMapButton);
 });

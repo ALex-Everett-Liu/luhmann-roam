@@ -902,6 +902,65 @@ const CommandPaletteManager = (function() {
                 return null;
             }
         }
+        
+        // Add Metro Map Visualizer commands if it exists
+        if (window.MetroMapVisualizer) {
+            registerCommand({
+                name: 'Open Metro Map View',
+                action: () => {
+                    const nodeId = getCurrentNodeId();
+                    if (nodeId) {
+                        openMetroMapView(nodeId);
+                    } else {
+                        alert('Please select or focus on a node first');
+                    }
+                },
+                category: 'Visualization',
+                keywords: ['metro', 'subway', 'map', 'visualize', 'transit', 'diagram']
+            });
+            
+            registerCommand({
+                name: 'Open Metro Map View for Current Node',
+                action: () => {
+                    const focusedNode = document.querySelector('.node-text:focus');
+                    if (focusedNode) {
+                        const nodeId = focusedNode.closest('.node').dataset.id;
+                        if (nodeId) {
+                            openMetroMapView(nodeId);
+                        }
+                    } else {
+                        alert('Please focus on a node first');
+                    }
+                },
+                category: 'Visualization',
+                keywords: ['metro', 'subway', 'map', 'current', 'focus', 'visualize']
+            });
+            
+            registerCommand({
+                name: 'Toggle Metro Map View',
+                action: () => {
+                    if (window.MetroMapVisualizer.isVisible()) {
+                        window.MetroMapVisualizer.hide();
+                    } else {
+                        const nodeId = getCurrentNodeId();
+                        if (nodeId) {
+                            openMetroMapView(nodeId);
+                        } else {
+                            alert('Please select or focus on a node first');
+                        }
+                    }
+                },
+                category: 'Visualization',
+                shortcut: 'Alt+M',
+                keywords: ['metro', 'subway', 'map', 'toggle', 'visualize', 'hide', 'show']
+            });
+            
+            // Helper function to open the metro map view
+            function openMetroMapView(nodeId) {
+                console.log('Opening Metro Map View for node:', nodeId);
+                window.MetroMapVisualizer.show(nodeId);
+            }
+        }
     }
     
     /**

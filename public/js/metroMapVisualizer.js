@@ -280,11 +280,20 @@ const MetroMapVisualizer = (function() {
     
     // Create the container and canvas
     function createContainer() {
-        // Create main container
-        container = document.createElement('div');
-        container.className = 'metro-visualizer-container';
+        // Create main container if it doesn't exist
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'metro-visualizer-container';
+            document.body.appendChild(container);
+        }
+
+        // Remove existing canvas if it exists
+        const existingCanvas = container.querySelector('canvas');
+        if (existingCanvas) {
+            existingCanvas.remove();
+        }
         
-        // Create canvas element
+        // Create new canvas element
         canvas = document.createElement('canvas');
         container.appendChild(canvas);
         
@@ -296,9 +305,6 @@ const MetroMapVisualizer = (function() {
         
         // Create info panel
         createInfoPanel();
-        
-        // Add to document
-        document.body.appendChild(container);
     }
     
     // Set up control buttons
@@ -1037,6 +1043,12 @@ const MetroMapVisualizer = (function() {
         console.log('Showing metro map for node:', nodeId);
         
         try {
+            // Make sure container and canvas are created
+            if (!container || !canvas) {
+                console.log('Container or canvas not initialized, creating now...');
+                createContainer();
+            }
+            
             // Set canvas size
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -1217,6 +1229,7 @@ const MetroMapVisualizer = (function() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(station)
                 });
+                
                 if (response.ok) {
                     return await response.json();
                 }
@@ -1224,29 +1237,36 @@ const MetroMapVisualizer = (function() {
                 console.log('Dedicated API not available, falling back to node attributes');
             }
             
-            // Fall back to saving as node attribute if (station.node_id) {
-            const attrResponse = await fetch('/api/node-attributes', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    node_id: station.node_id,
-                    key: 'metro_station',
-                    value: JSON.stringify({
-                        id: station.id,
-                        x: station.x,
-                        y: station.y,
-                        interchange: station.interchange,
-                        terminal: station.terminal,
-                        description: station.description
+            // Fall back to saving as node attribute
+            if (station.node_id) {
+                const attrResponse = await fetch('/api/node-attributes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        node_id: station.node_id,
+                        key: 'metro_station',
+                        value: JSON.stringify({
+                            id: station.id,
+                            x: station.x,
+                            y: station.y,
+                            interchange: station.interchange,
+                            terminal: station.terminal,
+                            description: station.description
+                        })
                     })
-                })
-            });
-            if (!attrResponse.ok) {
-                throw new Error('Failed to save station as node attribute');
+                });
+                
+                if (!attrResponse.ok) {
+                    throw new Error('Failed to save station as node attribute');
+                }
+                
+                return station;
+            } else {
+                throw new Error('Cannot save station without node_id');
             }
-            return station;
-        } else {
-            throw new Error('Cannot save station without node_id');
+        } catch (error) {
+            console.error('Error saving station:', error);
+            throw error;
         }
     }
     
@@ -1304,6 +1324,7 @@ const MetroMapVisualizer = (function() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(station)
                 });
+                
                 if (response.ok) {
                     return await response.json();
                 }
@@ -1311,40 +1332,49 @@ const MetroMapVisualizer = (function() {
                 console.log('Dedicated API not available, falling back to node attributes');
             }
             
-            // Fall back to updating node attribute if (station.node_id) {
-            // First, get the existing attribute to get its ID
-            const getAttrsResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
-            if (!getAttrsResponse.ok) {
-                throw new Error('Failed to get node attributes');
-            }
-            const attributes = await getAttrsResponse.json();
-            const stationAttr = attributes.find(a => a.key === 'metro_station');
-            if (stationAttr) {
-                // Update the existing attribute
-                const updateResponse = await fetch(`/api/node-attributes/${stationAttr.id}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        value: JSON.stringify({
-                            id: station.id,
-                            x: station.x,
-                            y: station.y,
-                            interchange: station.interchange,
-                            terminal: station.terminal,
-                            description: station.description
-                        })
-                    })
-                });
-                if (!updateResponse.ok) {
-                    throw new Error('Failed to update station attribute');
+            // Fall back to updating node attribute
+            if (station.node_id) {
+                // First, get the existing attribute to get its ID
+                const getAttrsResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
+                if (!getAttrsResponse.ok) {
+                    throw new Error('Failed to get node attributes');
                 }
+                
+                const attributes = await getAttrsResponse.json();
+                const stationAttr = attributes.find(a => a.key === 'metro_station');
+                
+                if (stationAttr) {
+                    // Update the existing attribute
+                    const updateResponse = await fetch(`/api/node-attributes/${stationAttr.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            value: JSON.stringify({
+                                id: station.id,
+                                x: station.x,
+                                y: station.y,
+                                interchange: station.interchange,
+                                terminal: station.terminal,
+                                description: station.description
+                            })
+                        })
+                    });
+                    
+                    if (!updateResponse.ok) {
+                        throw new Error('Failed to update station attribute');
+                    }
+                } else {
+                    // Create new attribute
+                    await saveStationToDatabase(station);
+                }
+                
+                return station;
             } else {
-                // Create new attribute
-                await saveStationToDatabase(station);
+                throw new Error('Cannot update station without node_id');
             }
-            return station;
-        } else {
-            throw new Error('Cannot update station without node_id');
+        } catch (error) {
+            console.error('Error updating station:', error);
+            throw error;
         }
     }
     
@@ -1358,6 +1388,7 @@ const MetroMapVisualizer = (function() {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(line)
                 });
+                
                 if (response.ok) {
                     return await response.json();
                 }
@@ -1365,37 +1396,44 @@ const MetroMapVisualizer = (function() {
                 console.log('Dedicated API not available, falling back to node attributes');
             }
             
-            // Fall back to updating node attribute if (line.stations && line.stations.length > 0) {
-            const stationId = line.stations[0];
-            const station = stations.find(s => s.id === stationId);
-            if (station && station.node_id) {
-                // First, get the existing attribute to get its ID
-                const getAttrsResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
-                if (!getAttrsResponse.ok) {
-                    throw new Error('Failed to get node attributes');
-                }
-                const attributes = await getAttrsResponse.json();
-                const lineAttr = attributes.find(a => a.key === 'metro_line');
-                if (lineAttr) {
-                    // Update the existing attribute
-                    const updateResponse = await fetch(`/api/node-attributes/${lineAttr.id}`, {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            value: JSON.stringify(line)
-                        })
-                    });
-                    if (!updateResponse.ok) {
-                        throw new Error('Failed to update line attribute');
+            // Fall back to updating node attribute
+            if (line.stations && line.stations.length > 0) {
+                const stationId = line.stations[0];
+                const station = stations.find(s => s.id === stationId);
+                
+                if (station && station.node_id) {
+                    // First, get the existing attribute to get its ID
+                    const getAttrsResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
+                    if (!getAttrsResponse.ok) {
+                        throw new Error('Failed to get node attributes');
                     }
-                } else {
-                    // Create new attribute
-                    await saveLineToDatabase(line);
+                    
+                    const attributes = await getAttrsResponse.json();
+                    const lineAttr = attributes.find(a => a.key === 'metro_line');
+                    
+                    if (lineAttr) {
+                        // Update the existing attribute
+                        const updateResponse = await fetch(`/api/node-attributes/${lineAttr.id}`, {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                value: JSON.stringify(line)
+                            })
+                        });
+                        
+                        if (!updateResponse.ok) {
+                            throw new Error('Failed to update line attribute');
+                        }
+                    } else {
+                        // Create new attribute
+                        await saveLineToDatabase(line);
+                    }
+                    
+                    return line;
                 }
-                return line;
-            } else {
-                throw new Error('Cannot update line without stations');
             }
+            
+            throw new Error('Cannot update line without stations');
         } catch (error) {
             console.error('Error updating line:', error);
             throw error;
@@ -1434,6 +1472,18 @@ const MetroMapVisualizer = (function() {
     
     // Show loading indicator
     function showLoading() {
+        // Make sure container exists
+        if (!container) {
+            console.error('Container not initialized in showLoading');
+            return;
+        }
+        
+        // Remove existing loading indicator if present
+        const existingLoading = container.querySelector('.metro-loading');
+        if (existingLoading) {
+            existingLoading.remove();
+        }
+        
         const loading = document.createElement('div');
         loading.className = 'metro-loading';
         loading.textContent = 'Loading';
@@ -1442,6 +1492,12 @@ const MetroMapVisualizer = (function() {
     
     // Hide loading indicator
     function hideLoading() {
+        // Make sure container exists
+        if (!container) {
+            console.error('Container not initialized in hideLoading');
+            return;
+        }
+        
         const loading = container.querySelector('.metro-loading');
         if (loading) {
             loading.remove();
