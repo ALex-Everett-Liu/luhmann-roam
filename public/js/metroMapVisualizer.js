@@ -129,6 +129,131 @@ const MetroMapVisualizer = (function() {
         // Create info panel
         createInfoPanel();
     }
+
+    // Add this function before setupControls or after it
+    function toggleScaleSettings() {
+        const scalePanel = container.querySelector('.metro-scale-settings');
+        
+        if (scalePanel) {
+            scalePanel.remove();
+        } else {
+            createScaleSettings();
+        }
+    }
+
+    // Make sure createScaleSettings is defined before toggleScaleSettings is called
+    function createScaleSettings() {
+        // Check if settings panel already exists
+        const existingPanel = container.querySelector('.metro-scale-settings');
+        if (existingPanel) {
+            existingPanel.remove();
+        }
+        
+        // Load saved scale settings
+        loadScaleSettings();
+        
+        // Create settings panel
+        const scalePanel = document.createElement('div');
+        scalePanel.className = 'metro-scale-settings';
+        
+        scalePanel.innerHTML = `
+            <h3>Scale Settings</h3>
+            
+            <div class="metro-scale-slider">
+                <label for="station-scale">Station Size: <span class="scale-value">${(stationScaleFactor * 100).toFixed(0)}%</span></label>
+                <input type="range" id="station-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${stationScaleFactor * 100}" step="10">
+            </div>
+            
+            <div class="metro-scale-slider">
+                <label for="text-scale">Text Size: <span class="scale-value">${(textScaleFactor * 100).toFixed(0)}%</span></label>
+                <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="10">
+            </div>
+            
+            <div class="metro-scale-actions">
+                <button class="reset">Reset to Default</button>
+                <button class="save">Save Settings</button>
+            </div>
+        `;
+        
+        container.appendChild(scalePanel);
+        
+        // Add event listeners
+        const stationScaleSlider = scalePanel.querySelector('#station-scale');
+        const textScaleSlider = scalePanel.querySelector('#text-scale');
+        const stationScaleValue = scalePanel.querySelector('label[for="station-scale"] .scale-value');
+        const textScaleValue = scalePanel.querySelector('label[for="text-scale"] .scale-value');
+        const resetButton = scalePanel.querySelector('button.reset');
+        const saveButton = scalePanel.querySelector('button.save');
+        
+        // Update values as sliders are moved
+        stationScaleSlider.addEventListener('input', (e) => {
+            stationScaleFactor = parseInt(e.target.value) / 100;
+            stationScaleValue.textContent = `${(stationScaleFactor * 100).toFixed(0)}%`;
+            drawMap();
+        });
+        
+        textScaleSlider.addEventListener('input', (e) => {
+            textScaleFactor = parseInt(e.target.value) / 100;
+            textScaleValue.textContent = `${(textScaleFactor * 100).toFixed(0)}%`;
+            drawMap();
+        });
+        
+        // Reset button
+        resetButton.addEventListener('click', () => {
+            stationScaleFactor = DEFAULT_SCALE;
+            textScaleFactor = DEFAULT_SCALE;
+            stationScaleSlider.value = DEFAULT_SCALE * 100;
+            textScaleSlider.value = DEFAULT_SCALE * 100;
+            stationScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
+            textScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
+            drawMap();
+        });
+        
+        // Save button
+        saveButton.addEventListener('click', () => {
+            saveScaleSettings();
+            // Provide feedback
+            saveButton.textContent = 'Saved!';
+            setTimeout(() => {
+                saveButton.textContent = 'Save Settings';
+            }, 1500);
+        });
+    }
+
+    // Also make sure these functions are defined
+    function loadScaleSettings() {
+        try {
+            const savedSettings = localStorage.getItem('metroMapScaleSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                stationScaleFactor = settings.stationScale || DEFAULT_SCALE;
+                textScaleFactor = settings.textScale || DEFAULT_SCALE;
+                console.log('Loaded scale settings:', { stationScaleFactor, textScaleFactor });
+            } else {
+                // Use defaults
+                stationScaleFactor = DEFAULT_SCALE;
+                textScaleFactor = DEFAULT_SCALE;
+            }
+        } catch (error) {
+            console.error('Error loading scale settings:', error);
+            // Use defaults on error
+            stationScaleFactor = DEFAULT_SCALE;
+            textScaleFactor = DEFAULT_SCALE;
+        }
+    }
+
+    function saveScaleSettings() {
+        try {
+            const settings = {
+                stationScale: stationScaleFactor,
+                textScale: textScaleFactor
+            };
+            localStorage.setItem('metroMapScaleSettings', JSON.stringify(settings));
+            console.log('Saved scale settings:', settings);
+        } catch (error) {
+            console.error('Error saving scale settings:', error);
+        }
+    }
     
     // Set up control buttons
     function setupControls() {
@@ -2509,3 +2634,4 @@ document.addEventListener('DOMContentLoaded', () => {
 // Make the module globally accessible (crucial step!)
 window.MetroMapVisualizer = MetroMapVisualizer;
 console.log('MetroMapVisualizer assigned to window object');
+
