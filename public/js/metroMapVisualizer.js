@@ -33,6 +33,15 @@ const MetroMapVisualizer = (function() {
     let selectedLine = null;
     let editMode = false;
     
+    // Add these variables to the private variables section (around line 27)
+    let stationScaleFactor = 1.0;
+    let textScaleFactor = 1.0;
+    
+    // Add these constants for min/max scaling (near the other constants)
+    const MIN_SCALE = 0.5;
+    const MAX_SCALE = 3.0;
+    const DEFAULT_SCALE = 1.0;
+    
     // Constants for the visualization
     const STATION_RADIUS = 8;
     const INTERCHANGE_RADIUS = 12;
@@ -61,209 +70,20 @@ const MetroMapVisualizer = (function() {
         '#006400'  // Dark Green
     ];
     
-    // CSS styles for the module
-    const metroStyles = `
-    .metro-visualizer-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 2000;
-        background-color: #f8f8f8;
-        overflow: hidden;
-        font-family: 'Arial', sans-serif;
-    }
-    
-    .metro-controls {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        z-index: 2001;
-        display: flex;
-        gap: 10px;
-    }
-    
-    .metro-controls button {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        border-radius: 4px;
-        padding: 6px 12px;
-        color: #333;
-        font-size: 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-    }
-    
-    .metro-controls button:hover {
-        background: rgba(255, 255, 255, 1);
-        transform: translateY(-2px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .metro-close-button {
-        font-size: 18px !important;
-    }
-    
-    .metro-zoom-controls {
-        display: flex;
-        align-items: center;
-        margin: 0 10px;
-    }
-    
-    .metro-zoom-controls button {
-        width: 30px;
-        height: 30px;
-        font-size: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 5px;
-    }
-    
-    .metro-zoom-display {
-        color: #333;
-        font-size: 14px;
-        margin: 0 5px;
-        min-width: 50px;
-        text-align: center;
-    }
-    
-    .metro-info-panel {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        padding: 15px;
-        color: #333;
-        width: 300px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        z-index: 2001;
-        transition: transform 0.3s ease;
-    }
-    
-    .metro-info-panel:hover {
-        transform: translateY(-5px);
-    }
-    
-    .metro-info-panel h3 {
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 18px;
-        font-weight: 600;
-        color: #333;
-    }
-    
-    .metro-info-panel p {
-        margin: 5px 0;
-        font-size: 14px;
-        color: #555;
-    }
-    
-    .metro-focus-btn {
-        margin-top: 10px;
-        background: #4285F4;
-        border: none;
-        border-radius: 4px;
-        padding: 8px 15px;
-        color: white;
-        cursor: pointer;
-        font-size: 14px;
-        transition: all 0.2s ease;
-    }
-    
-    .metro-focus-btn:hover {
-        background: #5c94f5;
-        transform: scale(1.05);
-    }
-    
-    .metro-edit-menu {
-        position: absolute;
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        padding: 15px;
-        z-index: 3000;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    }
-    
-    .metro-edit-menu button {
-        background: #f8f8f8;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 8px 12px;
-        color: #333;
-        cursor: pointer;
-        text-align: left;
-        transition: background 0.2s ease;
-    }
-    
-    .metro-edit-menu button:hover {
-        background: #f0f0f0;
-    }
-    
-    .metro-line-badge {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        margin-right: 8px;
-    }
-    
-    .metro-edit-mode-banner {
-        position: absolute;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255, 255, 0, 0.8);
-        color: #333;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-weight: bold;
-        z-index: 2001;
-    }
-    
-    .metro-loading {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: #333;
-        font-size: 18px;
-        text-align: center;
-    }
-    
-    .metro-loading:after {
-        content: '.';
-        animation: dots 1.5s steps(5, end) infinite;
-    }
-    
-    @keyframes dots {
-        0%, 20% { content: '.'; }
-        40% { content: '..'; }
-        60% { content: '...'; }
-        80%, 100% { content: ''; }
-    }
-    `;
     
     // Initialize the visualizer
     function initialize() {
         console.log('Initializing Metro Map Visualizer');
         
         // Add custom styles
-        const styleElement = document.createElement('style');
-        styleElement.textContent = metroStyles;
-        document.head.appendChild(styleElement);
+        // const styleElement = document.createElement('style');
+        // styleElement.textContent = metroStyles;
+        // document.head.appendChild(styleElement);
         
         createContainer();
+        
+        // Load scale settings
+        loadScaleSettings();
         
         // Set up pan and zoom
         setupPanAndZoom();
@@ -367,6 +187,13 @@ const MetroMapVisualizer = (function() {
         closeButton.title = 'Close metro map';
         closeButton.addEventListener('click', hide);
         controls.appendChild(closeButton);
+        
+        // Settings button
+        const settingsButton = document.createElement('button');
+        settingsButton.innerHTML = '⚙️';
+        settingsButton.title = 'Scale Settings';
+        settingsButton.addEventListener('click', toggleScaleSettings);
+        controls.appendChild(settingsButton);
         
         container.appendChild(controls);
     }
@@ -783,8 +610,8 @@ const MetroMapVisualizer = (function() {
             const isTerminal = station.terminal;
             const isSelected = (selectedStation && selectedStation.id === station.id);
             
-            // Determine station radius
-            const radius = isInterchange ? INTERCHANGE_RADIUS : STATION_RADIUS;
+            // Determine station radius with scaling
+            const radius = (isInterchange ? INTERCHANGE_RADIUS : STATION_RADIUS) * stationScaleFactor;
             
             // Draw station circle
             ctx.beginPath();
@@ -817,7 +644,7 @@ const MetroMapVisualizer = (function() {
             ctx.stroke();
             
             // Draw station name
-            ctx.font = '12px Arial';
+            ctx.font = `${Math.round(12 * textScaleFactor)}px Arial`;
             ctx.fillStyle = '#000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
@@ -825,7 +652,7 @@ const MetroMapVisualizer = (function() {
             
             // Draw station marker if in edit mode
             if (editMode) {
-                ctx.font = '10px Arial';
+                ctx.font = `${Math.round(10 * textScaleFactor)}px Arial`;
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
                 ctx.fillText(`[${Math.round(x)},${Math.round(y)}]`, x, y + radius + 20);
             }
