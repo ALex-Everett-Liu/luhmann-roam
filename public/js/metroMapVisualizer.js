@@ -1620,10 +1620,11 @@ const MetroMapVisualizer = (function() {
         }
         
         // If not clicking on anything, add a new station
+        console.log('No station or line clicked, opening node selector for new station');
         openNodeSelectorForNewStation(adjustedX, adjustedY, x, y);
     }
     
-    // Open a node selector to associate with new station
+    // Enhanced function to create a new station with either existing or new node
     async function openNodeSelectorForNewStation(mapX, mapY, screenX, screenY) {
         try {
             console.log('Opening node selector for new station', { mapX, mapY, screenX, screenY });
@@ -1633,21 +1634,61 @@ const MetroMapVisualizer = (function() {
             selectorContainer.className = 'metro-edit-menu';
             selectorContainer.style.left = `${screenX}px`;
             selectorContainer.style.top = `${screenY}px`;
-            selectorContainer.style.position = 'absolute'; // Ensure it's absolutely positioned
-            selectorContainer.style.zIndex = '3000'; // Ensure it's on top
+            selectorContainer.style.position = 'absolute';
+            selectorContainer.style.zIndex = '3000';
+            selectorContainer.style.width = '350px'; // Make it wider for the new form
             
+            // Initial content with tabs for existing/new node
             selectorContainer.innerHTML = `
                 <h3>Create New Station</h3>
-                <p>Select a node to associate with this station:</p>
-                <select id="metro-node-selector" style="width: 100%; margin-bottom: 10px;">
-                    <option value="">Loading nodes...</option>
-                </select>
-                <button id="metro-create-station">Create Station</button>
-                <button id="metro-cancel">Cancel</button>
+                <div class="metro-tabs">
+                    <button id="tab-existing-node" class="metro-tab active">Use Existing Node</button>
+                    <button id="tab-new-node" class="metro-tab">Create New Node</button>
+                </div>
+                
+                <div id="existing-node-content" class="tab-content" style="display: block;">
+                    <p>Select a node to associate with this station:</p>
+                    <select id="metro-node-selector" style="width: 100%; margin-bottom: 10px;">
+                        <option value="">Loading nodes...</option>
+                    </select>
+                    <button id="metro-create-station">Create Station</button>
+                    <button id="metro-cancel">Cancel</button>
+                </div>
+                
+                <div id="new-node-content" class="tab-content" style="display: none;">
+                    <p>Create a new node for this station:</p>
+                    <div style="margin-bottom: 10px;">
+                        <label>Node Content:</label>
+                        <input type="text" id="new-node-content" style="width: 100%;" placeholder="Enter node name/content">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label>Parent Node:</label>
+                        <select id="parent-node-selector" style="width: 100%;">
+                            <option value="">No parent (root node)</option>
+                        </select>
+                    </div>
+                    <button id="create-node-and-station">Create Node & Station</button>
+                    <button id="new-node-cancel">Cancel</button>
+                </div>
             `;
             
             container.appendChild(selectorContainer);
             console.log('Selector container added to DOM');
+            
+            // Add tab switching functionality
+            document.getElementById('tab-existing-node').addEventListener('click', () => {
+                document.getElementById('existing-node-content').style.display = 'block';
+                document.getElementById('new-node-content').style.display = 'none';
+                document.getElementById('tab-existing-node').classList.add('active');
+                document.getElementById('tab-new-node').classList.remove('active');
+            });
+            
+            document.getElementById('tab-new-node').addEventListener('click', () => {
+                document.getElementById('existing-node-content').style.display = 'none';
+                document.getElementById('new-node-content').style.display = 'block';
+                document.getElementById('tab-existing-node').classList.remove('active');
+                document.getElementById('tab-new-node').classList.add('active');
+            });
             
             // Fetch available nodes
             console.log('Fetching available nodes');
@@ -1659,47 +1700,19 @@ const MetroMapVisualizer = (function() {
                 }
                 availableNodes = await response.json();
                 console.log(`Fetched ${availableNodes.length} nodes`);
+                
+                // Populate both selectors
+                populateNodeSelectors(availableNodes);
+                
             } catch (fetchError) {
                 console.error('Error fetching nodes:', fetchError);
-                // If we can't fetch nodes, add some error handling UI
-                selectorContainer.innerHTML = `
-                    <h3>Error Loading Nodes</h3>
-                    <p>Could not load nodes from the server. Please try again.</p>
-                    <button id="metro-cancel">Cancel</button>
-                `;
-                document.getElementById('metro-cancel').addEventListener('click', () => {
-                    selectorContainer.remove();
-                });
+                handleFetchError(selectorContainer);
                 return;
             }
             
-            // Populate selector
-            const selector = document.getElementById('metro-node-selector');
-            if (!selector) {
-                console.error('Could not find node selector element');
-                return;
-            }
-            
-            selector.innerHTML = '';
-            
-            if (availableNodes.length === 0) {
-                // Add a warning if no nodes are available
-                selector.innerHTML = '<option value="">No available nodes found</option>';
-            } else {
-                for (const node of availableNodes) {
-                    // Skip nodes that already have stations
-                    if (stations.some(s => s.node_id === node.id)) continue;
-                    
-                    const option = document.createElement('option');
-                    option.value = node.id;
-                    option.textContent = node.content || `Node ${node.id}`;
-                    selector.appendChild(option);
-                }
-            }
-            
-            // Add event listeners
+            // Add event listeners for existing node tab
             document.getElementById('metro-create-station')?.addEventListener('click', () => {
-                const selectedNodeId = selector.value;
+                const selectedNodeId = document.getElementById('metro-node-selector').value;
                 if (!selectedNodeId) {
                     alert('Please select a node');
                     return;
@@ -1709,9 +1722,89 @@ const MetroMapVisualizer = (function() {
                 selectorContainer.remove();
             });
             
+            // Add event listeners for new node tab
+            document.getElementById('create-node-and-station')?.addEventListener('click', async () => {
+                const nodeContent = document.getElementById('new-node-content').value.trim();
+                const parentNodeId = document.getElementById('parent-node-selector').value;
+                
+                if (!nodeContent) {
+                    alert('Please enter content for the new node');
+                    return;
+                }
+                
+                try {
+                    // Create new node first
+                    const newNodeId = await createNewNode(nodeContent, parentNodeId);
+                    if (newNodeId) {
+                        // Then create station for the new node
+                        createNewStation(newNodeId, mapX, mapY);
+                        selectorContainer.remove();
+                    }
+                } catch (error) {
+                    console.error('Error creating new node:', error);
+                    alert(`Failed to create new node: ${error.message}`);
+                }
+            });
+            
+            // Cancel buttons
             document.getElementById('metro-cancel')?.addEventListener('click', () => {
                 selectorContainer.remove();
             });
+            
+            document.getElementById('new-node-cancel')?.addEventListener('click', () => {
+                selectorContainer.remove();
+            });
+            
+            // Helper function to populate both node selectors
+            function populateNodeSelectors(nodes) {
+                // Populate existing node selector
+                const existingNodeSelector = document.getElementById('metro-node-selector');
+                if (existingNodeSelector) {
+                    existingNodeSelector.innerHTML = '';
+                    
+                    if (nodes.length === 0) {
+                        existingNodeSelector.innerHTML = '<option value="">No available nodes found</option>';
+                    } else {
+                        // Add a blank default option
+                        existingNodeSelector.innerHTML = '<option value="">Select a node...</option>';
+                        
+                        for (const node of nodes) {
+                            // Skip nodes that already have stations
+                            if (stations.some(s => s.node_id === node.id)) continue;
+                            
+                            const option = document.createElement('option');
+                            option.value = node.id;
+                            option.textContent = node.content || `Node ${node.id}`;
+                            existingNodeSelector.appendChild(option);
+                        }
+                    }
+                }
+                
+                // Populate parent node selector
+                const parentNodeSelector = document.getElementById('parent-node-selector');
+                if (parentNodeSelector) {
+                    // Keep the "No parent" option and add all nodes
+                    for (const node of nodes) {
+                        const option = document.createElement('option');
+                        option.value = node.id;
+                        option.textContent = node.content || `Node ${node.id}`;
+                        parentNodeSelector.appendChild(option);
+                    }
+                }
+            }
+            
+            // Helper function to handle fetch errors
+            function handleFetchError(container) {
+                container.innerHTML = `
+                    <h3>Error Loading Nodes</h3>
+                    <p>Could not load nodes from the server. Please try again.</p>
+                    <button id="metro-cancel">Cancel</button>
+                `;
+                document.getElementById('metro-cancel')?.addEventListener('click', () => {
+                    container.remove();
+                });
+            }
+            
         } catch (error) {
             console.error('Error opening node selector:', error);
             alert('An error occurred while trying to create a new station. See console for details.');
@@ -2443,6 +2536,63 @@ const MetroMapVisualizer = (function() {
         document.getElementById('add-stations-cancel').addEventListener('click', () => {
             menuContainer.remove();
         });
+    }
+    
+    // Function to create a new node in the database
+    async function createNewNode(content, parentId) {
+        try {
+            console.log('Creating new node with content:', content, 'parent ID:', parentId || 'none (root)');
+            
+            // Calculate position (at the end of siblings)
+            let position = 0;
+            
+            if (parentId) {
+                // Get the count of existing children to place this at the end
+                const childrenResponse = await fetch(`/api/nodes/${parentId}/children`);
+                if (childrenResponse.ok) {
+                    const children = await childrenResponse.json();
+                    position = children.length;
+                } else {
+                    console.log('No existing children found or error retrieving them, using position 0');
+                }
+            } else {
+                // Get the count of root nodes to place this at the end
+                const rootNodesResponse = await fetch('/api/nodes?root=true');
+                if (rootNodesResponse.ok) {
+                    const rootNodes = await rootNodesResponse.json();
+                    position = rootNodes.length;
+                } else {
+                    console.log('Error fetching root nodes, using position 0');
+                }
+            }
+            
+            // Create the new node
+            const nodeData = {
+                content: content,
+                content_zh: content, // Use same content for both languages
+                parent_id: parentId || null,
+                position: position,
+                is_expanded: true
+            };
+            
+            const response = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(nodeData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to create node: ${response.status}`);
+            }
+            
+            const newNode = await response.json();
+            console.log('Successfully created new node:', newNode);
+            
+            return newNode.id;
+        } catch (error) {
+            console.error('Error in createNewNode:', error);
+            throw error;
+        }
     }
     
     // Public API
