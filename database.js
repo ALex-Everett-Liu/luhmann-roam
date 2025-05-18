@@ -209,6 +209,16 @@ await db.exec(`
   )
 `);
 
+// Add transit_type column to metro_stations table if it doesn't exist
+try {
+  await db.exec(`ALTER TABLE metro_stations ADD COLUMN transit_type TEXT DEFAULT 'metro'`);
+  console.log('Added transit_type column to metro_stations table');
+} catch (error) {
+  // Column likely already exists, which is fine
+  console.log('transit_type column already exists in metro_stations or other error:', error.message);
+}
+
+
 // Create metro_lines table
 await db.exec(`
   CREATE TABLE IF NOT EXISTS metro_lines (
@@ -223,6 +233,15 @@ await db.exec(`
     sequence_id INTEGER
   )
 `);
+
+// Add transit_type column to metro_lines table if it doesn't exist
+try {
+  await db.exec(`ALTER TABLE metro_lines ADD COLUMN transit_type TEXT DEFAULT 'metro'`);
+  console.log('Added transit_type column to metro_lines table');
+} catch (error) {
+  // Column likely already exists, which is fine
+  console.log('transit_type column already exists in metro_lines or other error:', error.message);
+}
 
   // Add indices for better performance
   await db.exec(`

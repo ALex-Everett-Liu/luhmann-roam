@@ -74,6 +74,61 @@ const MetroMapVisualizer = (function() {
     let showOrderNumbers = false;  // Toggle for showing order numbers instead of station names
     let orderViewMode = false;     // Toggle for the order view mode that fades station names
     
+    // Add these constants for transit types near the other constants
+    const TRANSIT_TYPES = {
+        METRO: 'metro',
+        BUS: 'bus',
+        STREETCAR: 'streetcar',
+        BRT: 'brt'
+    };
+    
+    // Add line style constants based on transit type
+    const LINE_STYLES = {
+        [TRANSIT_TYPES.METRO]: {
+            width: 6,
+            dash: []  // Solid line
+        },
+        [TRANSIT_TYPES.BUS]: {
+            width: 4,
+            dash: [5, 5]  // Dashed line
+        },
+        [TRANSIT_TYPES.STREETCAR]: {
+            width: 3,
+            dash: [8, 4]  // Long dash
+        },
+        [TRANSIT_TYPES.BRT]: {
+            width: 5,
+            dash: [10, 4, 4, 4]  // Dash-dot pattern
+        }
+    };
+    
+    // Add station style constants based on transit type
+    const STATION_STYLES = {
+        [TRANSIT_TYPES.METRO]: {
+            radius: STATION_RADIUS,
+            interchangeRadius: INTERCHANGE_RADIUS,
+            color: '#ffffff'
+        },
+        [TRANSIT_TYPES.BUS]: {
+            radius: STATION_RADIUS * 0.8,
+            interchangeRadius: INTERCHANGE_RADIUS * 0.8,
+            color: '#f2f2f2',
+            shape: 'square'  // Bus stops are square
+        },
+        [TRANSIT_TYPES.STREETCAR]: {
+            radius: STATION_RADIUS * 0.7,
+            interchangeRadius: INTERCHANGE_RADIUS * 0.7,
+            color: '#e6e6e6',
+            shape: 'diamond'  // Streetcar stops are diamond shaped
+        },
+        [TRANSIT_TYPES.BRT]: {
+            radius: STATION_RADIUS * 0.9,
+            interchangeRadius: INTERCHANGE_RADIUS * 0.9,
+            color: '#f8f8f8',
+            shape: 'hexagon'  // BRT stations are hexagonal
+        }
+    };
+    
     // Initialize the visualizer
     function initialize() {
         console.log('Initializing Metro Map Visualizer');
@@ -345,7 +400,13 @@ const MetroMapVisualizer = (function() {
         orderViewButton.addEventListener('click', toggleOrderView);
         controls.appendChild(orderViewButton);
         
+        // Add this to the setupControls function to add transit type toggle buttons
+        setupTransitTypeFilters(controls);
+        
         container.appendChild(controls);
+        
+        // In the setupControls function, add this line after adding all other controls
+        setupTransitTypeFilters(controls);
     }
     
     // Add this function after toggleScaleSettings or in a similar location
@@ -712,14 +773,25 @@ const MetroMapVisualizer = (function() {
             // Skip lines with less than 2 stations
             if (line.stations.length < 2) continue;
             
+            // Skip if this transit type is filtered out
+            const transitType = line.transit_type || TRANSIT_TYPES.METRO; // Default to metro if not specified
+            const typeButton = document.querySelector(`.transit-filter-btn[data-type="${transitType}"]`);
+            if (typeButton && !typeButton.classList.contains('active')) continue;
+            
+            // Get line style based on transit type
+            const lineStyle = LINE_STYLES[transitType] || LINE_STYLES[TRANSIT_TYPES.METRO];
+            
             ctx.strokeStyle = line.color;
-            ctx.lineWidth = LINE_WIDTH;
+            ctx.lineWidth = lineStyle.width;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
+            // Set line dash pattern if any
+            ctx.setLineDash(lineStyle.dash);
+            
             // Highlight selected line
             if (selectedLine && selectedLine.id === line.id) {
-                ctx.lineWidth = LINE_WIDTH + 2;
+                ctx.lineWidth = lineStyle.width + 2;
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                 ctx.shadowBlur = 10;
             }
@@ -757,7 +829,8 @@ const MetroMapVisualizer = (function() {
             
             ctx.stroke();
             
-            // Reset shadow
+            // Reset dash pattern and shadow
+            ctx.setLineDash([]);
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
         }
@@ -766,18 +839,47 @@ const MetroMapVisualizer = (function() {
     // Draw stations
     function drawStations() {
         for (const station of stations) {
+            // Skip if this station's transit type is filtered out
+            const transitType = station.transit_type || TRANSIT_TYPES.METRO; // Default to metro if not specified
+            const typeButton = document.querySelector(`.transit-filter-btn[data-type="${transitType}"]`);
+            if (typeButton && !typeButton.classList.contains('active')) continue;
+            
             const x = station.x;
             const y = station.y;
             const isInterchange = station.interchange;
             const isTerminal = station.terminal;
             const isSelected = (selectedStation && selectedStation.id === station.id);
             
-            // Determine station radius with scaling
-            const radius = (isInterchange ? INTERCHANGE_RADIUS : STATION_RADIUS) * stationScaleFactor;
+            // Get style based on transit type
+            const stationStyle = STATION_STYLES[transitType] || STATION_STYLES[TRANSIT_TYPES.METRO];
             
-            // Draw station circle
+            // Determine station radius with scaling
+            const radius = (isInterchange ? stationStyle.interchangeRadius : stationStyle.radius) * stationScaleFactor;
+            
+            // Draw station based on shape
             ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            
+            if (stationStyle.shape === 'square') {
+                // Square for bus stops
+                ctx.rect(x - radius, y - radius, radius * 2, radius * 2);
+            } else if (stationStyle.shape === 'diamond') {
+                // Diamond for streetcar stops
+                ctx.moveTo(x, y - radius);
+                ctx.lineTo(x + radius, y);
+                ctx.lineTo(x, y + radius);
+                ctx.lineTo(x - radius, y);
+                ctx.closePath();
+            } else if (stationStyle.shape === 'hexagon') {
+                // Hexagon for BRT stations
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    ctx.lineTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+                }
+                ctx.closePath();
+            } else {
+                // Circle for metro stations (default)
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+            }
             
             // Fill and stroke based on station type
             if (isSelected) {
@@ -787,7 +889,7 @@ const MetroMapVisualizer = (function() {
                 ctx.lineWidth = 3;
             } else if (isInterchange) {
                 // Interchange station
-                ctx.fillStyle = STATION_COLORS.interchange;
+                ctx.fillStyle = stationStyle.color;
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2;
             } else if (isTerminal) {
@@ -797,7 +899,7 @@ const MetroMapVisualizer = (function() {
                 ctx.lineWidth = 2;
             } else {
                 // Regular station
-                ctx.fillStyle = STATION_COLORS.regular;
+                ctx.fillStyle = stationStyle.color;
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 1;
             }
@@ -1979,12 +2081,26 @@ const MetroMapVisualizer = (function() {
         // Create a new element for station editing
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
-        menuContainer.style.left = `${x}px`;
-        menuContainer.style.top = `${y}px`;
+        menuContainer.style.position = 'fixed';
+        menuContainer.style.left = '50%';
+        menuContainer.style.top = '40%';
+        menuContainer.style.transform = 'translate(-50%, -50%)';
+        menuContainer.style.maxHeight = '80vh';
+        menuContainer.style.overflowY = 'auto';
         
         // Convert possible 0/1 values to booleans for proper checkbox handling
         const isInterchange = station.interchange === true || station.interchange === 1;
         const isTerminal = station.terminal === true || station.terminal === 1;
+        
+        // Create transit type options
+        let transitTypeOptionsHTML = '';
+        Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
+            transitTypeOptionsHTML += `
+                <option value="${type}" ${(station.transit_type || TRANSIT_TYPES.METRO) === type ? 'selected' : ''}>
+                    ${key.charAt(0) + key.slice(1).toLowerCase()}
+                </option>
+            `;
+        });
         
         menuContainer.innerHTML = `
             <h3>Edit Station: ${station.name}</h3>
@@ -1992,6 +2108,13 @@ const MetroMapVisualizer = (function() {
                 Description:
                 <input type="text" id="station-description" value="${station.description || ''}" style="width: 100%;">
             </label>
+            <div style="margin: 10px 0;">
+                <label>Transit Type:
+                    <select id="station-transit-type" style="width: 100%;">
+                        ${transitTypeOptionsHTML}
+                    </select>
+                </label>
+            </div>
             <div style="margin: 10px 0;">
                 <label>
                     <input type="checkbox" id="station-interchange" ${isInterchange ? 'checked' : ''}>
@@ -2021,11 +2144,12 @@ const MetroMapVisualizer = (function() {
         document.getElementById('edit-station-save').addEventListener('click', async () => {
             // Get updated values
             station.description = document.getElementById('station-description').value;
+            station.transit_type = document.getElementById('station-transit-type').value;
             // Convert boolean checkbox states to 0/1 values for storage
             station.interchange = document.getElementById('station-interchange').checked ? 1 : 0;
             station.terminal = document.getElementById('station-terminal').checked ? 1 : 0;
             
-            console.log('Saving station with interchange:', station.interchange, 'terminal:', station.terminal);
+            console.log('Saving station with transit type:', station.transit_type);
             
             // Save to database
             await updateStationInDatabase(station);
@@ -2180,8 +2304,22 @@ const MetroMapVisualizer = (function() {
         // Create a new element for creating a line
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
-        menuContainer.style.left = `${x}px`;
-        menuContainer.style.top = `${y}px`;
+        menuContainer.style.position = 'fixed';
+        menuContainer.style.left = '50%';
+        menuContainer.style.top = '40%';
+        menuContainer.style.transform = 'translate(-50%, -50%)';
+        menuContainer.style.maxHeight = '80vh';
+        menuContainer.style.overflowY = 'auto';
+        
+        // Create transit type options
+        let transitTypeOptionsHTML = '';
+        Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
+            transitTypeOptionsHTML += `
+                <option value="${type}">
+                    ${key.charAt(0) + key.slice(1).toLowerCase()}
+                </option>
+            `;
+        });
         
         // Create color picker options
         let colorOptionsHTML = '';
@@ -2202,6 +2340,13 @@ const MetroMapVisualizer = (function() {
                 Line Name:
                 <input type="text" id="line-name" placeholder="Line Name" style="width: 100%;">
             </label>
+            <div style="margin: 10px 0;">
+                <label>Transit Type:
+                    <select id="line-transit-type" style="width: 100%;">
+                        ${transitTypeOptionsHTML}
+                    </select>
+                </label>
+            </div>
             <div style="margin: 10px 0;">
                 <p>Line Color:</p>
                 <div style="margin: 5px 0;">
@@ -2230,6 +2375,12 @@ const MetroMapVisualizer = (function() {
         const firstColorOption = menuContainer.querySelector('input[name="line-color"]');
         if (firstColorOption) firstColorOption.checked = true;
         
+        // Use the default transit type based on the station's transit type
+        const transitTypeSelector = document.getElementById('line-transit-type');
+        if (transitTypeSelector && station.transit_type) {
+            transitTypeSelector.value = station.transit_type;
+        }
+        
         // Add event listeners
         document.getElementById('create-line-save').addEventListener('click', async () => {
             const lineName = document.getElementById('line-name').value.trim();
@@ -2238,6 +2389,7 @@ const MetroMapVisualizer = (function() {
                 return;
             }
             
+            const lineTransitType = document.getElementById('line-transit-type').value;
             const lineColor = document.querySelector('input[name="line-color"]:checked')?.value || LINE_COLORS[0];
             const lineDescription = document.getElementById('line-description').value.trim();
             const lineCurved = document.getElementById('line-curved').checked;
@@ -2247,6 +2399,7 @@ const MetroMapVisualizer = (function() {
             const newLine = {
                 id: lineId,
                 name: lineName,
+                transit_type: lineTransitType,
                 color: lineColor,
                 stations: [station.id],
                 curved: lineCurved,
@@ -3158,6 +3311,35 @@ function openCreateLineWithStationsDialog(x, y) {
     document.getElementById('create-line-cancel').addEventListener('click', () => {
         menuContainer.remove();
     });
+}
+
+// Add this to the setupControls function to add transit type toggle buttons
+function setupTransitTypeFilters(controls) {
+    const transitFiltersDiv = document.createElement('div');
+    transitFiltersDiv.className = 'transit-filters';
+    transitFiltersDiv.style.display = 'flex';
+    transitFiltersDiv.style.gap = '5px';
+    transitFiltersDiv.style.margin = '0 10px';
+    
+    // Create toggle buttons for each transit type
+    Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
+        const button = document.createElement('button');
+        button.className = 'transit-filter-btn active';
+        button.dataset.type = type;
+        button.textContent = key.charAt(0) + key.slice(1).toLowerCase();
+        button.title = `Toggle ${key.toLowerCase()} lines visibility`;
+        button.style.opacity = '1';
+        
+        button.addEventListener('click', () => {
+            button.classList.toggle('active');
+            button.style.opacity = button.classList.contains('active') ? '1' : '0.5';
+            drawMap(); // Redraw with updated filters
+        });
+        
+        transitFiltersDiv.appendChild(button);
+    });
+    
+    controls.appendChild(transitFiltersDiv);
 }
 
     
