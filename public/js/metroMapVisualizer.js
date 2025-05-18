@@ -70,7 +70,7 @@ const MetroMapVisualizer = (function() {
         '#006400'  // Dark Green
     ];
     
-    // Add these variables to the private variables section (near line 27)
+    // Add these variables to the private variables section
     let showOrderNumbers = false;  // Toggle for showing order numbers instead of station names
     let orderViewMode = false;     // Toggle for the order view mode that fades station names
     
@@ -596,7 +596,7 @@ const MetroMapVisualizer = (function() {
         
         // Adjust for the center, zoom, and offset with inverted Y
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
-        const adjustedY = -((y - centerY) / zoomLevel + offsetY / zoomLevel - centerY); // Invert Y
+        const adjustedY = -(y - centerY) / zoomLevel + offsetY / zoomLevel + centerY;
         
         console.log('Clicked coordinates:', {
             original: { x, y },
@@ -1794,7 +1794,7 @@ const MetroMapVisualizer = (function() {
         
         // Adjust for the center, zoom, and offset
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
-        const adjustedY = -((y - centerY) / zoomLevel + offsetY / zoomLevel - centerY); // Invert Y for edit mode
+        const adjustedY = -(y - centerY) / zoomLevel + offsetY / zoomLevel + centerY;
         
         // Check if clicking on an existing station first
         for (const station of stations) {
