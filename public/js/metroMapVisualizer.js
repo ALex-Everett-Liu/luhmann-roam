@@ -2408,9 +2408,15 @@ const MetroMapVisualizer = (function() {
         // Create a new element for managing stations
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
-        menuContainer.style.left = `${x}px`;
-        menuContainer.style.top = `${y}px`;
-        menuContainer.style.width = '350px';  // Make it wider
+        
+        // Use fixed positioning and center it on screen instead of relative to click position
+        menuContainer.style.position = 'fixed';
+        menuContainer.style.left = '50%';
+        menuContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
+        menuContainer.style.transform = 'translate(-50%, -50%)';
+        menuContainer.style.width = '350px';
+        menuContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport
+        menuContainer.style.overflowY = 'auto'; // Add scrolling if needed
         
         // Build list of stations on this line with drag handles and order numbers
         let stationListHTML = '';
