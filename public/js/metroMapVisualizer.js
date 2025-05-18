@@ -1459,6 +1459,9 @@ const MetroMapVisualizer = (function() {
     // Save a line to the database
     async function saveLineToDatabase(line) {
         try {
+            // Add console log for debugging
+            console.log('Saving line to database with transit_type:', line.transit_type);
+            
             // First, try to use dedicated endpoint if available
             try {
                 const response = await fetch('/api/metro-map/lines', {
@@ -1484,7 +1487,10 @@ const MetroMapVisualizer = (function() {
                         body: JSON.stringify({
                             node_id: station.node_id,
                             key: 'metro_line',
-                            value: JSON.stringify(line)
+                            value: JSON.stringify({
+                                ...line,
+                                transit_type: line.transit_type // Ensure transit_type is included
+                            })
                         })
                     });
                     if (!attrResponse.ok) {
@@ -1510,6 +1516,10 @@ const MetroMapVisualizer = (function() {
             stationToUpdate.interchange = stationToUpdate.interchange ? 1 : 0;
             stationToUpdate.terminal = stationToUpdate.terminal ? 1 : 0;
             
+            // Add console log for debugging
+            console.log('Sending station update to database:', stationToUpdate);
+            console.log('Transit type being sent:', stationToUpdate.transit_type);
+            
             // Try dedicated endpoint first
             try {
                 const response = await fetch(`/api/metro-map/stations/${stationToUpdate.id}`, {
@@ -1521,10 +1531,12 @@ const MetroMapVisualizer = (function() {
                 if (response.ok) {
                     // The response will update our local copy too
                     const updatedStation = await response.json();
+                    console.log('Server response after update:', updatedStation);
                     
                     // Update the original station object with the updated values
                     station.interchange = updatedStation.interchange;
                     station.terminal = updatedStation.terminal;
+                    station.transit_type = updatedStation.transit_type; // Make sure this gets updated
                     
                     return updatedStation;
                 }
@@ -1545,6 +1557,7 @@ const MetroMapVisualizer = (function() {
                 
                 if (stationAttr) {
                     // Update the existing attribute with properly converted boolean values
+                    // and make sure to include transit_type
                     const updateResponse = await fetch(`/api/node-attributes/${stationAttr.id}`, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
@@ -1555,6 +1568,7 @@ const MetroMapVisualizer = (function() {
                                 y: stationToUpdate.y,
                                 interchange: stationToUpdate.interchange ? 1 : 0,
                                 terminal: stationToUpdate.terminal ? 1 : 0,
+                                transit_type: stationToUpdate.transit_type, // Include transit_type here
                                 description: stationToUpdate.description
                             })
                         })

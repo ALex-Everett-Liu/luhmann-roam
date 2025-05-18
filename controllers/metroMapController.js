@@ -25,7 +25,7 @@ exports.getAllStations = async (req, res) => {
  */
 exports.createStation = async (req, res) => {
   try {
-    const { node_id, name, x, y, interchange, terminal, description } = req.body;
+    const { node_id, name, x, y, interchange, terminal, description, transit_type } = req.body;
     const db = req.db;
     
     if (!node_id || !name) {
@@ -37,9 +37,10 @@ exports.createStation = async (req, res) => {
     
     await db.run(
       `INSERT INTO metro_stations 
-       (id, node_id, name, x, y, interchange, terminal, description, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, node_id, name, x, y, interchange || 0, terminal || 0, description || '', now, now]
+       (id, node_id, name, x, y, interchange, terminal, description, transit_type, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, node_id, name, x, y, interchange || 0, terminal || 0, description || '', 
+       transit_type || 'metro', now, now]
     );
     
     const station = await db.get('SELECT * FROM metro_stations WHERE id = ?', id);
@@ -57,15 +58,19 @@ exports.createStation = async (req, res) => {
 exports.updateStation = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, x, y, interchange, terminal, description } = req.body;
+    const { name, x, y, interchange, terminal, description, transit_type } = req.body;
     const db = req.db;
     const now = Date.now();
     
+    console.log('Updating station with transit_type:', transit_type);
+    
     await db.run(
       `UPDATE metro_stations 
-       SET name = ?, x = ?, y = ?, interchange = ?, terminal = ?, description = ?, updated_at = ? 
+       SET name = ?, x = ?, y = ?, interchange = ?, terminal = ?, description = ?, 
+       transit_type = ?, updated_at = ? 
        WHERE id = ?`,
-      [name, x, y, interchange || 0, terminal || 0, description || '', now, id]
+      [name, x, y, interchange || 0, terminal || 0, description || '', 
+       transit_type || 'metro', now, id]
     );
     
     const station = await db.get('SELECT * FROM metro_stations WHERE id = ?', id);
@@ -159,18 +164,22 @@ exports.createLine = async (req, res) => {
 exports.updateLine = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color, stations, curved, description } = req.body;
+    const { name, color, stations, curved, description, transit_type } = req.body;
     const db = req.db;
     const now = Date.now();
+    
+    console.log('Updating line with transit_type:', transit_type);
     
     // Convert stations array to JSON string
     const stationsJson = JSON.stringify(stations || []);
     
     await db.run(
       `UPDATE metro_lines 
-       SET name = ?, color = ?, stations = ?, curved = ?, description = ?, updated_at = ? 
+       SET name = ?, color = ?, stations = ?, curved = ?, description = ?, 
+       transit_type = ?, updated_at = ? 
        WHERE id = ?`,
-      [name, color, stationsJson, curved || 0, description || '', now, id]
+      [name, color, stationsJson, curved || 0, description || '', 
+       transit_type || 'metro', now, id]
     );
     
     const line = await db.get('SELECT * FROM metro_lines WHERE id = ?', id);
