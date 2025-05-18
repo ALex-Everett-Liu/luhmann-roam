@@ -70,6 +70,169 @@ const SearchManager = (function() {
     
     searchInputContainer.appendChild(searchInput);
     
+    // Add advanced search toggle
+    const advancedSearchContainer = document.createElement('div');
+    advancedSearchContainer.className = 'advanced-search-container';
+    advancedSearchContainer.style.marginBottom = '10px';
+    advancedSearchContainer.style.display = 'flex';
+    advancedSearchContainer.style.alignItems = 'center';
+    advancedSearchContainer.style.gap = '10px';
+    
+    // Advanced search toggle checkbox
+    const advancedSearchToggle = document.createElement('input');
+    advancedSearchToggle.type = 'checkbox';
+    advancedSearchToggle.id = 'advanced-search-toggle';
+    advancedSearchToggle.className = 'advanced-search-toggle';
+    
+    const advancedSearchLabel = document.createElement('label');
+    advancedSearchLabel.htmlFor = 'advanced-search-toggle';
+    advancedSearchLabel.textContent = window.I18n ? I18n.t('advancedSearch') : 'Advanced Search';
+    
+    // Advanced search help icon
+    const advancedSearchHelp = document.createElement('span');
+    advancedSearchHelp.className = 'advanced-search-help';
+    advancedSearchHelp.innerHTML = '?';
+    advancedSearchHelp.title = window.I18n ? I18n.t('advancedSearchHelp') : 
+      'Use operators AND, OR, NOT, and parentheses. Examples:\n' +
+      '• term1 AND term2: Find nodes containing both terms\n' +
+      '• term1 OR term2: Find nodes containing either term\n' +
+      '• term1 NOT term2: Find nodes with term1 but not term2\n' +
+      '• "exact phrase": Find nodes with the exact phrase\n' +
+      '• word*: Use * as a wildcard for prefix search\n' +
+      '• w:word: Match whole word only (not part of another word)';
+    advancedSearchHelp.style.marginLeft = '5px';
+    advancedSearchHelp.style.cursor = 'help';
+    advancedSearchHelp.style.display = 'inline-block';
+    advancedSearchHelp.style.width = '16px';
+    advancedSearchHelp.style.height = '16px';
+    advancedSearchHelp.style.lineHeight = '16px';
+    advancedSearchHelp.style.textAlign = 'center';
+    advancedSearchHelp.style.borderRadius = '50%';
+    advancedSearchHelp.style.backgroundColor = '#f0f0f0';
+    advancedSearchHelp.style.color = '#666';
+    
+    advancedSearchContainer.appendChild(advancedSearchToggle);
+    advancedSearchContainer.appendChild(advancedSearchLabel);
+    advancedSearchContainer.appendChild(advancedSearchHelp);
+    
+    // Advanced search options container (initially hidden)
+    const advancedSearchOptions = document.createElement('div');
+    advancedSearchOptions.className = 'advanced-search-options';
+    advancedSearchOptions.style.display = 'none';
+    advancedSearchOptions.style.marginBottom = '10px';
+    advancedSearchOptions.style.padding = '10px';
+    advancedSearchOptions.style.border = '1px solid #ddd';
+    advancedSearchOptions.style.borderRadius = '4px';
+    
+    // Common search patterns
+    const commonPatternsContainer = document.createElement('div');
+    commonPatternsContainer.className = 'common-patterns-container';
+    commonPatternsContainer.style.marginBottom = '10px';
+    
+    const commonPatternsTitle = document.createElement('h5');
+    commonPatternsTitle.textContent = window.I18n ? I18n.t('commonPatterns') : 'Common Search Patterns';
+    commonPatternsTitle.style.marginTop = '0';
+    commonPatternsTitle.style.marginBottom = '5px';
+    
+    const commonPatternsList = document.createElement('div');
+    commonPatternsList.className = 'common-patterns-list';
+    commonPatternsList.style.display = 'flex';
+    commonPatternsList.style.flexWrap = 'wrap';
+    commonPatternsList.style.gap = '5px';
+    
+    // Define common patterns
+    const patterns = [
+      { name: 'word1 AND word2', description: 'Contains both terms' },
+      { name: 'word1 OR word2', description: 'Contains either term' },
+      { name: 'word1 NOT word2', description: 'Contains first but not second term' },
+      { name: 'w:word', description: 'Whole word only (not part of another word)' },
+      { name: '"exact phrase"', description: 'Contains exact phrase' },
+      { name: 'word*', description: 'Prefix search with wildcard' }
+    ];
+    
+    patterns.forEach(pattern => {
+      const patternBtn = document.createElement('button');
+      patternBtn.className = 'pattern-btn';
+      patternBtn.textContent = pattern.name;
+      patternBtn.title = pattern.description;
+      patternBtn.style.border = '1px solid #ddd';
+      patternBtn.style.borderRadius = '4px';
+      patternBtn.style.padding = '5px 10px';
+      patternBtn.style.backgroundColor = '#f5f5f5';
+      patternBtn.style.cursor = 'pointer';
+      
+      patternBtn.addEventListener('click', () => {
+        searchInput.value = pattern.name;
+        searchInput.focus();
+        
+        // Trigger the search
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      
+      commonPatternsList.appendChild(patternBtn);
+    });
+    
+    // Specific edge cases
+    const edgeCasesContainer = document.createElement('div');
+    edgeCasesContainer.className = 'edge-cases-container';
+    edgeCasesContainer.style.marginTop = '10px';
+    
+    const edgeCasesTitle = document.createElement('h5');
+    edgeCasesTitle.textContent = window.I18n ? I18n.t('edgeCases') : 'Common Edge Cases';
+    edgeCasesTitle.style.marginTop = '0';
+    edgeCasesTitle.style.marginBottom = '5px';
+    
+    const edgeCasesList = document.createElement('div');
+    edgeCasesList.className = 'edge-cases-list';
+    edgeCasesList.style.display = 'flex';
+    edgeCasesList.style.flexWrap = 'wrap';
+    edgeCasesList.style.gap = '5px';
+    
+    // Define edge cases
+    const edgeCases = [
+      { name: 'w:import NOT important', description: 'Find "import" but not "important"' },
+      { name: 'w:class NOT className', description: 'Find "class" but not "className"' },
+      { name: 'w:event NOT eventHandler', description: 'Find "event" but not "eventHandler"' },
+      { name: 'w:function NOT functionality', description: 'Find "function" but not "functionality"' }
+    ];
+    
+    edgeCases.forEach(edgeCase => {
+      const edgeCaseBtn = document.createElement('button');
+      edgeCaseBtn.className = 'edge-case-btn';
+      edgeCaseBtn.textContent = edgeCase.name;
+      edgeCaseBtn.title = edgeCase.description;
+      edgeCaseBtn.style.border = '1px solid #ddd';
+      edgeCaseBtn.style.borderRadius = '4px';
+      edgeCaseBtn.style.padding = '5px 10px';
+      edgeCaseBtn.style.backgroundColor = '#f5f5f5';
+      edgeCaseBtn.style.cursor = 'pointer';
+      
+      edgeCaseBtn.addEventListener('click', () => {
+        searchInput.value = edgeCase.name;
+        searchInput.focus();
+        
+        // Trigger the search
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      
+      edgeCasesList.appendChild(edgeCaseBtn);
+    });
+    
+    // Assemble the advanced search options
+    commonPatternsContainer.appendChild(commonPatternsTitle);
+    commonPatternsContainer.appendChild(commonPatternsList);
+    
+    edgeCasesContainer.appendChild(edgeCasesTitle);
+    edgeCasesContainer.appendChild(edgeCasesList);
+    
+    advancedSearchOptions.appendChild(commonPatternsContainer);
+    advancedSearchOptions.appendChild(edgeCasesContainer);
+    
+    // Toggle advanced search options visibility
+    advancedSearchToggle.addEventListener('change', () => {
+      advancedSearchOptions.style.display = advancedSearchToggle.checked ? 'block' : 'none';
+    });
+    
     // Two-panel container (for recent searches and results)
     const twoPanel = document.createElement('div');
     twoPanel.className = 'search-two-panel';
@@ -139,11 +302,13 @@ const SearchManager = (function() {
     twoPanel.appendChild(recentSearchesPanel);
     twoPanel.appendChild(searchResultsPanel);
     
-    // Add the search input and two-panel to the modal body
+    // Add the search input and advanced search elements to the modal body
     modalBody.appendChild(searchInputContainer);
+    modalBody.appendChild(advancedSearchContainer);
+    modalBody.appendChild(advancedSearchOptions);
     modalBody.appendChild(twoPanel);
     
-    // Add search functionality
+    // Add search functionality with advanced features
     searchInput.addEventListener('input', debounce(async (e) => {
       const query = e.target.value.trim();
       if (query.length < 2) {
@@ -156,7 +321,11 @@ const SearchManager = (function() {
         addRecentSearch(query);
         
         // Include the current language in the search request
-        const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}`);
+        // Also pass advanced flag to enable advanced parsing on the server
+        const advancedMode = advancedSearchToggle.checked;
+        const response = await fetch(
+          `/api/nodes/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
+        );
         const results = await response.json();
         
         searchResults.innerHTML = '';
