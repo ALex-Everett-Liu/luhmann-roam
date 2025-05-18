@@ -327,3 +327,57 @@
     color: #666;
     margin: 5px 0;
   }
+
+  /* Add these styles for the station and line manager dialogs */
+  .metro-manager-dialog {
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    max-width: 90%;
+    max-height: 90%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .metro-manager-dialog table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .metro-manager-dialog th {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+  }
+
+  .metro-manager-dialog td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .metro-manager-dialog button {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .metro-manager-dialog button:hover {
+    background: #e0e0e0;
+  }
+
+  .metro-manager-dialog .edit-station-btn,
+  .metro-manager-dialog .manage-line-btn {
+    background: #4285F4;
+    color: white;
+    border-color: #2c75ea;
+  }
+
+  .metro-manager-dialog .edit-station-btn:hover,
+  .metro-manager-dialog .manage-line-btn:hover {
+    background: #3b78e7;
+  }

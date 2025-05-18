@@ -263,7 +263,7 @@ const MetroMapVisualizer = (function() {
         const controls = document.createElement('div');
         controls.className = 'metro-controls';
         
-        // Reset view button
+        // Existing reset view button
         const resetButton = document.createElement('button');
         resetButton.innerHTML = '⟲';
         resetButton.title = 'Reset view';
@@ -308,6 +308,20 @@ const MetroMapVisualizer = (function() {
         editButton.addEventListener('click', toggleEditMode);
         controls.appendChild(editButton);
         
+        // Add a "Manage Line" button for direct access
+        const manageLineButton = document.createElement('button');
+        manageLineButton.textContent = 'Manage Lines';
+        manageLineButton.title = 'List and manage all metro lines';
+        manageLineButton.addEventListener('click', openLineManagerDialog);
+        controls.appendChild(manageLineButton);
+        
+        // Add a "Manage Stations" button for direct access
+        const manageStationsButton = document.createElement('button');
+        manageStationsButton.textContent = 'Manage Stations';
+        manageStationsButton.title = 'List and manage all stations';
+        manageStationsButton.addEventListener('click', openStationManagerDialog);
+        controls.appendChild(manageStationsButton);
+        
         // Close button
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '×';
@@ -323,7 +337,7 @@ const MetroMapVisualizer = (function() {
         settingsButton.addEventListener('click', toggleScaleSettings);
         controls.appendChild(settingsButton);
         
-        // Add toggle order view button after other buttons
+        // Add toggle order view button
         const orderViewButton = document.createElement('button');
         orderViewButton.id = 'toggle-order-view';
         orderViewButton.textContent = 'Show Order Numbers';
@@ -449,8 +463,8 @@ const MetroMapVisualizer = (function() {
             
             // Change cursor to indicate panning is active
             canvas.style.cursor = 'grabbing';
-        } else if (event.button === 0) {
-            // Left click for selection
+        } else if (event.button === 0 && !editMode) {  // <-- Add check for !editMode
+            // Left click for selection only when not in edit mode
             const rect = canvas.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
@@ -1623,15 +1637,16 @@ const MetroMapVisualizer = (function() {
         console.log('Setting up edit mode handlers');
         console.log('Canvas element exists:', !!canvas);
         
-        canvas.addEventListener('click', function(event) {
-            console.log('Raw canvas click detected');
-            handleEditModeClick(event);
-        });
+        // Remove any existing click handler first to avoid duplicates
+        canvas.removeEventListener('click', handleEditModeClick);
+        
+        // Add the click handler for edit mode
+        canvas.addEventListener('click', handleEditModeClick);
     }
     
     // Handle clicks in edit mode
     async function handleEditModeClick(event) {
-        console.log('Edit mode click detected', {
+        console.log('Canvas click detected', {
             editMode,
             button: event.button,
             x: event.clientX,
@@ -1639,11 +1654,19 @@ const MetroMapVisualizer = (function() {
             stations: stations.length
         });
         
+        // If not in edit mode, we should use the regular click handler
         if (!editMode) {
-            console.log('Edit mode is disabled, ignoring click');
+            // Instead of ignoring clicks in non-edit mode, handle them properly
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Use the regular handleCanvasClick function
+            handleCanvasClick(x, y);
             return;
         }
         
+        // Rest of the existing edit mode click handling code...
         // If right click or middle click, don't handle as edit
         if (event.button !== 0) return;
         
@@ -1658,13 +1681,7 @@ const MetroMapVisualizer = (function() {
         
         // Adjust for the center, zoom, and offset
         const adjustedX = (x - centerX) / zoomLevel - offsetX / zoomLevel + centerX;
-        const adjustedY = (y - centerY) / zoomLevel - offsetY / zoomLevel + centerY;
-        
-        // Just after calculating adjustedX and adjustedY
-        console.log('Clicked coordinates:', {
-            original: { x, y },
-            adjusted: { x: adjustedX, y: adjustedY }
-        });
+        const adjustedY = -((y - centerY) / zoomLevel + offsetY / zoomLevel - centerY); // Invert Y for edit mode
         
         // Check if clicking on an existing station first
         for (const station of stations) {
@@ -2788,6 +2805,355 @@ const MetroMapVisualizer = (function() {
         
         return line;
     }
+
+    // Add these new functions to provide direct management interfaces
+
+// Function to open a dialog showing all lines for management
+function openLineManagerDialog() {
+    // Create a new element for the line manager
+    const managerContainer = document.createElement('div');
+    managerContainer.className = 'metro-manager-dialog';
+    managerContainer.style.width = '400px';
+    managerContainer.style.position = 'absolute';
+    managerContainer.style.top = '50%';
+    managerContainer.style.left = '50%';
+    managerContainer.style.transform = 'translate(-50%, -50%)';
+    managerContainer.style.background = 'white';
+    managerContainer.style.border = '1px solid #ccc';
+    managerContainer.style.borderRadius = '8px';
+    managerContainer.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+    managerContainer.style.padding = '20px';
+    managerContainer.style.zIndex = '3000';
+    
+    let linesHTML = '';
+    
+    if (lines.length === 0) {
+        linesHTML = '<p>No lines found. Create a new line first.</p>';
+    } else {
+        linesHTML = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Line</th>
+                            <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Stations</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        for (const line of lines) {
+            linesHTML += `
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">
+                        <div style="display: flex; align-items: center;">
+                            <span class="metro-line-badge" style="background-color:${line.color}"></span>
+                            ${line.name}
+                        </div>
+                    </td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${line.stations.length}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">
+                        <button class="manage-line-btn" data-line-id="${line.id}">Manage</button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        linesHTML += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    managerContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">Manage Metro Lines</h2>
+            <button id="close-line-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+        </div>
+        <p>Click "Manage" to edit a line's stations and properties.</p>
+        ${linesHTML}
+        <div style="margin-top: 15px; text-align: center;">
+            <button id="create-new-line-btn">Create New Line</button>
+        </div>
+    `;
+    
+    container.appendChild(managerContainer);
+    
+    // Add event listeners
+    document.getElementById('close-line-manager').addEventListener('click', () => {
+        managerContainer.remove();
+    });
+    
+    // Add event listeners for manage buttons
+    managerContainer.querySelectorAll('.manage-line-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lineId = btn.dataset.lineId;
+            const line = lines.find(l => l.id === lineId);
+            if (line) {
+                managerContainer.remove();
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                openManageLineStationsMenu(line, centerX, centerY);
+            }
+        });
+    });
+    
+    // Create new line button
+    document.getElementById('create-new-line-btn').addEventListener('click', () => {
+        managerContainer.remove();
+        if (stations.length === 0) {
+            alert('No stations available. Create at least one station first before creating a line.');
+            return;
+        }
+        
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        openCreateLineWithStationsDialog(centerX, centerY);
+    });
+}
+
+// Function to open a dialog showing all stations for management
+function openStationManagerDialog() {
+    // Create a new element for the station manager
+    const managerContainer = document.createElement('div');
+    managerContainer.className = 'metro-manager-dialog';
+    managerContainer.style.width = '400px';
+    managerContainer.style.position = 'absolute';
+    managerContainer.style.top = '50%';
+    managerContainer.style.left = '50%';
+    managerContainer.style.transform = 'translate(-50%, -50%)';
+    managerContainer.style.background = 'white';
+    managerContainer.style.border = '1px solid #ccc';
+    managerContainer.style.borderRadius = '8px';
+    managerContainer.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+    managerContainer.style.padding = '20px';
+    managerContainer.style.zIndex = '3000';
+    
+    let stationsHTML = '';
+    
+    if (stations.length === 0) {
+        stationsHTML = '<p>No stations found. Create a new station first.</p>';
+    } else {
+        stationsHTML = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Station</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Type</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        for (const station of stations) {
+            let stationType = 'Regular';
+            if (station.interchange) stationType = 'Interchange';
+            else if (station.terminal) stationType = 'Terminal';
+            
+            stationsHTML += `
+                <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${station.name}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${stationType}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">
+                        <button class="edit-station-btn" data-station-id="${station.id}">Edit</button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        stationsHTML += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    managerContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">Manage Metro Stations</h2>
+            <button id="close-station-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+        </div>
+        <p>Click "Edit" to modify a station's properties.</p>
+        ${stationsHTML}
+        <div style="margin-top: 15px; text-align: center;">
+            <button id="create-new-station-btn">Create New Station</button>
+        </div>
+    `;
+    
+    container.appendChild(managerContainer);
+    
+    // Add event listeners
+    document.getElementById('close-station-manager').addEventListener('click', () => {
+        managerContainer.remove();
+    });
+    
+    // Add event listeners for edit buttons
+    managerContainer.querySelectorAll('.edit-station-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const stationId = btn.dataset.stationId;
+            const station = stations.find(s => s.id === stationId);
+            if (station) {
+                managerContainer.remove();
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                openStationEditMenu(station, centerX, centerY);
+            }
+        });
+    });
+    
+    // Create new station button
+    document.getElementById('create-new-station-btn').addEventListener('click', () => {
+        managerContainer.remove();
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const centerMapX = 0; // Center of map in map coordinates
+        const centerMapY = 0; // Center of map in map coordinates
+        openNodeSelectorForNewStation(centerMapX, centerMapY, centerX, centerY);
+    });
+}
+
+// Function to create a new line with station selection
+function openCreateLineWithStationsDialog(x, y) {
+    // Create a new element for creating a line
+    const menuContainer = document.createElement('div');
+    menuContainer.className = 'metro-edit-menu';
+    menuContainer.style.left = `${x}px`;
+    menuContainer.style.top = `${y}px`;
+    menuContainer.style.width = '400px';
+    
+    // Create color picker options
+    let colorOptionsHTML = '';
+    for (const color of LINE_COLORS) {
+        colorOptionsHTML += `
+            <div style="display: inline-block; margin: 5px;">
+                <label>
+                    <input type="radio" name="line-color" value="${color}">
+                    <span style="display: inline-block; width: 20px; height: 20px; background-color:${color}; border-radius: 50%;"></span>
+                </label>
+            </div>
+        `;
+    }
+    
+    // Create station selection options
+    let stationOptionsHTML = '';
+    for (const station of stations) {
+        stationOptionsHTML += `
+            <div style="margin: 5px 0;">
+                <label>
+                    <input type="checkbox" name="line-station" value="${station.id}">
+                    ${station.name}
+                </label>
+            </div>
+        `;
+    }
+    
+    menuContainer.innerHTML = `
+        <h3>Create New Line</h3>
+        <label>
+            Line Name:
+            <input type="text" id="line-name" placeholder="Line Name" style="width: 100%;">
+        </label>
+        <div style="margin: 10px 0;">
+            <p>Line Color:</p>
+            <div style="margin: 5px 0;">
+                ${colorOptionsHTML}
+            </div>
+        </div>
+        <label>
+            Description:
+            <input type="text" id="line-description" placeholder="Line Description" style="width: 100%;">
+        </label>
+        <div style="margin: 10px 0;">
+            <label>
+                <input type="checkbox" id="line-curved">
+                Use curved line segments
+            </label>
+        </div>
+        <div style="margin: 15px 0;">
+            <h4>Select Stations</h4>
+            <p>Order will be the same as selection order.</p>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
+                ${stationOptionsHTML}
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+            <button id="create-line-save">Create</button>
+            <button id="create-line-cancel">Cancel</button>
+        </div>
+    `;
+    
+    container.appendChild(menuContainer);
+    
+    // Select the first color by default
+    const firstColorOption = menuContainer.querySelector('input[name="line-color"]');
+    if (firstColorOption) firstColorOption.checked = true;
+    
+    // Add event listeners
+    document.getElementById('create-line-save').addEventListener('click', async () => {
+        const lineName = document.getElementById('line-name').value.trim();
+        if (!lineName) {
+            alert('Please enter a line name');
+            return;
+        }
+        
+        // Get selected stations
+        const selectedStationElements = menuContainer.querySelectorAll('input[name="line-station"]:checked');
+        const selectedStationIds = Array.from(selectedStationElements).map(el => el.value);
+        
+        if (selectedStationIds.length < 2) {
+            alert('Please select at least 2 stations for the line');
+            return;
+        }
+        
+        const lineColor = document.querySelector('input[name="line-color"]:checked')?.value || LINE_COLORS[0];
+        const lineDescription = document.getElementById('line-description').value.trim();
+        const lineCurved = document.getElementById('line-curved').checked;
+        
+        // Create a new line
+        const lineId = `line_${Date.now().toString(36)}${Math.random().toString(36).substr(2, 5)}`;
+        const newLine = {
+            id: lineId,
+            name: lineName,
+            color: lineColor,
+            stations: selectedStationIds,
+            curved: lineCurved,
+            description: lineDescription
+        };
+        
+        // Save to database
+        await saveLineToDatabase(newLine);
+        
+        // Add to lines array
+        lines.push(newLine);
+        
+        // Update terminal status for first and last stations
+        if (selectedStationIds.length >= 2) {
+            const firstStationId = selectedStationIds[0];
+            const lastStationId = selectedStationIds[selectedStationIds.length - 1];
+            
+            for (const stationId of [firstStationId, lastStationId]) {
+                const station = stations.find(s => s.id === stationId);
+                if (station && !station.terminal) {
+                    station.terminal = true;
+                    await updateStationInDatabase(station);
+                }
+            }
+        }
+        
+        // Remove menu and redraw
+        menuContainer.remove();
+        drawMap();
+    });
+    
+    document.getElementById('create-line-cancel').addEventListener('click', () => {
+        menuContainer.remove();
+    });
+}
+
     
     // Public API
     return {
@@ -2811,4 +3177,3 @@ document.addEventListener('DOMContentLoaded', () => {
 // Make the module globally accessible (crucial step!)
 window.MetroMapVisualizer = MetroMapVisualizer;
 console.log('MetroMapVisualizer assigned to window object');
-
