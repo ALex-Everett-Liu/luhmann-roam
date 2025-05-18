@@ -1319,25 +1319,39 @@ const MetroMapVisualizer = (function() {
     // Update a station in the database
     async function updateStationInDatabase(station) {
         try {
+            // Make a copy of the station object to ensure we don't modify the original
+            const stationToUpdate = {...station};
+            
+            // Ensure boolean values are converted to 0/1 for database
+            stationToUpdate.interchange = stationToUpdate.interchange ? 1 : 0;
+            stationToUpdate.terminal = stationToUpdate.terminal ? 1 : 0;
+            
             // Try dedicated endpoint first
             try {
-                const response = await fetch(`/api/metro-map/stations/${station.id}`, {
+                const response = await fetch(`/api/metro-map/stations/${stationToUpdate.id}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(station)
+                    body: JSON.stringify(stationToUpdate)
                 });
                 
                 if (response.ok) {
-                    return await response.json();
+                    // The response will update our local copy too
+                    const updatedStation = await response.json();
+                    
+                    // Update the original station object with the updated values
+                    station.interchange = updatedStation.interchange;
+                    station.terminal = updatedStation.terminal;
+                    
+                    return updatedStation;
                 }
             } catch (apiError) {
                 console.log('Dedicated API not available, falling back to node attributes');
             }
             
-            // Fall back to updating node attribute
-            if (station.node_id) {
+            // Fall back to updating node attribute with explicit boolean conversion
+            if (stationToUpdate.node_id) {
                 // First, get the existing attribute to get its ID
-                const getAttrsResponse = await fetch(`/api/nodes/${station.node_id}/attributes`);
+                const getAttrsResponse = await fetch(`/api/nodes/${stationToUpdate.node_id}/attributes`);
                 if (!getAttrsResponse.ok) {
                     throw new Error('Failed to get node attributes');
                 }
@@ -1346,18 +1360,18 @@ const MetroMapVisualizer = (function() {
                 const stationAttr = attributes.find(a => a.key === 'metro_station');
                 
                 if (stationAttr) {
-                    // Update the existing attribute
+                    // Update the existing attribute with properly converted boolean values
                     const updateResponse = await fetch(`/api/node-attributes/${stationAttr.id}`, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             value: JSON.stringify({
-                                id: station.id,
-                                x: station.x,
-                                y: station.y,
-                                interchange: station.interchange,
-                                terminal: station.terminal,
-                                description: station.description
+                                id: stationToUpdate.id,
+                                x: stationToUpdate.x,
+                                y: stationToUpdate.y,
+                                interchange: stationToUpdate.interchange ? 1 : 0,
+                                terminal: stationToUpdate.terminal ? 1 : 0,
+                                description: stationToUpdate.description
                             })
                         })
                     });
@@ -1367,10 +1381,10 @@ const MetroMapVisualizer = (function() {
                     }
                 } else {
                     // Create new attribute
-                    await saveStationToDatabase(station);
+                    await saveStationToDatabase(stationToUpdate);
                 }
                 
-                return station;
+                return stationToUpdate;
             } else {
                 throw new Error('Cannot update station without node_id');
             }
@@ -1383,12 +1397,18 @@ const MetroMapVisualizer = (function() {
     // Update a line in the database
     async function updateLineInDatabase(line) {
         try {
+            // Make a copy of the line object to ensure we don't modify the original
+            const lineToUpdate = {...line};
+            
+            // Ensure boolean values are converted to 0/1 for database
+            lineToUpdate.curved = lineToUpdate.curved ? 1 : 0;
+            
             // Try dedicated endpoint first
             try {
-                const response = await fetch(`/api/metro-map/lines/${line.id}`, {
+                const response = await fetch(`/api/metro-map/lines/${lineToUpdate.id}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(line)
+                    body: JSON.stringify(lineToUpdate)
                 });
                 
                 if (response.ok) {
@@ -1399,8 +1419,8 @@ const MetroMapVisualizer = (function() {
             }
             
             // Fall back to updating node attribute
-            if (line.stations && line.stations.length > 0) {
-                const stationId = line.stations[0];
+            if (lineToUpdate.stations && lineToUpdate.stations.length > 0) {
+                const stationId = lineToUpdate.stations[0];
                 const station = stations.find(s => s.id === stationId);
                 
                 if (station && station.node_id) {
@@ -1419,7 +1439,10 @@ const MetroMapVisualizer = (function() {
                             method: 'PUT',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({
-                                value: JSON.stringify(line)
+                                value: JSON.stringify({
+                                    ...lineToUpdate,
+                                    curved: lineToUpdate.curved ? 1 : 0
+                                })
                             })
                         });
                         
@@ -1428,10 +1451,10 @@ const MetroMapVisualizer = (function() {
                         }
                     } else {
                         // Create new attribute
-                        await saveLineToDatabase(line);
+                        await saveLineToDatabase(lineToUpdate);
                     }
                     
-                    return line;
+                    return lineToUpdate;
                 }
             }
             
@@ -1871,6 +1894,10 @@ const MetroMapVisualizer = (function() {
         menuContainer.style.left = `${x}px`;
         menuContainer.style.top = `${y}px`;
         
+        // Convert possible 0/1 values to booleans for proper checkbox handling
+        const isInterchange = station.interchange === true || station.interchange === 1;
+        const isTerminal = station.terminal === true || station.terminal === 1;
+        
         menuContainer.innerHTML = `
             <h3>Edit Station: ${station.name}</h3>
             <label>
@@ -1879,13 +1906,13 @@ const MetroMapVisualizer = (function() {
             </label>
             <div style="margin: 10px 0;">
                 <label>
-                    <input type="checkbox" id="station-interchange" ${station.interchange ? 'checked' : ''}>
+                    <input type="checkbox" id="station-interchange" ${isInterchange ? 'checked' : ''}>
                     Interchange Station
                 </label>
             </div>
             <div style="margin: 10px 0;">
                 <label>
-                    <input type="checkbox" id="station-terminal" ${station.terminal ? 'checked' : ''}>
+                    <input type="checkbox" id="station-terminal" ${isTerminal ? 'checked' : ''}>
                     Terminal Station
                 </label>
             </div>
@@ -1902,12 +1929,15 @@ const MetroMapVisualizer = (function() {
         
         container.appendChild(menuContainer);
         
-        // Add event listeners
+        // Add event listeners - explicitly convert checked state to integers (0/1)
         document.getElementById('edit-station-save').addEventListener('click', async () => {
             // Get updated values
             station.description = document.getElementById('station-description').value;
-            station.interchange = document.getElementById('station-interchange').checked;
-            station.terminal = document.getElementById('station-terminal').checked;
+            // Convert boolean checkbox states to 0/1 values for storage
+            station.interchange = document.getElementById('station-interchange').checked ? 1 : 0;
+            station.terminal = document.getElementById('station-terminal').checked ? 1 : 0;
+            
+            console.log('Saving station with interchange:', station.interchange, 'terminal:', station.terminal);
             
             // Save to database
             await updateStationInDatabase(station);
@@ -2172,6 +2202,9 @@ const MetroMapVisualizer = (function() {
             `;
         }
         
+        // Convert possible 0/1 value to boolean for proper checkbox handling
+        const isCurved = line.curved === true || line.curved === 1;
+        
         menuContainer.innerHTML = `
             <h3>Edit Line: ${line.name}</h3>
             <label>
@@ -2190,7 +2223,7 @@ const MetroMapVisualizer = (function() {
             </label>
             <div style="margin: 10px 0;">
                 <label>
-                    <input type="checkbox" id="line-curved" ${line.curved ? 'checked' : ''}>
+                    <input type="checkbox" id="line-curved" ${isCurved ? 'checked' : ''}>
                     Use curved line segments
                 </label>
             </div>
@@ -2207,13 +2240,16 @@ const MetroMapVisualizer = (function() {
         
         container.appendChild(menuContainer);
         
-        // Add event listeners
+        // Add event listeners with explicit 0/1 conversion
         document.getElementById('edit-line-save').addEventListener('click', async () => {
             // Get updated values
             line.name = document.getElementById('line-name').value.trim();
             line.color = document.querySelector('input[name="line-color"]:checked')?.value || line.color;
             line.description = document.getElementById('line-description').value.trim();
-            line.curved = document.getElementById('line-curved').checked;
+            // Convert boolean checkbox state to 0/1 value for storage
+            line.curved = document.getElementById('line-curved').checked ? 1 : 0;
+            
+            console.log('Saving line with curved:', line.curved);
             
             // Save to database
             await updateLineInDatabase(line);
