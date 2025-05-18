@@ -70,6 +70,9 @@ const MetroMapVisualizer = (function() {
         '#006400'  // Dark Green
     ];
     
+    // Add these variables to the private variables section (near line 27)
+    let showOrderNumbers = false;  // Toggle for showing order numbers instead of station names
+    let orderViewMode = false;     // Toggle for the order view mode that fades station names
     
     // Initialize the visualizer
     function initialize() {
@@ -320,7 +323,28 @@ const MetroMapVisualizer = (function() {
         settingsButton.addEventListener('click', toggleScaleSettings);
         controls.appendChild(settingsButton);
         
+        // Add toggle order view button after other buttons
+        const orderViewButton = document.createElement('button');
+        orderViewButton.id = 'toggle-order-view';
+        orderViewButton.textContent = 'Show Order Numbers';
+        orderViewButton.title = 'Toggle showing station order numbers';
+        orderViewButton.addEventListener('click', toggleOrderView);
+        controls.appendChild(orderViewButton);
+        
         container.appendChild(controls);
+    }
+    
+    // Add this function after toggleScaleSettings or in a similar location
+    function toggleOrderView() {
+        orderViewMode = !orderViewMode;
+        drawMap();
+        
+        // Update UI to reflect the current mode
+        const orderViewButton = container.querySelector('#toggle-order-view');
+        if (orderViewButton) {
+            orderViewButton.textContent = orderViewMode ? 'Hide Order Numbers' : 'Show Order Numbers';
+            orderViewButton.classList.toggle('active', orderViewMode);
+        }
     }
     
     // Create info panel
@@ -773,12 +797,59 @@ const MetroMapVisualizer = (function() {
             // Invert Y-axis again for text (so it's not drawn upside-down)
             ctx.scale(1, -1);
             
-            // Draw station name (with inverted Y position)
+            // Determine the station order numbers for each line
+            let stationOrderInfo = [];
+            if (orderViewMode || showOrderNumbers) {
+                for (const line of lines) {
+                    const index = line.stations.indexOf(station.id);
+                    if (index !== -1) {
+                        stationOrderInfo.push({
+                            lineId: line.id,
+                            lineColor: line.color,
+                            orderNumber: index + 1,
+                            totalStations: line.stations.length
+                        });
+                    }
+                }
+            }
+            
+            // Draw station name (with inverted Y position) - fade if in order view mode
+            const nameOpacity = orderViewMode ? 0.3 : 1;
             ctx.font = `${Math.round(12 * textScaleFactor)}px Arial`;
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = `rgba(0, 0, 0, ${nameOpacity})`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillText(station.name, x, -y - radius - 4 - 12); // Note the negative Y
+            
+            // Draw order numbers if enabled
+            if (orderViewMode && stationOrderInfo.length > 0) {
+                const orderY = -y - radius - 4 - 28; // Position above the station name
+                
+                // If multiple lines, arrange numbers horizontally
+                const totalWidth = stationOrderInfo.length * 20;
+                let startX = x - totalWidth / 2 + 10;
+                
+                stationOrderInfo.forEach(info => {
+                    ctx.fillStyle = info.lineColor;
+                    ctx.font = `bold ${Math.round(14 * textScaleFactor)}px Arial`;
+                    
+                    // Draw order badge with border
+                    ctx.beginPath();
+                    ctx.arc(startX, orderY + 7, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Draw order number
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(info.orderNumber.toString(), startX, orderY + 7);
+                    
+                    startX += 20;
+                });
+            }
             
             // Draw station marker if in edit mode
             if (editMode) {
@@ -2322,28 +2393,48 @@ const MetroMapVisualizer = (function() {
         menuContainer.className = 'metro-edit-menu';
         menuContainer.style.left = `${x}px`;
         menuContainer.style.top = `${y}px`;
-        menuContainer.style.width = '300px';  // Make it wider
+        menuContainer.style.width = '350px';  // Make it wider
         
-        // Build list of stations on this line with drag handles
+        // Build list of stations on this line with drag handles and order numbers
         let stationListHTML = '';
         for (let i = 0; i < line.stations.length; i++) {
             const stationId = line.stations[i];
             const station = stations.find(s => s.id === stationId);
             
             if (station) {
+                // Determine if this is a terminal station
+                const isFirstStation = i === 0;
+                const isLastStation = i === line.stations.length - 1;
+                const terminalClass = (isFirstStation || isLastStation) ? 'station-terminal' : '';
+                const terminalText = isFirstStation ? '(Start)' : (isLastStation ? '(End)' : '');
+                
                 stationListHTML += `
-                    <div class="line-station-item" data-station-id="${station.id}" style="display: flex; justify-content: space-between; align-items: center; margin: 5px 0; padding: 5px; border: 1px solid #ddd; background: #f8f8f8;">
+                    <div class="line-station-item ${terminalClass}" data-station-id="${station.id}" data-order="${i+1}" style="display: flex; justify-content: space-between; align-items: center; margin: 5px 0; padding: 5px; border: 1px solid #ddd; background: #f8f8f8;">
+                        <span class="station-order-badge" style="background-color: ${line.color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: bold;">${i+1}</span>
                         <span class="station-drag-handle" style="cursor: grab; margin-right: 10px;">≡</span>
-                        <span>${station.name}</span>
+                        <span style="flex-grow: 1;">${station.name} <small style="color: #666;">${terminalText}</small></span>
                         <button class="remove-station-btn" data-station-id="${station.id}" style="background: none; border: none; color: red; cursor: pointer;">×</button>
                     </div>
                 `;
             }
         }
         
+        // Show line direction controls if there are at least 2 stations
+        const directionControlsHTML = line.stations.length >= 2 ? `
+            <div style="margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                <h4 style="margin-top: 0;">Line Direction</h4>
+                <p>First station is the start, last station is the end.</p>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                    <button id="reverse-line-direction">↑↓ Reverse Direction</button>
+                    <button id="toggle-order-view-local">👁️ Toggle Order View</button>
+                </div>
+            </div>
+        ` : '';
+        
         menuContainer.innerHTML = `
             <h3>Manage Stations on ${line.name}</h3>
-            <p>Drag to reorder stations:</p>
+            <p>Drag to reorder stations or use the direction controls:</p>
+            ${directionControlsHTML}
             <div id="line-stations-list" style="max-height: 300px; overflow-y: auto;">
                 ${stationListHTML}
             </div>
@@ -2361,6 +2452,27 @@ const MetroMapVisualizer = (function() {
         // Set up event listeners
         setupStationDragHandlers(menuContainer, line);
         
+        // Add event listener for the reverse direction button
+        const reverseDirectionButton = document.getElementById('reverse-line-direction');
+        if (reverseDirectionButton) {
+            reverseDirectionButton.addEventListener('click', () => {
+                // Reverse the array of stations
+                line.stations.reverse();
+                
+                // Refresh the menu to show the new order
+                menuContainer.remove();
+                openManageLineStationsMenu(line, x, y);
+            });
+        }
+        
+        // Add event listener for the local order view toggle
+        const toggleOrderViewButton = document.getElementById('toggle-order-view-local');
+        if (toggleOrderViewButton) {
+            toggleOrderViewButton.addEventListener('click', () => {
+                toggleOrderView();
+            });
+        }
+        
         document.getElementById('save-station-order').addEventListener('click', async () => {
             // Save the new order
             const stationElements = menuContainer.querySelectorAll('.line-station-item');
@@ -2368,6 +2480,27 @@ const MetroMapVisualizer = (function() {
             
             // Update line stations
             line.stations = newOrder;
+            
+            // Update terminal status for stations
+            if (line.stations.length >= 2) {
+                // Mark first and last stations as terminals
+                const firstStationId = line.stations[0];
+                const lastStationId = line.stations[line.stations.length - 1];
+                
+                for (const stationId of line.stations) {
+                    const station = stations.find(s => s.id === stationId);
+                    if (station) {
+                        // Set terminal status based on position in line
+                        const isTerminal = (stationId === firstStationId || stationId === lastStationId);
+                        
+                        // Only update if the terminal status changed
+                        if (station.terminal !== isTerminal) {
+                            station.terminal = isTerminal;
+                            await updateStationInDatabase(station);
+                        }
+                    }
+                }
+            }
             
             // Save to database
             await updateLineInDatabase(line);

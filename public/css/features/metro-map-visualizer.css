@@ -292,3 +292,38 @@
   .metro-scale-actions button.save:hover {
     background: #3b78e7;
   }
+
+  /* Add these styles to support the station order view */
+  .station-terminal {
+    background-color: #fff3cd !important;
+    border-color: #ffeeba !important;
+  }
+  
+  .station-order-badge {
+    font-size: 12px;
+    min-width: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  
+  #toggle-order-view, #toggle-order-view-local {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  #toggle-order-view.active, #toggle-order-view-local.active {
+    background-color: #4285F4;
+    color: white;
+  }
+  
+  /* Style for the line direction control section */
+  .metro-edit-menu h4 {
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  
+  .metro-edit-menu p {
+    font-size: 12px;
+    color: #666;
+    margin: 5px 0;
+  }
