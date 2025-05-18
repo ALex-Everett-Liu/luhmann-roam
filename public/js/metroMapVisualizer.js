@@ -400,13 +400,10 @@ const MetroMapVisualizer = (function() {
         orderViewButton.addEventListener('click', toggleOrderView);
         controls.appendChild(orderViewButton);
         
-        // Add this to the setupControls function to add transit type toggle buttons
+        // Add transit type filters ONLY ONCE here
         setupTransitTypeFilters(controls);
         
         container.appendChild(controls);
-        
-        // In the setupControls function, add this line after adding all other controls
-        setupTransitTypeFilters(controls);
     }
     
     // Add this function after toggleScaleSettings or in a similar location
@@ -2972,11 +2969,15 @@ function openLineManagerDialog() {
     // Create a new element for the line manager
     const managerContainer = document.createElement('div');
     managerContainer.className = 'metro-manager-dialog';
-    managerContainer.style.width = '400px';
-    managerContainer.style.position = 'absolute';
-    managerContainer.style.top = '50%';
+    
+    // Use fixed positioning and center it on screen rather than absolute positioning
+    managerContainer.style.position = 'fixed';
     managerContainer.style.left = '50%';
+    managerContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
     managerContainer.style.transform = 'translate(-50%, -50%)';
+    managerContainer.style.width = '450px';
+    managerContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport
+    managerContainer.style.overflowY = 'auto'; // Add scrolling if needed
     managerContainer.style.background = 'white';
     managerContainer.style.border = '1px solid #ccc';
     managerContainer.style.borderRadius = '8px';
@@ -3078,11 +3079,15 @@ function openStationManagerDialog() {
     // Create a new element for the station manager
     const managerContainer = document.createElement('div');
     managerContainer.className = 'metro-manager-dialog';
-    managerContainer.style.width = '400px';
-    managerContainer.style.position = 'absolute';
-    managerContainer.style.top = '50%';
+    
+    // Use fixed positioning and center it on screen rather than absolute positioning
+    managerContainer.style.position = 'fixed';
     managerContainer.style.left = '50%';
+    managerContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
     managerContainer.style.transform = 'translate(-50%, -50%)';
+    managerContainer.style.width = '450px';
+    managerContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport
+    managerContainer.style.overflowY = 'auto'; // Add scrolling if needed
     managerContainer.style.background = 'white';
     managerContainer.style.border = '1px solid #ccc';
     managerContainer.style.borderRadius = '8px';
@@ -3180,9 +3185,15 @@ function openCreateLineWithStationsDialog(x, y) {
     // Create a new element for creating a line
     const menuContainer = document.createElement('div');
     menuContainer.className = 'metro-edit-menu';
-    menuContainer.style.left = `${x}px`;
-    menuContainer.style.top = `${y}px`;
-    menuContainer.style.width = '400px';
+    
+    // Use fixed positioning and center it on screen
+    menuContainer.style.position = 'fixed';
+    menuContainer.style.left = '50%';
+    menuContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
+    menuContainer.style.transform = 'translate(-50%, -50%)';
+    menuContainer.style.width = '450px';
+    menuContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport 
+    menuContainer.style.overflowY = 'auto'; // Add scrolling if needed
     
     // Create color picker options
     let colorOptionsHTML = '';
@@ -3196,6 +3207,16 @@ function openCreateLineWithStationsDialog(x, y) {
             </div>
         `;
     }
+    
+    // Create transit type options
+    let transitTypeOptionsHTML = '';
+    Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
+        transitTypeOptionsHTML += `
+            <option value="${type}">
+                ${key.charAt(0) + key.slice(1).toLowerCase()}
+            </option>
+        `;
+    });
     
     // Create station selection options
     let stationOptionsHTML = '';
@@ -3216,6 +3237,13 @@ function openCreateLineWithStationsDialog(x, y) {
             Line Name:
             <input type="text" id="line-name" placeholder="Line Name" style="width: 100%;">
         </label>
+        <div style="margin: 10px 0;">
+            <label>Transit Type:
+                <select id="line-transit-type" style="width: 100%;">
+                    ${transitTypeOptionsHTML}
+                </select>
+            </label>
+        </div>
         <div style="margin: 10px 0;">
             <p>Line Color:</p>
             <div style="margin: 5px 0;">
@@ -3268,6 +3296,7 @@ function openCreateLineWithStationsDialog(x, y) {
             return;
         }
         
+        const lineTransitType = document.getElementById('line-transit-type').value;
         const lineColor = document.querySelector('input[name="line-color"]:checked')?.value || LINE_COLORS[0];
         const lineDescription = document.getElementById('line-description').value.trim();
         const lineCurved = document.getElementById('line-curved').checked;
@@ -3277,6 +3306,7 @@ function openCreateLineWithStationsDialog(x, y) {
         const newLine = {
             id: lineId,
             name: lineName,
+            transit_type: lineTransitType,
             color: lineColor,
             stations: selectedStationIds,
             curved: lineCurved,
