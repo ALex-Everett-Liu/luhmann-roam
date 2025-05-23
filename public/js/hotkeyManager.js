@@ -1042,12 +1042,26 @@ const HotkeyManager = (function() {
       }
     }
     
+    /**
+     * Set modal open state to prevent hotkey conflicts
+     * @param {boolean} modalOpen - Whether a modal is open
+     */
+    function setModalState(modalOpen) {
+      isModalOpen = modalOpen;
+      
+      // If a modal is opening and hotkey mode is active, exit it
+      if (modalOpen && isHotkeyModeActive) {
+        exitHotkeyMode();
+      }
+    }
+    
     // Public API
     return {
       initialize: initialize,
       updateLanguage: updateLanguage,
       enterHotkeyMode: enterHotkeyMode,
-      exitHotkeyMode: exitHotkeyMode
+      exitHotkeyMode: exitHotkeyMode,
+      setModalState: setModalState
     };
   })();
   

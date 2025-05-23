@@ -66,13 +66,14 @@ const DcimManager = (function() {
                 pointer-events: none;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.3);
                 border: 1px solid #d84315;
+                font-family: monospace;
             }
             
             #dcim-hotkey-mode-indicator {
                 position: fixed;
-                top: 50px;
+                top: 10px;
                 right: 10px;
-                background-color: rgba(255, 87, 34, 0.9);
+                background-color: rgba(76, 175, 80, 0.9);
                 color: white;
                 padding: 5px 10px;
                 border-radius: 4px;
@@ -81,7 +82,28 @@ const DcimManager = (function() {
                 z-index: 10011;
                 pointer-events: none;
                 display: none;
-                border: 1px solid #d84315;
+                border: 1px solid #388E3C;
+                font-family: sans-serif;
+            }
+            
+            .dcim-hotkey-hint.dcim-context-grid {
+                background-color: #4CAF50;
+                border-color: #388E3C;
+            }
+            
+            .dcim-hotkey-hint.dcim-context-detail {
+                background-color: #2196F3;
+                border-color: #1976D2;
+            }
+            
+            .dcim-hotkey-hint.dcim-context-viewer {
+                background-color: #9C27B0;
+                border-color: #7B1FA2;
+            }
+            
+            .dcim-hotkey-hint.dcim-context-fullscreen {
+                background-color: #F44336;
+                border-color: #D32F2F;
             }
         `;
         document.head.appendChild(style);
@@ -753,9 +775,14 @@ const DcimManager = (function() {
     function openImageManager() {
         modalElement = createModal();
         modalElement.style.display = 'flex';
+        
+        // Disable main application hotkeys while DCIM modal is open
+        if (window.HotkeyManager && window.HotkeyManager.setModalState) {
+            window.HotkeyManager.setModalState(true);
+        }
       
-      // Load images
-      loadImages();
+        // Load images
+        loadImages();
     }
     
     /**
@@ -764,6 +791,16 @@ const DcimManager = (function() {
     function closeModal() {
       if (modalElement) {
         modalElement.style.display = 'none';
+        
+        // Re-enable main application hotkeys when DCIM modal is closed
+        if (window.HotkeyManager && window.HotkeyManager.setModalState) {
+            window.HotkeyManager.setModalState(false);
+        }
+        
+        // Also exit DCIM hotkey mode if it's active
+        if (isDcimHotkeyModeActive) {
+            exitDcimHotkeyMode();
+        }
       }
     }
     
