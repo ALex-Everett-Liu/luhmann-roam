@@ -666,3 +666,56 @@
     font-weight: bold;
     font-size: 10px;
   }
+
+  /* DCIM Hotkey Styles */
+  .dcim-hotkey-hint {
+    position: fixed;
+    background-color: #ff5722;
+    color: white;
+    border-radius: 3px;
+    padding: 3px 6px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 10010;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    border: 1px solid #d84315;
+    font-family: monospace;
+  }
+
+  #dcim-hotkey-mode-indicator {
+    position: fixed;
+    top: 50px;
+    right: 10px;
+    background-color: rgba(255, 87, 34, 0.9);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 10011;
+    pointer-events: none;
+    display: none;
+    border: 1px solid #d84315;
+    font-family: sans-serif;
+  }
+
+  .dcim-hotkey-hint.dcim-context-grid {
+    background-color: #4CAF50;
+    border-color: #388E3C;
+  }
+
+  .dcim-hotkey-hint.dcim-context-detail {
+    background-color: #2196F3;
+    border-color: #1976D2;
+  }
+
+  .dcim-hotkey-hint.dcim-context-viewer {
+    background-color: #9C27B0;
+    border-color: #7B1FA2;
+  }
+
+  .dcim-hotkey-hint.dcim-context-fullscreen {
+    background-color: #F44336;
+    border-color: #D32F2F;
+  }

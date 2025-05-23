@@ -27,6 +27,499 @@ const DcimManager = (function() {
         };
     }
     
+    // DCIM Hotkey Manager
+    let isDcimHotkeyModeActive = false;
+    let isDcimAltDown = false;
+    let dcimOtherKeyPressedWithAlt = false;
+    let dcimHintElements = [];
+
+    /**
+     * Initialize DCIM-specific hotkey system
+     */
+    function initializeDcimHotkeys() {
+        // Add event listeners for DCIM hotkeys
+        document.addEventListener('keydown', handleDcimKeyDown);
+        document.addEventListener('keyup', handleDcimKeyUp);
+        
+        // Add hotkey styles
+        addDcimHotkeyStyles();
+    }
+
+    /**
+     * Add CSS styles for DCIM hotkey hints
+     */
+    function addDcimHotkeyStyles() {
+        if (document.getElementById('dcim-hotkey-styles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'dcim-hotkey-styles';
+        style.textContent = `
+            .dcim-hotkey-hint {
+                position: fixed;
+                background-color: #ff5722;
+                color: white;
+                border-radius: 3px;
+                padding: 3px 6px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 10010;
+                pointer-events: none;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                border: 1px solid #d84315;
+            }
+            
+            #dcim-hotkey-mode-indicator {
+                position: fixed;
+                top: 50px;
+                right: 10px;
+                background-color: rgba(255, 87, 34, 0.9);
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 10011;
+                pointer-events: none;
+                display: none;
+                border: 1px solid #d84315;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Check if DCIM modal is currently open and active
+     */
+    function isDcimModalActive() {
+        const modal = document.getElementById('dcim-modal');
+        return modal && modal.style.display !== 'none' && modal.style.display !== '';
+    }
+
+    /**
+     * Get current DCIM view context
+     */
+    function getCurrentDcimContext() {
+        if (!isDcimModalActive()) return null;
+        
+        const gridView = document.getElementById('dcim-image-grid');
+        const detailView = document.getElementById('dcim-detail-view');
+        const viewerView = document.getElementById('dcim-viewer-view');
+        const fullscreenViewer = document.getElementById('dcim-fullscreen-viewer');
+        
+        if (fullscreenViewer && fullscreenViewer.style.display === 'block') {
+            return 'fullscreen';
+        } else if (viewerView && viewerView.style.display === 'flex') {
+            return 'viewer';
+        } else if (detailView && detailView.style.display === 'flex') {
+            return 'detail';
+        } else if (gridView && gridView.style.display === 'grid') {
+            return 'grid';
+        }
+        
+        return 'grid'; // default
+    }
+
+    /**
+     * Handle keydown events for DCIM hotkeys
+     */
+    function handleDcimKeyDown(e) {
+        // Only process if DCIM modal is active
+        if (!isDcimModalActive()) return;
+        
+        // If we're in hotkey mode, handle the action keys
+        if (isDcimHotkeyModeActive) {
+            const key = e.key.toLowerCase();
+            const context = getCurrentDcimContext();
+            
+            if (executeDcimHotkey(key, context)) {
+                e.preventDefault();
+                return;
+            }
+            
+            // If Escape is pressed, exit hotkey mode
+            if (e.key === 'Escape') {
+                exitDcimHotkeyMode();
+                e.preventDefault();
+            }
+            
+            return;
+        }
+        
+        // Track Alt key state
+        if (e.key === 'Alt') {
+            isDcimAltDown = true;
+            dcimOtherKeyPressedWithAlt = false;
+        } else if (isDcimAltDown) {
+            dcimOtherKeyPressedWithAlt = true;
+        }
+    }
+
+    /**
+     * Handle keyup events for DCIM hotkeys
+     */
+    function handleDcimKeyUp(e) {
+        // Only process if DCIM modal is active
+        if (!isDcimModalActive()) return;
+        
+        // If Alt key is released
+        if (e.key === 'Alt') {
+            // Only enter hotkey mode if Alt was pressed cleanly
+            if (isDcimAltDown && !dcimOtherKeyPressedWithAlt && !isDcimHotkeyModeActive) {
+                enterDcimHotkeyMode();
+                e.preventDefault();
+            }
+            
+            // Reset Alt tracking state
+            isDcimAltDown = false;
+            dcimOtherKeyPressedWithAlt = false;
+        }
+    }
+
+    /**
+     * Enter DCIM hotkey mode
+     */
+    function enterDcimHotkeyMode() {
+        isDcimHotkeyModeActive = true;
+        showDcimHotkeyHints();
+        showDcimHotkeyModeIndicator(true);
+        console.log('Entered DCIM hotkey mode');
+    }
+
+    /**
+     * Exit DCIM hotkey mode
+     */
+    function exitDcimHotkeyMode() {
+        isDcimHotkeyModeActive = false;
+        removeDcimHotkeyHints();
+        showDcimHotkeyModeIndicator(false);
+        console.log('Exited DCIM hotkey mode');
+    }
+
+    /**
+     * Show or hide the DCIM hotkey mode indicator
+     */
+    function showDcimHotkeyModeIndicator(show) {
+        let indicator = document.getElementById('dcim-hotkey-mode-indicator');
+        if (!indicator && show) {
+            indicator = document.createElement('div');
+            indicator.id = 'dcim-hotkey-mode-indicator';
+            indicator.textContent = 'DCIM HOTKEY MODE';
+            document.body.appendChild(indicator);
+        }
+        
+        if (indicator) {
+            indicator.style.display = show ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * Execute DCIM hotkey action based on key and context
+     */
+    function executeDcimHotkey(key, context) {
+        let executed = false;
+        
+        // Universal hotkeys (work in all contexts)
+        switch (key) {
+            case 'm':
+                toggleMajorOnlyFilter();
+                executed = true;
+                break;
+            case 'l':
+                sortByRankingLowest();
+                executed = true;
+                break;
+        }
+        
+        // Context-specific hotkeys
+        if (!executed) {
+            switch (context) {
+                case 'grid':
+                    executed = executeGridHotkeys(key);
+                    break;
+                case 'detail':
+                    executed = executeDetailHotkeys(key);
+                    break;
+                case 'viewer':
+                    executed = executeViewerHotkeys(key);
+                    break;
+                case 'fullscreen':
+                    executed = executeFullscreenHotkeys(key);
+                    break;
+            }
+        }
+        
+        if (executed) {
+            exitDcimHotkeyMode();
+        }
+        
+        return executed;
+    }
+
+    /**
+     * Execute hotkeys for grid view
+     */
+    function executeGridHotkeys(key) {
+        switch (key) {
+            case 'g':
+                // Already in grid view, no action needed
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Execute hotkeys for detail view
+     */
+    function executeDetailHotkeys(key) {
+        switch (key) {
+            case 'g':
+                backToGallery();
+                return true;
+            case 's':
+                addToSubsidiaries();
+                return true;
+            case 'v':
+                viewFullImage();
+                return true;
+            case 'c':
+                saveImageChangesHotkey();
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Execute hotkeys for viewer
+     */
+    function executeViewerHotkeys(key) {
+        switch (key) {
+            case 'd':
+                backToDetails();
+                return true;
+            case 'f':
+                enterFullscreen();
+                return true;
+            case 'g':
+                backToGallery();
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Execute hotkeys for fullscreen viewer
+     */
+    function executeFullscreenHotkeys(key) {
+        switch (key) {
+            case 'f':
+                exitFullscreen();
+                return true;
+            case 'd':
+                exitFullscreenToDetails();
+                return true;
+            case 'g':
+                exitFullscreenToGallery();
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Show context-appropriate hotkey hints
+     */
+    function showDcimHotkeyHints() {
+        removeDcimHotkeyHints(); // Clear existing hints
+        
+        const context = getCurrentDcimContext();
+        const hints = getDcimHotkeysForContext(context);
+        
+        hints.forEach(hint => {
+            const element = document.querySelector(hint.selector);
+            if (element && isElementVisible(element)) {
+                createDcimHotkeyHint(hint.key, element, hint.description);
+            }
+        });
+    }
+
+    /**
+     * Get available hotkeys for the current context
+     */
+    function getDcimHotkeysForContext(context) {
+        const baseHints = [
+            { key: 'M', selector: '#filter-major-only', description: 'Toggle Major/All' },
+            { key: 'L', selector: '#sort-method', description: 'Sort by ranking (lowest)' }
+        ];
+        
+        switch (context) {
+            case 'grid':
+                return baseHints;
+                
+            case 'detail':
+                return [
+                    ...baseHints,
+                    { key: 'G', selector: '#dcim-back-button', description: 'Back to gallery' },
+                    { key: 'S', selector: '#dcim-add-subsidiary', description: 'Add to subsidiaries' },
+                    { key: 'V', selector: '#dcim-view-full-image', description: 'View full image' },
+                    { key: 'C', selector: '#dcim-save-image', description: 'Save changes' }
+                ];
+                
+            case 'viewer':
+                return [
+                    ...baseHints,
+                    { key: 'D', selector: '#dcim-viewer-back', description: 'Back to details' },
+                    { key: 'F', selector: '#dcim-viewer-fullscreen', description: 'Fullscreen' },
+                    { key: 'G', selector: '#dcim-viewer-back', description: 'Back to gallery' }
+                ];
+                
+            case 'fullscreen':
+                return [
+                    { key: 'F', selector: '#dcim-fs-exit', description: 'Exit fullscreen' },
+                    { key: 'D', selector: '#dcim-fs-exit', description: 'Back to details' },
+                    { key: 'G', selector: '#dcim-fs-exit', description: 'Back to gallery' }
+                ];
+                
+            default:
+                return baseHints;
+        }
+    }
+
+    /**
+     * Create a hotkey hint element
+     */
+    function createDcimHotkeyHint(key, element, description) {
+        const rect = element.getBoundingClientRect();
+        
+        const hint = document.createElement('div');
+        hint.className = 'dcim-hotkey-hint';
+        hint.textContent = key;
+        hint.title = description;
+        
+        // Position hint near the element
+        hint.style.left = `${rect.left - 25}px`;
+        hint.style.top = `${rect.top + (rect.height / 2) - 10}px`;
+        
+        document.body.appendChild(hint);
+        dcimHintElements.push(hint);
+    }
+
+    /**
+     * Remove all DCIM hotkey hints
+     */
+    function removeDcimHotkeyHints() {
+        dcimHintElements.forEach(hint => {
+            if (hint && hint.parentNode) {
+                hint.parentNode.removeChild(hint);
+            }
+        });
+        dcimHintElements = [];
+    }
+
+    /**
+     * Check if an element is visible
+     */
+    function isElementVisible(element) {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && 
+               window.getComputedStyle(element).visibility !== 'hidden' &&
+               window.getComputedStyle(element).display !== 'none';
+    }
+
+    // Hotkey action implementations
+    function toggleMajorOnlyFilter() {
+        const checkbox = document.getElementById('filter-major-only');
+        if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            const event = new Event('change');
+            checkbox.dispatchEvent(event);
+        }
+    }
+
+    function sortByRankingLowest() {
+        const sortSelect = document.getElementById('sort-method');
+        if (sortSelect) {
+            sortSelect.value = 'ranking_asc';
+            const event = new Event('change');
+            sortSelect.dispatchEvent(event);
+        }
+    }
+
+    function backToGallery() {
+        const backButton = document.getElementById('dcim-back-button') || 
+                          document.getElementById('dcim-viewer-back');
+        if (backButton) {
+            // If we're in viewer, we need to go back to grid, not detail
+            const context = getCurrentDcimContext();
+            if (context === 'viewer') {
+                // Go directly to grid
+                document.getElementById('dcim-image-grid').style.display = 'grid';
+                document.getElementById('dcim-viewer-view').style.display = 'none';
+                document.getElementById('dcim-detail-view').style.display = 'none';
+            } else {
+                backButton.click();
+            }
+        }
+    }
+
+    function addToSubsidiaries() {
+        const addSubButton = document.getElementById('dcim-add-subsidiary');
+        if (addSubButton) {
+            addSubButton.click();
+        }
+    }
+
+    function viewFullImage() {
+        const viewButton = document.getElementById('dcim-view-full-image');
+        if (viewButton) {
+            viewButton.click();
+        }
+    }
+
+    function saveImageChangesHotkey() {
+        const saveButton = document.getElementById('dcim-save-image');
+        if (saveButton) {
+            saveButton.click();
+        }
+    }
+
+    function backToDetails() {
+        const backButton = document.getElementById('dcim-viewer-back');
+        if (backButton) {
+            backButton.click();
+        }
+    }
+
+    function enterFullscreen() {
+        const fsButton = document.getElementById('dcim-viewer-fullscreen');
+        if (fsButton) {
+            fsButton.click();
+        }
+    }
+
+    function exitFullscreen() {
+        const exitButton = document.getElementById('dcim-fs-exit');
+        if (exitButton) {
+            exitButton.click();
+        }
+    }
+
+    function exitFullscreenToDetails() {
+        // Exit fullscreen first, then we'll be in viewer mode
+        exitFullscreen();
+    }
+
+    function exitFullscreenToGallery() {
+        // Exit fullscreen and go directly to gallery
+        const fsViewer = document.getElementById('dcim-fullscreen-viewer');
+        if (fsViewer) {
+            fsViewer.style.display = 'none';
+            // Go directly to grid
+            document.getElementById('dcim-image-grid').style.display = 'grid';
+            document.getElementById('dcim-viewer-view').style.display = 'none';
+            document.getElementById('dcim-detail-view').style.display = 'none';
+        }
+    }
+    
     /**
      * Initialize the manager
      */
@@ -38,6 +531,9 @@ const DcimManager = (function() {
       
       // Add necessary styles
       addDcimStyles();
+      
+      // Initialize DCIM hotkeys
+      initializeDcimHotkeys();
       
       // Create sidebar button for Image Manager
       createSidebarButton();
