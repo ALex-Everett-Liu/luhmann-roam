@@ -321,48 +321,63 @@ const SearchManager = (function() {
         addRecentSearch(query);
         
         // Include the current language in the search request
-        // Also pass advanced flag to enable advanced parsing on the server
         const advancedMode = advancedSearchToggle.checked;
+        
+        // Get combined results (nodes + markdown)
         const response = await fetch(
-          `/api/nodes/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
+          `/api/search/combined?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
         );
-        const results = await response.json();
+        const data = await response.json();
         
         searchResults.innerHTML = '';
         
-        if (results.length === 0) {
-          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching nodes found'}</div>`;
+        const totalResults = data.total || 0;
+        if (totalResults === 0) {
+          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching results found'}</div>`;
           return;
         }
         
-        results.forEach(node => {
-          const resultItem = document.createElement('div');
-          resultItem.className = 'search-result-item';
-          resultItem.dataset.id = node.id;
+        // Add a header showing result counts
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'search-results-header';
+        headerDiv.innerHTML = `
+          <div class="results-summary">
+            <span class="total-count">${totalResults} total results</span>
+            <span class="node-count">${data.nodes.length} nodes</span>
+            <span class="markdown-count">${data.markdown.length} markdown files</span>
+          </div>
+        `;
+        searchResults.appendChild(headerDiv);
+        
+        // Display node results
+        if (data.nodes && data.nodes.length > 0) {
+          const nodeHeader = document.createElement('div');
+          nodeHeader.className = 'result-category-header';
+          nodeHeader.innerHTML = `<h4>📝 Node Content (${data.nodes.length})</h4>`;
+          searchResults.appendChild(nodeHeader);
           
-          const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-          
-          // Create a breadcrumb path for the node if it has a parent
-          let breadcrumb = '';
-          if (node.parent_id) {
-            breadcrumb = `<div class="search-result-path">${getNodePath(node)}</div>`;
-          }
-          
-          resultItem.innerHTML = `
-            <div class="search-result-content">${nodeContent}</div>
-            ${breadcrumb}
-          `;
-          
-          resultItem.addEventListener('click', () => {
-            navigateToNode(node.id);
-            closeSearchModal();
+          data.nodes.forEach(node => {
+            const resultItem = createNodeResultItem(node);
+            searchResults.appendChild(resultItem);
           });
+        }
+        
+        // Display markdown results
+        if (data.markdown && data.markdown.length > 0) {
+          const markdownHeader = document.createElement('div');
+          markdownHeader.className = 'result-category-header';
+          markdownHeader.innerHTML = `<h4>📄 Markdown Files (${data.markdown.length})</h4>`;
+          searchResults.appendChild(markdownHeader);
           
-          searchResults.appendChild(resultItem);
-        });
+          data.markdown.forEach(markdownResult => {
+            const resultItem = createMarkdownResultItem(markdownResult);
+            searchResults.appendChild(resultItem);
+          });
+        }
+        
       } catch (error) {
-        console.error('Error searching nodes:', error);
-        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error searching nodes'}</div>`;
+        console.error('Error searching:', error);
+        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error performing search'}</div>`;
       }
     }, 300));
     
@@ -716,6 +731,81 @@ const SearchManager = (function() {
       item.appendChild(deleteButton);
       container.appendChild(item);
     });
+  }
+  
+  /**
+   * Create a result item for node search results
+   */
+  function createNodeResultItem(node) {
+    const resultItem = document.createElement('div');
+    resultItem.className = 'search-result-item node-result';
+    resultItem.dataset.id = node.id;
+    
+    const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+    
+    // Create a breadcrumb path for the node if it has a parent
+    let breadcrumb = '';
+    if (node.parent_id) {
+      breadcrumb = `<div class="search-result-path">${getNodePath(node)}</div>`;
+    }
+    
+    resultItem.innerHTML = `
+      <div class="result-type-badge node-badge">Node</div>
+      <div class="search-result-content">${nodeContent}</div>
+      ${breadcrumb}
+    `;
+    
+    resultItem.addEventListener('click', () => {
+      navigateToNode(node.id);
+      closeSearchModal();
+    });
+    
+    return resultItem;
+  }
+  
+  /**
+   * Create a result item for markdown search results
+   */
+  function createMarkdownResultItem(markdownResult) {
+    const resultItem = document.createElement('div');
+    resultItem.className = 'search-result-item markdown-result';
+    resultItem.dataset.id = markdownResult.id;
+    
+    const nodeContent = markdownResult.nodeContent;
+    const matchContext = markdownResult.matchContext;
+    
+    // Create breadcrumb if there's a parent
+    let breadcrumb = '';
+    if (markdownResult.parent_content) {
+      breadcrumb = `<div class="search-result-path">Parent: ${markdownResult.parent_content}</div>`;
+    }
+    
+    resultItem.innerHTML = `
+      <div class="result-type-badge markdown-badge">Markdown</div>
+      <div class="search-result-node-title">${nodeContent}</div>
+      <div class="search-result-markdown-context">${matchContext}</div>
+      ${breadcrumb}
+      <div class="search-result-meta">
+        <span class="file-info">📄 ${markdownResult.filename}</span>
+        <span class="content-length">${Math.round(markdownResult.contentLength / 1000)}k chars</span>
+      </div>
+    `;
+    
+    resultItem.addEventListener('click', () => {
+      // Navigate to the node and open its markdown
+      navigateToNode(markdownResult.id);
+      
+      // Open markdown modal after a short delay to ensure navigation completes
+      setTimeout(() => {
+        if (window.MarkdownManager) {
+          MarkdownManager.openModal(markdownResult.id);
+        }
+      }, 300);
+      
+      closeSearchModal();
+    });
+    
+    return resultItem;
   }
   
   /**

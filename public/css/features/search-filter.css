@@ -439,3 +439,172 @@
   margin-left: 5px;
   font-weight: bold;
 }
+
+/* Search results header and summary */
+.search-results-header {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.results-summary {
+  display: flex;
+  gap: 15px;
+  font-size: 14px;
+}
+
+.total-count {
+  font-weight: bold;
+  color: #495057;
+}
+
+.node-count {
+  color: #28a745;
+}
+
+.markdown-count {
+  color: #007bff;
+}
+
+/* Result category headers */
+.result-category-header {
+  margin: 15px 0 10px 0;
+  padding: 8px 12px;
+  background-color: #e9ecef;
+  border-left: 4px solid #6c757d;
+  border-radius: 4px;
+}
+
+.result-category-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Result type badges */
+.result-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.node-badge {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.markdown-badge {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* Markdown result specific styles */
+.markdown-result {
+  border-left: 3px solid #007bff;
+}
+
+.node-result {
+  border-left: 3px solid #28a745;
+}
+
+.search-result-node-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.search-result-markdown-context {
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6c757d;
+  margin-bottom: 8px;
+  max-height: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #868e96;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e9ecef;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.content-length {
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Hover effects for different result types */
+.node-result:hover {
+  background-color: #d4edda20;
+  border-left-color: #28a745;
+  border-left-width: 4px;
+}
+
+.markdown-result:hover {
+  background-color: #d1ecf120;
+  border-left-color: #007bff;
+  border-left-width: 4px;
+}
+
+/* Improved search result item spacing */
+.search-result-item {
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.search-result-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Loading and error states */
+.search-loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.search-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+}
+
+.no-results {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}

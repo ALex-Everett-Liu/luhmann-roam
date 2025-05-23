@@ -38,8 +38,8 @@ const MetroMapVisualizer = (function() {
     let textScaleFactor = 1.0;
     
     // Add these constants for min/max scaling (near the other constants)
-    const MIN_SCALE = 0.5;
-    const MAX_SCALE = 3.0;
+    const MIN_SCALE = 0.2;
+    const MAX_SCALE = 5.0;
     const DEFAULT_SCALE = 1.0;
     
     // Constants for the visualization
@@ -219,12 +219,12 @@ const MetroMapVisualizer = (function() {
             
             <div class="metro-scale-slider">
                 <label for="station-scale">Station Size: <span class="scale-value">${(stationScaleFactor * 100).toFixed(0)}%</span></label>
-                <input type="range" id="station-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${stationScaleFactor * 100}" step="10">
+                <input type="range" id="station-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${stationScaleFactor * 100}" step="5">
             </div>
             
             <div class="metro-scale-slider">
                 <label for="text-scale">Text Size: <span class="scale-value">${(textScaleFactor * 100).toFixed(0)}%</span></label>
-                <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="10">
+                <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="5">
             </div>
             
             <div class="metro-scale-actions">
@@ -233,7 +233,7 @@ const MetroMapVisualizer = (function() {
             </div>
         `;
         
-        container.appendChild(scalePanel);
+        container.appendChild(scalePanel); // The scalePanel is appended to the main container, making it visible on the page.
         
         // Add event listeners
         const stationScaleSlider = scalePanel.querySelector('#station-scale');

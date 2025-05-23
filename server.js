@@ -25,6 +25,7 @@ const devTestRoutes = require('./routes/devTestRoutes');
 const databaseExportImportRoutes = require('./routes/databaseExportImportRoutes');
 const vaultRoutes = require('./routes/vaultRoutes');
 const metroMapRoutes = require('./routes/metroMapRoutes');
+const markdownSearchRoutes = require('./routes/markdownSearchRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -780,6 +781,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add the markdown search routes
+app.use('/api/markdown', markdownSearchRoutes);
+app.use('/api/search', markdownSearchRoutes);
 
 // Start the server
 app.listen(PORT, () => {

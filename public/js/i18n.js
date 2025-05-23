@@ -40,6 +40,14 @@ const I18n = (function() {
       previewMode: "Preview",
       deleteMarkdown: "Delete Markdown",
       saveMarkdown: "Save",
+
+      // Markdown search In the English translations object:
+      markdownSearch: "Markdown Search",
+      markdownFiles: "Markdown Files",
+      nodeContent: "Node Content",
+      totalResults: "total results",
+      markdownFile: "Markdown File",
+      openMarkdown: "Open Markdown",
       
       // Link modal
       manageLinks: "Manage Links",
@@ -164,7 +172,7 @@ const I18n = (function() {
       moveUp: "上移",
       moveDown: "下移",
       link: "链接",
-      markdown: "富文本",
+      markdown: "MD",
       filter: "过滤",
       position: "位置",
       timestamp: "时间戳",
@@ -175,16 +183,24 @@ const I18n = (function() {
       cancel: "取消",
       
       // Markdown modal
-      editMarkdown: "编辑富文本内容",
+      editMarkdown: "编辑Markdown内容",
       editMode: "编辑",
       previewMode: "预览",
-      deleteMarkdown: "删除富文本",
+      deleteMarkdown: "删除Markdown",
       saveMarkdown: "保存",
+
+      // Markdown search In the Chinese translations object:
+      markdownSearch: "Markdown 搜索",
+      markdownFiles: "Markdown 文件",
+      nodeContent: "节点内容", 
+      totalResults: "总结果",
+      markdownFile: "Markdown 文件",
+      openMarkdown: "打开 Markdown",
       
       // Link modal
       manageLinks: "管理链接",
-      outgoingLinks: "出站链接",
-      incomingLinks: "入站链接",
+      outgoingLinks: "出链",
+      incomingLinks: "入链",
       addLink: "添加链接",
       searchTarget: "搜索目标节点...",
       weight: "权重",
