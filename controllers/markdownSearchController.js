@@ -184,12 +184,12 @@ async function searchNodes(req) {
     // Build WHERE clause based on parameters
     if (query && query.length >= 2) {
       if (advanced) {
-        // For now, use simple search for advanced - you can implement advanced parsing later
-        const searchQuery = `%${query}%`;
+        // Use the proper advanced search logic from nodeController
         const contentField = lang === 'zh' ? 'content_zh' : 'content';
+        const { clause, queryParams } = parseAdvancedQuery(query, contentField);
         
-        whereClause = `WHERE (n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?)`;
-        params.push(searchQuery, searchQuery, searchQuery);
+        whereClause = `WHERE ${clause}`;
+        params.push(...queryParams);
       } else {
         // Simple search
         const searchQuery = `%${query}%`;
@@ -234,6 +234,159 @@ async function searchNodes(req) {
     console.error('Error searching nodes:', error);
     return [];
   }
+}
+
+/**
+ * Parse advanced search query with logical operators
+ * @param {string} query - The query string with logical operators
+ * @param {string} contentField - The field to search in ('content' or 'content_zh')
+ * @returns {Object} Object with clause and queryParams
+ */
+function parseAdvancedQuery(query, contentField) {
+  // Regular expressions for parsing
+  const quotedPhraseRegex = /"(.*?)"/g;
+  const wholeWordRegex = /w:(\w+)/g;
+  const wildcardRegex = /(\w+)\*/g;
+  
+  // Replace tokens to preserve them during parsing
+  let tokenizedQuery = query;
+  const tokens = [];
+  let tokenIndex = 0;
+  
+  // Save quoted phrases as tokens
+  let match;
+  while ((match = quotedPhraseRegex.exec(query)) !== null) {
+    const tokenKey = `__TOKEN${tokenIndex}__`;
+    tokens[tokenIndex] = { type: 'phrase', value: match[1] };
+    tokenizedQuery = tokenizedQuery.replace(match[0], tokenKey);
+    tokenIndex++;
+  }
+  
+  // Save whole word searches as tokens
+  while ((match = wholeWordRegex.exec(query)) !== null) {
+    const tokenKey = `__TOKEN${tokenIndex}__`;
+    tokens[tokenIndex] = { type: 'whole', value: match[1] };
+    tokenizedQuery = tokenizedQuery.replace(match[0], tokenKey);
+    tokenIndex++;
+  }
+  
+  // Save wildcard searches as tokens
+  while ((match = wildcardRegex.exec(query)) !== null) {
+    const tokenKey = `__TOKEN${tokenIndex}__`;
+    tokens[tokenIndex] = { type: 'wildcard', value: match[1] };
+    tokenizedQuery = tokenizedQuery.replace(match[0], tokenKey);
+    tokenIndex++;
+  }
+  
+  // Split by logical operators
+  const parts = [];
+  const operators = [];
+  
+  // Handle AND operator
+  tokenizedQuery.split(/\bAND\b/).forEach((andPart, index) => {
+    if (index > 0) operators.push('AND');
+    
+    // Handle OR operator within AND blocks
+    const orParts = andPart.split(/\bOR\b/);
+    if (orParts.length > 1) {
+      // This is an OR block
+      orParts.forEach((orPart, orIndex) => {
+        if (orIndex > 0) operators.push('OR');
+        
+        // Handle NOT operator
+        const notParts = orPart.split(/\bNOT\b/);
+        if (notParts.length > 1) {
+          // This has a NOT clause
+          notParts.forEach((notPart, notIndex) => {
+            if (notIndex > 0) operators.push('NOT');
+            parts.push(notPart.trim());
+          });
+        } else {
+          parts.push(orPart.trim());
+        }
+      });
+    } else {
+      // Handle NOT operator in a non-OR block
+      const notParts = andPart.split(/\bNOT\b/);
+      if (notParts.length > 1) {
+        // This has a NOT clause
+        notParts.forEach((notPart, notIndex) => {
+          if (notIndex > 0) operators.push('NOT');
+          parts.push(notPart.trim());
+        });
+      } else {
+        parts.push(andPart.trim());
+      }
+    }
+  });
+  
+  // Clean up the parts to remove empty entries
+  const cleanParts = parts.filter(part => part.trim() !== '');
+  
+  // Build the SQL clause
+  let clause = '';
+  const queryParams = [];
+  
+  for (let i = 0; i < cleanParts.length; i++) {
+    let part = cleanParts[i];
+    
+    // Restore tokens
+    for (let j = 0; j < tokens.length; j++) {
+      const tokenKey = `__TOKEN${j}__`;
+      if (part.includes(tokenKey)) {
+        const token = tokens[j];
+        part = part.replace(tokenKey, token.value);
+      }
+    }
+    
+    let partClause = '';
+    
+    // Check if this part is a token
+    const tokenMatch = part.match(/__TOKEN(\d+)__/);
+    if (tokenMatch) {
+      const tokenId = parseInt(tokenMatch[1]);
+      const token = tokens[tokenId];
+      
+      if (token.type === 'phrase') {
+        // Exact phrase search
+        partClause = `(n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?)`;
+        queryParams.push(`%${token.value}%`, `%${token.value}%`, `%${token.value}%`);
+      } else if (token.type === 'whole') {
+        // Whole word search using word boundaries in LIKE
+        partClause = `(n.${contentField} REGEXP ? OR n.content REGEXP ? OR n.content_zh REGEXP ?)`;
+        queryParams.push(`\\b${token.value}\\b`, `\\b${token.value}\\b`, `\\b${token.value}\\b`);
+      } else if (token.type === 'wildcard') {
+        // Wildcard search (prefix search)
+        partClause = `(n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?)`;
+        queryParams.push(`${token.value}%`, `${token.value}%`, `${token.value}%`);
+      }
+    } else if (part.startsWith('w:')) {
+      // Whole word search
+      const word = part.substring(2);
+      partClause = `(n.${contentField} REGEXP ? OR n.content REGEXP ? OR n.content_zh REGEXP ?)`;
+      queryParams.push(`\\b${word}\\b`, `\\b${word}\\b`, `\\b${word}\\b`);
+    } else {
+      // Normal substring search
+      partClause = `(n.${contentField} LIKE ? OR n.content LIKE ? OR n.content_zh LIKE ?)`;
+      queryParams.push(`%${part}%`, `%${part}%`, `%${part}%`);
+    }
+    
+    // Add the operator
+    if (i === 0) {
+      clause = partClause;
+    } else {
+      const operator = operators[i - 1];
+      if (operator === 'AND') {
+        clause = `${clause} AND ${partClause}`;
+      } else if (operator === 'OR') {
+        clause = `${clause} OR ${partClause}`;
+      } else if (operator === 'NOT') {
+        clause = `${clause} AND NOT ${partClause}`;
+      }
+    }
+  }
+  
+  return { clause, queryParams };
 }
 
 /**
