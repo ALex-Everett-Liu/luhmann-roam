@@ -301,6 +301,24 @@ const MarkdownManager = (function() {
       html = html.replace(`__HTML_IMG_${index}__`, imgTag);
     });
     
+    // IMPROVED: Replace code blocks FIRST (before inline code)
+    // This regex properly handles:
+    // 1. Optional language specification (```json, ```javascript, etc.)
+    // 2. Multiline content including newlines
+    // 3. Proper capturing of the code content
+    html = html.replace(/```(\w+)?\s*\n?([\s\S]*?)\n?```/g, (match, language, code) => {
+      // Clean up the code content
+      const cleanCode = code.trim();
+      
+      // Add language class if specified
+      const languageClass = language ? ` class="language-${language}"` : '';
+      
+      return `<pre><code${languageClass}>${escapeHtml(cleanCode)}</code></pre>`;
+    });
+    
+    // Replace inline code (after code blocks to avoid conflicts)
+    html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    
     // Replace bold and italic
     html = html
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -317,12 +335,6 @@ const MarkdownManager = (function() {
     // Replace links
     html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
     
-    // Replace inline code
-    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
-    
-    // Replace code blocks
-    html = html.replace(/```(.+?)```/gs, '<pre class="code-block"><code>$1</code></pre>');
-    
     // Replace paragraphs (two new lines)
     html = html.replace(/\n\s*\n/g, '</p><p>');
     
@@ -337,6 +349,17 @@ const MarkdownManager = (function() {
       .replace(/<\/ol><ol>/g, '');
     
     return html;
+  }
+  
+  /**
+   * Escape HTML characters to prevent XSS and display code correctly
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
   
   /**

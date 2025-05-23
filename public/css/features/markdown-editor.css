@@ -118,16 +118,26 @@
   }
   
   .markdown-preview pre {
-    padding: 10px;
-    background-color: #f7f7f7;
-    border-radius: 3px;
+    padding: 16px;
+    background-color: #f6f8fa;
+    border-radius: 6px;
     overflow-x: auto;
-    margin-bottom: 16px;
+    margin: 16px 0;
+    border: 1px solid #e1e4e8;
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+    font-size: 14px;
+    line-height: 1.45;
   }
   
   .markdown-preview pre code {
     padding: 0;
     background-color: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: inherit;
+    color: #24292e;
+    white-space: pre;
+    word-wrap: normal;
   }
   
   .markdown-preview a {
@@ -369,4 +379,74 @@
   
   .resize-help-message p {
     margin: 0;
+  }
+
+  /* Language-specific styling */
+  .markdown-preview pre code.language-json {
+    background-color: #f8f8f2;
+  }
+
+  .markdown-preview pre code.language-javascript,
+  .markdown-preview pre code.language-js {
+    background-color: #fffbdd;
+  }
+
+  .markdown-preview pre code.language-python {
+    background-color: #f0f8ff;
+  }
+
+  .markdown-preview pre code.language-html {
+    background-color: #fff5f5;
+  }
+
+  .markdown-preview pre code.language-css {
+    background-color: #f0fff0;
+  }
+
+  /* Inline code */
+  .markdown-preview code {
+    padding: 2px 6px;
+    background-color: rgba(175, 184, 193, 0.2);
+    border-radius: 6px;
+    font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+    font-size: 85%;
+    color: #24292e;
+  }
+
+  /* Improve code block scrolling */
+  .markdown-preview pre {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  /* Add a subtle border for better distinction */
+  .markdown-preview pre {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Syntax highlighting simulation for JSON */
+  .markdown-preview pre code.language-json {
+    color: #24292e;
+  }
+
+  /* Add copy button styling (optional enhancement) */
+  .markdown-preview pre {
+    position: relative;
+  }
+
+  .markdown-preview pre:hover::before {
+    content: "📋";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+
+  .markdown-preview pre:hover::before:hover {
+    opacity: 1;
   }
