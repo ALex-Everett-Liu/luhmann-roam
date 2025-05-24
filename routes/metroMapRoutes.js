@@ -16,4 +16,8 @@ router.post('/lines', metroMapController.createLine);
 router.put('/lines/:id', metroMapController.updateLine);
 router.delete('/lines/:id', metroMapController.deleteLine);
 
+// City-specific routes
+router.get('/cities/:city/stations', metroMapController.getStationsByCity);
+router.get('/cities/:city/lines', metroMapController.getLinesByCity);
+
 module.exports = router;

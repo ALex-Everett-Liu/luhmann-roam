@@ -25,7 +25,7 @@ exports.getAllStations = async (req, res) => {
  */
 exports.createStation = async (req, res) => {
   try {
-    const { node_id, name, x, y, interchange, terminal, description, transit_type } = req.body;
+    const { node_id, name, x, y, interchange, terminal, description, transit_type, city } = req.body;
     const db = req.db;
     
     if (!node_id || !name) {
@@ -37,10 +37,10 @@ exports.createStation = async (req, res) => {
     
     await db.run(
       `INSERT INTO metro_stations 
-       (id, node_id, name, x, y, interchange, terminal, description, transit_type, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, node_id, name, x, y, interchange, terminal, description, transit_type, city, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, node_id, name, x, y, interchange || 0, terminal || 0, description || '', 
-       transit_type || 'metro', now, now]
+       transit_type || 'metro', city || 'default', now, now]
     );
     
     const station = await db.get('SELECT * FROM metro_stations WHERE id = ?', id);
@@ -58,7 +58,7 @@ exports.createStation = async (req, res) => {
 exports.updateStation = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, x, y, interchange, terminal, description, transit_type } = req.body;
+    const { name, x, y, interchange, terminal, description, transit_type, city } = req.body;
     const db = req.db;
     const now = Date.now();
     
@@ -67,10 +67,10 @@ exports.updateStation = async (req, res) => {
     await db.run(
       `UPDATE metro_stations 
        SET name = ?, x = ?, y = ?, interchange = ?, terminal = ?, description = ?, 
-       transit_type = ?, updated_at = ? 
+       transit_type = ?, city = ?, updated_at = ? 
        WHERE id = ?`,
       [name, x, y, interchange || 0, terminal || 0, description || '', 
-       transit_type || 'metro', now, id]
+       transit_type || 'metro', city || 'default', now, id]
     );
     
     const station = await db.get('SELECT * FROM metro_stations WHERE id = ?', id);
@@ -126,7 +126,7 @@ exports.getAllLines = async (req, res) => {
  */
 exports.createLine = async (req, res) => {
   try {
-    const { name, color, stations, curved, description } = req.body;
+    const { name, color, stations, curved, description, city } = req.body;
     const db = req.db;
     
     if (!name) {
@@ -136,19 +136,16 @@ exports.createLine = async (req, res) => {
     const id = req.body.id || uuidv4();
     const now = Date.now();
     
-    // Convert stations array to JSON string
     const stationsJson = JSON.stringify(stations || []);
     
     await db.run(
       `INSERT INTO metro_lines 
-       (id, name, color, stations, curved, description, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, name, color, stationsJson, curved || 0, description || '', now, now]
+       (id, name, color, stations, curved, description, city, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, name, color, stationsJson, curved || 0, description || '', city || 'default', now, now]
     );
     
     const line = await db.get('SELECT * FROM metro_lines WHERE id = ?', id);
-    
-    // Parse stations back to array for the response
     line.stations = JSON.parse(line.stations || '[]');
     
     res.status(201).json(line);
@@ -164,22 +161,21 @@ exports.createLine = async (req, res) => {
 exports.updateLine = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color, stations, curved, description, transit_type } = req.body;
+    const { name, color, stations, curved, description, transit_type, city } = req.body;
     const db = req.db;
     const now = Date.now();
     
     console.log('Updating line with transit_type:', transit_type);
     
-    // Convert stations array to JSON string
     const stationsJson = JSON.stringify(stations || []);
     
     await db.run(
       `UPDATE metro_lines 
        SET name = ?, color = ?, stations = ?, curved = ?, description = ?, 
-       transit_type = ?, updated_at = ? 
+       transit_type = ?, city = ?, updated_at = ? 
        WHERE id = ?`,
       [name, color, stationsJson, curved || 0, description || '', 
-       transit_type || 'metro', now, id]
+       transit_type || 'metro', city || 'default', now, id]
     );
     
     const line = await db.get('SELECT * FROM metro_lines WHERE id = ?', id);
@@ -188,7 +184,6 @@ exports.updateLine = async (req, res) => {
       return res.status(404).json({ error: 'Line not found' });
     }
     
-    // Parse stations back to array for the response
     line.stations = JSON.parse(line.stations || '[]');
     
     res.json(line);
@@ -209,6 +204,62 @@ exports.deleteLine = async (req, res) => {
     await db.run('DELETE FROM metro_lines WHERE id = ?', id);
     
     res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Add new endpoints for city-specific queries
+exports.getStationsByCity = async (req, res) => {
+  try {
+    const { city } = req.params;
+    const db = req.db;
+    
+    let stations;
+    if (city === 'all') {
+      // Return all stations
+      stations = await db.all(
+        'SELECT * FROM metro_stations ORDER BY sequence_id'
+      );
+    } else {
+      // Return stations for specific city
+      stations = await db.all(
+        'SELECT * FROM metro_stations WHERE city = ? ORDER BY sequence_id',
+        city
+      );
+    }
+    
+    res.json(stations);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getLinesByCity = async (req, res) => {
+  try {
+    const { city } = req.params;
+    const db = req.db;
+    
+    let lines;
+    if (city === 'all') {
+      // Return all lines
+      lines = await db.all(
+        'SELECT * FROM metro_lines ORDER BY sequence_id'
+      );
+    } else {
+      // Return lines for specific city
+      lines = await db.all(
+        'SELECT * FROM metro_lines WHERE city = ? ORDER BY sequence_id',
+        city
+      );
+    }
+    
+    // Parse stations for each line
+    lines.forEach(line => {
+      line.stations = JSON.parse(line.stations || '[]');
+    });
+    
+    res.json(lines);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

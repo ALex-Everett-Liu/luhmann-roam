@@ -1337,23 +1337,20 @@ const MetroMapVisualizer = (function() {
     // Load metro map data from the database
     async function loadMetroMapData(centralNodeId) {
         try {
-            // Load stations
+            // Load all stations and lines first
             const stationsResponse = await fetch('/api/metro-map/stations');
-            // Load lines
             const linesResponse = await fetch('/api/metro-map/lines');
             
             if (!stationsResponse.ok || !linesResponse.ok) {
-                // If API endpoints don't exist, check for node attributes with metro map data
-                await loadFromNodeAttributes(centralNodeId);
-            } else {
-                // Load from dedicated tables
-                stations = await stationsResponse.json();
-                lines = await linesResponse.json();
+                throw new Error('Failed to load metro map data from API');
             }
+            
+            // Parse the responses
+            stations = await stationsResponse.json();
+            lines = await linesResponse.json();
             
             // Ensure all lines have stations as arrays, not JSON strings
             lines = lines.map(line => {
-                // If stations is a string, parse it
                 if (typeof line.stations === 'string') {
                     try {
                         line.stations = JSON.parse(line.stations || '[]');
@@ -1363,7 +1360,6 @@ const MetroMapVisualizer = (function() {
                     }
                 }
                 
-                // If stations is not an array after parsing, initialize as empty array
                 if (!Array.isArray(line.stations)) {
                     line.stations = [];
                 }
@@ -1374,7 +1370,7 @@ const MetroMapVisualizer = (function() {
             // Initialize city management
             updateCitySelector();
             
-            // Set to default city
+            // Set to default city or current city
             const defaultCity = getDefaultCity();
             if (availableCities.includes(defaultCity) || defaultCity === 'all') {
                 currentCity = defaultCity;
@@ -1387,7 +1383,6 @@ const MetroMapVisualizer = (function() {
             }
             
             updateCityInfo();
-            filterMapDataByCity();
             
             console.log('Loaded metro map data:', { stations, lines });
         } catch (error) {
@@ -1396,6 +1391,157 @@ const MetroMapVisualizer = (function() {
             // If there's an error (likely because endpoints don't exist yet),
             // fall back to loading from node attributes
             await loadFromNodeAttributes(centralNodeId);
+        }
+    }
+
+    // Add missing showErrorMessage function
+    function showErrorMessage(message) {
+        console.error(message);
+        
+        // Create a simple error display
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'metro-error-message';
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 10000;
+            max-width: 300px;
+        `;
+        errorDiv.textContent = message;
+        
+        document.body.appendChild(errorDiv);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 5000);
+    }
+
+    // Update the getCurrentCity function to handle missing elements
+    function getCurrentCity() {
+        const citySelector = document.getElementById('metro-city-selector');
+        return citySelector ? citySelector.value : getDefaultCity();
+    }
+
+    // Update getDefaultCity to provide a fallback
+    function getDefaultCity() {
+        return localStorage.getItem('metro-default-city') || 'all';
+    }
+
+    async function switchCity(cityName) {
+        try {
+            showLoading();
+            // Save current view state if needed
+            const previousCity = getCurrentCity();
+            
+            // Update UI
+            const citySelector = document.getElementById('metro-city-selector');
+            if (citySelector) {
+                citySelector.value = cityName;
+            }
+            
+            // Reload data for new city
+            await loadMetroMapData();
+            
+            // Reset view and update UI
+            resetView();
+            updateCityInfo();
+            
+            hideLoading();
+        } catch (error) {
+            console.error('Error switching city:', error);
+            hideLoading();
+            showErrorMessage('Failed to switch city');
+        }
+    }
+
+    // Update station creation to include city
+    async function createNewStation(nodeId, x, y) {
+        try {
+            // Get node details first
+            const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
+            if (!nodeResponse.ok) {
+                throw new Error('Failed to get node data');
+            }
+            const node = await nodeResponse.json();
+            
+            const currentCity = getCurrentCity();
+            
+            const response = await fetch('/api/metro-map/stations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    node_id: nodeId,
+                    name: node.content || `Node ${nodeId}`,
+                    x: Math.round(x),
+                    y: Math.round(y),
+                    city: currentCity === 'all' ? 'default' : currentCity
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create station');
+            }
+            
+            const station = await response.json();
+            
+            // Update local data and redraw
+            stations.push(station);
+            drawMap();
+            
+            return station;
+        } catch (error) {
+            console.error('Error creating station:', error);
+            showErrorMessage('Failed to create station: ' + error.message);
+            return null;
+        }
+    }
+
+    // Update line creation to include city
+    async function createNewLine(name, options = {}) {
+        try {
+            const currentCity = getCurrentCity();
+            
+            const response = await fetch('/api/metro-map/lines', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    color: options.color || '#000000',
+                    stations: options.stations || [],
+                    curved: options.curved || false,
+                    description: options.description || '',
+                    transit_type: options.transit_type || 'metro',
+                    city: currentCity === 'all' ? 'default' : currentCity
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create line');
+            }
+            
+            const line = await response.json();
+            
+            // Update local data and redraw
+            lines.push(line);
+            drawMap();
+            
+            return line;
+        } catch (error) {
+            console.error('Error creating line:', error);
+            showErrorMessage('Failed to create line: ' + error.message);
+            return null;
         }
     }
     
