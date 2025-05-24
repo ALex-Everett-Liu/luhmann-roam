@@ -3311,28 +3311,84 @@ function closeLibraryManager() {
  * Show new library dialog
  */
 function showNewLibraryDialog() {
-  const name = prompt('Enter new library name:');
-  if (!name) return;
-  
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    alert('Please enter a valid library name');
-    return;
-  }
-  
-  if (availableLibraries.includes(trimmedName)) {
-    alert('A library with this name already exists');
-    return;
-  }
-  
-  // Add to available libraries
-  availableLibraries.push(trimmedName);
-  availableLibraries.sort();
-  
-  // Update selector and switch to the new library
-  updateLibrarySelector();
-  document.getElementById('dcim-library-selector').value = trimmedName;
-  switchLibrary();
+    // Create dialog HTML
+    const dialogHTML = `
+        <div id="new-library-dialog" class="modal-overlay" style="display: flex; z-index: 10000;">
+            <div class="modal" style="width: 400px; max-width: 95%;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Create New Library</h3>
+                    <button class="modal-close" id="close-new-library-dialog">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="dcim-form-group">
+                        <label for="new-library-input">Library Name:</label>
+                        <input type="text" id="new-library-input" class="dcim-input" 
+                               placeholder="Enter library name" style="width: 100%;">
+                    </div>
+                    <div class="dcim-form-actions" style="margin-top: 15px;">
+                        <button id="create-new-library" class="btn btn-primary">Create</button>
+                        <button id="cancel-new-library" class="btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add dialog to DOM
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+
+    // Get dialog elements
+    const dialog = document.getElementById('new-library-dialog');
+    const input = document.getElementById('new-library-input');
+
+    // Add event listeners
+    document.getElementById('close-new-library-dialog').addEventListener('click', closeDialog);
+    document.getElementById('cancel-new-library').addEventListener('click', closeDialog);
+    document.getElementById('create-new-library').addEventListener('click', createLibrary);
+    
+    // Add enter key support
+    input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+            createLibrary();
+        }
+    });
+
+    // Focus the input
+    input.focus();
+
+    function closeDialog() {
+        if (dialog && dialog.parentNode) {
+            dialog.parentNode.removeChild(dialog);
+        }
+    }
+
+    function createLibrary() {
+        const name = input.value.trim();
+        
+        if (!name) {
+            alert('Please enter a valid library name');
+            input.focus();
+            return;
+        }
+        
+        if (availableLibraries.includes(name)) {
+            alert('A library with this name already exists');
+            input.focus();
+            return;
+        }
+        
+        // Add to available libraries
+        availableLibraries.push(name);
+        availableLibraries.sort();
+        
+        // Update selector and switch to the new library
+        updateLibrarySelector();
+        document.getElementById('dcim-library-selector').value = name;
+        switchLibrary();
+        
+        // Close the dialog
+        closeDialog();
+    }
 }
     
     // Public API

@@ -129,6 +129,10 @@ const MetroMapVisualizer = (function() {
         }
     };
     
+    // Add these variables to the private variables section (around line 27, after existing variables)
+    let currentCity = 'all';
+    let availableCities = [];
+    
     // Initialize the visualizer
     function initialize() {
         console.log('Initializing Metro Map Visualizer');
@@ -318,6 +322,73 @@ const MetroMapVisualizer = (function() {
         const controls = document.createElement('div');
         controls.className = 'metro-controls';
         
+        // Add City Management Section (similar to library management in DCIM)
+        const citySection = document.createElement('div');
+        citySection.className = 'metro-city-section';
+        citySection.style.marginBottom = '10px';
+        citySection.style.padding = '8px';
+        citySection.style.border = '1px solid #ddd';
+        citySection.style.borderRadius = '4px';
+        citySection.style.backgroundColor = '#f9f9f9';
+        
+        const cityHeader = document.createElement('div');
+        cityHeader.className = 'metro-city-header';
+        cityHeader.style.display = 'flex';
+        cityHeader.style.justifyContent = 'space-between';
+        cityHeader.style.alignItems = 'center';
+        cityHeader.style.marginBottom = '5px';
+        
+        const cityTitle = document.createElement('div');
+        cityTitle.className = 'metro-city-title';
+        cityTitle.textContent = 'Current City';
+        cityTitle.style.fontWeight = 'bold';
+        cityTitle.style.fontSize = '12px';
+        
+        const cityActions = document.createElement('div');
+        cityActions.className = 'metro-city-actions';
+        
+        const manageCitiesBtn = document.createElement('button');
+        manageCitiesBtn.id = 'metro-manage-cities';
+        manageCitiesBtn.className = 'btn btn-small';
+        manageCitiesBtn.title = 'Manage Cities';
+        manageCitiesBtn.textContent = '⚙️';
+        manageCitiesBtn.style.marginRight = '5px';
+        manageCitiesBtn.addEventListener('click', showCityManager);
+        
+        const newCityBtn = document.createElement('button');
+        newCityBtn.id = 'metro-new-city';
+        newCityBtn.className = 'btn btn-small';
+        newCityBtn.title = 'New City';
+        newCityBtn.textContent = '+';
+        newCityBtn.addEventListener('click', showNewCityDialog);
+        
+        cityActions.appendChild(manageCitiesBtn);
+        cityActions.appendChild(newCityBtn);
+        
+        cityHeader.appendChild(cityTitle);
+        cityHeader.appendChild(cityActions);
+        
+        const citySelector = document.createElement('select');
+        citySelector.id = 'metro-city-selector';
+        citySelector.className = 'metro-select';
+        citySelector.style.width = '100%';
+        citySelector.style.marginBottom = '5px';
+        citySelector.innerHTML = '<option value="all">All Cities</option>';
+        citySelector.addEventListener('change', switchCity);
+        
+        const cityInfo = document.createElement('div');
+        cityInfo.id = 'metro-current-city-info';
+        cityInfo.className = 'metro-city-info';
+        cityInfo.style.fontSize = '11px';
+        cityInfo.style.color = '#666';
+        cityInfo.textContent = 'Loading cities...';
+        
+        citySection.appendChild(cityHeader);
+        citySection.appendChild(citySelector);
+        citySection.appendChild(cityInfo);
+        
+        controls.appendChild(citySection);
+        
         // Existing reset view button
         const resetButton = document.createElement('button');
         resetButton.innerHTML = '⟲';
@@ -400,7 +471,7 @@ const MetroMapVisualizer = (function() {
         orderViewButton.addEventListener('click', toggleOrderView);
         controls.appendChild(orderViewButton);
         
-        // Add transit type filters ONLY ONCE here
+        // Add transit type filters
         setupTransitTypeFilters(controls);
         
         container.appendChild(controls);
@@ -766,7 +837,14 @@ const MetroMapVisualizer = (function() {
     
     // Draw metro lines
     function drawLines() {
-        for (const line of lines) {
+        let linesToRender = lines;
+        
+        // Filter by current city if not showing all
+        if (currentCity !== 'all') {
+            linesToRender = lines.filter(line => line.city === currentCity);
+        }
+        
+        for (const line of linesToRender) {
             // Skip lines with less than 2 stations
             if (line.stations.length < 2) continue;
             
@@ -835,7 +913,14 @@ const MetroMapVisualizer = (function() {
     
     // Draw stations
     function drawStations() {
-        for (const station of stations) {
+        let stationsToRender = stations;
+        
+        // Filter by current city if not showing all
+        if (currentCity !== 'all') {
+            stationsToRender = stations.filter(station => station.city === currentCity);
+        }
+        
+        for (const station of stationsToRender) {
             // Skip if this station's transit type is filtered out
             const transitType = station.transit_type || TRANSIT_TYPES.METRO; // Default to metro if not specified
             const typeButton = document.querySelector(`.transit-filter-btn[data-type="${transitType}"]`);
@@ -1286,6 +1371,24 @@ const MetroMapVisualizer = (function() {
                 return line;
             });
             
+            // Initialize city management
+            updateCitySelector();
+            
+            // Set to default city
+            const defaultCity = getDefaultCity();
+            if (availableCities.includes(defaultCity) || defaultCity === 'all') {
+                currentCity = defaultCity;
+                const citySelector = document.getElementById('metro-city-selector');
+                if (citySelector) {
+                    citySelector.value = defaultCity;
+                }
+            } else {
+                currentCity = 'all';
+            }
+            
+            updateCityInfo();
+            filterMapDataByCity();
+            
             console.log('Loaded metro map data:', { stations, lines });
         } catch (error) {
             console.error('Error loading metro map data:', error);
@@ -1408,6 +1511,11 @@ const MetroMapVisualizer = (function() {
     // Save a station to the database
     async function saveStationToDatabase(station) {
         try {
+            // Ensure city is included in the station data
+            if (!station.city && currentCity !== 'all') {
+                station.city = currentCity;
+            }
+            
             // First, try to use dedicated endpoint if available
             try {
                 const response = await fetch('/api/metro-map/stations', {
@@ -1435,6 +1543,7 @@ const MetroMapVisualizer = (function() {
                             id: station.id,
                             x: station.x,
                             y: station.y,
+                            city: station.city,
                             interchange: station.interchange,
                             terminal: station.terminal,
                             description: station.description
@@ -1459,8 +1568,10 @@ const MetroMapVisualizer = (function() {
     // Save a line to the database
     async function saveLineToDatabase(line) {
         try {
-            // Add console log for debugging
-            console.log('Saving line to database with transit_type:', line.transit_type);
+            // Ensure city is included in the line data
+            if (!line.city && currentCity !== 'all') {
+                line.city = currentCity;
+            }
             
             // First, try to use dedicated endpoint if available
             try {
@@ -1476,10 +1587,12 @@ const MetroMapVisualizer = (function() {
                 console.log('Dedicated API not available, falling back to node attributes');
             }
             
-            // Fall back to saving as node attribute on the first station in the line
+            // Fall back to saving as node attribute
+            // For lines, we'll save the line info to the first station in the line
             if (line.stations && line.stations.length > 0) {
-                const stationId = line.stations[0];
-                const station = stations.find(s => s.id === stationId);
+                const firstStationId = line.stations[0];
+                const station = stations.find(s => s.id === firstStationId);
+                
                 if (station && station.node_id) {
                     const attrResponse = await fetch('/api/node-attributes', {
                         method: 'POST',
@@ -1488,20 +1601,28 @@ const MetroMapVisualizer = (function() {
                             node_id: station.node_id,
                             key: 'metro_line',
                             value: JSON.stringify({
-                                ...line,
-                                transit_type: line.transit_type // Ensure transit_type is included
+                                id: line.id,
+                                name: line.name,
+                                color: line.color,
+                                city: line.city,
+                                stations: line.stations,
+                                curved: line.curved,
+                                description: line.description
                             })
                         })
                     });
+                    
                     if (!attrResponse.ok) {
                         throw new Error('Failed to save line as node attribute');
                     }
+                    
                     return line;
                 }
             }
-            throw new Error('Cannot save line without stations');
+            
+            throw new Error('Cannot save line without stations or valid node_id');
         } catch (error) {
-            console.error('Error saving line:', error);
+            console.error('Error saving line to database:', error);
             throw error;
         }
     }
@@ -1566,6 +1687,7 @@ const MetroMapVisualizer = (function() {
                                 id: stationToUpdate.id,
                                 x: stationToUpdate.x,
                                 y: stationToUpdate.y,
+                                city: stationToUpdate.city,
                                 interchange: stationToUpdate.interchange ? 1 : 0,
                                 terminal: stationToUpdate.terminal ? 1 : 0,
                                 transit_type: stationToUpdate.transit_type, // Include transit_type here
@@ -3384,6 +3506,488 @@ function setupTransitTypeFilters(controls) {
     });
     
     controls.appendChild(transitFiltersDiv);
+}
+
+/**
+ * Get all available cities from stations and lines
+ */
+function getAvailableCities() {
+    const cities = new Set();
+    
+    // Get cities from stations
+    stations.forEach(station => {
+        if (station.city && station.city.trim()) {
+            cities.add(station.city.trim());
+        }
+    });
+    
+    // Get cities from lines
+    lines.forEach(line => {
+        if (line.city && line.city.trim()) {
+            cities.add(line.city.trim());
+        }
+    });
+    
+    return Array.from(cities).sort();
+}
+
+/**
+ * Update the city selector with available cities
+ */
+function updateCitySelector() {
+    const selector = document.getElementById('metro-city-selector');
+    if (!selector) return;
+    
+    availableCities = getAvailableCities();
+    
+    // Save current selection
+    const currentSelection = selector.value;
+    
+    // Clear and rebuild options
+    selector.innerHTML = '<option value="all">All Cities</option>';
+    
+    availableCities.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        selector.appendChild(option);
+    });
+    
+    // Restore selection if it still exists
+    if (availableCities.includes(currentSelection) || currentSelection === 'all') {
+        selector.value = currentSelection;
+    } else {
+        // If current selection no longer exists, use default city or 'all'
+        const defaultCity = getDefaultCity();
+        selector.value = availableCities.includes(defaultCity) ? defaultCity : 'all';
+    }
+    
+    updateCityInfo();
+}
+
+/**
+ * Switch to a different city
+ */
+function switchCity() {
+    const selector = document.getElementById('metro-city-selector');
+    currentCity = selector.value;
+    
+    updateCityInfo();
+    
+    // Filter and redraw the map with current city data
+    filterMapDataByCity();
+    drawMap();
+}
+
+/**
+ * Filter map data by current city
+ */
+function filterMapDataByCity() {
+    // Note: We don't modify the original data arrays, just filter when rendering
+    // The actual filtering will happen in the draw functions
+}
+
+/**
+ * Update city information display
+ */
+function updateCityInfo() {
+    const infoElement = document.getElementById('metro-current-city-info');
+    if (!infoElement) return;
+    
+    let cityStations, cityLines;
+    
+    if (currentCity === 'all') {
+        cityStations = stations;
+        cityLines = lines;
+    } else {
+        cityStations = stations.filter(station => station.city === currentCity);
+        cityLines = lines.filter(line => line.city === currentCity);
+    }
+    
+    const totalStations = cityStations.length;
+    const totalLines = cityLines.length;
+    const interchangeStations = cityStations.filter(station => station.interchange).length;
+    
+    let infoText = `${totalStations} stations, ${totalLines} lines`;
+    if (interchangeStations > 0) {
+        infoText += ` (${interchangeStations} interchanges)`;
+    }
+    
+    infoElement.textContent = infoText;
+}
+
+/**
+ * Get default city from localStorage
+ */
+function getDefaultCity() {
+    return localStorage.getItem('metro-default-city') || 'all';
+}
+
+/**
+ * Set default city
+ */
+function setDefaultCity(cityName) {
+    localStorage.setItem('metro-default-city', cityName);
+}
+
+/**
+ * Show city management dialog
+ */
+function showCityManager() {
+    const dialogHTML = `
+        <div id="city-manager-dialog" class="modal-overlay metro-manager-dialog" style="display: flex; z-index: 10000;">
+            <div class="modal" style="width: 600px; max-width: 95%;">
+                <div class="modal-header">
+                    <h3 class="modal-title">City Management</h3>
+                    <button class="modal-close" id="close-city-manager">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 15px;">
+                        <label for="default-city-select">Default City:</label>
+                        <select id="default-city-select" class="dcim-select" style="width: 100%;">
+                            <option value="all">All Cities</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4>Existing Cities</h4>
+                        <div id="city-list" style="margin-top: 10px;">
+                            <!-- City list will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h4>Create New City</h4>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="new-city-name" class="dcim-input" placeholder="City name" style="flex: 1;">
+                            <button id="create-city" class="btn btn-primary">Create</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="save-city-settings" class="btn btn-primary">Save Settings</button>
+                    <button id="cancel-city-manager" class="btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+    
+    // Populate default city selector
+    updateDefaultCitySelector();
+    
+    // Populate city list
+    updateCityList();
+    
+    // Add event listeners
+    document.getElementById('close-city-manager').addEventListener('click', closeCityManager);
+    document.getElementById('cancel-city-manager').addEventListener('click', closeCityManager);
+    document.getElementById('save-city-settings').addEventListener('click', saveCitySettings);
+    document.getElementById('create-city').addEventListener('click', createNewCity);
+}
+
+/**
+ * Update the default city selector in the manager dialog
+ */
+function updateDefaultCitySelector() {
+    const selector = document.getElementById('default-city-select');
+    if (!selector) return;
+    
+    const currentDefault = getDefaultCity();
+    
+    selector.innerHTML = '<option value="all">All Cities</option>';
+    availableCities.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        selector.appendChild(option);
+    });
+    
+    selector.value = currentDefault;
+}
+
+/**
+ * Update the city list in the manager dialog
+ */
+function updateCityList() {
+    const listElement = document.getElementById('city-list');
+    if (!listElement) return;
+    
+    if (availableCities.length === 0) {
+        listElement.innerHTML = '<p>No cities found. Create your first city below.</p>';
+        return;
+    }
+    
+    listElement.innerHTML = '';
+    
+    availableCities.forEach(city => {
+        const stationCount = stations.filter(station => station.city === city).length;
+        const lineCount = lines.filter(line => line.city === city).length;
+        
+        const cityItem = document.createElement('div');
+        cityItem.className = 'city-item';
+        cityItem.style.display = 'flex';
+        cityItem.style.justifyContent = 'space-between';
+        cityItem.style.alignItems = 'center';
+        cityItem.style.marginBottom = '8px';
+        cityItem.style.padding = '8px';
+        cityItem.style.backgroundColor = '#f9f9f9';
+        cityItem.style.borderRadius = '4px';
+        
+        cityItem.innerHTML = `
+            <span><strong>${city}</strong> (${stationCount} stations, ${lineCount} lines)</span>
+            <div>
+                <button class="btn btn-small rename-city" data-city="${city}">Rename</button>
+                <button class="btn btn-small btn-danger delete-city" data-city="${city}">Delete</button>
+            </div>
+        `;
+        
+        listElement.appendChild(cityItem);
+    });
+    
+    // Add event listeners for rename and delete buttons
+    document.querySelectorAll('.rename-city').forEach(btn => {
+        btn.addEventListener('click', () => renameCity(btn.dataset.city));
+    });
+    
+    document.querySelectorAll('.delete-city').forEach(btn => {
+        btn.addEventListener('click', () => deleteCity(btn.dataset.city));
+    });
+}
+
+/**
+ * Create a new city
+ */
+function createNewCity() {
+    const nameInput = document.getElementById('new-city-name');
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+        alert('Please enter a city name');
+        return;
+    }
+    
+    if (availableCities.includes(name)) {
+        alert('A city with this name already exists');
+        return;
+    }
+    
+    // Add to available cities list
+    availableCities.push(name);
+    availableCities.sort();
+    
+    nameInput.value = '';
+    updateDefaultCitySelector();
+    updateCityList();
+}
+
+/**
+ * Rename a city
+ */
+async function renameCity(oldName) {
+    const newName = prompt(`Rename city "${oldName}" to:`, oldName);
+    if (!newName || newName === oldName) return;
+    
+    if (availableCities.includes(newName)) {
+        alert('A city with this name already exists');
+        return;
+    }
+    
+    try {
+        // Update all stations with this city
+        const stationsToUpdate = stations.filter(station => station.city === oldName);
+        const linesToUpdate = lines.filter(line => line.city === oldName);
+        
+        // Update stations
+        for (const station of stationsToUpdate) {
+            station.city = newName;
+            await updateStationInDatabase(station);
+        }
+        
+        // Update lines
+        for (const line of linesToUpdate) {
+            line.city = newName;
+            await updateLineInDatabase(line);
+        }
+        
+        // Update local state
+        const index = availableCities.indexOf(oldName);
+        if (index !== -1) {
+            availableCities[index] = newName;
+            availableCities.sort();
+        }
+        
+        // Update current city if it was the renamed one
+        if (currentCity === oldName) {
+            currentCity = newName;
+            document.getElementById('metro-city-selector').value = newName;
+        }
+        
+        // Refresh the UI
+        updateDefaultCitySelector();
+        updateCityList();
+        updateCitySelector();
+        
+        alert('City renamed successfully');
+    } catch (error) {
+        console.error('Error renaming city:', error);
+        alert('Failed to rename city');
+    }
+}
+
+/**
+ * Delete a city
+ */
+async function deleteCity(cityName) {
+    const stationCount = stations.filter(station => station.city === cityName).length;
+    const lineCount = lines.filter(line => line.city === cityName).length;
+    
+    if (!confirm(`Are you sure you want to delete city "${cityName}"? This will remove the city assignment from ${stationCount} stations and ${lineCount} lines (the stations and lines themselves will not be deleted).`)) {
+        return;
+    }
+    
+    try {
+        // Update all stations and lines in this city to have no city
+        const stationsToUpdate = stations.filter(station => station.city === cityName);
+        const linesToUpdate = lines.filter(line => line.city === cityName);
+        
+        for (const station of stationsToUpdate) {
+            station.city = '';
+            await updateStationInDatabase(station);
+        }
+        
+        for (const line of linesToUpdate) {
+            line.city = '';
+            await updateLineInDatabase(line);
+        }
+        
+        // Remove from available cities
+        const index = availableCities.indexOf(cityName);
+        if (index !== -1) {
+            availableCities.splice(index, 1);
+        }
+        
+        // Switch to 'all' if we were viewing the deleted city
+        if (currentCity === cityName) {
+            currentCity = 'all';
+            document.getElementById('metro-city-selector').value = 'all';
+        }
+        
+        // Refresh the UI
+        updateDefaultCitySelector();
+        updateCityList();
+        updateCitySelector();
+        filterMapDataByCity();
+        drawMap();
+        
+        alert('City deleted successfully');
+    } catch (error) {
+        console.error('Error deleting city:', error);
+        alert('Failed to delete city');
+    }
+}
+
+/**
+ * Save city settings
+ */
+function saveCitySettings() {
+    const defaultSelector = document.getElementById('default-city-select');
+    if (defaultSelector) {
+        setDefaultCity(defaultSelector.value);
+    }
+    
+    closeCityManager();
+    alert('City settings saved');
+}
+
+/**
+ * Close city manager dialog
+ */
+function closeCityManager() {
+    const dialog = document.getElementById('city-manager-dialog');
+    if (dialog) {
+        dialog.remove();
+    }
+}
+
+/**
+ * Show new city dialog
+ */
+function showNewCityDialog() {
+    const dialogHTML = `
+        <div id="new-city-dialog" class="modal-overlay" style="display: flex; z-index: 10000;">
+            <div class="modal" style="width: 400px; max-width: 95%;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Create New City</h3>
+                    <button class="modal-close" id="close-new-city-dialog">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="new-city-input">City Name:</label>
+                        <input type="text" id="new-city-input" class="dcim-input" 
+                               placeholder="Enter city name" style="width: 100%;">
+                    </div>
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button id="create-new-city" class="btn btn-primary">Create</button>
+                        <button id="cancel-new-city" class="btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+
+    const dialog = document.getElementById('new-city-dialog');
+    const input = document.getElementById('new-city-input');
+
+    // Add event listeners
+    document.getElementById('close-new-city-dialog').addEventListener('click', closeDialog);
+    document.getElementById('cancel-new-city').addEventListener('click', closeDialog);
+    document.getElementById('create-new-city').addEventListener('click', createCity);
+    
+    // Add enter key support
+    input.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+            createCity();
+        }
+    });
+
+    input.focus();
+
+    function closeDialog() {
+        if (dialog && dialog.parentNode) {
+            dialog.parentNode.removeChild(dialog);
+        }
+    }
+
+    function createCity() {
+        const name = input.value.trim();
+        
+        if (!name) {
+            alert('Please enter a valid city name');
+            input.focus();
+            return;
+        }
+        
+        if (availableCities.includes(name)) {
+            alert('A city with this name already exists');
+            input.focus();
+            return;
+        }
+        
+        // Add to available cities
+        availableCities.push(name);
+        availableCities.sort();
+        
+        // Update selector and switch to the new city
+        updateCitySelector();
+        document.getElementById('metro-city-selector').value = name;
+        switchCity();
+        
+        closeDialog();
+    }
 }
 
     

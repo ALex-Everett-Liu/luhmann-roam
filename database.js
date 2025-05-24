@@ -218,6 +218,14 @@ try {
   console.log('transit_type column already exists in metro_stations or other error:', error.message);
 }
 
+// Add city column to metro_stations table if it doesn't exist
+try {
+  await db.exec(`ALTER TABLE metro_stations ADD COLUMN city TEXT DEFAULT ''`);
+  console.log('Added city column to metro_stations table');
+} catch (error) {
+  // Column likely already exists, which is fine
+  console.log('city column already exists in metro_stations or other error:', error.message);
+}
 
 // Create metro_lines table
 await db.exec(`
@@ -243,12 +251,30 @@ try {
   console.log('transit_type column already exists in metro_lines or other error:', error.message);
 }
 
+// Add city column to metro_lines table if it doesn't exist
+try {
+  await db.exec(`ALTER TABLE metro_lines ADD COLUMN city TEXT DEFAULT ''`);
+  console.log('Added city column to metro_lines table');
+} catch (error) {
+  // Column likely already exists, which is fine
+  console.log('city column already exists in metro_lines or other error:', error.message);
+}
+
   // Add indices for better performance
   await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_metro_stations_node_id ON metro_stations(node_id);
     CREATE INDEX IF NOT EXISTS idx_metro_stations_sequence_id ON metro_stations(sequence_id);
     CREATE INDEX IF NOT EXISTS idx_metro_lines_sequence_id ON metro_lines(sequence_id);
   `);
+
+  // Add city indices to metro tables
+  try {
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_metro_stations_city ON metro_stations(city);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_metro_lines_city ON metro_lines(city);`);
+    console.log('Added city indices to metro tables');
+  } catch (error) {
+    console.log('City indices may already exist:', error.message);
+  }
 
   // Add triggers for auto-assigning sequence IDs
   await db.exec(`
@@ -367,146 +393,4 @@ try {
     await db.exec(`
       CREATE INDEX IF NOT EXISTS idx_nodes_created_sequence 
       ON nodes(created_at, sequence_id);
-    `);
-    
-    // Links table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_links_from_to 
-      ON links(from_node_id, to_node_id);
-    `);
-    
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_links_created_sequence 
-      ON links(created_at, sequence_id);
-    `);
-    
-    // Node attributes table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_node_attributes_node_key 
-      ON node_attributes(node_id, key);
-    `);
-    
-    // Tasks table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_tasks_date_completed 
-      ON tasks(date, is_completed);
-    `);
-    
-    // Bookmarks table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_bookmarks_added_sequence 
-      ON bookmarks(added_at, sequence_id);
-    `);
-    
-    // Blog pages table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_blog_pages_node 
-      ON blog_pages(node_id);
-    `);
-    
-    // DCIM images table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_dcim_images_creation_sequence 
-      ON dcim_images(creation_time, sequence_id);
-    `);
-    
-    console.log('Created compound indices for improved performance on all tables');
-  } catch (error) {
-    console.log('Some indices may already exist:', error.message);
-  }
-
-  // Add variable-specific columns to dev_test_entries table
-  try {
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS dev_test_entries (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        status TEXT DEFAULT 'pending',
-        test_data TEXT,
-        test_result TEXT,
-        
-        /* Variable-specific fields */
-        variable_value TEXT,
-        variable_method TEXT,
-        variable_params TEXT,
-        variable_source_file TEXT,
-        variable_line_number INTEGER,
-        
-        created_at INTEGER,
-        updated_at INTEGER,
-        sequence_id INTEGER
-      )
-    `);
-    console.log('Added variable-specific columns to dev_test_entries table');
-  } catch (error) {
-    // Columns likely already exist, which is fine
-    console.log('Variable-specific columns may already exist or other error:', error.message);
-  }
-  
-  console.log(`Database for vault: ${vaultName} initialized`);
-  return db;
-}
-
-async function populateSequenceIds() {
-  const db = await getDb();
-  
-  // Start a transaction for consistency
-  await db.run('BEGIN TRANSACTION');
-  
-  try {
-    // Tables that need sequence IDs
-    const tables = [
-      'nodes',
-      'links', 
-      'node_attributes',
-      'tasks',
-      'bookmarks',
-      'blog_pages',
-      'dcim_images'
-    ];
-    
-    // Process each table
-    for (const table of tables) {
-      // First check if we need to populate sequence IDs for this table
-      const unpopulatedCount = await db.get(
-        `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`
-      );
-      
-      if (unpopulatedCount.count > 0) {
-        console.log(`Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`);
-        
-        // Get records ordered by created_at timestamp (or another appropriate column)
-        // Adapt the ORDER BY column if some tables don't have created_at
-        const orderByColumn = table === 'blog_pages' ? 'created_at' : 'created_at';
-        
-        const records = await db.all(
-          `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
-        );
-        
-        // Assign sequence IDs sequentially
-        for (let i = 0; i < records.length; i++) {
-          await db.run(
-            `UPDATE ${table} SET sequence_id = ? WHERE id = ?`,
-            [i + 1, records[i].id]
-          );
-        }
-        
-        console.log(`Successfully populated sequence IDs for ${records.length} records in ${table}`);
-      } else {
-        console.log(`All records in ${table} already have sequence IDs`);
-      }
-    }
-    
-    await db.run('COMMIT');
-    return true;
-  } catch (error) {
-    await db.run('ROLLBACK');
-    console.error('Error populating sequence IDs:', error);
-    return false;
-  }
-}
-
-module.exports = { getDb, initializeDatabase , populateSequenceIds }; 
+    `
