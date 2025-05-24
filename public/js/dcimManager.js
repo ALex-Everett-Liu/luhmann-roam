@@ -616,6 +616,21 @@ const DcimManager = (function() {
                     <button id="dcim-settings" class="btn">Settings</button>
                     <button id="dcim-webp-converter" class="btn">WebP Converter</button>
                   </div>
+                  <div class="dcim-library-section">
+                    <div class="dcim-library-header">
+                      <div class="dcim-filter-title">Current Library</div>
+                      <div class="dcim-library-actions">
+                        <button id="dcim-manage-libraries" class="btn btn-small" title="Manage Libraries">⚙️</button>
+                        <button id="dcim-new-library" class="btn btn-small" title="New Library">+</button>
+                      </div>
+                    </div>
+                    <select id="dcim-library-selector" class="dcim-select">
+                      <option value="all">All Images</option>
+                    </select>
+                    <div id="dcim-current-library-info" class="dcim-library-info">
+                      Loading libraries...
+                    </div>
+                  </div>
                   <div class="dcim-filters">
                     <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Sort By</div>
@@ -653,14 +668,11 @@ const DcimManager = (function() {
                         <button id="customize-ranking-filter" class="btn btn-small customize-icon" title="Customize ranking filters">⚙️</button>
                       </div>
                       <div>
-                        <label>Type:</label>
-                        <input type="text" id="filter-type" class="dcim-input" placeholder="Filter by type...">
-                      </div>
-                      <div>
                         <label>Search:</label>
                         <input type="text" id="dcim-search" class="dcim-input" placeholder="Search images...">
                       </div>
                     </div>
+                    <!-- Rest of existing filter structure -->
                     <div class="dcim-filter-group">
                       <div class="dcim-filter-title">Tags</div>
                       <div class="dcim-tag-search">
@@ -695,6 +707,7 @@ const DcimManager = (function() {
                     </div>
                   </div>
                 </div>
+                <!-- Rest of existing modal structure -->
                 <div class="dcim-main">
                   <div id="dcim-image-grid" class="dcim-image-grid"></div>
                   <div id="dcim-detail-view" class="dcim-detail-view" style="display: none;"></div>
@@ -731,10 +744,14 @@ const DcimManager = (function() {
       document.getElementById('dcim-webp-converter').addEventListener('click', showWebPConverter);
       document.getElementById('customize-ranking-filter').addEventListener('click', showCustomRankingFilterDialog);
       
+      // Add library management listeners
+      document.getElementById('dcim-library-selector').addEventListener('change', switchLibrary);
+      document.getElementById('dcim-manage-libraries').addEventListener('click', showLibraryManager);
+      document.getElementById('dcim-new-library').addEventListener('click', showNewLibraryDialog);
+      
       // Add filter change listeners
       document.getElementById('filter-rating').addEventListener('change', applyFilters);
       document.getElementById('filter-ranking').addEventListener('change', applyFilters);
-      document.getElementById('filter-type').addEventListener('input', debounce(applyFilters, 300));
       document.getElementById('dcim-search').addEventListener('input', debounce(applyFilters, 300));
       document.getElementById('sort-method').addEventListener('change', applyFilters);
       
@@ -773,6 +790,7 @@ const DcimManager = (function() {
      * Opens the Image Manager modal
      */
     function openImageManager() {
+        // Create modal first
         modalElement = createModal();
         modalElement.style.display = 'flex';
         
@@ -781,7 +799,7 @@ const DcimManager = (function() {
             window.HotkeyManager.setModalState(true);
         }
       
-        // Load images
+        // Load images after modal is created
         loadImages();
     }
     
@@ -808,27 +826,44 @@ const DcimManager = (function() {
      * Loads images from the server
      */
     async function loadImages() {
-      try {
-        const response = await fetch('/api/dcim');
-        currentImages = await response.json();
-        
-        // Use TagManager instead of local function
-        TagManager.populateTagFilters(currentImages);
-        
-        // Set default filter state (show all images)
-        const majorOnlyFilter = document.getElementById('filter-major-only');
-        if (majorOnlyFilter) {
-          // Check localStorage for saved preference
-          const savedPreference = localStorage.getItem('dcim-show-major-only');
-          majorOnlyFilter.checked = savedPreference === 'true';
+        try {
+            const response = await fetch('/api/dcim');
+            currentImages = await response.json();
+            
+            // Initialize libraries
+            updateLibrarySelector();
+            
+            // Set to default library
+            const defaultLibrary = getDefaultLibrary();
+            if (availableLibraries.includes(defaultLibrary) || defaultLibrary === 'all') {
+                currentLibrary = defaultLibrary;
+                const librarySelector = document.getElementById('dcim-library-selector');
+                if (librarySelector) {
+                    librarySelector.value = defaultLibrary;
+                }
+            } else {
+                currentLibrary = 'all';
+            }
+            
+            updateLibraryInfo();
+            
+            // Use TagManager instead of local function
+            TagManager.populateTagFilters(currentImages);
+            
+            // Set default filter state (show all images)
+            const majorOnlyFilter = document.getElementById('filter-major-only');
+            if (majorOnlyFilter) {
+                // Check localStorage for saved preference
+                const savedPreference = localStorage.getItem('dcim-show-major-only');
+                majorOnlyFilter.checked = savedPreference === 'true';
+            }
+            
+            // Now that everything is set up, render the images
+            applyFilters();
+        } catch (error) {
+            console.error('Error loading images:', error);
+            alert('Failed to load images');
         }
-        
-        // Render the images
-        renderImageGrid(currentImages);
-      } catch (error) {
-        console.error('Error loading images:', error);
-        alert('Failed to load images');
-      }
     }
     
 
@@ -1122,11 +1157,19 @@ function loadCustomRankingFilters() {
      * Applies current filters and updates the image grid
      */
     function applyFilters() {
-      const ratingFilter = document.getElementById('filter-rating').value;
-      const rankingFilterValue = document.getElementById('filter-ranking').value;
-      const searchFilter = document.getElementById('dcim-search').value.toLowerCase();
-      const typeFilter = document.getElementById('filter-type').value.toLowerCase();
-      const sortMethod = document.getElementById('sort-method').value;
+      // Get filter elements
+      const ratingFilter = document.getElementById('filter-rating');
+      const rankingFilter = document.getElementById('filter-ranking');
+      const searchFilter = document.getElementById('dcim-search');
+      const typeFilter = document.getElementById('filter-type');
+      const sortMethod = document.getElementById('sort-method');
+      
+      // Check if elements exist before accessing their values
+      const ratingValue = ratingFilter ? ratingFilter.value : '';
+      const rankingFilterValue = rankingFilter ? rankingFilter.value : '';
+      const searchValue = searchFilter ? searchFilter.value.toLowerCase() : '';
+      const typeValue = typeFilter ? typeFilter.value.toLowerCase() : '';
+      const sortValue = sortMethod ? sortMethod.value : 'date_desc'; // default sort
       
       // Use TagManager to get selected tags
       const { tags: selectedTags, combination: tagCombination } = TagManager.getSelectedTags();
@@ -1149,20 +1192,20 @@ function loadCustomRankingFilters() {
       
       // Store current filters
       currentFilters = {
-        rating: ratingFilter,
+        rating: ratingValue,
         ranking: rankingFilterValue,
-        search: searchFilter,
-        type: typeFilter,
-        sortMethod: sortMethod,
+        search: searchValue,
+        type: typeValue,
+        sortMethod: sortValue,
         tags: selectedTags,
         tagCombination: tagCombination
       };
       
       // Apply filters (same as before)
       let typeFilteredImages = currentImages;
-      if (typeFilter) {
+      if (typeValue) {
         typeFilteredImages = currentImages.filter(img => {
-          return img.type && img.type.toLowerCase().includes(typeFilter);
+          return img.type && img.type.toLowerCase().includes(typeValue);
         });
       }
       
@@ -1178,7 +1221,7 @@ function loadCustomRankingFilters() {
       // Apply all other filters
       let filteredImages = typeFilteredImages.filter(img => {
         // Rating filter
-        if (ratingFilter && (!img.rating || img.rating < parseInt(ratingFilter))) {
+        if (ratingValue && (!img.rating || img.rating < parseInt(ratingValue))) {
           return false;
         }
         
@@ -1195,7 +1238,7 @@ function loadCustomRankingFilters() {
         }
         
         // Search filter
-        if (searchFilter) {
+        if (searchValue) {
           const searchFields = [
             img.filename,
             img.tags,
@@ -1203,7 +1246,7 @@ function loadCustomRankingFilters() {
             img.location
           ].filter(Boolean).join(' ').toLowerCase();
           
-          if (!searchFields.includes(searchFilter)) {
+          if (!searchFields.includes(searchValue)) {
             return false;
           }
         }
@@ -1234,7 +1277,7 @@ function loadCustomRankingFilters() {
       });
       
       // Apply sort method
-      switch (sortMethod) {
+      switch (sortValue) {
         case 'ranking_desc':
           filteredImages.sort((a, b) => (b.ranking || 0) - (a.ranking || 0));
           break;
@@ -2344,6 +2387,13 @@ function debugToggleButton() {
             <input type="text" id="dcim-file-path-input" placeholder="/path/to/local/image.jpg" class="dcim-input">
           </div>
           <div class="dcim-form-group">
+            <label>Library</label>
+            <select id="add-image-library" class="dcim-select">
+              <option value="">No Library</option>
+              ${availableLibraries.map(lib => `<option value="${lib}" ${lib === currentLibrary && currentLibrary !== 'all' ? 'selected' : ''}>${lib}</option>`).join('')}
+            </select>
+          </div>
+          <div class="dcim-form-group">
             <label>Filename (optional, will use original filename if not provided)</label>
             <input type="text" id="add-image-filename" class="dcim-input">
           </div>
@@ -2867,6 +2917,423 @@ function debugToggleButton() {
     
     // Move these functions inside the DcimManager module closure, right before the return statement
     // Around line ~2117 (before the "// Public API" comment)
+
+    // Add library management variables
+let currentLibrary = 'all';
+let availableLibraries = [];
+
+/**
+ * Get all available libraries from images
+ */
+function getAvailableLibraries() {
+  const libraries = new Set();
+  currentImages.forEach(image => {
+    if (image.type && image.type.trim()) {
+      libraries.add(image.type.trim());
+    }
+  });
+  return Array.from(libraries).sort();
+}
+
+/**
+ * Update the library selector with available libraries
+ */
+function updateLibrarySelector() {
+  const selector = document.getElementById('dcim-library-selector');
+  if (!selector) return;
+  
+  availableLibraries = getAvailableLibraries();
+  
+  // Save current selection
+  const currentSelection = selector.value;
+  
+  // Clear and rebuild options
+  selector.innerHTML = '<option value="all">All Images</option>';
+  
+  availableLibraries.forEach(library => {
+    const option = document.createElement('option');
+    option.value = library;
+    option.textContent = library;
+    selector.appendChild(option);
+  });
+  
+  // Restore selection if it still exists
+  if (availableLibraries.includes(currentSelection) || currentSelection === 'all') {
+    selector.value = currentSelection;
+  } else {
+    // If current selection no longer exists, use default library or 'all'
+    const defaultLibrary = getDefaultLibrary();
+    selector.value = availableLibraries.includes(defaultLibrary) ? defaultLibrary : 'all';
+  }
+  
+  updateLibraryInfo();
+}
+
+/**
+ * Switch to a different library
+ */
+function switchLibrary() {
+  const selector = document.getElementById('dcim-library-selector');
+  currentLibrary = selector.value;
+  
+  updateLibraryInfo();
+  applyFilters();
+}
+
+/**
+ * Update library information display
+ */
+function updateLibraryInfo() {
+  const infoElement = document.getElementById('dcim-current-library-info');
+  if (!infoElement) return;
+  
+  let libraryImages;
+  if (currentLibrary === 'all') {
+    libraryImages = currentImages;
+  } else {
+    libraryImages = currentImages.filter(img => img.type === currentLibrary);
+  }
+  
+  const totalImages = libraryImages.length;
+  const majorImages = libraryImages.filter(img => !img.parent_id).length;
+  const subsidiaryImages = libraryImages.filter(img => img.parent_id).length;
+  
+  let infoText = `${totalImages} images`;
+  if (subsidiaryImages > 0) {
+    infoText += ` (${majorImages} major, ${subsidiaryImages} subsidiary)`;
+  }
+  
+  infoElement.textContent = infoText;
+}
+
+/**
+ * Get default library from localStorage
+ */
+function getDefaultLibrary() {
+  return localStorage.getItem('dcim-default-library') || 'all';
+}
+
+/**
+ * Set default library
+ */
+function setDefaultLibrary(libraryName) {
+  localStorage.setItem('dcim-default-library', libraryName);
+}
+
+/**
+ * Show library management dialog
+ */
+function showLibraryManager() {
+  const dialogHTML = `
+    <div id="library-manager-dialog" class="modal-overlay" style="display: flex; z-index: 10000;">
+      <div class="modal" style="width: 500px; max-width: 95%;">
+        <div class="modal-header">
+          <h3 class="modal-title">Library Manager</h3>
+          <button class="modal-close" id="close-library-manager">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom: 15px;">
+            <label for="default-library-select">Default Library:</label>
+            <select id="default-library-select" class="dcim-select" style="width: 100%;">
+              <option value="all">All Images</option>
+            </select>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <h4>Existing Libraries</h4>
+            <div id="library-list" style="margin-top: 10px;">
+              <!-- Library list will be populated here -->
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <h4>Create New Library</h4>
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="new-library-name" class="dcim-input" placeholder="Library name" style="flex: 1;">
+              <button id="create-library" class="btn btn-primary">Create</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-library-settings" class="btn btn-primary">Save Settings</button>
+          <button id="cancel-library-manager" class="btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', dialogHTML);
+  
+  // Populate default library selector
+  updateDefaultLibrarySelector();
+  
+  // Populate library list
+  updateLibraryList();
+  
+  // Add event listeners
+  document.getElementById('close-library-manager').addEventListener('click', closeLibraryManager);
+  document.getElementById('cancel-library-manager').addEventListener('click', closeLibraryManager);
+  document.getElementById('save-library-settings').addEventListener('click', saveLibrarySettings);
+  document.getElementById('create-library').addEventListener('click', createNewLibrary);
+}
+
+/**
+ * Update the default library selector in the manager dialog
+ */
+function updateDefaultLibrarySelector() {
+  const selector = document.getElementById('default-library-select');
+  if (!selector) return;
+  
+  const currentDefault = getDefaultLibrary();
+  
+  selector.innerHTML = '<option value="all">All Images</option>';
+  availableLibraries.forEach(library => {
+    const option = document.createElement('option');
+    option.value = library;
+    option.textContent = library;
+    selector.appendChild(option);
+  });
+  
+  selector.value = currentDefault;
+}
+
+/**
+ * Update the library list in the manager dialog
+ */
+function updateLibraryList() {
+  const listElement = document.getElementById('library-list');
+  if (!listElement) return;
+  
+  if (availableLibraries.length === 0) {
+    listElement.innerHTML = '<p>No libraries found. Create your first library below.</p>';
+    return;
+  }
+  
+  listElement.innerHTML = '';
+  
+  availableLibraries.forEach(library => {
+    const imageCount = currentImages.filter(img => img.type === library).length;
+    
+    const libraryItem = document.createElement('div');
+    libraryItem.className = 'library-item';
+    libraryItem.style.display = 'flex';
+    libraryItem.style.justifyContent = 'space-between';
+    libraryItem.style.alignItems = 'center';
+    libraryItem.style.marginBottom = '8px';
+    libraryItem.style.padding = '8px';
+    libraryItem.style.backgroundColor = '#f9f9f9';
+    libraryItem.style.borderRadius = '4px';
+    
+    libraryItem.innerHTML = `
+      <span><strong>${library}</strong> (${imageCount} images)</span>
+      <div>
+        <button class="btn btn-small rename-library" data-library="${library}">Rename</button>
+        <button class="btn btn-small btn-danger delete-library" data-library="${library}">Delete</button>
+      </div>
+    `;
+    
+    listElement.appendChild(libraryItem);
+  });
+  
+  // Add event listeners for rename and delete buttons
+  document.querySelectorAll('.rename-library').forEach(btn => {
+    btn.addEventListener('click', () => renameLibrary(btn.dataset.library));
+  });
+  
+  document.querySelectorAll('.delete-library').forEach(btn => {
+    btn.addEventListener('click', () => deleteLibrary(btn.dataset.library));
+  });
+}
+
+/**
+ * Create a new library
+ */
+function createNewLibrary() {
+  const nameInput = document.getElementById('new-library-name');
+  const name = nameInput.value.trim();
+  
+  if (!name) {
+    alert('Please enter a library name');
+    return;
+  }
+  
+  if (availableLibraries.includes(name)) {
+    alert('A library with this name already exists');
+    return;
+  }
+  
+  // For now, just add it to the list (it will be created when an image is assigned to it)
+  availableLibraries.push(name);
+  availableLibraries.sort();
+  
+  nameInput.value = '';
+  updateDefaultLibrarySelector();
+  updateLibraryList();
+}
+
+/**
+ * Rename a library
+ */
+async function renameLibrary(oldName) {
+  const newName = prompt(`Rename library "${oldName}" to:`, oldName);
+  if (!newName || newName === oldName) return;
+  
+  if (availableLibraries.includes(newName)) {
+    alert('A library with this name already exists');
+    return;
+  }
+  
+  // Update all images with this type
+  const imagesToUpdate = currentImages.filter(img => img.type === oldName);
+  
+  try {
+    for (const image of imagesToUpdate) {
+      const response = await fetch(`/api/dcim/${image.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...image,
+          type: newName
+        })
+      });
+      
+      if (response.ok) {
+        image.type = newName;
+      } else {
+        throw new Error('Failed to update image');
+      }
+    }
+    
+    // Update local state
+    const index = availableLibraries.indexOf(oldName);
+    if (index !== -1) {
+      availableLibraries[index] = newName;
+      availableLibraries.sort();
+    }
+    
+    // Update current library if it was the renamed one
+    if (currentLibrary === oldName) {
+      currentLibrary = newName;
+      document.getElementById('dcim-library-selector').value = newName;
+    }
+    
+    // Refresh the UI
+    updateDefaultLibrarySelector();
+    updateLibraryList();
+    updateLibrarySelector();
+    
+    alert('Library renamed successfully');
+  } catch (error) {
+    console.error('Error renaming library:', error);
+    alert('Failed to rename library');
+  }
+}
+
+/**
+ * Delete a library
+ */
+async function deleteLibrary(libraryName) {
+  const imageCount = currentImages.filter(img => img.type === libraryName).length;
+  
+  if (!confirm(`Are you sure you want to delete library "${libraryName}"? This will remove the library assignment from ${imageCount} images (the images themselves will not be deleted).`)) {
+    return;
+  }
+  
+  try {
+    // Update all images in this library to have no type
+    const imagesToUpdate = currentImages.filter(img => img.type === libraryName);
+    
+    for (const image of imagesToUpdate) {
+      const response = await fetch(`/api/dcim/${image.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...image,
+          type: ''
+        })
+      });
+      
+      if (response.ok) {
+        image.type = '';
+      } else {
+        throw new Error('Failed to update image');
+      }
+    }
+    
+    // Remove from available libraries
+    const index = availableLibraries.indexOf(libraryName);
+    if (index !== -1) {
+      availableLibraries.splice(index, 1);
+    }
+    
+    // Switch to 'all' if we were viewing the deleted library
+    if (currentLibrary === libraryName) {
+      currentLibrary = 'all';
+      document.getElementById('dcim-library-selector').value = 'all';
+    }
+    
+    // Refresh the UI
+    updateDefaultLibrarySelector();
+    updateLibraryList();
+    updateLibrarySelector();
+    
+    alert('Library deleted successfully');
+  } catch (error) {
+    console.error('Error deleting library:', error);
+    alert('Failed to delete library');
+  }
+}
+
+/**
+ * Save library settings
+ */
+function saveLibrarySettings() {
+  const defaultSelector = document.getElementById('default-library-select');
+  if (defaultSelector) {
+    setDefaultLibrary(defaultSelector.value);
+  }
+  
+  closeLibraryManager();
+  alert('Library settings saved');
+}
+
+/**
+ * Close library manager dialog
+ */
+function closeLibraryManager() {
+  const dialog = document.getElementById('library-manager-dialog');
+  if (dialog) {
+    dialog.remove();
+  }
+}
+
+/**
+ * Show new library dialog
+ */
+function showNewLibraryDialog() {
+  const name = prompt('Enter new library name:');
+  if (!name) return;
+  
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    alert('Please enter a valid library name');
+    return;
+  }
+  
+  if (availableLibraries.includes(trimmedName)) {
+    alert('A library with this name already exists');
+    return;
+  }
+  
+  // Add to available libraries
+  availableLibraries.push(trimmedName);
+  availableLibraries.sort();
+  
+  // Update selector and switch to the new library
+  updateLibrarySelector();
+  document.getElementById('dcim-library-selector').value = trimmedName;
+  switchLibrary();
+}
     
     // Public API
     return {
