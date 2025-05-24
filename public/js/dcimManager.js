@@ -1461,6 +1461,15 @@ function debugToggleButton() {
         card.className = 'dcim-image-card';
         card.dataset.id = image.id;
         
+        // Determine if this is a video file
+        const isVideo = image.filename && /\.(mp4|mov|avi|mkv|webm)$/i.test(image.filename);
+        
+        // Show video indicator
+        let mediaIndicator = '';
+        if (isVideo) {
+          mediaIndicator = '<span class="dcim-media-indicator dcim-video-indicator" title="Video File">🎬</span>';
+        }
+        
         // Show address type indicator
         let addressIndicator = '';
         if (image.url && image.file_path) {
@@ -1480,6 +1489,7 @@ function debugToggleButton() {
         card.innerHTML = `
           <img src="${image.thumbnail_path || image.url}" alt="${image.filename}" class="dcim-thumbnail" onerror="this.src='/images/default-thumbnail.jpg'">
           ${subsidiaryIndicator}
+          ${mediaIndicator}
           <div class="dcim-image-info">
             <div class="dcim-image-title">${image.filename} ${addressIndicator}</div>
             <div class="dcim-image-meta">
@@ -1505,6 +1515,9 @@ function debugToggleButton() {
       try {
         const response = await fetch(`/api/dcim/${imageId}`);
         const image = await response.json();
+        
+        // Determine if this is a video
+        const isVideo = image.filename && /\.(mp4|mov|avi|mkv|webm)$/i.test(image.filename);
         
         // Create the detail view container if it doesn't exist
         let detailView = document.getElementById('dcim-detail-view');
@@ -1536,9 +1549,9 @@ function debugToggleButton() {
         // Render detail view
         detailView.innerHTML = `
           <div class="dcim-detail-header">
-            <h3>${image.filename}</h3>
+            <h3>${image.filename} ${isVideo ? '(Video)' : ''}</h3>
             <div>
-              <button id="dcim-view-full-image" class="btn btn-primary">View Full Image</button>
+              <button id="dcim-view-full-image" class="btn btn-primary">${isVideo ? 'View Full Video' : 'View Full Image'}</button>
               <button id="dcim-back-button" class="btn">Back to Gallery</button>
             </div>
           </div>
@@ -1679,7 +1692,7 @@ function debugToggleButton() {
         
       } catch (error) {
         console.error('Error loading image details:', error);
-        alert('Failed to load image details');
+        alert('Failed to load details');
       }
     }
     
@@ -1706,36 +1719,46 @@ function debugToggleButton() {
       // Set image source - prefer the original URL over file path
       const imageSrc = image.url || image.file_path;
       if (!imageSrc) {
-        alert('No image source available');
+        alert('No media source available');
         return;
       }
       
-      // Set the image content
-      const viewerImage = document.getElementById('dcim-viewer-image');
-      viewerImage.src = imageSrc;
-      viewerImage.dataset.imageId = image.id;
-      
-      // Update title
-      document.getElementById('dcim-viewer-title').textContent = image.filename;
-      
-      // Ensure the ViewerJS is initialized
-      if (window.Viewer && !viewerImage._viewer) {
-        viewerImage._viewer = new Viewer(viewerImage, {
-          inline: true,
-          navbar: false,
-          title: false,
-          toolbar: false,
-          tooltip: false,
-          movable: true,
-          zoomable: true,
-          rotatable: true,
-          scalable: true,
-          transition: true,
-          fullscreen: false,
-          keyboard: true,
-          backdrop: false,
-          container: document.getElementById('dcim-viewer-container')
-        });
+      if (image.filename && /\.(mp4|mov|avi|mkv|webm)$/i.test(image.filename)) {
+        // For videos, create a video element instead of using ViewerJS
+        viewerContainer.innerHTML = `
+          <video id="dcim-video-player" controls style="width: 100%; height: 100%; object-fit: contain;">
+            <source src="${imageSrc}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        `;
+      } else {
+        // For images, use the existing ViewerJS logic
+        const viewerImage = document.getElementById('dcim-viewer-image');
+        viewerImage.src = imageSrc;
+        viewerImage.dataset.imageId = image.id;
+        
+        // Update title
+        document.getElementById('dcim-viewer-title').textContent = image.filename;
+        
+        // Ensure the ViewerJS is initialized
+        if (window.Viewer && !viewerImage._viewer) {
+          viewerImage._viewer = new Viewer(viewerImage, {
+            inline: true,
+            navbar: false,
+            title: false,
+            toolbar: false,
+            tooltip: false,
+            movable: true,
+            zoomable: true,
+            rotatable: true,
+            scalable: true,
+            transition: true,
+            fullscreen: false,
+            keyboard: true,
+            backdrop: false,
+            container: document.getElementById('dcim-viewer-container')
+          });
+        }
       }
     }
     
@@ -2370,13 +2393,13 @@ function debugToggleButton() {
       // Render the add form
       addForm.innerHTML = `
         <div class="dcim-form-header">
-          <h3>Add New Image</h3>
+          <h3>Add New Image/Video</h3>
           <button id="dcim-back-from-add" class="btn">Back to Gallery</button>
         </div>
         <form id="dcim-add-image-form">
           <div class="dcim-form-group">
-            <label for="dcim-file-input">Upload Image File:</label>
-            <input type="file" id="dcim-file-input" accept="image/*" class="dcim-input">
+            <label for="dcim-file-input">Upload File:</label>
+            <input type="file" id="dcim-file-input" accept="image/*,video/mp4,video/mov,video/avi,video/mkv,video/webm" class="dcim-input">
           </div>
           <div class="dcim-form-group">
             <label for="dcim-url-input">OR Image URL:</label>

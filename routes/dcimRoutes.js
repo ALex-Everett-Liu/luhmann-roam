@@ -48,4 +48,6 @@ router.post('/:id/detach', dcimController.detachSubsidiaryImage);
 
 router.get('/sequence/:sequence_id', dcimController.getImageBySequenceId);
 
+router.get('/:id/metadata', dcimController.getVideoMetadata);
+
 module.exports = router;

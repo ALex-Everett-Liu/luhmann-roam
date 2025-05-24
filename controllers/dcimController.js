@@ -4,6 +4,7 @@ const { getDb } = require('../database');
 const crypto = require('crypto');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
+const ffmpeg = require('fluent-ffmpeg');
 
 // Constants
 const THUMBNAIL_SIZE = 180;
@@ -64,29 +65,54 @@ async function getThumbnailDirectory() {
 }
 
 // Generate a thumbnail for an image
-async function generateThumbnail(imagePath, thumbPath, maxSize = 180, quality = 60) {
+async function generateThumbnail(inputPath, thumbPath, maxSize = 180, quality = 60) {
   try {
-    // Get image metadata to determine aspect ratio
-    const metadata = await sharp(imagePath).metadata();
-    const aspectRatio = metadata.width / metadata.height;
-    let resizeOptions;
+    const fileExtension = path.extname(inputPath).toLowerCase();
+    const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(fileExtension);
     
-    if (aspectRatio > 1) {
-      // Image is wider than it is tall - set the height to maxSize
-      // This ensures the shorter dimension (height) is at least maxSize
-      resizeOptions = { height: maxSize };
+    if (isVideo) {
+      // For videos, extract a frame at 1 second and convert to WebP
+      await new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+          .screenshots({
+            timestamps: [1], // Extract frame at 1 second
+            filename: 'temp-frame.png',
+            folder: path.dirname(thumbPath),
+            size: `${maxSize}x?` // Maintain aspect ratio
+          })
+          .on('end', () => {
+            // Convert the extracted frame to WebP thumbnail
+            const tempFramePath = path.join(path.dirname(thumbPath), 'temp-frame.png');
+            sharp(tempFramePath)
+              .resize({ width: maxSize, height: maxSize, fit: 'inside' })
+              .webp({ quality })
+              .toFile(thumbPath)
+              .then(() => {
+                // Clean up temp frame
+                fs.unlinkSync(tempFramePath);
+                resolve();
+              })
+              .catch(reject);
+          })
+          .on('error', reject);
+      });
     } else {
-      // Image is taller than it is wide or square - set the width to maxSize
-      // This ensures the shorter dimension (width) is at least maxSize
-      resizeOptions = { width: maxSize };
-    }
-    
-    // Create the thumbnail using WebP format
-    await sharp(imagePath)
-      .resize(resizeOptions)
-      .webp({ quality })
-      .toFile(thumbPath);
+      // For images, use the existing Sharp logic
+      const metadata = await sharp(inputPath).metadata();
+      const aspectRatio = metadata.width / metadata.height;
+      let resizeOptions;
       
+      if (aspectRatio > 1) {
+        resizeOptions = { height: maxSize };
+      } else {
+        resizeOptions = { width: maxSize };
+      }
+      
+      await sharp(inputPath)
+        .resize(resizeOptions)
+        .webp({ quality })
+        .toFile(thumbPath);
+    }
   } catch (err) {
     console.error('Error generating thumbnail:', err);
     throw err;
@@ -168,7 +194,10 @@ exports.addImage = async (req, res) => {
     
     if (req.file) {
       const file = req.file;
-      finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname); // If the filename is not provided, it generates a unique filename using crypto.randomUUID() and appends the original file's extension.
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(fileExtension);
+      
+      finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname);
       
       // Get the custom asset directory
       const assetDir = await getAssetDirectory();
@@ -177,7 +206,6 @@ exports.addImage = async (req, res) => {
       // Write the buffer to the file system
       fs.writeFileSync(assetPath, file.buffer);
       
-      // Always store the actual file path
       finalFilePath = assetPath;
       
       // Only set URL if it's in the public directory
@@ -191,7 +219,7 @@ exports.addImage = async (req, res) => {
       
       fileSize = file.size;
       
-      // Generate thumbnail
+      // Generate thumbnail (now works for both images and videos)
       const thumbFilename = `thumb_${finalFilename}`;
       const thumbDir = await getThumbnailDirectory();
       const thumbPath = path.join(thumbDir, thumbFilename);
@@ -906,5 +934,45 @@ exports.getImageBySequenceId = async (req, res) => {
   } catch (error) {
     console.error(`Error retrieving image by sequence ID ${req.params.sequence_id}:`, error);
     res.status(500).json({ error: 'Database error when retrieving image by sequence ID' });
+  }
+};
+
+// Add a new function to get video metadata
+async function getVideoMetadata(videoPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(metadata);
+      }
+    });
+  });
+}
+
+// Add a new endpoint to get video metadata
+exports.getVideoMetadata = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = await getDb();
+    const image = await db.get('SELECT * FROM dcim_images WHERE id = ?', id);
+    
+    if (!image) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const videoPath = image.file_path || path.join(__dirname, '../public', image.url);
+    const fileExtension = path.extname(videoPath).toLowerCase();
+    const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(fileExtension);
+    
+    if (!isVideo) {
+      return res.status(400).json({ error: 'File is not a video' });
+    }
+    
+    const metadata = await getVideoMetadata(videoPath);
+    res.json(metadata);
+  } catch (error) {
+    console.error('Error getting video metadata:', error);
+    res.status(500).json({ error: error.message });
   }
 };
