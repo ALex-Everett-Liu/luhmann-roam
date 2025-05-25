@@ -1210,6 +1210,10 @@ const AttributeManager = (function() {
     const pageInfo = document.createElement('div');
     pageInfo.className = 'pagination-page-info';
     
+    // Create text nodes instead of using innerHTML
+    const pageTextBefore = document.createTextNode('Page ');
+    const pageTextAfter = document.createTextNode(` of ${pagination.totalPages}`);
+
     const pageInput = document.createElement('input');
     pageInput.type = 'number';
     pageInput.min = 1;
@@ -1225,10 +1229,11 @@ const AttributeManager = (function() {
         e.target.value = pagination.page; // Reset to current page if invalid
       }
     });
-    
-    pageInfo.innerHTML = `Page `;
+
+    // Append elements in order
+    pageInfo.appendChild(pageTextBefore);
     pageInfo.appendChild(pageInput);
-    pageInfo.innerHTML += ` of ${pagination.totalPages}`;
+    pageInfo.appendChild(pageTextAfter);
     
     // Next page button
     const nextButton = document.createElement('button');

@@ -1198,13 +1198,22 @@ function loadCustomRankingFilters() {
         type: typeValue,
         sortMethod: sortValue,
         tags: selectedTags,
-        tagCombination: tagCombination
+        tagCombination: tagCombination,
+        library: currentLibrary // Add library to stored filters
       };
       
-      // Apply filters (same as before)
-      let typeFilteredImages = currentImages;
+      // FIRST: Apply library filtering
+      let libraryFilteredImages = currentImages;
+      if (currentLibrary && currentLibrary !== 'all') {
+        libraryFilteredImages = currentImages.filter(img => {
+          return img.type === currentLibrary;
+        });
+      }
+      
+      // Apply type filter to library-filtered images
+      let typeFilteredImages = libraryFilteredImages;
       if (typeValue) {
-        typeFilteredImages = currentImages.filter(img => {
+        typeFilteredImages = libraryFilteredImages.filter(img => {
           return img.type && img.type.toLowerCase().includes(typeValue);
         });
       }
@@ -1312,7 +1321,15 @@ function loadCustomRankingFilters() {
       // Update UI to show filter counts
       const countElement = document.getElementById('dcim-filter-count');
       if (countElement) {
-        countElement.textContent = `Showing ${filteredImages.length} of ${currentImages.length} images`;
+        // Update the display to show library context
+        let displayText = `Showing ${filteredImages.length} of `;
+        if (currentLibrary && currentLibrary !== 'all') {
+          const libraryTotal = libraryFilteredImages.length;
+          displayText += `${libraryTotal} images in "${currentLibrary}" library`;
+        } else {
+          displayText += `${currentImages.length} total images`;
+        }
+        countElement.textContent = displayText;
       }
       
       // Update pagination info
