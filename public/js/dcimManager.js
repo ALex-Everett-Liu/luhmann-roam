@@ -379,7 +379,7 @@ const DcimManager = (function() {
             case 'detail':
                 return [
                     ...baseHints,
-                    { key: 'G', selector: '#dcim-back-button', description: 'Back to gallery' },
+                    { key: 'G', selector: '#dcim-back-button', description: 'Back to parent/gallery' },
                     { key: 'S', selector: '#dcim-add-subsidiary', description: 'Add to subsidiaries' },
                     { key: 'V', selector: '#dcim-view-full-image', description: 'View full image' },
                     { key: 'C', selector: '#dcim-save-image', description: 'Save changes' }
@@ -478,6 +478,9 @@ const DcimManager = (function() {
                 document.getElementById('dcim-viewer-view').style.display = 'none';
                 document.getElementById('dcim-detail-view').style.display = 'none';
             } else {
+                // In detail view, check if this is a subsidiary image
+                // We need to get the current image data to check parent_id
+                // For now, just click the back button which will handle the logic
                 backButton.click();
             }
         }
@@ -1569,7 +1572,7 @@ function debugToggleButton() {
             <h3>${image.filename} ${isVideo ? '(Video)' : ''}</h3>
             <div>
               <button id="dcim-view-full-image" class="btn btn-primary">${isVideo ? 'View Full Video' : 'View Full Image'}</button>
-              <button id="dcim-back-button" class="btn">Back to Gallery</button>
+              <button id="dcim-back-button" class="btn">${image.parent_id ? 'Back to Parent Image' : 'Back to Gallery'}</button>
             </div>
           </div>
           <div class="dcim-address-fields">
@@ -1658,8 +1661,15 @@ function debugToggleButton() {
         
         // Add event listeners
         document.getElementById('dcim-back-button').addEventListener('click', () => {
-          document.getElementById('dcim-image-grid').style.display = 'grid';
-          detailView.style.display = 'none';
+          // Check if this is a subsidiary image
+          if (image.parent_id) {
+            // This is a subsidiary image, go back to the parent image
+            showImageDetail(image.parent_id);
+          } else {
+            // This is a major image, go back to the gallery
+            document.getElementById('dcim-image-grid').style.display = 'grid';
+            detailView.style.display = 'none';
+          }
         });
         
         document.getElementById('dcim-save-image').addEventListener('click', () => saveImageChanges(image.id));

@@ -197,7 +197,7 @@ exports.addImage = async (req, res) => {
       const fileExtension = path.extname(file.originalname).toLowerCase();
       const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(fileExtension);
       
-      finalFilename = file.filename || crypto.randomUUID() + path.extname(file.originalname);
+      finalFilename = filename || file.originalname || `${crypto.randomUUID()}${path.extname(file.originalname)}`;
       
       // Get the custom asset directory
       const assetDir = await getAssetDirectory();
