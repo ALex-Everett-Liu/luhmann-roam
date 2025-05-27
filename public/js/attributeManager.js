@@ -25,6 +25,8 @@ const AttributeManager = (function() {
       // Dynamic attribute column widths will be added here
       actions: 120
     },
+    // Column order - this is new!
+    columnOrder: ['node'], // Will be populated with discovered attributes, then 'actions'
     // System columns that can be optionally shown
     systemColumns: {
       id: false,
@@ -119,7 +121,35 @@ const AttributeManager = (function() {
       }
     });
     
+    // Update column order to include new attributes
+    updateColumnOrder();
+    
     console.log('Discovered attributes:', discoveredAttributes);
+  }
+  
+  // Update column order with discovered attributes
+  function updateColumnOrder() {
+    const currentOrder = tableViewConfig.columnOrder || [];
+    const newOrder = ['node']; // Always start with node
+    
+    // Add existing attributes in their current order
+    currentOrder.forEach(col => {
+      if (discoveredAttributes.includes(col) && !newOrder.includes(col)) {
+        newOrder.push(col);
+      }
+    });
+    
+    // Add any new attributes that weren't in the previous order
+    discoveredAttributes.forEach(attr => {
+      if (!newOrder.includes(attr)) {
+        newOrder.push(attr);
+      }
+    });
+    
+    // Add actions at the end
+    newOrder.push('actions');
+    
+    tableViewConfig.columnOrder = newOrder;
   }
   
   // Set up lazy button addition on hover
@@ -587,74 +617,45 @@ const AttributeManager = (function() {
     
     // Column visibility controls
     const columnVisibilityTitle = document.createElement('h5');
-    columnVisibilityTitle.textContent = 'Visible Columns:';
+    columnVisibilityTitle.textContent = 'Visible Columns (drag to reorder):';
     columnVisibilityContainer.appendChild(columnVisibilityTitle);
     
     const columnCheckboxes = document.createElement('div');
     columnCheckboxes.className = 'column-checkboxes';
+    columnCheckboxes.id = 'column-checkboxes';
     
-    // Add core columns first
-    const coreColumns = ['node', 'actions'];
-    coreColumns.forEach(columnKey => {
-      const checkboxContainer = document.createElement('div');
-      checkboxContainer.className = 'checkbox-container';
-      
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.id = `column-${columnKey}`;
-      checkbox.checked = tableViewConfig.visibleColumns[columnKey] !== false;
-      checkbox.addEventListener('change', (e) => {
-        tableViewConfig.visibleColumns[columnKey] = e.target.checked;
-        saveTableViewConfig();
-      });
-      
-      const label = document.createElement('label');
-      label.htmlFor = `column-${columnKey}`;
-      label.textContent = formatColumnName(columnKey);
-      label.className = 'core-column-label';
-      
-      checkboxContainer.appendChild(checkbox);
-      checkboxContainer.appendChild(label);
-      columnCheckboxes.appendChild(checkboxContainer);
+    // Create ordered list of all columns
+    const allColumns = [];
+    
+    // Add columns in the configured order
+    tableViewConfig.columnOrder.forEach(columnKey => {
+      if (columnKey === 'node' || columnKey === 'actions') {
+        allColumns.push({ key: columnKey, type: 'core' });
+      } else if (discoveredAttributes.includes(columnKey)) {
+        allColumns.push({ key: columnKey, type: 'attribute' });
+      }
     });
     
-    // Add discovered attribute columns
-    if (discoveredAttributes.length > 0) {
-      const attributesSeparator = document.createElement('div');
-      attributesSeparator.className = 'attributes-separator';
-      attributesSeparator.textContent = '— Attributes —';
-      columnCheckboxes.appendChild(attributesSeparator);
-      
-      discoveredAttributes.forEach(attrKey => {
-        const checkboxContainer = document.createElement('div');
-        checkboxContainer.className = 'checkbox-container';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `column-${attrKey}`;
-        checkbox.checked = tableViewConfig.visibleColumns[attrKey] !== false;
-        checkbox.addEventListener('change', (e) => {
-          tableViewConfig.visibleColumns[attrKey] = e.target.checked;
-          saveTableViewConfig();
-        });
-        
-        const label = document.createElement('label');
-        label.htmlFor = `column-${attrKey}`;
-        label.textContent = attrKey;
-        label.className = 'attribute-column-label';
-        
-        checkboxContainer.appendChild(checkbox);
-        checkboxContainer.appendChild(label);
-        columnCheckboxes.appendChild(checkboxContainer);
-      });
-    }
+    // Add system columns at the end
+    Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
+      allColumns.push({ key: columnKey, type: 'system' });
+    });
     
-    // Add system columns section
+    // Create draggable items for core and attribute columns
+    allColumns.forEach((column, index) => {
+      if (column.type !== 'system') {
+        const checkboxContainer = createDraggableColumnItem(column, index);
+        columnCheckboxes.appendChild(checkboxContainer);
+      }
+    });
+    
+    // Add separator for system columns
     const systemSeparator = document.createElement('div');
     systemSeparator.className = 'system-separator';
     systemSeparator.textContent = '— System Fields —';
     columnCheckboxes.appendChild(systemSeparator);
     
+    // Add system columns (non-draggable)
     Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
       const checkboxContainer = document.createElement('div');
       checkboxContainer.className = 'checkbox-container';
@@ -680,6 +681,9 @@ const AttributeManager = (function() {
     
     columnVisibilityContainer.appendChild(columnCheckboxes);
     
+    // Set up drag and drop
+    setupColumnDragAndDrop();
+    
     // Column width controls
     const columnWidthTitle = document.createElement('h5');
     columnWidthTitle.textContent = 'Column Widths:';
@@ -689,7 +693,7 @@ const AttributeManager = (function() {
     columnWidthControls.className = 'column-width-controls';
     
     // Core columns width controls
-    coreColumns.forEach(columnKey => {
+    ['node', 'actions'].forEach(columnKey => {
       const widthContainer = document.createElement('div');
       widthContainer.className = 'width-container';
       
@@ -776,6 +780,124 @@ const AttributeManager = (function() {
     });
     
     columnWidthContainer.appendChild(columnWidthControls);
+  }
+  
+  // Create draggable column item
+  function createDraggableColumnItem(column, index) {
+    const checkboxContainer = document.createElement('div');
+    checkboxContainer.className = 'checkbox-container';
+    checkboxContainer.draggable = true;
+    checkboxContainer.dataset.columnKey = column.key;
+    checkboxContainer.dataset.columnType = column.type;
+    
+    // Drag handle
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'drag-handle';
+    dragHandle.innerHTML = '⋮⋮';
+    dragHandle.title = 'Drag to reorder';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `column-${column.key}`;
+    checkbox.checked = tableViewConfig.visibleColumns[column.key] !== false;
+    checkbox.addEventListener('change', (e) => {
+      tableViewConfig.visibleColumns[column.key] = e.target.checked;
+      saveTableViewConfig();
+    });
+    
+    const label = document.createElement('label');
+    label.htmlFor = `column-${column.key}`;
+    label.textContent = column.type === 'attribute' ? column.key : formatColumnName(column.key);
+    label.className = `${column.type}-column-label`;
+    
+    checkboxContainer.appendChild(dragHandle);
+    checkboxContainer.appendChild(checkbox);
+    checkboxContainer.appendChild(label);
+    
+    return checkboxContainer;
+  }
+  
+  // Set up drag and drop for column reordering
+  function setupColumnDragAndDrop() {
+    const container = document.getElementById('column-checkboxes');
+    if (!container) return;
+    
+    let draggedElement = null;
+    
+    container.addEventListener('dragstart', (e) => {
+      if (e.target.classList.contains('checkbox-container') && e.target.dataset.columnKey) {
+        draggedElement = e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', e.target.outerHTML);
+      }
+    });
+    
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      const afterElement = getDragAfterElement(container, e.clientY);
+      const dragging = document.querySelector('.dragging');
+      
+      if (afterElement == null) {
+        // Find the last non-separator element
+        const items = [...container.querySelectorAll('.checkbox-container:not(.system-separator)')];
+        const lastItem = items[items.length - 1];
+        if (lastItem && lastItem !== dragging) {
+          container.insertBefore(dragging, lastItem.nextSibling);
+        }
+      } else {
+        container.insertBefore(dragging, afterElement);
+      }
+    });
+    
+    container.addEventListener('dragend', (e) => {
+      if (e.target.classList.contains('checkbox-container')) {
+        e.target.classList.remove('dragging');
+        
+        // Update the column order based on new DOM order
+        updateColumnOrderFromDOM();
+        saveTableViewConfig();
+        
+        draggedElement = null;
+      }
+    });
+  }
+  
+  // Get the element after which the dragged element should be inserted
+  function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.checkbox-container:not(.dragging):not(.system-separator)')];
+    
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+  
+  // Update column order based on DOM order
+  function updateColumnOrderFromDOM() {
+    const container = document.getElementById('column-checkboxes');
+    if (!container) return;
+    
+    const newOrder = [];
+    const items = container.querySelectorAll('.checkbox-container[data-column-key]:not(.system-separator)');
+    
+    items.forEach(item => {
+      const columnKey = item.dataset.columnKey;
+      if (columnKey && columnKey !== 'system-separator') {
+        newOrder.push(columnKey);
+      }
+    });
+    
+    tableViewConfig.columnOrder = newOrder;
+    console.log('Updated column order:', newOrder);
   }
   
   // Update table view controls visibility
@@ -1657,18 +1779,19 @@ const AttributeManager = (function() {
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     
-    // Determine which columns to show
+    // Use the configured column order
     const columnsToShow = [];
     
-    // Add core columns
-    if (tableViewConfig.visibleColumns.node !== false) {
-      columnsToShow.push({ key: 'node', type: 'core' });
-    }
-    
-    // Add attribute columns (these are the most important!)
-    discoveredAttributes.forEach(attrKey => {
-      if (tableViewConfig.visibleColumns[attrKey] !== false) {
-        columnsToShow.push({ key: attrKey, type: 'attribute' });
+    // Add columns in the configured order
+    tableViewConfig.columnOrder.forEach(columnKey => {
+      if (columnKey === 'node' || columnKey === 'actions') {
+        if (tableViewConfig.visibleColumns[columnKey] !== false) {
+          columnsToShow.push({ key: columnKey, type: 'core' });
+        }
+      } else if (discoveredAttributes.includes(columnKey)) {
+        if (tableViewConfig.visibleColumns[columnKey] !== false) {
+          columnsToShow.push({ key: columnKey, type: 'attribute' });
+        }
       }
     });
     
@@ -1678,11 +1801,6 @@ const AttributeManager = (function() {
         columnsToShow.push({ key: sysKey, type: 'system' });
       }
     });
-    
-    // Add actions column
-    if (tableViewConfig.visibleColumns.actions !== false) {
-      columnsToShow.push({ key: 'actions', type: 'core' });
-    }
     
     // Create headers
     columnsToShow.forEach(column => {
