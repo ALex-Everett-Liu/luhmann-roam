@@ -673,17 +673,38 @@ const AttributeManager = (function() {
     
     addColumnButton.addEventListener('click', () => {
       const columnName = columnNameInput.value.trim();
+      console.log('Add button clicked with columnName:', columnName);
+      
       if (columnName) {
-        // Check if column already exists in our configuration (not just discovered attributes)
+        // Check if column already exists and is visible in the UI
         const existsInOrder = tableViewConfig.columnOrder.includes(columnName);
         const existsInVisible = tableViewConfig.visibleColumns.hasOwnProperty(columnName);
+        const isInDiscovered = discoveredAttributes.includes(columnName);
         
-        if (!existsInOrder && !existsInVisible) {
+        console.log('Checking existence:', {
+          columnName,
+          existsInOrder,
+          existsInVisible,
+          isInDiscovered,
+          currentOrder: tableViewConfig.columnOrder,
+          currentVisible: Object.keys(tableViewConfig.visibleColumns),
+          discoveredAttributes
+        });
+        
+        // Only prevent adding if it's already visible in the UI
+        const isAlreadyVisible = existsInOrder && existsInVisible && 
+          (isInDiscovered || isCustomAttributeColumn(columnName));
+        
+        if (!isAlreadyVisible) {
+          console.log('Column does not exist or not visible, adding...');
           addCustomAttributeColumn(columnName);
           columnNameInput.value = '';
         } else {
+          console.log('Column already exists and is visible!');
           alert(`Column "${columnName}" already exists!`);
         }
+      } else {
+        console.log('Empty column name');
       }
     });
     
@@ -709,20 +730,36 @@ const AttributeManager = (function() {
     // Create ordered list of all columns
     const allColumns = [];
     
+    console.log('Building column list with:', {
+      columnOrder: tableViewConfig.columnOrder,
+      discoveredAttributes,
+      visibleColumns: tableViewConfig.visibleColumns
+    });
+    
     // Add columns in the configured order
     tableViewConfig.columnOrder.forEach((columnKey, index) => {
+      console.log(`Processing column ${columnKey} at index ${index}`);
+      
       if (columnKey === 'node' || columnKey === 'actions') {
         allColumns.push({ key: columnKey, type: 'core', order: index + 1 });
+        console.log(`Added core column: ${columnKey}`);
       } else if (discoveredAttributes.includes(columnKey) || isCustomAttributeColumn(columnKey)) {
         allColumns.push({ key: columnKey, type: 'attribute', order: index + 1 });
+        console.log(`Added attribute column: ${columnKey}`);
+      } else {
+        console.log(`Skipped column: ${columnKey} (not in discovered or custom)`);
       }
     });
     
+    console.log('Final allColumns:', allColumns);
+    
     // Create items for core and attribute columns
     allColumns.forEach((column) => {
+      console.log(`Creating UI for column: ${column.key}, type: ${column.type}`);
       if (column.type !== 'system') {
         const checkboxContainer = createOrderableColumnItem(column);
         columnCheckboxes.appendChild(checkboxContainer);
+        console.log(`Added UI element for: ${column.key}`);
       }
     });
     
@@ -766,37 +803,24 @@ const AttributeManager = (function() {
     const columnWidthControls = document.createElement('div');
     columnWidthControls.className = 'column-width-controls';
     
-    // Core columns width controls
-    ['node', 'actions'].forEach(columnKey => {
-      const widthContainer = document.createElement('div');
-      widthContainer.className = 'width-container';
-      
-      const label = document.createElement('label');
-      label.textContent = `${formatColumnName(columnKey)}:`;
-      label.className = 'core-column-label';
-      
-      const widthInput = document.createElement('input');
-      widthInput.type = 'number';
-      widthInput.id = `width-${columnKey}`;
-      widthInput.min = '50';
-      widthInput.max = '500';
-      widthInput.value = tableViewConfig.columnWidths[columnKey] || 150;
-      widthInput.addEventListener('change', (e) => {
-        tableViewConfig.columnWidths[columnKey] = parseInt(e.target.value);
-        saveTableViewConfig();
-      });
-      
-      const pxLabel = document.createElement('span');
-      pxLabel.textContent = 'px';
-      
-      widthContainer.appendChild(label);
-      widthContainer.appendChild(widthInput);
-      widthContainer.appendChild(pxLabel);
-      columnWidthControls.appendChild(widthContainer);
+    // Attribute columns width controls - FIXED to include all attribute columns
+    const allAttributeColumns = new Set([...discoveredAttributes]);
+    
+    // Add custom attribute columns from configuration
+    Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
+      if (isCustomAttributeColumn(columnKey)) {
+        allAttributeColumns.add(columnKey);
+      }
     });
     
-    // Attribute columns width controls
-    discoveredAttributes.forEach(attrKey => {
+    // Also add from column order
+    tableViewConfig.columnOrder.forEach(columnKey => {
+      if (columnKey !== 'node' && columnKey !== 'actions' && !Object.keys(tableViewConfig.systemColumns).includes(columnKey)) {
+        allAttributeColumns.add(columnKey);
+      }
+    });
+    
+    Array.from(allAttributeColumns).sort().forEach(attrKey => {
       const widthContainer = document.createElement('div');
       widthContainer.className = 'width-container';
       
@@ -824,71 +848,60 @@ const AttributeManager = (function() {
       columnWidthControls.appendChild(widthContainer);
     });
     
-    // System columns width controls
-    Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
-      const widthContainer = document.createElement('div');
-      widthContainer.className = 'width-container';
-      
-      const label = document.createElement('label');
-      label.textContent = `${formatColumnName(columnKey)}:`;
-      label.className = 'system-column-label';
-      
-      const widthInput = document.createElement('input');
-      widthInput.type = 'number';
-      widthInput.id = `width-${columnKey}`;
-      widthInput.min = '50';
-      widthInput.max = '500';
-      widthInput.value = tableViewConfig.systemColumnWidths[columnKey] || 100;
-      widthInput.addEventListener('change', (e) => {
-        tableViewConfig.systemColumnWidths[columnKey] = parseInt(e.target.value);
-        saveTableViewConfig();
-      });
-      
-      const pxLabel = document.createElement('span');
-      pxLabel.textContent = 'px';
-      
-      widthContainer.appendChild(label);
-      widthContainer.appendChild(widthInput);
-      widthContainer.appendChild(pxLabel);
-      columnWidthControls.appendChild(widthContainer);
-    });
-    
     columnWidthContainer.appendChild(columnWidthControls);
   }
   
-  // Add custom attribute column (fixed to allow any attribute)
+  // Add custom attribute column (enhanced debugging)
   function addCustomAttributeColumn(columnName) {
+    console.log('Adding custom attribute column:', columnName);
+    console.log('Current discoveredAttributes:', discoveredAttributes);
+    console.log('Current columnOrder:', tableViewConfig.columnOrder);
+    console.log('Current visibleColumns:', tableViewConfig.visibleColumns);
+    
     // Add to discovered attributes if not already there (this helps with rendering)
     if (!discoveredAttributes.includes(columnName)) {
       discoveredAttributes.push(columnName);
       discoveredAttributes.sort(); // Keep alphabetical order
+      console.log('Added to discoveredAttributes:', discoveredAttributes);
     }
     
     // Initialize visibility and width settings
     if (!(columnName in tableViewConfig.visibleColumns)) {
       tableViewConfig.visibleColumns[columnName] = true;
+      console.log('Set visibility to true for:', columnName);
     }
     if (!(columnName in tableViewConfig.columnWidths)) {
       tableViewConfig.columnWidths[columnName] = 150;
+      console.log('Set width to 150 for:', columnName);
     }
     
     // Add to column order (insert before 'actions')
     const currentOrder = [...tableViewConfig.columnOrder];
-    const actionsIndex = currentOrder.indexOf('actions');
-    if (actionsIndex !== -1) {
-      currentOrder.splice(actionsIndex, 0, columnName);
-    } else {
-      currentOrder.push(columnName);
+    if (!currentOrder.includes(columnName)) {
+      const actionsIndex = currentOrder.indexOf('actions');
+      if (actionsIndex !== -1) {
+        currentOrder.splice(actionsIndex, 0, columnName);
+      } else {
+        currentOrder.push(columnName);
+      }
+      tableViewConfig.columnOrder = currentOrder;
+      console.log('Updated columnOrder:', currentOrder);
     }
-    tableViewConfig.columnOrder = currentOrder;
     
     // Save configuration
     saveTableViewConfig();
+    console.log('Saved configuration');
     
     // Refresh the controls
     updateTableViewControlsWithAttributes();
+    console.log('Refreshed controls');
     
-    console.log('Added custom attribute column:', columnName);
+    console.log('Final state after adding:', {
+      discoveredAttributes,
+      columnOrder: tableViewConfig.columnOrder,
+      visibleColumns: tableViewConfig.visibleColumns,
+      columnWidths: tableViewConfig.columnWidths
+    });
   }
   
   // Check if a column is a custom attribute column (not discovered from current results)
