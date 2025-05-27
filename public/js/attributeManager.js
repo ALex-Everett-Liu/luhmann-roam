@@ -620,6 +620,88 @@ const AttributeManager = (function() {
     columnVisibilityTitle.textContent = 'Visible Columns (set order numbers):';
     columnVisibilityContainer.appendChild(columnVisibilityTitle);
     
+    // Add manual column addition section
+    const addColumnSection = document.createElement('div');
+    addColumnSection.className = 'add-column-section';
+    addColumnSection.style.marginBottom = '15px';
+    addColumnSection.style.padding = '10px';
+    addColumnSection.style.backgroundColor = '#f8f9fa';
+    addColumnSection.style.borderRadius = '4px';
+    addColumnSection.style.border = '1px solid #dee2e6';
+    
+    const addColumnTitle = document.createElement('h6');
+    addColumnTitle.textContent = 'Add Custom Attribute Column:';
+    addColumnTitle.style.fontSize = '12px';
+    addColumnTitle.style.marginBottom = '8px';
+    addColumnTitle.style.color = '#495057';
+    
+    const addColumnForm = document.createElement('div');
+    addColumnForm.style.display = 'flex';
+    addColumnForm.style.gap = '8px';
+    addColumnForm.style.alignItems = 'center';
+    
+    const columnNameInput = document.createElement('input');
+    columnNameInput.type = 'text';
+    columnNameInput.placeholder = 'Attribute name (e.g., type, rating)';
+    columnNameInput.style.flex = '1';
+    columnNameInput.style.padding = '4px 8px';
+    columnNameInput.style.border = '1px solid #ced4da';
+    columnNameInput.style.borderRadius = '3px';
+    columnNameInput.style.fontSize = '12px';
+    columnNameInput.id = 'custom-column-input';
+    
+    // Add datalist for suggestions
+    const suggestionsList = document.createElement('datalist');
+    suggestionsList.id = 'column-suggestions';
+    commonAttributes.forEach(attr => {
+      const option = document.createElement('option');
+      option.value = attr;
+      suggestionsList.appendChild(option);
+    });
+    columnNameInput.setAttribute('list', 'column-suggestions');
+    
+    const addColumnButton = document.createElement('button');
+    addColumnButton.type = 'button';
+    addColumnButton.textContent = 'Add';
+    addColumnButton.style.padding = '4px 12px';
+    addColumnButton.style.fontSize = '12px';
+    addColumnButton.style.backgroundColor = '#007bff';
+    addColumnButton.style.color = 'white';
+    addColumnButton.style.border = 'none';
+    addColumnButton.style.borderRadius = '3px';
+    addColumnButton.style.cursor = 'pointer';
+    
+    addColumnButton.addEventListener('click', () => {
+      const columnName = columnNameInput.value.trim();
+      if (columnName) {
+        // Check if column already exists in our configuration (not just discovered attributes)
+        const existsInOrder = tableViewConfig.columnOrder.includes(columnName);
+        const existsInVisible = tableViewConfig.visibleColumns.hasOwnProperty(columnName);
+        
+        if (!existsInOrder && !existsInVisible) {
+          addCustomAttributeColumn(columnName);
+          columnNameInput.value = '';
+        } else {
+          alert(`Column "${columnName}" already exists!`);
+        }
+      }
+    });
+    
+    // Allow Enter key to add column
+    columnNameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addColumnButton.click();
+      }
+    });
+    
+    addColumnForm.appendChild(columnNameInput);
+    addColumnForm.appendChild(suggestionsList);
+    addColumnForm.appendChild(addColumnButton);
+    
+    addColumnSection.appendChild(addColumnTitle);
+    addColumnSection.appendChild(addColumnForm);
+    columnVisibilityContainer.appendChild(addColumnSection);
+    
     const columnCheckboxes = document.createElement('div');
     columnCheckboxes.className = 'column-checkboxes';
     columnCheckboxes.id = 'column-checkboxes';
@@ -631,7 +713,7 @@ const AttributeManager = (function() {
     tableViewConfig.columnOrder.forEach((columnKey, index) => {
       if (columnKey === 'node' || columnKey === 'actions') {
         allColumns.push({ key: columnKey, type: 'core', order: index + 1 });
-      } else if (discoveredAttributes.includes(columnKey)) {
+      } else if (discoveredAttributes.includes(columnKey) || isCustomAttributeColumn(columnKey)) {
         allColumns.push({ key: columnKey, type: 'attribute', order: index + 1 });
       }
     });
@@ -774,7 +856,49 @@ const AttributeManager = (function() {
     columnWidthContainer.appendChild(columnWidthControls);
   }
   
-  // Create orderable column item (replaces createDraggableColumnItem)
+  // Add custom attribute column (fixed to allow any attribute)
+  function addCustomAttributeColumn(columnName) {
+    // Add to discovered attributes if not already there (this helps with rendering)
+    if (!discoveredAttributes.includes(columnName)) {
+      discoveredAttributes.push(columnName);
+      discoveredAttributes.sort(); // Keep alphabetical order
+    }
+    
+    // Initialize visibility and width settings
+    if (!(columnName in tableViewConfig.visibleColumns)) {
+      tableViewConfig.visibleColumns[columnName] = true;
+    }
+    if (!(columnName in tableViewConfig.columnWidths)) {
+      tableViewConfig.columnWidths[columnName] = 150;
+    }
+    
+    // Add to column order (insert before 'actions')
+    const currentOrder = [...tableViewConfig.columnOrder];
+    const actionsIndex = currentOrder.indexOf('actions');
+    if (actionsIndex !== -1) {
+      currentOrder.splice(actionsIndex, 0, columnName);
+    } else {
+      currentOrder.push(columnName);
+    }
+    tableViewConfig.columnOrder = currentOrder;
+    
+    // Save configuration
+    saveTableViewConfig();
+    
+    // Refresh the controls
+    updateTableViewControlsWithAttributes();
+    
+    console.log('Added custom attribute column:', columnName);
+  }
+  
+  // Check if a column is a custom attribute column (not discovered from current results)
+  function isCustomAttributeColumn(columnKey) {
+    return tableViewConfig.visibleColumns.hasOwnProperty(columnKey) && 
+           !['node', 'actions'].includes(columnKey) &&
+           !Object.keys(tableViewConfig.systemColumns).includes(columnKey);
+  }
+  
+  // Create orderable column item (updated to handle custom columns)
   function createOrderableColumnItem(column) {
     const checkboxContainer = document.createElement('div');
     checkboxContainer.className = 'checkbox-container';
@@ -807,11 +931,59 @@ const AttributeManager = (function() {
     label.textContent = column.type === 'attribute' ? column.key : formatColumnName(column.key);
     label.className = `${column.type}-column-label`;
     
-    checkboxContainer.appendChild(orderInput);
-    checkboxContainer.appendChild(checkbox);
-    checkboxContainer.appendChild(label);
+    // Add remove button for custom attribute columns
+    if (column.type === 'attribute' && !discoveredAttributes.includes(column.key)) {
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.innerHTML = '×';
+      removeButton.title = 'Remove custom column';
+      removeButton.style.marginLeft = '8px';
+      removeButton.style.padding = '2px 6px';
+      removeButton.style.fontSize = '12px';
+      removeButton.style.backgroundColor = '#dc3545';
+      removeButton.style.color = 'white';
+      removeButton.style.border = 'none';
+      removeButton.style.borderRadius = '3px';
+      removeButton.style.cursor = 'pointer';
+      
+      removeButton.addEventListener('click', () => {
+        removeCustomAttributeColumn(column.key);
+      });
+      
+      checkboxContainer.appendChild(orderInput);
+      checkboxContainer.appendChild(checkbox);
+      checkboxContainer.appendChild(label);
+      checkboxContainer.appendChild(removeButton);
+    } else {
+      checkboxContainer.appendChild(orderInput);
+      checkboxContainer.appendChild(checkbox);
+      checkboxContainer.appendChild(label);
+    }
     
     return checkboxContainer;
+  }
+  
+  // Remove custom attribute column
+  function removeCustomAttributeColumn(columnKey) {
+    // Remove from column order
+    const currentOrder = [...tableViewConfig.columnOrder];
+    const index = currentOrder.indexOf(columnKey);
+    if (index !== -1) {
+      currentOrder.splice(index, 1);
+      tableViewConfig.columnOrder = currentOrder;
+    }
+    
+    // Remove from visibility and width settings
+    delete tableViewConfig.visibleColumns[columnKey];
+    delete tableViewConfig.columnWidths[columnKey];
+    
+    // Save configuration
+    saveTableViewConfig();
+    
+    // Refresh the controls
+    updateTableViewControlsWithAttributes();
+    
+    console.log('Removed custom attribute column:', columnKey);
   }
   
   // Update column order based on order number input
@@ -1708,7 +1880,7 @@ const AttributeManager = (function() {
     container.appendChild(table);
   }
   
-  // Render enhanced table view with dynamic attribute columns
+  // Render enhanced table view with dynamic attribute columns (updated to handle custom columns)
   function renderEnhancedTableView(results, container) {
     // Create the enhanced results table
     const table = document.createElement('table');
@@ -1727,7 +1899,7 @@ const AttributeManager = (function() {
         if (tableViewConfig.visibleColumns[columnKey] !== false) {
           columnsToShow.push({ key: columnKey, type: 'core' });
         }
-      } else if (discoveredAttributes.includes(columnKey)) {
+      } else if (discoveredAttributes.includes(columnKey) || isCustomAttributeColumn(columnKey)) {
         if (tableViewConfig.visibleColumns[columnKey] !== false) {
           columnsToShow.push({ key: columnKey, type: 'attribute' });
         }

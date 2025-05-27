@@ -765,3 +765,26 @@
   border-color: #1976d2;
   outline: none;
 }
+
+/* Add column section styles */
+.add-column-section h6 {
+  margin: 0 0 8px 0;
+  font-weight: bold;
+}
+
+.add-column-section input[type="text"] {
+  font-family: inherit;
+}
+
+.add-column-section button:hover {
+  background-color: #0056b3 !important;
+}
+
+/* Custom column remove button */
+.checkbox-container button {
+  transition: background-color 0.2s;
+}
+
+.checkbox-container button:hover {
+  background-color: #c82333 !important;
+}
