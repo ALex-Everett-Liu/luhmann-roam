@@ -617,7 +617,7 @@ const AttributeManager = (function() {
     
     // Column visibility controls
     const columnVisibilityTitle = document.createElement('h5');
-    columnVisibilityTitle.textContent = 'Visible Columns (drag to reorder):';
+    columnVisibilityTitle.textContent = 'Visible Columns (set order numbers):';
     columnVisibilityContainer.appendChild(columnVisibilityTitle);
     
     const columnCheckboxes = document.createElement('div');
@@ -628,23 +628,18 @@ const AttributeManager = (function() {
     const allColumns = [];
     
     // Add columns in the configured order
-    tableViewConfig.columnOrder.forEach(columnKey => {
+    tableViewConfig.columnOrder.forEach((columnKey, index) => {
       if (columnKey === 'node' || columnKey === 'actions') {
-        allColumns.push({ key: columnKey, type: 'core' });
+        allColumns.push({ key: columnKey, type: 'core', order: index + 1 });
       } else if (discoveredAttributes.includes(columnKey)) {
-        allColumns.push({ key: columnKey, type: 'attribute' });
+        allColumns.push({ key: columnKey, type: 'attribute', order: index + 1 });
       }
     });
     
-    // Add system columns at the end
-    Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
-      allColumns.push({ key: columnKey, type: 'system' });
-    });
-    
-    // Create draggable items for core and attribute columns
-    allColumns.forEach((column, index) => {
+    // Create items for core and attribute columns
+    allColumns.forEach((column) => {
       if (column.type !== 'system') {
-        const checkboxContainer = createDraggableColumnItem(column, index);
+        const checkboxContainer = createOrderableColumnItem(column);
         columnCheckboxes.appendChild(checkboxContainer);
       }
     });
@@ -655,7 +650,7 @@ const AttributeManager = (function() {
     systemSeparator.textContent = '— System Fields —';
     columnCheckboxes.appendChild(systemSeparator);
     
-    // Add system columns (non-draggable)
+    // Add system columns (no ordering)
     Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
       const checkboxContainer = document.createElement('div');
       checkboxContainer.className = 'checkbox-container';
@@ -680,9 +675,6 @@ const AttributeManager = (function() {
     });
     
     columnVisibilityContainer.appendChild(columnCheckboxes);
-    
-    // Set up drag and drop
-    setupColumnDragAndDrop();
     
     // Column width controls
     const columnWidthTitle = document.createElement('h5');
@@ -782,19 +774,24 @@ const AttributeManager = (function() {
     columnWidthContainer.appendChild(columnWidthControls);
   }
   
-  // Create draggable column item
-  function createDraggableColumnItem(column, index) {
+  // Create orderable column item (replaces createDraggableColumnItem)
+  function createOrderableColumnItem(column) {
     const checkboxContainer = document.createElement('div');
     checkboxContainer.className = 'checkbox-container';
-    checkboxContainer.draggable = true;
     checkboxContainer.dataset.columnKey = column.key;
     checkboxContainer.dataset.columnType = column.type;
     
-    // Drag handle
-    const dragHandle = document.createElement('span');
-    dragHandle.className = 'drag-handle';
-    dragHandle.innerHTML = '⋮⋮';
-    dragHandle.title = 'Drag to reorder';
+    // Order number input
+    const orderInput = document.createElement('input');
+    orderInput.type = 'number';
+    orderInput.className = 'order-input';
+    orderInput.min = '1';
+    orderInput.max = '99';
+    orderInput.value = column.order;
+    orderInput.title = 'Column order (1 = first)';
+    orderInput.addEventListener('change', (e) => {
+      updateColumnOrder(column.key, parseInt(e.target.value));
+    });
     
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -810,94 +807,36 @@ const AttributeManager = (function() {
     label.textContent = column.type === 'attribute' ? column.key : formatColumnName(column.key);
     label.className = `${column.type}-column-label`;
     
-    checkboxContainer.appendChild(dragHandle);
+    checkboxContainer.appendChild(orderInput);
     checkboxContainer.appendChild(checkbox);
     checkboxContainer.appendChild(label);
     
     return checkboxContainer;
   }
   
-  // Set up drag and drop for column reordering
-  function setupColumnDragAndDrop() {
-    const container = document.getElementById('column-checkboxes');
-    if (!container) return;
+  // Update column order based on order number input
+  function updateColumnOrder(columnKey, newOrder) {
+    // Get current order array
+    const currentOrder = [...tableViewConfig.columnOrder];
     
-    let draggedElement = null;
+    // Remove the column from its current position
+    const currentIndex = currentOrder.indexOf(columnKey);
+    if (currentIndex !== -1) {
+      currentOrder.splice(currentIndex, 1);
+    }
     
-    container.addEventListener('dragstart', (e) => {
-      if (e.target.classList.contains('checkbox-container') && e.target.dataset.columnKey) {
-        draggedElement = e.target;
-        e.target.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', e.target.outerHTML);
-      }
-    });
+    // Insert at new position (convert to 0-based index)
+    const insertIndex = Math.max(0, Math.min(newOrder - 1, currentOrder.length));
+    currentOrder.splice(insertIndex, 0, columnKey);
     
-    container.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      
-      const afterElement = getDragAfterElement(container, e.clientY);
-      const dragging = document.querySelector('.dragging');
-      
-      if (afterElement == null) {
-        // Find the last non-separator element
-        const items = [...container.querySelectorAll('.checkbox-container:not(.system-separator)')];
-        const lastItem = items[items.length - 1];
-        if (lastItem && lastItem !== dragging) {
-          container.insertBefore(dragging, lastItem.nextSibling);
-        }
-      } else {
-        container.insertBefore(dragging, afterElement);
-      }
-    });
+    // Update the configuration
+    tableViewConfig.columnOrder = currentOrder;
+    saveTableViewConfig();
     
-    container.addEventListener('dragend', (e) => {
-      if (e.target.classList.contains('checkbox-container')) {
-        e.target.classList.remove('dragging');
-        
-        // Update the column order based on new DOM order
-        updateColumnOrderFromDOM();
-        saveTableViewConfig();
-        
-        draggedElement = null;
-      }
-    });
-  }
-  
-  // Get the element after which the dragged element should be inserted
-  function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('.checkbox-container:not(.dragging):not(.system-separator)')];
+    // Refresh the controls to show updated order numbers
+    updateTableViewControlsWithAttributes();
     
-    return draggableElements.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      
-      if (offset < 0 && offset > closest.offset) {
-        return { offset: offset, element: child };
-      } else {
-        return closest;
-      }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-  }
-  
-  // Update column order based on DOM order
-  function updateColumnOrderFromDOM() {
-    const container = document.getElementById('column-checkboxes');
-    if (!container) return;
-    
-    const newOrder = [];
-    const items = container.querySelectorAll('.checkbox-container[data-column-key]:not(.system-separator)');
-    
-    items.forEach(item => {
-      const columnKey = item.dataset.columnKey;
-      if (columnKey && columnKey !== 'system-separator') {
-        newOrder.push(columnKey);
-      }
-    });
-    
-    tableViewConfig.columnOrder = newOrder;
-    console.log('Updated column order:', newOrder);
+    console.log('Updated column order:', currentOrder);
   }
   
   // Update table view controls visibility
@@ -1820,14 +1759,6 @@ const AttributeManager = (function() {
       header.style.width = `${width}px`;
       header.className = `column-${column.key} column-type-${column.type}`;
       
-      // Add resize handle
-      const resizeHandle = document.createElement('div');
-      resizeHandle.className = 'column-resize-handle';
-      resizeHandle.addEventListener('mousedown', (e) => {
-        startColumnResize(e, column.key, header, column.type);
-      });
-      header.appendChild(resizeHandle);
-      
       headerRow.appendChild(header);
     });
     
@@ -1938,49 +1869,6 @@ const AttributeManager = (function() {
     
     table.appendChild(tbody);
     container.appendChild(table);
-  }
-  
-  // Start column resize - updated to handle different column types
-  function startColumnResize(e, columnKey, headerElement, columnType) {
-    e.preventDefault();
-    
-    const startX = e.clientX;
-    const startWidth = parseInt(getComputedStyle(headerElement).width);
-    
-    function doResize(e) {
-      const newWidth = Math.max(50, startWidth + e.clientX - startX);
-      headerElement.style.width = `${newWidth}px`;
-      
-      // Update all cells in this column
-      const cells = document.querySelectorAll(`.column-${columnKey}`);
-      cells.forEach(cell => {
-        cell.style.width = `${newWidth}px`;
-      });
-      
-      // Update config based on column type
-      if (columnType === 'system') {
-        tableViewConfig.systemColumnWidths[columnKey] = newWidth;
-      } else {
-        tableViewConfig.columnWidths[columnKey] = newWidth;
-      }
-      
-      // Update the width input if it exists
-      const widthInput = document.getElementById(`width-${columnKey}`);
-      if (widthInput) {
-        widthInput.value = newWidth;
-      }
-    }
-    
-    function stopResize() {
-      document.removeEventListener('mousemove', doResize);
-      document.removeEventListener('mouseup', stopResize);
-      
-      // Save the configuration
-      saveTableViewConfig();
-    }
-    
-    document.addEventListener('mousemove', doResize);
-    document.addEventListener('mouseup', stopResize);
   }
   
   // Helper function to change the page

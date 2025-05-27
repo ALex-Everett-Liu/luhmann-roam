@@ -731,6 +731,7 @@
   }
 
 /* Column reordering styles */
+/* Column ordering controls - replace drag styles with order number inputs */
 .column-checkboxes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -743,7 +744,6 @@
   gap: 6px;
   padding: 4px 8px;
   border-radius: 4px;
-  cursor: move;
   transition: background-color 0.2s;
 }
 
@@ -751,23 +751,17 @@
   background-color: #f5f5f5;
 }
 
-.checkbox-container.dragging {
-  opacity: 0.5;
-  background-color: #e3f2fd;
-}
-
-.checkbox-container.drag-over {
-  background-color: #bbdefb;
-  border: 2px dashed #1976d2;
-}
-
-.drag-handle {
-  cursor: grab;
-  color: #999;
-  font-size: 12px;
+.order-input {
+  width: 40px;
+  padding: 2px 4px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 11px;
+  text-align: center;
   margin-right: 4px;
 }
 
-.drag-handle:active {
-  cursor: grabbing;
+.order-input:focus {
+  border-color: #1976d2;
+  outline: none;
 }
