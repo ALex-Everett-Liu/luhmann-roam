@@ -17,23 +17,31 @@ const AttributeManager = (function() {
     viewMode: 'original', // 'original' or 'table'
     visibleColumns: {
       node: true,
-      id: false,
-      created_at: false,
-      updated_at: false,
-      sequence_id: false,
-      attributes: true,
+      // Dynamic attribute columns will be added here
       actions: true
     },
     columnWidths: {
       node: 200,
+      // Dynamic attribute column widths will be added here
+      actions: 120
+    },
+    // System columns that can be optionally shown
+    systemColumns: {
+      id: false,
+      created_at: false,
+      updated_at: false,
+      sequence_id: false
+    },
+    systemColumnWidths: {
       id: 100,
       created_at: 120,
       updated_at: 120,
-      sequence_id: 80,
-      attributes: 300,
-      actions: 120
+      sequence_id: 80
     }
   };
+  
+  // Store discovered attribute keys from current results
+  let discoveredAttributes = [];
   
   // Common attribute keys for autocompletion
   const commonAttributes = [
@@ -85,6 +93,33 @@ const AttributeManager = (function() {
     } catch (e) {
       console.error('Error saving table view config:', e);
     }
+  }
+  
+  // Discover unique attributes from query results
+  function discoverAttributesFromResults(results) {
+    const attributeSet = new Set();
+    
+    results.forEach(node => {
+      if (node.attributes && node.attributes.length > 0) {
+        node.attributes.forEach(attr => {
+          attributeSet.add(attr.key);
+        });
+      }
+    });
+    
+    discoveredAttributes = Array.from(attributeSet).sort();
+    
+    // Initialize visibility and width settings for new attributes
+    discoveredAttributes.forEach(attrKey => {
+      if (!(attrKey in tableViewConfig.visibleColumns)) {
+        tableViewConfig.visibleColumns[attrKey] = true; // Show new attributes by default
+      }
+      if (!(attrKey in tableViewConfig.columnWidths)) {
+        tableViewConfig.columnWidths[attrKey] = 150; // Default width for attribute columns
+      }
+    });
+    
+    console.log('Discovered attributes:', discoveredAttributes);
   }
   
   // Set up lazy button addition on hover
@@ -516,26 +551,58 @@ const AttributeManager = (function() {
     viewModeContainer.appendChild(viewModeLabel);
     viewModeContainer.appendChild(viewModeSelect);
     
-    // Column visibility controls
+    // Column visibility controls container (will be populated dynamically)
     const columnVisibilityContainer = document.createElement('div');
     columnVisibilityContainer.className = 'column-visibility-container';
     columnVisibilityContainer.id = 'column-visibility-container';
     
+    // Column width controls container (will be populated dynamically)
+    const columnWidthContainer = document.createElement('div');
+    columnWidthContainer.className = 'column-width-container';
+    columnWidthContainer.id = 'column-width-container';
+    
+    tableViewControls.appendChild(viewModeContainer);
+    tableViewControls.appendChild(columnVisibilityContainer);
+    tableViewControls.appendChild(columnWidthContainer);
+    
+    tableViewSection.appendChild(tableViewTitle);
+    tableViewSection.appendChild(tableViewControls);
+    
+    // Initially update visibility
+    updateTableViewControls();
+    
+    return tableViewSection;
+  }
+  
+  // Update table view controls with discovered attributes
+  function updateTableViewControlsWithAttributes() {
+    const columnVisibilityContainer = document.getElementById('column-visibility-container');
+    const columnWidthContainer = document.getElementById('column-width-container');
+    
+    if (!columnVisibilityContainer || !columnWidthContainer) return;
+    
+    // Clear existing content
+    columnVisibilityContainer.innerHTML = '';
+    columnWidthContainer.innerHTML = '';
+    
+    // Column visibility controls
     const columnVisibilityTitle = document.createElement('h5');
     columnVisibilityTitle.textContent = 'Visible Columns:';
+    columnVisibilityContainer.appendChild(columnVisibilityTitle);
     
     const columnCheckboxes = document.createElement('div');
     columnCheckboxes.className = 'column-checkboxes';
     
-    // Create checkboxes for each column
-    Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
+    // Add core columns first
+    const coreColumns = ['node', 'actions'];
+    coreColumns.forEach(columnKey => {
       const checkboxContainer = document.createElement('div');
       checkboxContainer.className = 'checkbox-container';
       
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.id = `column-${columnKey}`;
-      checkbox.checked = tableViewConfig.visibleColumns[columnKey];
+      checkbox.checked = tableViewConfig.visibleColumns[columnKey] !== false;
       checkbox.addEventListener('change', (e) => {
         tableViewConfig.visibleColumns[columnKey] = e.target.checked;
         saveTableViewConfig();
@@ -544,40 +611,98 @@ const AttributeManager = (function() {
       const label = document.createElement('label');
       label.htmlFor = `column-${columnKey}`;
       label.textContent = formatColumnName(columnKey);
+      label.className = 'core-column-label';
       
       checkboxContainer.appendChild(checkbox);
       checkboxContainer.appendChild(label);
       columnCheckboxes.appendChild(checkboxContainer);
     });
     
-    columnVisibilityContainer.appendChild(columnVisibilityTitle);
+    // Add discovered attribute columns
+    if (discoveredAttributes.length > 0) {
+      const attributesSeparator = document.createElement('div');
+      attributesSeparator.className = 'attributes-separator';
+      attributesSeparator.textContent = '— Attributes —';
+      columnCheckboxes.appendChild(attributesSeparator);
+      
+      discoveredAttributes.forEach(attrKey => {
+        const checkboxContainer = document.createElement('div');
+        checkboxContainer.className = 'checkbox-container';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `column-${attrKey}`;
+        checkbox.checked = tableViewConfig.visibleColumns[attrKey] !== false;
+        checkbox.addEventListener('change', (e) => {
+          tableViewConfig.visibleColumns[attrKey] = e.target.checked;
+          saveTableViewConfig();
+        });
+        
+        const label = document.createElement('label');
+        label.htmlFor = `column-${attrKey}`;
+        label.textContent = attrKey;
+        label.className = 'attribute-column-label';
+        
+        checkboxContainer.appendChild(checkbox);
+        checkboxContainer.appendChild(label);
+        columnCheckboxes.appendChild(checkboxContainer);
+      });
+    }
+    
+    // Add system columns section
+    const systemSeparator = document.createElement('div');
+    systemSeparator.className = 'system-separator';
+    systemSeparator.textContent = '— System Fields —';
+    columnCheckboxes.appendChild(systemSeparator);
+    
+    Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
+      const checkboxContainer = document.createElement('div');
+      checkboxContainer.className = 'checkbox-container';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `column-${columnKey}`;
+      checkbox.checked = tableViewConfig.systemColumns[columnKey];
+      checkbox.addEventListener('change', (e) => {
+        tableViewConfig.systemColumns[columnKey] = e.target.checked;
+        saveTableViewConfig();
+      });
+      
+      const label = document.createElement('label');
+      label.htmlFor = `column-${columnKey}`;
+      label.textContent = formatColumnName(columnKey);
+      label.className = 'system-column-label';
+      
+      checkboxContainer.appendChild(checkbox);
+      checkboxContainer.appendChild(label);
+      columnCheckboxes.appendChild(checkboxContainer);
+    });
+    
     columnVisibilityContainer.appendChild(columnCheckboxes);
     
     // Column width controls
-    const columnWidthContainer = document.createElement('div');
-    columnWidthContainer.className = 'column-width-container';
-    columnWidthContainer.id = 'column-width-container';
-    
     const columnWidthTitle = document.createElement('h5');
     columnWidthTitle.textContent = 'Column Widths:';
+    columnWidthContainer.appendChild(columnWidthTitle);
     
     const columnWidthControls = document.createElement('div');
     columnWidthControls.className = 'column-width-controls';
     
-    // Create width controls for each column
-    Object.keys(tableViewConfig.columnWidths).forEach(columnKey => {
+    // Core columns width controls
+    coreColumns.forEach(columnKey => {
       const widthContainer = document.createElement('div');
       widthContainer.className = 'width-container';
       
       const label = document.createElement('label');
       label.textContent = `${formatColumnName(columnKey)}:`;
+      label.className = 'core-column-label';
       
       const widthInput = document.createElement('input');
       widthInput.type = 'number';
       widthInput.id = `width-${columnKey}`;
       widthInput.min = '50';
       widthInput.max = '500';
-      widthInput.value = tableViewConfig.columnWidths[columnKey];
+      widthInput.value = tableViewConfig.columnWidths[columnKey] || 150;
       widthInput.addEventListener('change', (e) => {
         tableViewConfig.columnWidths[columnKey] = parseInt(e.target.value);
         saveTableViewConfig();
@@ -592,20 +717,65 @@ const AttributeManager = (function() {
       columnWidthControls.appendChild(widthContainer);
     });
     
-    columnWidthContainer.appendChild(columnWidthTitle);
+    // Attribute columns width controls
+    discoveredAttributes.forEach(attrKey => {
+      const widthContainer = document.createElement('div');
+      widthContainer.className = 'width-container';
+      
+      const label = document.createElement('label');
+      label.textContent = `${attrKey}:`;
+      label.className = 'attribute-column-label';
+      
+      const widthInput = document.createElement('input');
+      widthInput.type = 'number';
+      widthInput.id = `width-${attrKey}`;
+      widthInput.min = '50';
+      widthInput.max = '500';
+      widthInput.value = tableViewConfig.columnWidths[attrKey] || 150;
+      widthInput.addEventListener('change', (e) => {
+        tableViewConfig.columnWidths[attrKey] = parseInt(e.target.value);
+        saveTableViewConfig();
+      });
+      
+      const pxLabel = document.createElement('span');
+      pxLabel.textContent = 'px';
+      
+      widthContainer.appendChild(label);
+      widthContainer.appendChild(widthInput);
+      widthContainer.appendChild(pxLabel);
+      columnWidthControls.appendChild(widthContainer);
+    });
+    
+    // System columns width controls
+    Object.keys(tableViewConfig.systemColumns).forEach(columnKey => {
+      const widthContainer = document.createElement('div');
+      widthContainer.className = 'width-container';
+      
+      const label = document.createElement('label');
+      label.textContent = `${formatColumnName(columnKey)}:`;
+      label.className = 'system-column-label';
+      
+      const widthInput = document.createElement('input');
+      widthInput.type = 'number';
+      widthInput.id = `width-${columnKey}`;
+      widthInput.min = '50';
+      widthInput.max = '500';
+      widthInput.value = tableViewConfig.systemColumnWidths[columnKey] || 100;
+      widthInput.addEventListener('change', (e) => {
+        tableViewConfig.systemColumnWidths[columnKey] = parseInt(e.target.value);
+        saveTableViewConfig();
+      });
+      
+      const pxLabel = document.createElement('span');
+      pxLabel.textContent = 'px';
+      
+      widthContainer.appendChild(label);
+      widthContainer.appendChild(widthInput);
+      widthContainer.appendChild(pxLabel);
+      columnWidthControls.appendChild(widthContainer);
+    });
+    
     columnWidthContainer.appendChild(columnWidthControls);
-    
-    tableViewControls.appendChild(viewModeContainer);
-    tableViewControls.appendChild(columnVisibilityContainer);
-    tableViewControls.appendChild(columnWidthContainer);
-    
-    tableViewSection.appendChild(tableViewTitle);
-    tableViewSection.appendChild(tableViewControls);
-    
-    // Initially update visibility
-    updateTableViewControls();
-    
-    return tableViewSection;
   }
   
   // Update table view controls visibility
@@ -628,7 +798,6 @@ const AttributeManager = (function() {
       created_at: 'Created',
       updated_at: 'Updated',
       sequence_id: 'Sequence ID',
-      attributes: 'Attributes',
       actions: 'Actions'
     };
     return nameMap[columnKey] || columnKey;
@@ -1317,6 +1486,10 @@ const AttributeManager = (function() {
     paginationInfo.textContent = `Showing ${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.totalResults)} of ${pagination.totalResults} results`;
     resultsContainer.appendChild(paginationInfo);
     
+    // Discover attributes from results and update controls
+    discoverAttributesFromResults(results);
+    updateTableViewControlsWithAttributes();
+    
     // Render based on view mode
     if (tableViewConfig.viewMode === 'table') {
       renderEnhancedTableView(results, resultsContainer);
@@ -1455,7 +1628,7 @@ const AttributeManager = (function() {
       
       const attrButton = document.createElement('button');
       attrButton.className = 'btn-small';
-      attrButton.textContent = 'Attributes';
+      attrButton.textContent = 'Edit';
       attrButton.addEventListener('click', () => {
         openModal(node.id);
       });
@@ -1474,7 +1647,7 @@ const AttributeManager = (function() {
     container.appendChild(table);
   }
   
-  // Render enhanced table view with customizable columns
+  // Render enhanced table view with dynamic attribute columns
   function renderEnhancedTableView(results, container) {
     // Create the enhanced results table
     const table = document.createElement('table');
@@ -1484,24 +1657,60 @@ const AttributeManager = (function() {
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     
-    // Add headers for visible columns
-    Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
-      if (tableViewConfig.visibleColumns[columnKey]) {
-        const header = document.createElement('th');
-        header.textContent = formatColumnName(columnKey);
-        header.style.width = `${tableViewConfig.columnWidths[columnKey]}px`;
-        header.className = `column-${columnKey}`;
-        
-        // Add resize handle
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'column-resize-handle';
-        resizeHandle.addEventListener('mousedown', (e) => {
-          startColumnResize(e, columnKey, header);
-        });
-        header.appendChild(resizeHandle);
-        
-        headerRow.appendChild(header);
+    // Determine which columns to show
+    const columnsToShow = [];
+    
+    // Add core columns
+    if (tableViewConfig.visibleColumns.node !== false) {
+      columnsToShow.push({ key: 'node', type: 'core' });
+    }
+    
+    // Add attribute columns (these are the most important!)
+    discoveredAttributes.forEach(attrKey => {
+      if (tableViewConfig.visibleColumns[attrKey] !== false) {
+        columnsToShow.push({ key: attrKey, type: 'attribute' });
       }
+    });
+    
+    // Add system columns if enabled
+    Object.keys(tableViewConfig.systemColumns).forEach(sysKey => {
+      if (tableViewConfig.systemColumns[sysKey]) {
+        columnsToShow.push({ key: sysKey, type: 'system' });
+      }
+    });
+    
+    // Add actions column
+    if (tableViewConfig.visibleColumns.actions !== false) {
+      columnsToShow.push({ key: 'actions', type: 'core' });
+    }
+    
+    // Create headers
+    columnsToShow.forEach(column => {
+      const header = document.createElement('th');
+      header.textContent = column.type === 'attribute' ? column.key : formatColumnName(column.key);
+      
+      // Set width based on column type
+      let width;
+      if (column.type === 'attribute') {
+        width = tableViewConfig.columnWidths[column.key] || 150;
+      } else if (column.type === 'system') {
+        width = tableViewConfig.systemColumnWidths[column.key] || 100;
+      } else {
+        width = tableViewConfig.columnWidths[column.key] || 150;
+      }
+      
+      header.style.width = `${width}px`;
+      header.className = `column-${column.key} column-type-${column.type}`;
+      
+      // Add resize handle
+      const resizeHandle = document.createElement('div');
+      resizeHandle.className = 'column-resize-handle';
+      resizeHandle.addEventListener('mousedown', (e) => {
+        startColumnResize(e, column.key, header, column.type);
+      });
+      header.appendChild(resizeHandle);
+      
+      headerRow.appendChild(header);
     });
     
     thead.appendChild(headerRow);
@@ -1514,15 +1723,44 @@ const AttributeManager = (function() {
       const row = document.createElement('tr');
       row.dataset.id = node.id;
       
-      // Add cells for visible columns
-      Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
-        if (tableViewConfig.visibleColumns[columnKey]) {
-          const cell = document.createElement('td');
-          cell.className = `column-${columnKey}`;
-          cell.style.width = `${tableViewConfig.columnWidths[columnKey]}px`;
-          
-          // Populate cell based on column type
-          switch (columnKey) {
+      // Create a map of node attributes for quick lookup
+      const nodeAttrMap = {};
+      if (node.attributes) {
+        node.attributes.forEach(attr => {
+          nodeAttrMap[attr.key] = attr.value;
+        });
+      }
+      
+      // Add cells for each visible column
+      columnsToShow.forEach(column => {
+        const cell = document.createElement('td');
+        cell.className = `column-${column.key} column-type-${column.type}`;
+        
+        // Set width
+        let width;
+        if (column.type === 'attribute') {
+          width = tableViewConfig.columnWidths[column.key] || 150;
+        } else if (column.type === 'system') {
+          width = tableViewConfig.systemColumnWidths[column.key] || 100;
+        } else {
+          width = tableViewConfig.columnWidths[column.key] || 150;
+        }
+        cell.style.width = `${width}px`;
+        
+        // Populate cell based on column type
+        if (column.type === 'attribute') {
+          // This is an attribute column - show the attribute value
+          const value = nodeAttrMap[column.key];
+          if (value !== undefined) {
+            cell.textContent = value;
+            cell.title = `${column.key}: ${value}`;
+          } else {
+            cell.textContent = '—';
+            cell.className += ' empty-attribute';
+          }
+        } else {
+          // Handle core and system columns
+          switch (column.key) {
             case 'node':
               cell.className += ' result-node-content';
               cell.textContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
@@ -1531,7 +1769,7 @@ const AttributeManager = (function() {
             case 'id':
               cell.textContent = node.id;
               cell.style.fontFamily = 'monospace';
-              cell.style.fontSize = '12px';
+              cell.style.fontSize = '11px';
               break;
               
             case 'created_at':
@@ -1544,24 +1782,6 @@ const AttributeManager = (function() {
               
             case 'sequence_id':
               cell.textContent = node.sequence_id || 'N/A';
-              break;
-              
-            case 'attributes':
-              cell.className += ' result-node-attributes';
-              if (node.attributes && node.attributes.length > 0) {
-                const attrList = document.createElement('ul');
-                attrList.className = 'attribute-list';
-                
-                node.attributes.forEach(attr => {
-                  const attrItem = document.createElement('li');
-                  attrItem.innerHTML = `<strong>${attr.key}:</strong> ${attr.value}`;
-                  attrList.appendChild(attrItem);
-                });
-                
-                cell.appendChild(attrList);
-              } else {
-                cell.textContent = 'No attributes';
-              }
               break;
               
             case 'actions':
@@ -1581,7 +1801,7 @@ const AttributeManager = (function() {
               
               const attrButton = document.createElement('button');
               attrButton.className = 'btn-small';
-              attrButton.textContent = 'Attributes';
+              attrButton.textContent = 'Edit';
               attrButton.addEventListener('click', () => {
                 openModal(node.id);
               });
@@ -1590,9 +1810,9 @@ const AttributeManager = (function() {
               cell.appendChild(attrButton);
               break;
           }
-          
-          row.appendChild(cell);
         }
+        
+        row.appendChild(cell);
       });
       
       tbody.appendChild(row);
@@ -1602,8 +1822,8 @@ const AttributeManager = (function() {
     container.appendChild(table);
   }
   
-  // Start column resize
-  function startColumnResize(e, columnKey, headerElement) {
+  // Start column resize - updated to handle different column types
+  function startColumnResize(e, columnKey, headerElement, columnType) {
     e.preventDefault();
     
     const startX = e.clientX;
@@ -1619,8 +1839,12 @@ const AttributeManager = (function() {
         cell.style.width = `${newWidth}px`;
       });
       
-      // Update config
-      tableViewConfig.columnWidths[columnKey] = newWidth;
+      // Update config based on column type
+      if (columnType === 'system') {
+        tableViewConfig.systemColumnWidths[columnKey] = newWidth;
+      } else {
+        tableViewConfig.columnWidths[columnKey] = newWidth;
+      }
       
       // Update the width input if it exists
       const widthInput = document.getElementById(`width-${columnKey}`);
