@@ -12,6 +12,29 @@ const AttributeManager = (function() {
   let recentQueries = [];
   let isFullyInitialized = false;
   
+  // Table view configuration state
+  let tableViewConfig = {
+    viewMode: 'original', // 'original' or 'table'
+    visibleColumns: {
+      node: true,
+      id: false,
+      created_at: false,
+      updated_at: false,
+      sequence_id: false,
+      attributes: true,
+      actions: true
+    },
+    columnWidths: {
+      node: 200,
+      id: 100,
+      created_at: 120,
+      updated_at: 120,
+      sequence_id: 80,
+      attributes: 300,
+      actions: 120
+    }
+  };
+  
   // Common attribute keys for autocompletion
   const commonAttributes = [
     'type', 'source', 'author', 'rating', 'url', 'tags', 'category', 'status', 'priority', 'release_time', 'ranking', 'repeat', 'singer'
@@ -26,6 +49,9 @@ const AttributeManager = (function() {
       currentLanguage = I18n.getCurrentLanguage();
     }
     
+    // Load table view configuration
+    loadTableViewConfig();
+    
     // Only load recent queries, don't create modals yet
     loadRecentQueries();
     
@@ -37,6 +63,28 @@ const AttributeManager = (function() {
     
     // Note that we're only partially initialized
     isFullyInitialized = false;
+  }
+  
+  // Load table view configuration from localStorage
+  function loadTableViewConfig() {
+    const saved = localStorage.getItem('attributeTableViewConfig');
+    if (saved) {
+      try {
+        const savedConfig = JSON.parse(saved);
+        tableViewConfig = { ...tableViewConfig, ...savedConfig };
+      } catch (e) {
+        console.error('Error parsing table view config:', e);
+      }
+    }
+  }
+  
+  // Save table view configuration to localStorage
+  function saveTableViewConfig() {
+    try {
+      localStorage.setItem('attributeTableViewConfig', JSON.stringify(tableViewConfig));
+    } catch (e) {
+      console.error('Error saving table view config:', e);
+    }
   }
   
   // Set up lazy button addition on hover
@@ -354,6 +402,10 @@ const AttributeManager = (function() {
       // Add sorting section before the execute button
       queryBuilder.appendChild(sortingSection);
       
+      // Add table view controls section
+      const tableViewSection = createTableViewControls();
+      queryBuilder.appendChild(tableViewSection);
+      
       // Recent queries section
       const recentQueriesSection = document.createElement('div');
       recentQueriesSection.className = 'recent-queries';
@@ -419,6 +471,167 @@ const AttributeManager = (function() {
       console.error('Error creating query modal:', error);
       throw error; // Re-throw to allow caller to handle
     }
+  }
+  
+  // Create table view controls
+  function createTableViewControls() {
+    const tableViewSection = document.createElement('div');
+    tableViewSection.className = 'table-view-section';
+    
+    const tableViewTitle = document.createElement('h4');
+    tableViewTitle.textContent = 'Table View Options';
+    
+    const tableViewControls = document.createElement('div');
+    tableViewControls.className = 'table-view-controls';
+    
+    // View mode toggle
+    const viewModeContainer = document.createElement('div');
+    viewModeContainer.className = 'view-mode-container';
+    
+    const viewModeLabel = document.createElement('label');
+    viewModeLabel.textContent = 'View Mode:';
+    
+    const viewModeSelect = document.createElement('select');
+    viewModeSelect.id = 'view-mode-select';
+    viewModeSelect.className = 'view-mode-select';
+    
+    const originalOption = document.createElement('option');
+    originalOption.value = 'original';
+    originalOption.textContent = 'Original View';
+    
+    const tableOption = document.createElement('option');
+    tableOption.value = 'table';
+    tableOption.textContent = 'Enhanced Table View';
+    
+    viewModeSelect.appendChild(originalOption);
+    viewModeSelect.appendChild(tableOption);
+    viewModeSelect.value = tableViewConfig.viewMode;
+    
+    viewModeSelect.addEventListener('change', (e) => {
+      tableViewConfig.viewMode = e.target.value;
+      saveTableViewConfig();
+      updateTableViewControls();
+    });
+    
+    viewModeContainer.appendChild(viewModeLabel);
+    viewModeContainer.appendChild(viewModeSelect);
+    
+    // Column visibility controls
+    const columnVisibilityContainer = document.createElement('div');
+    columnVisibilityContainer.className = 'column-visibility-container';
+    columnVisibilityContainer.id = 'column-visibility-container';
+    
+    const columnVisibilityTitle = document.createElement('h5');
+    columnVisibilityTitle.textContent = 'Visible Columns:';
+    
+    const columnCheckboxes = document.createElement('div');
+    columnCheckboxes.className = 'column-checkboxes';
+    
+    // Create checkboxes for each column
+    Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
+      const checkboxContainer = document.createElement('div');
+      checkboxContainer.className = 'checkbox-container';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `column-${columnKey}`;
+      checkbox.checked = tableViewConfig.visibleColumns[columnKey];
+      checkbox.addEventListener('change', (e) => {
+        tableViewConfig.visibleColumns[columnKey] = e.target.checked;
+        saveTableViewConfig();
+      });
+      
+      const label = document.createElement('label');
+      label.htmlFor = `column-${columnKey}`;
+      label.textContent = formatColumnName(columnKey);
+      
+      checkboxContainer.appendChild(checkbox);
+      checkboxContainer.appendChild(label);
+      columnCheckboxes.appendChild(checkboxContainer);
+    });
+    
+    columnVisibilityContainer.appendChild(columnVisibilityTitle);
+    columnVisibilityContainer.appendChild(columnCheckboxes);
+    
+    // Column width controls
+    const columnWidthContainer = document.createElement('div');
+    columnWidthContainer.className = 'column-width-container';
+    columnWidthContainer.id = 'column-width-container';
+    
+    const columnWidthTitle = document.createElement('h5');
+    columnWidthTitle.textContent = 'Column Widths:';
+    
+    const columnWidthControls = document.createElement('div');
+    columnWidthControls.className = 'column-width-controls';
+    
+    // Create width controls for each column
+    Object.keys(tableViewConfig.columnWidths).forEach(columnKey => {
+      const widthContainer = document.createElement('div');
+      widthContainer.className = 'width-container';
+      
+      const label = document.createElement('label');
+      label.textContent = `${formatColumnName(columnKey)}:`;
+      
+      const widthInput = document.createElement('input');
+      widthInput.type = 'number';
+      widthInput.id = `width-${columnKey}`;
+      widthInput.min = '50';
+      widthInput.max = '500';
+      widthInput.value = tableViewConfig.columnWidths[columnKey];
+      widthInput.addEventListener('change', (e) => {
+        tableViewConfig.columnWidths[columnKey] = parseInt(e.target.value);
+        saveTableViewConfig();
+      });
+      
+      const pxLabel = document.createElement('span');
+      pxLabel.textContent = 'px';
+      
+      widthContainer.appendChild(label);
+      widthContainer.appendChild(widthInput);
+      widthContainer.appendChild(pxLabel);
+      columnWidthControls.appendChild(widthContainer);
+    });
+    
+    columnWidthContainer.appendChild(columnWidthTitle);
+    columnWidthContainer.appendChild(columnWidthControls);
+    
+    tableViewControls.appendChild(viewModeContainer);
+    tableViewControls.appendChild(columnVisibilityContainer);
+    tableViewControls.appendChild(columnWidthContainer);
+    
+    tableViewSection.appendChild(tableViewTitle);
+    tableViewSection.appendChild(tableViewControls);
+    
+    // Initially update visibility
+    updateTableViewControls();
+    
+    return tableViewSection;
+  }
+  
+  // Update table view controls visibility
+  function updateTableViewControls() {
+    const columnVisibilityContainer = document.getElementById('column-visibility-container');
+    const columnWidthContainer = document.getElementById('column-width-container');
+    
+    if (columnVisibilityContainer && columnWidthContainer) {
+      const isTableView = tableViewConfig.viewMode === 'table';
+      columnVisibilityContainer.style.display = isTableView ? 'block' : 'none';
+      columnWidthContainer.style.display = isTableView ? 'block' : 'none';
+    }
+  }
+  
+  // Format column name for display
+  function formatColumnName(columnKey) {
+    const nameMap = {
+      node: 'Node Content',
+      id: 'Node ID',
+      created_at: 'Created',
+      updated_at: 'Updated',
+      sequence_id: 'Sequence ID',
+      attributes: 'Attributes',
+      actions: 'Actions'
+    };
+    return nameMap[columnKey] || columnKey;
   }
   
   // Update modal text based on language
@@ -1083,7 +1296,7 @@ const AttributeManager = (function() {
     }
   }
   
-  // Render query results with pagination
+  // Render query results with pagination - enhanced with table view options
   function renderQueryResults(results, pagination, query, sortBy, sortOrder) {
     const resultsContainer = document.getElementById('query-results');
     resultsContainer.innerHTML = '';
@@ -1104,6 +1317,73 @@ const AttributeManager = (function() {
     paginationInfo.textContent = `Showing ${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(pagination.page * pagination.pageSize, pagination.totalResults)} of ${pagination.totalResults} results`;
     resultsContainer.appendChild(paginationInfo);
     
+    // Render based on view mode
+    if (tableViewConfig.viewMode === 'table') {
+      renderEnhancedTableView(results, resultsContainer);
+    } else {
+      renderOriginalTableView(results, resultsContainer);
+    }
+    
+    // Add pagination controls at the bottom
+    const paginationControls = document.createElement('div');
+    paginationControls.className = 'pagination-controls';
+    
+    // Previous page button
+    const prevButton = document.createElement('button');
+    prevButton.className = 'btn-small pagination-prev';
+    prevButton.textContent = '← Previous';
+    prevButton.disabled = !pagination.hasPrevPage;
+    prevButton.addEventListener('click', () => {
+      changePage(pagination.page - 1, query, sortBy, sortOrder);
+    });
+    
+    // Page number display and input
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'pagination-page-info';
+    
+    // Create text nodes instead of using innerHTML
+    const pageTextBefore = document.createTextNode('Page ');
+    const pageTextAfter = document.createTextNode(` of ${pagination.totalPages}`);
+
+    const pageInput = document.createElement('input');
+    pageInput.type = 'number';
+    pageInput.min = 1;
+    pageInput.max = pagination.totalPages;
+    pageInput.value = pagination.page;
+    pageInput.id = 'current-page';
+    pageInput.className = 'pagination-page-input';
+    pageInput.addEventListener('change', (e) => {
+      const newPage = parseInt(e.target.value);
+      if (newPage >= 1 && newPage <= pagination.totalPages) {
+        changePage(newPage, query, sortBy, sortOrder);
+      } else {
+        e.target.value = pagination.page; // Reset to current page if invalid
+      }
+    });
+
+    // Append elements in order
+    pageInfo.appendChild(pageTextBefore);
+    pageInfo.appendChild(pageInput);
+    pageInfo.appendChild(pageTextAfter);
+    
+    // Next page button
+    const nextButton = document.createElement('button');
+    nextButton.className = 'btn-small pagination-next';
+    nextButton.textContent = 'Next →';
+    nextButton.disabled = !pagination.hasNextPage;
+    nextButton.addEventListener('click', () => {
+      changePage(pagination.page + 1, query, sortBy, sortOrder);
+    });
+    
+    paginationControls.appendChild(prevButton);
+    paginationControls.appendChild(pageInfo);
+    paginationControls.appendChild(nextButton);
+    
+    resultsContainer.appendChild(paginationControls);
+  }
+  
+  // Render original table view (preserve existing functionality)
+  function renderOriginalTableView(results, container) {
     // Create the results table
     const table = document.createElement('table');
     table.className = 'query-results-table';
@@ -1191,64 +1471,174 @@ const AttributeManager = (function() {
     });
     
     table.appendChild(tbody);
-    resultsContainer.appendChild(table);
+    container.appendChild(table);
+  }
+  
+  // Render enhanced table view with customizable columns
+  function renderEnhancedTableView(results, container) {
+    // Create the enhanced results table
+    const table = document.createElement('table');
+    table.className = 'query-results-table enhanced-table';
     
-    // Add pagination controls at the bottom
-    const paginationControls = document.createElement('div');
-    paginationControls.className = 'pagination-controls';
+    // Table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
     
-    // Previous page button
-    const prevButton = document.createElement('button');
-    prevButton.className = 'btn-small pagination-prev';
-    prevButton.textContent = '← Previous';
-    prevButton.disabled = !pagination.hasPrevPage;
-    prevButton.addEventListener('click', () => {
-      changePage(pagination.page - 1, query, sortBy, sortOrder);
-    });
-    
-    // Page number display and input
-    const pageInfo = document.createElement('div');
-    pageInfo.className = 'pagination-page-info';
-    
-    // Create text nodes instead of using innerHTML
-    const pageTextBefore = document.createTextNode('Page ');
-    const pageTextAfter = document.createTextNode(` of ${pagination.totalPages}`);
-
-    const pageInput = document.createElement('input');
-    pageInput.type = 'number';
-    pageInput.min = 1;
-    pageInput.max = pagination.totalPages;
-    pageInput.value = pagination.page;
-    pageInput.id = 'current-page';
-    pageInput.className = 'pagination-page-input';
-    pageInput.addEventListener('change', (e) => {
-      const newPage = parseInt(e.target.value);
-      if (newPage >= 1 && newPage <= pagination.totalPages) {
-        changePage(newPage, query, sortBy, sortOrder);
-      } else {
-        e.target.value = pagination.page; // Reset to current page if invalid
+    // Add headers for visible columns
+    Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
+      if (tableViewConfig.visibleColumns[columnKey]) {
+        const header = document.createElement('th');
+        header.textContent = formatColumnName(columnKey);
+        header.style.width = `${tableViewConfig.columnWidths[columnKey]}px`;
+        header.className = `column-${columnKey}`;
+        
+        // Add resize handle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'column-resize-handle';
+        resizeHandle.addEventListener('mousedown', (e) => {
+          startColumnResize(e, columnKey, header);
+        });
+        header.appendChild(resizeHandle);
+        
+        headerRow.appendChild(header);
       }
     });
-
-    // Append elements in order
-    pageInfo.appendChild(pageTextBefore);
-    pageInfo.appendChild(pageInput);
-    pageInfo.appendChild(pageTextAfter);
     
-    // Next page button
-    const nextButton = document.createElement('button');
-    nextButton.className = 'btn-small pagination-next';
-    nextButton.textContent = 'Next →';
-    nextButton.disabled = !pagination.hasNextPage;
-    nextButton.addEventListener('click', () => {
-      changePage(pagination.page + 1, query, sortBy, sortOrder);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Table body
+    const tbody = document.createElement('tbody');
+    
+    results.forEach(node => {
+      const row = document.createElement('tr');
+      row.dataset.id = node.id;
+      
+      // Add cells for visible columns
+      Object.keys(tableViewConfig.visibleColumns).forEach(columnKey => {
+        if (tableViewConfig.visibleColumns[columnKey]) {
+          const cell = document.createElement('td');
+          cell.className = `column-${columnKey}`;
+          cell.style.width = `${tableViewConfig.columnWidths[columnKey]}px`;
+          
+          // Populate cell based on column type
+          switch (columnKey) {
+            case 'node':
+              cell.className += ' result-node-content';
+              cell.textContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+              break;
+              
+            case 'id':
+              cell.textContent = node.id;
+              cell.style.fontFamily = 'monospace';
+              cell.style.fontSize = '12px';
+              break;
+              
+            case 'created_at':
+              cell.textContent = node.created_at ? new Date(node.created_at).toLocaleDateString() : 'N/A';
+              break;
+              
+            case 'updated_at':
+              cell.textContent = node.updated_at ? new Date(node.updated_at).toLocaleDateString() : 'N/A';
+              break;
+              
+            case 'sequence_id':
+              cell.textContent = node.sequence_id || 'N/A';
+              break;
+              
+            case 'attributes':
+              cell.className += ' result-node-attributes';
+              if (node.attributes && node.attributes.length > 0) {
+                const attrList = document.createElement('ul');
+                attrList.className = 'attribute-list';
+                
+                node.attributes.forEach(attr => {
+                  const attrItem = document.createElement('li');
+                  attrItem.innerHTML = `<strong>${attr.key}:</strong> ${attr.value}`;
+                  attrList.appendChild(attrItem);
+                });
+                
+                cell.appendChild(attrList);
+              } else {
+                cell.textContent = 'No attributes';
+              }
+              break;
+              
+            case 'actions':
+              cell.className += ' result-node-actions';
+              
+              const viewButton = document.createElement('button');
+              viewButton.className = 'btn-small';
+              viewButton.textContent = 'View';
+              viewButton.addEventListener('click', () => {
+                closeModal();
+                if (window.BreadcrumbManager) {
+                  BreadcrumbManager.focusOnNode(node.id);
+                } else {
+                  alert(`Node ID: ${node.id}\nImplement navigation to this node.`);
+                }
+              });
+              
+              const attrButton = document.createElement('button');
+              attrButton.className = 'btn-small';
+              attrButton.textContent = 'Attributes';
+              attrButton.addEventListener('click', () => {
+                openModal(node.id);
+              });
+              
+              cell.appendChild(viewButton);
+              cell.appendChild(attrButton);
+              break;
+          }
+          
+          row.appendChild(cell);
+        }
+      });
+      
+      tbody.appendChild(row);
     });
     
-    paginationControls.appendChild(prevButton);
-    paginationControls.appendChild(pageInfo);
-    paginationControls.appendChild(nextButton);
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+  
+  // Start column resize
+  function startColumnResize(e, columnKey, headerElement) {
+    e.preventDefault();
     
-    resultsContainer.appendChild(paginationControls);
+    const startX = e.clientX;
+    const startWidth = parseInt(getComputedStyle(headerElement).width);
+    
+    function doResize(e) {
+      const newWidth = Math.max(50, startWidth + e.clientX - startX);
+      headerElement.style.width = `${newWidth}px`;
+      
+      // Update all cells in this column
+      const cells = document.querySelectorAll(`.column-${columnKey}`);
+      cells.forEach(cell => {
+        cell.style.width = `${newWidth}px`;
+      });
+      
+      // Update config
+      tableViewConfig.columnWidths[columnKey] = newWidth;
+      
+      // Update the width input if it exists
+      const widthInput = document.getElementById(`width-${columnKey}`);
+      if (widthInput) {
+        widthInput.value = newWidth;
+      }
+    }
+    
+    function stopResize() {
+      document.removeEventListener('mousemove', doResize);
+      document.removeEventListener('mouseup', stopResize);
+      
+      // Save the configuration
+      saveTableViewConfig();
+    }
+    
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
   }
   
   // Helper function to change the page

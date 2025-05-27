@@ -390,7 +390,6 @@ const DcimManager = (function() {
                     ...baseHints,
                     { key: 'D', selector: '#dcim-viewer-back', description: 'Back to details' },
                     { key: 'F', selector: '#dcim-viewer-fullscreen', description: 'Fullscreen' },
-                    { key: 'G', selector: '#dcim-viewer-back', description: 'Back to gallery' }
                 ];
                 
             case 'fullscreen':
