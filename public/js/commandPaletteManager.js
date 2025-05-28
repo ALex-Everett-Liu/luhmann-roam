@@ -679,6 +679,126 @@ const CommandPaletteManager = (function() {
             });
         }
         
+        // Add translation visibility commands
+        registerCommand({
+            name: 'Toggle All Translations Visibility',
+            action: () => {
+                // Find the global toggle button and click it
+                const globalToggleButton = document.getElementById('global-toggle-other-lang');
+                if (globalToggleButton) {
+                    globalToggleButton.click();
+                } else if (window.toggleAllOtherLanguageContent) {
+                    // Fallback to direct function call if available
+                    window.toggleAllOtherLanguageContent();
+                } else {
+                    alert('Translation toggle function not available');
+                }
+            },
+            category: 'Language',
+            keywords: ['translation', 'hide', 'show', 'all', 'language', 'toggle', 'visibility']
+        });
+
+        registerCommand({
+            name: 'Show All Translations',
+            action: () => {
+                const globalToggleButton = document.getElementById('global-toggle-other-lang');
+                if (globalToggleButton) {
+                    // Check if translations are currently hidden
+                    if (globalToggleButton.textContent.includes('Show')) {
+                        globalToggleButton.click();
+                    }
+                } else {
+                    // Fallback: ensure global state is set to visible
+                    if (window.globalOtherLanguageVisible === false) {
+                        const toggleButton = document.getElementById('global-toggle-other-lang');
+                        if (toggleButton) toggleButton.click();
+                    }
+                }
+            },
+            category: 'Language',
+            keywords: ['translation', 'show', 'display', 'all', 'language', 'visible']
+        });
+
+        registerCommand({
+            name: 'Hide All Translations',
+            action: () => {
+                const globalToggleButton = document.getElementById('global-toggle-other-lang');
+                if (globalToggleButton) {
+                    // Check if translations are currently shown
+                    if (globalToggleButton.textContent.includes('Hide')) {
+                        globalToggleButton.click();
+                    }
+                } else {
+                    // Fallback: ensure global state is set to hidden
+                    if (window.globalOtherLanguageVisible === true) {
+                        const toggleButton = document.getElementById('global-toggle-other-lang');
+                        if (toggleButton) toggleButton.click();
+                    }
+                }
+            },
+            category: 'Language',
+            keywords: ['translation', 'hide', 'conceal', 'all', 'language', 'invisible']
+        });
+
+        // Add content copying commands for focused node
+        registerCommand({
+            name: 'Copy English to Chinese (Current Node)',
+            action: () => {
+                const focusedNode = document.querySelector('.node-text:focus');
+                if (focusedNode) {
+                    const nodeId = focusedNode.closest('.node').dataset.id;
+                    if (nodeId && window.copyContentBetweenLanguages) {
+                        window.copyContentBetweenLanguages(nodeId, 'en-to-zh');
+                    } else {
+                        alert('Copy function not available');
+                    }
+                } else {
+                    alert('Please focus on a node first');
+                }
+            },
+            category: 'Language',
+            keywords: ['copy', 'english', 'chinese', 'content', 'translate', 'current', 'node', 'en', 'zh']
+        });
+
+        registerCommand({
+            name: 'Copy Chinese to English (Current Node)',
+            action: () => {
+                const focusedNode = document.querySelector('.node-text:focus');
+                if (focusedNode) {
+                    const nodeId = focusedNode.closest('.node').dataset.id;
+                    if (nodeId && window.copyContentBetweenLanguages) {
+                        window.copyContentBetweenLanguages(nodeId, 'zh-to-en');
+                    } else {
+                        alert('Copy function not available');
+                    }
+                } else {
+                    alert('Please focus on a node first');
+                }
+            },
+            category: 'Language',
+            keywords: ['copy', 'chinese', 'english', 'content', 'translate', 'current', 'node', 'zh', 'en']
+        });
+
+        // Add node size adjustment command
+        registerCommand({
+            name: 'Adjust Node Size (Current Node)',
+            action: () => {
+                const focusedNode = document.querySelector('.node-text:focus');
+                if (focusedNode) {
+                    const nodeId = focusedNode.closest('.node').dataset.id;
+                    if (nodeId && window.NodeSizeManager) {
+                        window.NodeSizeManager.openNodeSizeModal(nodeId);
+                    } else {
+                        alert('Node Size Manager not available');
+                    }
+                } else {
+                    alert('Please focus on a node first');
+                }
+            },
+            category: 'Nodes',
+            keywords: ['size', 'adjust', 'resize', 'node', 'current', 'scale', 'dimension']
+        });
+
         // Add Bookmark commands if BookmarkManager exists
         if (window.BookmarkManager) {
             registerCommand({

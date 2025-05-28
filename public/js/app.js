@@ -278,6 +278,35 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // ADD KEYBOARD EVENT HANDLER FOR TAB/SHIFT+TAB AND ENTER
+    nodeText.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault(); // Prevent default tab behavior
+        
+        if (e.shiftKey) {
+          // Shift+Tab: Outdent node
+          console.log(`Shift+Tab pressed on node ${node.id}, outdenting...`);
+          outdentNode(node.id);
+        } else {
+          // Tab: Indent node
+          console.log(`Tab pressed on node ${node.id}, indenting...`);
+          indentNode(node.id);
+        }
+      } else if (e.key === 'Enter') {
+        if (e.shiftKey) {
+          // Shift+Enter: Allow default behavior (add newline)
+          console.log(`Shift+Enter pressed on node ${node.id}, adding newline...`);
+          // Don't prevent default - let the browser add a newline
+          return;
+        } else {
+          // Enter: Add child node
+          e.preventDefault(); // Prevent default enter behavior (which would add a line break)
+          console.log(`Enter pressed on node ${node.id}, adding child...`);
+          addChildNode(node.id);
+        }
+      }
+    });
+
     nodeContent.appendChild(nodeText); // Add the editable text field
 
     // Read-only view for the OTHER language (moved below and made toggleable)
