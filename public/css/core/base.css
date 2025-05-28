@@ -42,3 +42,30 @@ body {
   padding: 0;
 }
 
+/* Success notification styling for content copy */
+.content-copy-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #4CAF50; /* Green for success */
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  z-index: 10000; /* Ensure it's on top */
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Keyframes for the slide-in animation (can be in animations.css too) */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+

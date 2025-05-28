@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Set lang attribute for the read-only field
       if (otherLangCode === 'zh' || hasChineseText(otherLanguageText.textContent)) {
         otherLanguageText.setAttribute('lang', 'zh');
-      } else {
+        } else {
         otherLanguageText.removeAttribute('lang');
       }
 
@@ -502,6 +502,47 @@ document.addEventListener('DOMContentLoaded', () => {
       DatabaseExportImportManager.addExportTreeButtonToNodeActions(nodeActions, node.id);
     }
     
+    // Copy content buttons (only show if there's content to copy)
+    if (node.content && node.content.trim() !== '' && node.content !== I18n.t('newNode')) {
+      const copyToChineseButton = document.createElement('button');
+      copyToChineseButton.className = 'copy-content-button';
+      copyToChineseButton.innerHTML = 'EN→中';
+      copyToChineseButton.title = 'Copy English content to Chinese';
+      copyToChineseButton.style.fontSize = '10px';
+      copyToChineseButton.style.padding = '2px 4px';
+      copyToChineseButton.style.marginLeft = '3px';
+      copyToChineseButton.style.backgroundColor = '#e8f5e8';
+      copyToChineseButton.style.border = '1px solid #4CAF50';
+      copyToChineseButton.style.borderRadius = '3px';
+      copyToChineseButton.style.cursor = 'pointer';
+      copyToChineseButton.style.color = '#2E7D32';
+      copyToChineseButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await copyContentBetweenLanguages(node.id, 'en-to-zh');
+      });
+      nodeActions.appendChild(copyToChineseButton);
+    }
+    
+    if (node.content_zh && node.content_zh.trim() !== '' && node.content_zh !== I18n.t('newNode')) {
+      const copyToEnglishButton = document.createElement('button');
+      copyToEnglishButton.className = 'copy-content-button';
+      copyToEnglishButton.innerHTML = '中→EN';
+      copyToEnglishButton.title = 'Copy Chinese content to English';
+      copyToEnglishButton.style.fontSize = '10px';
+      copyToEnglishButton.style.padding = '2px 4px';
+      copyToEnglishButton.style.marginLeft = '3px';
+      copyToEnglishButton.style.backgroundColor = '#e3f2fd';
+      copyToEnglishButton.style.border = '1px solid #2196F3';
+      copyToEnglishButton.style.borderRadius = '3px';
+      copyToEnglishButton.style.cursor = 'pointer';
+      copyToEnglishButton.style.color = '#1565C0';
+      copyToEnglishButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await copyContentBetweenLanguages(node.id, 'zh-to-en');
+      });
+      nodeActions.appendChild(copyToEnglishButton);
+    }
+    
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
     
@@ -572,12 +613,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const updateData = {};
       
       if (content !== undefined) {
-        updateData.content = content;
-      }
+          updateData.content = content;
+        }
       if (content_zh !== undefined) {
-        updateData.content_zh = content_zh;
+          updateData.content_zh = content_zh;
       }
-
+      
       console.log(`Sending update request for node ${nodeId} with data:`, updateData);
       
       const response = await fetch(`/api/nodes/${nodeId}`, {
@@ -1404,5 +1445,86 @@ document.addEventListener('DOMContentLoaded', () => {
         globalToggleButton.classList.add('active');
       }
     }
+
+  // Add this function after the other helper functions
+  async function copyContentBetweenLanguages(nodeId, direction) {
+    try {
+      // Get the current node data
+      const response = await fetch(`/api/nodes/${nodeId}`);
+      const nodeData = await response.json();
+      
+      let sourceContent, targetField, successMessage;
+      
+      if (direction === 'en-to-zh') {
+        sourceContent = nodeData.content || '';
+        targetField = 'content_zh';
+        successMessage = 'English content copied to Chinese';
+      } else if (direction === 'zh-to-en') {
+        sourceContent = nodeData.content_zh || '';
+        targetField = 'content';
+        successMessage = 'Chinese content copied to English';
+      } else {
+        console.error('Invalid direction:', direction);
+        return false;
+      }
+      
+      if (!sourceContent || sourceContent.trim() === '') {
+        alert('Source content is empty, nothing to copy');
+        return false;
+      }
+      
+      console.log(`Copying content for node ${nodeId}:`);
+      console.log(`- Direction: ${direction}`);
+      console.log(`- Source content: "${sourceContent}"`);
+      
+      // Update the node with the copied content
+      const updateData = {};
+      updateData[targetField] = sourceContent;
+      
+      const updateResponse = await fetch(`/api/nodes/${nodeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+      
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update node');
+      }
+      
+      console.log(`Successfully copied content for node ${nodeId}`);
+      
+      // Refresh the UI to show the updated content
+      if (window.fetchNodes) {
+        await window.fetchNodes(true);
+      }
+      
+      // Show success message
+      const notification = document.createElement('div');
+      notification.style.position = 'fixed';
+      notification.style.top = '20px';
+      notification.style.right = '20px';
+      notification.style.backgroundColor = '#4CAF50';
+      notification.style.color = 'white';
+      notification.style.padding = '10px 15px';
+      notification.style.borderRadius = '4px';
+      notification.style.zIndex = '10000';
+      notification.style.fontSize = '14px';
+      notification.textContent = successMessage;
+      document.body.appendChild(notification);
+      
+      // Remove notification after 2 seconds
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+      
+      return true;
+    } catch (error) {
+      console.error('Error copying content between languages:', error);
+      alert('Failed to copy content. Please try again.');
+      return false;
+    }
+  }
 });
 

@@ -83,3 +83,30 @@
   box-shadow: -2px 0 0 white, 2px 0 0 white;
 }
 
+/* Global toggle button for other language content in the sidebar */
+#global-toggle-other-lang {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  width: 100%; /* Make it full width within the sidebar */
+  font-size: 13px;
+  transition: all 0.2s;
+  text-align: left; /* Align text to the left */
+}
+
+#global-toggle-other-lang:hover {
+  background-color: #e9ecef;
+  border-color: #1a73e8; /* Highlight on hover */
+}
+
+#global-toggle-other-lang.active {
+  background-color: #e8f0fe; /* Active state styling */
+  border-color: #1a73e8;
+  color: #1a73e8;
+  font-weight: 500;
+}
+
+

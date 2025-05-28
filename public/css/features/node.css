@@ -313,3 +313,123 @@ kbd {
   font-size: 14px !important;
   margin: 0 8px !important;
 }
+
+/* Toggle other language button */
+.toggle-other-lang-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s;
+}
+
+.toggle-other-lang-button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Copy content buttons */
+.copy-content-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin-left: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: bold;
+  transition: all 0.2s;
+  min-width: 35px;
+  text-align: center;
+}
+
+.copy-content-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Specific styling for EN→中 button */
+.copy-content-button[title*="Copy English content to Chinese"] { /* More specific selector */
+  background-color: #e8f5e8;
+  border-color: #4CAF50;
+  color: #2E7D32;
+}
+
+.copy-content-button[title*="Copy English content to Chinese"]:hover {
+  background-color: #c8e6c9;
+  border-color: #388E3C;
+}
+
+/* Specific styling for 中→EN button */
+.copy-content-button[title*="Copy Chinese content to English"] { /* More specific selector */
+  background-color: #e3f2fd;
+  border-color: #2196F3;
+  color: #1565C0;
+}
+
+.copy-content-button[title*="Copy Chinese content to English"]:hover {
+  background-color: #bbdefb;
+  border-color: #1976D2;
+}
+
+/* Container for the other language text, positioned below the main content */
+.node-text-other-language-container {
+  margin-top: 8px;
+  padding-left: 20px; /* Indent to show it's related to the parent node text */
+  border-left: 2px solid #e0e0e0; /* Visual cue for connection */
+  position: relative; /* For the ::before pseudo-element */
+}
+
+/* Optional: Prettier indicator line */
+.node-text-other-language-container::before {
+  content: "";
+  position: absolute;
+  left: -2px; /* Align with the border */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #4285f4; /* A slightly different color for the indicator */
+  opacity: 0.3; /* Make it subtle */
+}
+
+/* Styling for the read-only other language text block */
+.node-text-other-language {
+  font-size: 0.9em;
+  color: #555;
+  background-color: #f8f9fa; /* Light background to differentiate */
+  padding: 8px;
+  border: 1px dashed #ddd; /* Dashed border for a softer look */
+  border-radius: 4px;
+  white-space: pre-wrap; /* Preserve line breaks */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5; /* Improved readability */
+  max-height: 200px; /* Limit height for very long content */
+  overflow-y: auto; /* Add scrolling if content exceeds max-height */
+}
+
+/* Specific font for Chinese in the other language view */
+.node-text-other-language[lang="zh"] {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; /* Or your preferred Chinese font */
+}
+
+/* Scrollbar styling for the other language content */
+.node-text-other-language::-webkit-scrollbar {
+  width: 6px;
+}
+
+.node-text-other-language::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.node-text-other-language::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.node-text-other-language::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
