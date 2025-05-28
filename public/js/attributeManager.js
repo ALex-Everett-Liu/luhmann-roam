@@ -2128,20 +2128,20 @@ const AttributeManager = (function() {
       
       if (markdownButton) {
         nodeActions.insertBefore(attributeButton, markdownButton.nextSibling);
-        console.log('Attribute button added after markdown button for node:', nodeId);
+        // console.log('Attribute button added after markdown button for node:', nodeId);
       } 
       else if (linkButton) {
         nodeActions.insertBefore(attributeButton, linkButton.nextSibling);
-        console.log('Attribute button added after link button for node:', nodeId);
+        // console.log('Attribute button added after link button for node:', nodeId);
       }
       else if (moveButton) {
         nodeActions.insertBefore(attributeButton, moveButton.nextSibling);
-        console.log('Attribute button added after move button for node:', nodeId);
+        // console.log('Attribute button added after move button for node:', nodeId);
       }
       else {
         // Fallback: append to the end
         nodeActions.appendChild(attributeButton);
-        console.log('Attribute button appended to node actions for node:', nodeId);
+        // console.log('Attribute button appended to node actions for node:', nodeId);
       }
     } else {
       // If node-actions doesn't exist yet, retry after a short delay

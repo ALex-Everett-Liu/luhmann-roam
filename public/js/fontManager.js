@@ -36,125 +36,63 @@ const FontManager = (function() {
     function initialize() {
       console.log('Initializing Font Manager...');
       
-      // Create font manager UI
-      createFontManagerUI();
-      
       // Load saved font preferences
       applyCurrentFonts();
-      
-      // Register event listeners
-      registerEventHandlers();
       
       console.log('Font Manager initialized');
     }
     
     /**
-     * Create font manager UI elements
+     * Render font settings content for SettingsManager integration
      */
-    function createFontManagerUI() {
-      // Create font manager button in sidebar
-      const sidebar = document.querySelector('.sidebar');
-      if (sidebar) {
-        const fontButton = document.createElement('button');
-        fontButton.id = 'font-manager-button';
-        fontButton.className = 'font-button';
-        fontButton.innerHTML = '🔤 Font Settings';
-        fontButton.title = 'Change application fonts';
+    function renderFontSettings(container) {
+      // Create the font settings content
+      const fontContent = document.createElement('div');
+      fontContent.className = 'font-settings-content';
+      fontContent.innerHTML = `
+        <div class="font-section">
+          <h3>English/Latin Font</h3>
+          <select id="latin-font-selector">
+            ${availableFonts.latin.map(font => 
+              `<option value="${font.name}" ${currentFonts.latin === font.name ? 'selected' : ''}>${font.name}</option>`
+            ).join('')}
+          </select>
+          <div id="latin-font-preview" class="font-preview">
+            The quick brown fox jumps over the lazy dog.
+          </div>
+        </div>
         
-        // Insert before the last few buttons
-        const gridViewButton = document.getElementById('toggle-grid-view');
-        if (gridViewButton) {
-          sidebar.insertBefore(fontButton, gridViewButton);
-        } else {
-          sidebar.appendChild(fontButton);
-        }
-      }
-      
-      // Create font manager modal
-      const modal = document.createElement('div');
-      modal.id = 'font-manager-modal';
-      modal.className = 'modal';
-      modal.innerHTML = `
-        <div class="modal-content font-manager-modal-content">
-          <div class="modal-header">
-            <h2>Font Settings</h2>
-            <span class="close-modal">&times;</span>
+        <div class="font-section">
+          <h3>Chinese Font</h3>
+          <select id="chinese-font-selector">
+            ${availableFonts.chinese.map(font => 
+              `<option value="${font.name}" ${currentFonts.chinese === font.name ? 'selected' : ''}>${font.name}</option>`
+            ).join('')}
+          </select>
+          <div id="chinese-font-preview" class="font-preview" lang="zh">
+            天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。
           </div>
-          <div class="modal-body">
-            <div class="font-section">
-              <h3>English/Latin Font</h3>
-              <select id="latin-font-selector">
-                ${availableFonts.latin.map(font => 
-                  `<option value="${font.name}" ${currentFonts.latin === font.name ? 'selected' : ''}>${font.name}</option>`
-                ).join('')}
-              </select>
-              <div id="latin-font-preview" class="font-preview">
-                The quick brown fox jumps over the lazy dog.
-              </div>
-            </div>
-            
-            <div class="font-section">
-              <h3>Chinese Font</h3>
-              <select id="chinese-font-selector">
-                ${availableFonts.chinese.map(font => 
-                  `<option value="${font.name}" ${currentFonts.chinese === font.name ? 'selected' : ''}>${font.name}</option>`
-                ).join('')}
-              </select>
-              <div id="chinese-font-preview" class="font-preview" lang="zh">
-                天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。
-              </div>
-            </div>
-            
-            <div class="font-actions">
-              <button id="download-selected-fonts" class="download-fonts-button">Download Selected Fonts</button>
-              <div id="download-status" class="download-status"></div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button id="apply-font-settings" class="primary-button">Apply</button>
-            <button id="cancel-font-settings" class="secondary-button">Cancel</button>
-          </div>
+        </div>
+        
+        <div class="font-actions">
+          <button id="download-selected-fonts" class="download-fonts-button">Download Selected Fonts</button>
+          <div id="download-status" class="download-status"></div>
         </div>
       `;
       
-      document.body.appendChild(modal);
+      container.appendChild(fontContent);
+      
+      // Set up event handlers for the rendered content
+      setupFontEventHandlers();
       
       // Update font previews
       updateFontPreviews();
     }
     
     /**
-     * Register event handlers for font manager UI
+     * Set up event handlers for font settings
      */
-    function registerEventHandlers() {
-      // Font manager button click
-      const fontButton = document.getElementById('font-manager-button');
-      if (fontButton) {
-        fontButton.addEventListener('click', openFontManager);
-      }
-      
-      // Close modal button
-      const closeButton = document.querySelector('#font-manager-modal .close-modal');
-      if (closeButton) {
-        closeButton.addEventListener('click', closeFontManager);
-      }
-      
-      // Cancel button
-      const cancelButton = document.getElementById('cancel-font-settings');
-      if (cancelButton) {
-        cancelButton.addEventListener('click', closeFontManager);
-      }
-      
-      // Apply button
-      const applyButton = document.getElementById('apply-font-settings');
-      if (applyButton) {
-        applyButton.addEventListener('click', () => {
-          saveFontSelections();
-          applyCurrentFonts();
-          closeFontManager();
-        });
-      }
-      
+    function setupFontEventHandlers() {
       // Font selector change events for previews
       const latinSelector = document.getElementById('latin-font-selector');
       const chineseSelector = document.getElementById('chinese-font-selector');
@@ -171,40 +109,6 @@ const FontManager = (function() {
       const downloadButton = document.getElementById('download-selected-fonts');
       if (downloadButton) {
         downloadButton.addEventListener('click', downloadSelectedFonts);
-      }
-      
-      // Close when clicking outside the modal
-      window.addEventListener('click', (e) => {
-        const modal = document.getElementById('font-manager-modal');
-        if (e.target === modal) {
-          closeFontManager();
-        }
-      });
-    }
-    
-    /**
-     * Open the font manager modal
-     */
-    function openFontManager() {
-      const modal = document.getElementById('font-manager-modal');
-      if (modal) {
-        // Use flex display instead of block for better centering
-        modal.style.display = 'flex';
-        // Add visible class
-        modal.classList.add('visible');
-        updateFontPreviews();
-      }
-    }
-    
-    /**
-     * Close the font manager modal
-     */
-    function closeFontManager() {
-      const modal = document.getElementById('font-manager-modal');
-      if (modal) {
-        modal.style.display = 'none';
-        // Remove visible class
-        modal.classList.remove('visible');
       }
     }
     
@@ -240,6 +144,14 @@ const FontManager = (function() {
           }
         }
       }
+    }
+    
+    /**
+     * Save font settings from the form
+     */
+    function saveFontSettings() {
+      saveFontSelections();
+      applyCurrentFonts();
     }
     
     /**
@@ -470,7 +382,8 @@ const FontManager = (function() {
     // Public API
     return {
       initialize,
-      openFontManager,
+      renderFontSettings,
+      saveFontSettings,
       applyCurrentFonts,
       updateAvailableFonts
     };

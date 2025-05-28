@@ -20,8 +20,8 @@
         // Register built-in plugins
         this.registerBuiltInPlugins();
         
-        // Create the plugin management UI
-        this.createPluginUI();
+        // Don't create plugin UI here anymore - SettingsManager will handle it
+        // this.createPluginUI();
         
         this.isInitialized = true;
         console.log('PluginManager initialization complete');
@@ -214,7 +214,7 @@
         plugin.enabled = newState;
         this.savePluginState(id, newState);
         
-        // Update UI
+        // Update UI if it exists
         this.updatePluginUI(id);
         
         if (plugin.requiresReload) {
@@ -245,128 +245,7 @@
         }
       },
       
-      // Create UI for managing plugins
-      createPluginUI: function() {
-        // Create plugin manager button for sidebar
-        const sidebar = document.querySelector('.sidebar');
-        if (!sidebar) return;
-        
-        const pluginManagerButton = document.createElement('button');
-        pluginManagerButton.id = 'plugin-manager-button';
-        pluginManagerButton.className = 'feature-toggle';
-        pluginManagerButton.textContent = 'Plugin Manager';
-        pluginManagerButton.title = 'Manage application plugins and features';
-        
-        pluginManagerButton.addEventListener('click', () => {
-          this.openPluginModal();
-        });
-        
-        sidebar.appendChild(pluginManagerButton);
-      },
-      
-      // Open the plugin management modal
-      openPluginModal: function() {
-        // First, hide any other modals that might be open
-        const otherModals = document.querySelectorAll('.modal:not(#plugin-manager-modal)');
-        otherModals.forEach(modal => {
-          modal.style.display = 'none';
-        });
-
-        // Create modal if it doesn't exist
-        let pluginModal = document.getElementById('plugin-manager-modal');
-        let modalOverlay = document.querySelector('.modal-overlay.plugin-manager-overlay');
-        
-        if (!modalOverlay) {
-          modalOverlay = document.createElement('div');
-          modalOverlay.className = 'modal-overlay plugin-manager-overlay'; // Add specific class
-          document.body.appendChild(modalOverlay);
-          
-          // Make overlay close the modal when clicked
-          modalOverlay.addEventListener('click', () => {
-            pluginModal.style.display = 'none';
-            modalOverlay.style.display = 'none';
-          });
-        }
-        
-        if (!pluginModal) {
-          pluginModal = document.createElement('div');
-          pluginModal.id = 'plugin-manager-modal';
-          pluginModal.className = 'modal';
-          
-          const pluginModalContent = document.createElement('div');
-          pluginModalContent.className = 'modal-content';
-          
-          // Modal header
-          const modalHeader = document.createElement('div');
-          modalHeader.className = 'modal-header';
-          
-          const modalTitle = document.createElement('h2');
-          modalTitle.textContent = 'Plugin Manager';
-          
-          const closeButton = document.createElement('span');
-          closeButton.className = 'close-button';
-          closeButton.innerHTML = '&times;';
-          closeButton.addEventListener('click', () => {
-            pluginModal.style.display = 'none';
-          });
-          
-          modalHeader.appendChild(modalTitle);
-          modalHeader.appendChild(closeButton);
-          
-          // Modal body
-          const modalBody = document.createElement('div');
-          modalBody.className = 'modal-body';
-          modalBody.id = 'plugin-list-container';
-          
-          // Create plugin list by category
-          this.populatePluginList(modalBody);
-          
-          // Modal footer
-          const modalFooter = document.createElement('div');
-          modalFooter.className = 'modal-footer';
-          
-          const saveButton = document.createElement('button');
-          saveButton.textContent = 'Close';
-          saveButton.addEventListener('click', () => {
-            pluginModal.style.display = 'none';
-          });
-          
-          modalFooter.appendChild(saveButton);
-          
-          // Assemble modal
-          pluginModalContent.appendChild(modalHeader);
-          pluginModalContent.appendChild(modalBody);
-          pluginModalContent.appendChild(modalFooter);
-          pluginModal.appendChild(pluginModalContent);
-          
-          // Add modal to document
-          document.body.appendChild(pluginModal);
-          
-          // Add specific inline styles to force 100% width
-          const style = document.createElement('style');
-          style.textContent = `
-            #plugin-manager-modal .modal-content {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-            }
-          `;
-          document.head.appendChild(style);
-        } else {
-          // Update plugin list
-          const pluginListContainer = document.getElementById('plugin-list-container');
-          if (pluginListContainer) {
-            pluginListContainer.innerHTML = '';
-            this.populatePluginList(pluginListContainer);
-          }
-        }
-        
-        // Show the modal and overlay
-        pluginModal.style.display = 'block';
-        modalOverlay.style.display = 'block';
-      },
-      
-      // Populate the plugin list in the modal
+      // Populate the plugin list in a container (for SettingsManager integration)
       populatePluginList: function(container) {
         // Group plugins by category
         const categories = {};
@@ -458,6 +337,22 @@
       // Format category name for display
       formatCategoryName: function(category) {
         return category.charAt(0).toUpperCase() + category.slice(1);
+      },
+      
+      // Get all plugins (for SettingsManager)
+      getAllPlugins: function() {
+        return this.plugins;
+      },
+      
+      // Get plugins by category (for SettingsManager)
+      getPluginsByCategory: function(category) {
+        const plugins = {};
+        for (const id in this.plugins) {
+          if (this.plugins[id].category === category) {
+            plugins[id] = this.plugins[id];
+          }
+        }
+        return plugins;
       }
     };
     

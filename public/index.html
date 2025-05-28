@@ -7,6 +7,7 @@
   <!-- Add direct reference to your local font CSS -->
   <link rel="stylesheet" href="css/fonts/NotoSerifSC.css">
   <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/settings-manager.css">
 </head>
 <body>
   <div class="app-container">
@@ -28,6 +29,9 @@
   
   <!-- Load plugin manager early -->
   <script src="js/pluginManager.js"></script>
+  
+  <!-- Load settings manager early (after plugin manager) -->
+  <script src="js/settingsManager.js"></script>
   
   <!-- Then load other modules -->
   <script src="js/markdownManager.js"></script>

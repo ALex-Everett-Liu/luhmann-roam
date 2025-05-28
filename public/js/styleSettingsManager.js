@@ -120,206 +120,211 @@ const StyleSettingsManager = (function() {
     function initialize() {
       console.log('Initializing Style Settings Manager...');
       
-      // Create UI elements
-      createStyleSettingsUI();
-      
       // Apply current settings
       applySettings();
       
-      // Register event handlers
-      registerEventHandlers();
-      
-      // Add theme toggler to sidebar
+      // Add theme toggler to sidebar (keep this for quick access)
       addThemeToggler();
       
       console.log('Style Settings Manager initialized with settings:', currentSettings);
     }
     
     /**
-     * Create style settings UI elements
+     * Render appearance settings content for SettingsManager integration
      */
-    function createStyleSettingsUI() {
-      // Create style settings button in sidebar
-      const sidebar = document.querySelector('.sidebar');
-      if (sidebar) {
-        const styleButton = document.createElement('button');
-        styleButton.id = 'style-settings-button';
-        styleButton.className = 'style-button';
-        styleButton.innerHTML = '🎨 Style Settings';
-        styleButton.title = 'Change application appearance';
+    function renderAppearanceSettings(container) {
+      // Create the appearance settings content
+      const appearanceContent = document.createElement('div');
+      appearanceContent.className = 'appearance-settings-content';
+      appearanceContent.innerHTML = `
+        <div class="style-settings-section">
+          <h3>Theme</h3>
+          <div class="style-theme-toggle">
+            <span>Light</span>
+            <label class="theme-switch">
+              <input type="checkbox" id="theme-toggle" ${currentSettings.theme === 'dark' ? 'checked' : ''}>
+              <span class="theme-slider">
+                <span class="sun-icon">☀️</span>
+                <span class="moon-icon">🌙</span>
+              </span>
+            </label>
+            <span>Dark</span>
+          </div>
+        </div>
         
-        // Add before the font button
-        const fontButton = document.getElementById('font-manager-button');
-        if (fontButton) {
-          sidebar.insertBefore(styleButton, fontButton);
-        } else {
-          const gridViewButton = document.getElementById('toggle-grid-view');
-          if (gridViewButton) {
-            sidebar.insertBefore(styleButton, gridViewButton);
-          } else {
-            sidebar.appendChild(styleButton);
-          }
-        }
-      }
-      
-      // Create style settings modal
-      const modal = document.createElement('div');
-      modal.id = 'style-settings-modal';
-      modal.className = 'modal';
-      modal.innerHTML = `
-        <div class="modal-content style-settings-modal-content">
-          <div class="modal-header">
-            <h2>Style Settings</h2>
-            <span class="close-modal">&times;</span>
+        <div class="style-settings-section">
+          <h3>Primary Color</h3>
+          <div class="color-option">
+            <label for="primary-color">App Primary Color</label>
+            <div class="color-preview" id="primary-color-preview" style="background-color: ${currentSettings.primaryColor}"></div>
+            <input type="color" id="primary-color" class="color-picker" value="${currentSettings.primaryColor}">
           </div>
-          <div class="modal-body">
-            <div class="style-settings-section">
-              <h3>Theme</h3>
-              <div class="style-theme-toggle">
-                <span>Light</span>
-                <label class="theme-switch">
-                  <input type="checkbox" id="theme-toggle" ${currentSettings.theme === 'dark' ? 'checked' : ''}>
-                  <span class="theme-slider">
-                    <span class="sun-icon">☀️</span>
-                    <span class="moon-icon">🌙</span>
-                  </span>
-                </label>
-                <span>Dark</span>
+          <div class="preset-colors" id="primary-preset-colors">
+            ${presetColors.primary.map(color => 
+              `<div class="preset-color" data-color="${color.value}" style="background-color: ${color.value}" title="${color.name}"></div>`
+            ).join('')}
+          </div>
+        </div>
+        
+        <div class="style-settings-section">
+          <h3>Accent Color</h3>
+          <div class="color-option">
+            <label for="accent-color">App Accent Color</label>
+            <div class="color-preview" id="accent-color-preview" style="background-color: ${currentSettings.accentColor}"></div>
+            <input type="color" id="accent-color" class="color-picker" value="${currentSettings.accentColor}">
+          </div>
+          <div class="preset-colors" id="accent-preset-colors">
+            ${presetColors.accent.map(color => 
+              `<div class="preset-color" data-color="${color.value}" style="background-color: ${color.value}" title="${color.name}"></div>`
+            ).join('')}
+          </div>
+        </div>
+        
+        <div class="style-settings-section">
+          <h3>Text Size</h3>
+          <div class="text-size-option">
+            <label>Base Font Size</label>
+            <select id="font-size-selector">
+              <option value="small" ${currentSettings.fontSize === 'small' ? 'selected' : ''}>Small</option>
+              <option value="normal" ${currentSettings.fontSize === 'normal' ? 'selected' : ''}>Normal</option>
+              <option value="large" ${currentSettings.fontSize === 'large' ? 'selected' : ''}>Large</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="style-settings-section">
+          <h3>Accessibility</h3>
+          <div class="accessibility-option">
+            <label for="reduced-motion">
+              <input type="checkbox" id="reduced-motion" ${currentSettings.reducedMotion ? 'checked' : ''}>
+              Reduced Motion
+            </label>
+          </div>
+          <div class="accessibility-option">
+            <label for="high-contrast">
+              <input type="checkbox" id="high-contrast" ${currentSettings.highContrast ? 'checked' : ''}>
+              High Contrast
+            </label>
+          </div>
+        </div>
+        
+        <div class="style-settings-section">
+          <h3>Background Image</h3>
+          <div class="background-image-option">
+            <label for="background-image-toggle">
+              <input type="checkbox" id="background-image-toggle" ${currentSettings.backgroundImage.enabled ? 'checked' : ''}>
+              Enable Background Image
+            </label>
+          </div>
+          
+          <div class="background-image-controls" style="${!currentSettings.backgroundImage.enabled ? 'display: none;' : ''}">
+            <div class="background-image-preview">
+              <div id="bg-image-preview" class="image-preview" 
+                   style="${currentSettings.backgroundImage.url ? `background-image: url(${currentSettings.backgroundImage.url});` : ''}">
+                ${!currentSettings.backgroundImage.url ? '<span>No image selected</span>' : ''}
               </div>
             </div>
             
-            <div class="style-settings-section">
-              <h3>Primary Color</h3>
-              <div class="color-option">
-                <label for="primary-color">App Primary Color</label>
-                <div class="color-preview" id="primary-color-preview" style="background-color: ${currentSettings.primaryColor}"></div>
-                <input type="color" id="primary-color" class="color-picker" value="${currentSettings.primaryColor}">
-              </div>
-              <div class="preset-colors" id="primary-preset-colors">
-                ${presetColors.primary.map(color => 
-                  `<div class="preset-color" data-color="${color.value}" style="background-color: ${color.value}" title="${color.name}"></div>`
-                ).join('')}
-              </div>
+            <div class="background-image-upload">
+              <label for="background-image-url">Image URL:</label>
+              <input type="text" id="background-image-url" value="${currentSettings.backgroundImage.url}" placeholder="https://example.com/image.jpg">
+              <button id="apply-bg-url" class="small-button">Apply URL</button>
             </div>
             
-            <div class="style-settings-section">
-              <h3>Accent Color</h3>
-              <div class="color-option">
-                <label for="accent-color">App Accent Color</label>
-                <div class="color-preview" id="accent-color-preview" style="background-color: ${currentSettings.accentColor}"></div>
-                <input type="color" id="accent-color" class="color-picker" value="${currentSettings.accentColor}">
-              </div>
-              <div class="preset-colors" id="accent-preset-colors">
-                ${presetColors.accent.map(color => 
-                  `<div class="preset-color" data-color="${color.value}" style="background-color: ${color.value}" title="${color.name}"></div>`
-                ).join('')}
-              </div>
+            <div class="background-image-upload">
+              <label for="background-image-file">Or upload image:</label>
+              <input type="file" id="background-image-file" accept="image/*">
             </div>
             
-            <div class="style-settings-section">
-              <h3>Text Size</h3>
-              <div class="text-size-option">
-                <label>Base Font Size</label>
-                <select id="font-size-selector">
-                  <option value="small" ${currentSettings.fontSize === 'small' ? 'selected' : ''}>Small</option>
-                  <option value="normal" ${currentSettings.fontSize === 'normal' ? 'selected' : ''}>Normal</option>
-                  <option value="large" ${currentSettings.fontSize === 'large' ? 'selected' : ''}>Large</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="style-settings-section">
-              <h3>Accessibility</h3>
-              <div class="accessibility-option">
-                <label for="reduced-motion">
-                  <input type="checkbox" id="reduced-motion" ${currentSettings.reducedMotion ? 'checked' : ''}>
-                  Reduced Motion
-                </label>
-              </div>
-              <div class="accessibility-option">
-                <label for="high-contrast">
-                  <input type="checkbox" id="high-contrast" ${currentSettings.highContrast ? 'checked' : ''}>
-                  High Contrast
-                </label>
-              </div>
-            </div>
-            
-            <!-- New Background Image Section -->
-            <div class="style-settings-section">
-              <h3>Background Image</h3>
-              <div class="background-image-option">
-                <label for="background-image-toggle">
-                  <input type="checkbox" id="background-image-toggle" ${currentSettings.backgroundImage.enabled ? 'checked' : ''}>
-                  Enable Background Image
-                </label>
-              </div>
+            <div class="background-settings">
+              <label for="background-opacity">Overlay Opacity: ${currentSettings.backgroundImage.opacity}</label>
+              <input type="range" id="background-opacity" min="0" max="1" step="0.05" value="${currentSettings.backgroundImage.opacity}">
               
-              <div class="background-image-controls" style="${!currentSettings.backgroundImage.enabled ? 'display: none;' : ''}">
-                <div class="background-image-preview">
-                  <div id="bg-image-preview" class="image-preview" 
-                       style="${currentSettings.backgroundImage.url ? `background-image: url(${currentSettings.backgroundImage.url});` : ''}">
-                    ${!currentSettings.backgroundImage.url ? '<span>No image selected</span>' : ''}
-                  </div>
+              <label for="background-blur">Blur Effect: ${currentSettings.backgroundImage.blur}px</label>
+              <input type="range" id="background-blur" min="0" max="20" step="1" value="${currentSettings.backgroundImage.blur}">
+              
+              <label for="content-color-adjust">Content Colors:</label>
+              <select id="content-color-adjust">
+                <option value="auto" ${currentSettings.backgroundImage.contentColorAdjust === 'auto' ? 'selected' : ''}>Auto (Based on Theme)</option>
+                <option value="light" ${currentSettings.backgroundImage.contentColorAdjust === 'light' ? 'selected' : ''}>Light Mode Colors</option>
+                <option value="dark" ${currentSettings.backgroundImage.contentColorAdjust === 'dark' ? 'selected' : ''}>Dark Mode Colors</option>
+                <option value="custom" ${currentSettings.backgroundImage.contentColorAdjust === 'custom' ? 'selected' : ''}>Custom Colors</option>
+              </select>
+              
+              <div id="custom-colors-container" style="${currentSettings.backgroundImage.contentColorAdjust !== 'custom' ? 'display: none;' : ''}">
+                <div class="color-option">
+                  <label for="custom-text-color">Text Color</label>
+                  <div class="color-preview" id="custom-text-color-preview" style="background-color: ${currentSettings.backgroundImage.customTextColor}"></div>
+                  <input type="color" id="custom-text-color" class="color-picker" value="${currentSettings.backgroundImage.customTextColor}">
                 </div>
                 
-                <div class="background-image-upload">
-                  <label for="background-image-url">Image URL:</label>
-                  <input type="text" id="background-image-url" value="${currentSettings.backgroundImage.url}" placeholder="https://example.com/image.jpg">
-                  <button id="apply-bg-url" class="small-button">Apply URL</button>
-                </div>
-                
-                <div class="background-image-upload">
-                  <label for="background-image-file">Or upload image:</label>
-                  <input type="file" id="background-image-file" accept="image/*">
-                </div>
-                
-                <div class="background-settings">
-                  <label for="background-opacity">Overlay Opacity: ${currentSettings.backgroundImage.opacity}</label>
-                  <input type="range" id="background-opacity" min="0" max="1" step="0.05" value="${currentSettings.backgroundImage.opacity}">
-                  
-                  <label for="background-blur">Blur Effect: ${currentSettings.backgroundImage.blur}px</label>
-                  <input type="range" id="background-blur" min="0" max="20" step="1" value="${currentSettings.backgroundImage.blur}">
-                  
-                  <label for="content-color-adjust">Content Colors:</label>
-                  <select id="content-color-adjust">
-                    <option value="auto" ${currentSettings.backgroundImage.contentColorAdjust === 'auto' ? 'selected' : ''}>Auto (Based on Theme)</option>
-                    <option value="light" ${currentSettings.backgroundImage.contentColorAdjust === 'light' ? 'selected' : ''}>Light Mode Colors</option>
-                    <option value="dark" ${currentSettings.backgroundImage.contentColorAdjust === 'dark' ? 'selected' : ''}>Dark Mode Colors</option>
-                    <option value="custom" ${currentSettings.backgroundImage.contentColorAdjust === 'custom' ? 'selected' : ''}>Custom Colors</option>
-                  </select>
-                  
-                  <div id="custom-colors-container" style="${currentSettings.backgroundImage.contentColorAdjust !== 'custom' ? 'display: none;' : ''}">
-                    <div class="color-option">
-                      <label for="custom-text-color">Text Color</label>
-                      <div class="color-preview" id="custom-text-color-preview" style="background-color: ${currentSettings.backgroundImage.customTextColor}"></div>
-                      <input type="color" id="custom-text-color" class="color-picker" value="${currentSettings.backgroundImage.customTextColor}">
-                    </div>
-                    
-                    <div class="color-option">
-                      <label for="custom-bg-color">Content Background</label>
-                      <div class="color-preview" id="custom-bg-color-preview" style="background-color: ${currentSettings.backgroundImage.customBgColor}"></div>
-                      <input type="color" id="custom-bg-color" class="color-picker" value="${getHexFromRgba(currentSettings.backgroundImage.customBgColor)}">
-                      <input type="range" id="custom-bg-opacity" min="0" max="1" step="0.1" value="${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}">
-                      <label for="custom-bg-opacity" id="custom-bg-opacity-label">Opacity: ${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}</label>
-                    </div>
-                  </div>
+                <div class="color-option">
+                  <label for="custom-bg-color">Content Background</label>
+                  <div class="color-preview" id="custom-bg-color-preview" style="background-color: ${currentSettings.backgroundImage.customBgColor}"></div>
+                  <input type="color" id="custom-bg-color" class="color-picker" value="${getHexFromRgba(currentSettings.backgroundImage.customBgColor)}">
+                  <input type="range" id="custom-bg-opacity" min="0" max="1" step="0.1" value="${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}">
+                  <label for="custom-bg-opacity" id="custom-bg-opacity-label">Opacity: ${getOpacityFromRgba(currentSettings.backgroundImage.customBgColor)}</label>
                 </div>
               </div>
             </div>
-            
-            <!-- End of new section -->
-          </div>
-          <div class="modal-footer">
-            <button id="reset-style-settings" class="secondary-button">Reset to Defaults</button>
-            <button id="apply-style-settings" class="primary-button">Apply Changes</button>
           </div>
         </div>
       `;
       
-      document.body.appendChild(modal);
+      container.appendChild(appearanceContent);
+      
+      // Set up event handlers for the rendered content
+      setupAppearanceEventHandlers();
       
       // Mark active preset colors
       markActivePresetColors();
+    }
+    
+    /**
+     * Set up event handlers for appearance settings
+     */
+    function setupAppearanceEventHandlers() {
+      // Theme toggle
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('change', (e) => {
+          const themePreview = document.querySelector('body');
+          if (e.target.checked) {
+            themePreview.classList.add('dark-theme');
+          } else {
+            themePreview.classList.remove('dark-theme');
+          }
+        });
+      }
+      
+      // Color pickers
+      setupColorPicker('primary-color', 'primary-color-preview');
+      setupColorPicker('accent-color', 'accent-color-preview');
+      
+      // Preset colors
+      setupPresetColors('primary-preset-colors', 'primary-color');
+      setupPresetColors('accent-preset-colors', 'accent-color');
+      
+      // Setup background image controls
+      setupBackgroundImageControls();
+    }
+    
+    /**
+     * Save appearance settings from the form
+     */
+    function saveAppearanceSettings() {
+      updateSettingsFromForm();
+      applySettings();
+      saveSettings();
+      
+      // Update the theme toggler text if it exists
+      const themeToggler = document.getElementById('theme-toggler');
+      if (themeToggler) {
+        themeToggler.textContent = currentSettings.theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+        themeToggler.title = currentSettings.theme === 'dark' 
+          ? 'Switch to light theme' 
+          : 'Switch to dark theme';
+      }
     }
     
     /**
@@ -353,88 +358,17 @@ const StyleSettingsManager = (function() {
         saveSettings();
       });
       
-      // Insert before the font button or grid view button
-      const fontButton = document.getElementById('font-manager-button');
-      if (fontButton) {
-        sidebar.insertBefore(themeToggler, fontButton);
+      // Insert before existing buttons (find a good position)
+      const gridViewButton = document.getElementById('toggle-grid-view');
+      const backupButton = document.getElementById('backup-database');
+      
+      if (backupButton) {
+        sidebar.insertBefore(themeToggler, backupButton);
+      } else if (gridViewButton) {
+        sidebar.insertBefore(themeToggler, gridViewButton);
       } else {
-        const gridViewButton = document.getElementById('toggle-grid-view');
-        if (gridViewButton) {
-          sidebar.insertBefore(themeToggler, gridViewButton);
-        } else {
-          sidebar.appendChild(themeToggler);
-        }
+        sidebar.appendChild(themeToggler);
       }
-    }
-    
-    /**
-     * Register event handlers for style settings UI
-     */
-    function registerEventHandlers() {
-      // Style settings button click
-      const styleButton = document.getElementById('style-settings-button');
-      if (styleButton) {
-        styleButton.addEventListener('click', openStyleSettings);
-      }
-      
-      // Close modal button
-      const closeButton = document.querySelector('#style-settings-modal .close-modal');
-      if (closeButton) {
-        closeButton.addEventListener('click', closeStyleSettings);
-      }
-      
-      // Apply button
-      const applyButton = document.getElementById('apply-style-settings');
-      if (applyButton) {
-        applyButton.addEventListener('click', () => {
-          updateSettingsFromForm();
-          applySettings();
-          saveSettings();
-          closeStyleSettings();
-        });
-      }
-      
-      // Reset button
-      const resetButton = document.getElementById('reset-style-settings');
-      if (resetButton) {
-        resetButton.addEventListener('click', () => {
-          resetSettings();
-          closeStyleSettings();
-          openStyleSettings(); // Reopen to show updated settings
-        });
-      }
-      
-      // Theme toggle
-      const themeToggle = document.getElementById('theme-toggle');
-      if (themeToggle) {
-        themeToggle.addEventListener('change', (e) => {
-          const themePreview = document.querySelector('body');
-          if (e.target.checked) {
-            themePreview.classList.add('dark-theme');
-          } else {
-            themePreview.classList.remove('dark-theme');
-          }
-        });
-      }
-      
-      // Color pickers
-      setupColorPicker('primary-color', 'primary-color-preview');
-      setupColorPicker('accent-color', 'accent-color-preview');
-      
-      // Preset colors
-      setupPresetColors('primary-preset-colors', 'primary-color');
-      setupPresetColors('accent-preset-colors', 'accent-color');
-      
-      // Setup background image controls
-      setupBackgroundImageControls();
-      
-      // Close when clicking outside the modal
-      window.addEventListener('click', (e) => {
-        const modal = document.getElementById('style-settings-modal');
-        if (e.target === modal) {
-          closeStyleSettings();
-        }
-      });
     }
     
     /**
@@ -534,31 +468,6 @@ const StyleSettingsManager = (function() {
     }
     
     /**
-     * Open the style settings modal
-     */
-    function openStyleSettings() {
-      const modal = document.getElementById('style-settings-modal');
-      if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('visible');
-      }
-    }
-    
-    /**
-     * Close the style settings modal
-     */
-    function closeStyleSettings() {
-      const modal = document.getElementById('style-settings-modal');
-      if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('visible');
-        
-        // Reapply current settings (discarding unsaved changes)
-        applySettings();
-      }
-    }
-    
-    /**
      * Update settings from form values
      */
     function updateSettingsFromForm() {
@@ -642,15 +551,6 @@ const StyleSettingsManager = (function() {
         const b = parseInt(baseColor.slice(5, 7), 16);
         
         currentSettings.backgroundImage.customBgColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
-      }
-      
-      // Update the theme toggler text if it exists
-      const themeToggler = document.getElementById('theme-toggler');
-      if (themeToggler) {
-        themeToggler.textContent = currentSettings.theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-        themeToggler.title = currentSettings.theme === 'dark' 
-          ? 'Switch to light theme' 
-          : 'Switch to dark theme';
       }
     }
     
@@ -1043,7 +943,8 @@ const StyleSettingsManager = (function() {
     // Public API
     return {
       initialize,
-      openStyleSettings,
+      renderAppearanceSettings,
+      saveAppearanceSettings,
       applySettings,
       resetSettings,
       getCurrentTheme: () => currentSettings.theme
