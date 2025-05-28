@@ -1581,5 +1581,11 @@ document.addEventListener('DOMContentLoaded', () => {
     lastFocusedNodeId = nodeId;
     window.lastFocusedNodeId = nodeId;
   }
+
+  // Initialize the SettingsManager (add this after other manager initializations)
+  if (window.SettingsManager) {
+    console.log('Setting up SettingsManager initialization from app.js');
+    SettingsManager.initialize();
+  }
 });
 

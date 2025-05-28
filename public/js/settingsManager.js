@@ -167,10 +167,12 @@ const SettingsManager = (function() {
         // Show the modal
         if (modalOverlay && settingsModal) {
             modalOverlay.style.display = 'flex';
-            settingsModal.style.display = 'block';
+            modalOverlay.classList.add('show');
             
             // Render the current section
             renderCurrentSection();
+            
+            console.log('Settings modal opened, current section:', currentSection);
         }
     }
     
@@ -180,7 +182,7 @@ const SettingsManager = (function() {
     function closeSettingsModal() {
         if (modalOverlay && settingsModal) {
             modalOverlay.style.display = 'none';
-            settingsModal.style.display = 'none';
+            modalOverlay.classList.remove('show');
         }
     }
     
@@ -188,34 +190,34 @@ const SettingsManager = (function() {
      * Create the settings modal structure
      */
     function createSettingsModal() {
-        // Create modal overlay
+        // Create modal overlay with unique class name
         modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay settings-modal-overlay';
+        modalOverlay.className = 'settings-modal-overlay';
         modalOverlay.addEventListener('click', (e) => {
             if (e.target === modalOverlay) {
                 closeSettingsModal();
             }
         });
         
-        // Create modal
+        // Create modal with unique class name
         settingsModal = document.createElement('div');
-        settingsModal.className = 'modal settings-modal';
+        settingsModal.className = 'settings-modal';
         settingsModal.id = 'settings-modal';
         
         // Modal content
         const modalContent = document.createElement('div');
-        modalContent.className = 'modal-content settings-modal-content';
+        modalContent.className = 'settings-modal-content';
         
         // Modal header
         const modalHeader = document.createElement('div');
-        modalHeader.className = 'modal-header settings-modal-header';
+        modalHeader.className = 'settings-modal-header';
         
         const modalTitle = document.createElement('h2');
         modalTitle.textContent = 'Settings';
         modalTitle.className = 'settings-modal-title';
         
         const closeButton = document.createElement('button');
-        closeButton.className = 'modal-close settings-modal-close';
+        closeButton.className = 'settings-modal-close';
         closeButton.innerHTML = '&times;';
         closeButton.addEventListener('click', closeSettingsModal);
         
@@ -224,7 +226,7 @@ const SettingsManager = (function() {
         
         // Modal body with sidebar and content
         const modalBody = document.createElement('div');
-        modalBody.className = 'modal-body settings-modal-body';
+        modalBody.className = 'settings-modal-body';
         
         // Settings sidebar (navigation)
         const settingsSidebar = document.createElement('div');
@@ -241,15 +243,15 @@ const SettingsManager = (function() {
         
         // Modal footer
         const modalFooter = document.createElement('div');
-        modalFooter.className = 'modal-footer settings-modal-footer';
+        modalFooter.className = 'settings-modal-footer';
         
         const saveButton = document.createElement('button');
-        saveButton.className = 'btn btn-primary settings-save-btn';
+        saveButton.className = 'settings-save-btn';
         saveButton.textContent = 'Save Changes';
         saveButton.addEventListener('click', saveCurrentSection);
         
         const cancelButton = document.createElement('button');
-        cancelButton.className = 'btn btn-secondary settings-cancel-btn';
+        cancelButton.className = 'settings-cancel-btn';
         cancelButton.textContent = 'Cancel';
         cancelButton.addEventListener('click', closeSettingsModal);
         

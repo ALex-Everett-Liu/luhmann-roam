@@ -1,4 +1,4 @@
-/* Settings Manager Styles */
+/* Settings Manager Styles - Use specific selectors to avoid conflicts */
 
 /* Settings button in sidebar */
 .settings-button {
@@ -24,365 +24,359 @@
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   }
   
-  /* Settings modal overlay */
+  /* Settings modal overlay - more specific selector */
   .settings-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    display: none !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 10000 !important;
   }
   
-  /* Settings modal */
+  .settings-modal-overlay.show {
+    display: flex !important;
+  }
+  
+  /* Settings modal - more specific selector */
   .settings-modal {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 1000px;
-    width: 90vw;
-    max-height: 80vh;
-    overflow: hidden;
-    position: relative;
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+    max-width: 1000px !important;
+    width: 90vw !important;
+    max-height: 80vh !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: block !important;
   }
   
   .dark-theme .settings-modal {
-    background: #2d3748;
-    color: #e2e8f0;
+    background: #2d3748 !important;
+    color: #e2e8f0 !important;
   }
   
   /* Modal content */
   .settings-modal-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
   }
   
   /* Modal header */
   .settings-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px 24px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
   }
   
   .dark-theme .settings-modal-header {
-    border-bottom-color: #4a5568;
-    background: #1a202c;
+    border-bottom-color: #4a5568 !important;
+    background: #1a202c !important;
   }
   
   .settings-modal-title {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-    color: #2d3748;
+    margin: 0 !important;
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    color: #2d3748 !important;
   }
   
   .dark-theme .settings-modal-title {
-    color: #e2e8f0;
+    color: #e2e8f0 !important;
   }
   
   .settings-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #718096;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
+    background: none !important;
+    border: none !important;
+    font-size: 24px !important;
+    cursor: pointer !important;
+    color: #718096 !important;
+    padding: 4px !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease !important;
   }
   
   .settings-modal-close:hover {
-    background: #e2e8f0;
-    color: #2d3748;
+    background: #e2e8f0 !important;
+    color: #2d3748 !important;
   }
   
   .dark-theme .settings-modal-close:hover {
-    background: #4a5568;
-    color: #e2e8f0;
+    background: #4a5568 !important;
+    color: #e2e8f0 !important;
   }
   
   /* Modal body */
   .settings-modal-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
+    display: flex !important;
+    flex: 1 !important;
+    overflow: hidden !important;
   }
   
   /* Settings sidebar navigation */
   .settings-sidebar {
-    width: 280px;
-    background: #f8fafc;
-    border-right: 1px solid #e2e8f0;
-    overflow-y: auto;
-    padding: 16px 0;
+    width: 280px !important;
+    background: #f8fafc !important;
+    border-right: 1px solid #e2e8f0 !important;
+    overflow-y: auto !important;
+    padding: 16px 0 !important;
+    flex-shrink: 0 !important;
   }
   
   .dark-theme .settings-sidebar {
-    background: #1a202c;
-    border-right-color: #4a5568;
+    background: #1a202c !important;
+    border-right-color: #4a5568 !important;
   }
   
   .settings-nav-item {
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    padding: 12px 20px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border-left: 3px solid transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
   }
   
   .settings-nav-item:hover {
-    background: #e2e8f0;
+    background: #e2e8f0 !important;
   }
   
   .dark-theme .settings-nav-item:hover {
-    background: #2d3748;
+    background: #2d3748 !important;
   }
   
   .settings-nav-item.active {
-    background: #ebf8ff;
-    border-left-color: #3182ce;
+    background: #ebf8ff !important;
+    border-left-color: #3182ce !important;
   }
   
   .dark-theme .settings-nav-item.active {
-    background: #2a4365;
-    border-left-color: #63b3ed;
+    background: #2a4365 !important;
+    border-left-color: #63b3ed !important;
   }
   
   .settings-nav-icon {
-    font-size: 18px;
-    margin-bottom: 2px;
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
   }
   
   .settings-nav-label {
-    font-weight: 500;
-    font-size: 14px;
-    color: #2d3748;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    color: #2d3748 !important;
   }
   
   .dark-theme .settings-nav-label {
-    color: #e2e8f0;
+    color: #e2e8f0 !important;
   }
   
   .settings-nav-description {
-    font-size: 12px;
-    color: #718096;
-    line-height: 1.3;
+    font-size: 12px !important;
+    color: #718096 !important;
+    line-height: 1.3 !important;
   }
   
   .dark-theme .settings-nav-description {
-    color: #a0aec0;
+    color: #a0aec0 !important;
   }
   
   /* Settings content area */
   .settings-content {
-    flex: 1;
-    padding: 24px;
-    overflow-y: auto;
-    background: white;
+    flex: 1 !important;
+    padding: 24px !important;
+    overflow-y: auto !important;
+    background: white !important;
   }
   
   .dark-theme .settings-content {
-    background: #2d3748;
+    background: #2d3748 !important;
   }
   
   /* Section header */
   .settings-section-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 24px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
   }
   
   .dark-theme .settings-section-header {
-    border-bottom-color: #4a5568;
+    border-bottom-color: #4a5568 !important;
   }
   
   .settings-section-title {
-    margin: 0 0 8px 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: #2d3748;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    margin: 0 0 8px 0 !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    color: #2d3748 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
   
   .dark-theme .settings-section-title {
-    color: #e2e8f0;
+    color: #e2e8f0 !important;
   }
   
   .settings-section-description {
-    margin: 0;
-    color: #718096;
-    font-size: 14px;
-    line-height: 1.5;
+    margin: 0 !important;
+    color: #718096 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
   }
   
   .dark-theme .settings-section-description {
-    color: #a0aec0;
-  }
-  
-  /* Section content */
-  .settings-section-content {
-    /* Content styles will be inherited from individual managers */
+    color: #a0aec0 !important;
   }
   
   /* Error and info messages */
   .settings-error {
-    background: #fed7d7;
-    color: #c53030;
-    padding: 12px 16px;
-    border-radius: 6px;
-    border: 1px solid #feb2b2;
+    background: #fed7d7 !important;
+    color: #c53030 !important;
+    padding: 12px 16px !important;
+    border-radius: 6px !important;
+    border: 1px solid #feb2b2 !important;
   }
   
   .dark-theme .settings-error {
-    background: #742a2a;
-    color: #fc8181;
-    border-color: #c53030;
+    background: #742a2a !important;
+    color: #fc8181 !important;
+    border-color: #c53030 !important;
   }
   
   .settings-info {
-    background: #bee3f8;
-    color: #2b6cb0;
-    padding: 12px 16px;
-    border-radius: 6px;
-    border: 1px solid #90cdf4;
+    background: #bee3f8 !important;
+    color: #2b6cb0 !important;
+    padding: 12px 16px !important;
+    border-radius: 6px !important;
+    border: 1px solid #90cdf4 !important;
   }
   
   .dark-theme .settings-info {
-    background: #2a4365;
-    color: #90cdf4;
-    border-color: #3182ce;
+    background: #2a4365 !important;
+    color: #90cdf4 !important;
+    border-color: #3182ce !important;
   }
   
   .settings-placeholder {
-    text-align: center;
-    color: #718096;
-    font-style: italic;
-    padding: 40px 20px;
+    text-align: center !important;
+    color: #718096 !important;
+    font-style: italic !important;
+    padding: 40px 20px !important;
   }
   
   .dark-theme .settings-placeholder {
-    color: #a0aec0;
+    color: #a0aec0 !important;
   }
   
   /* Modal footer */
   .settings-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    padding: 20px 24px;
-    border-top: 1px solid #e2e8f0;
-    background: #f8fafc;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px !important;
+    padding: 20px 24px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
   }
   
   .dark-theme .settings-modal-footer {
-    border-top-color: #4a5568;
-    background: #1a202c;
+    border-top-color: #4a5568 !important;
+    background: #1a202c !important;
   }
   
   /* Buttons */
   .settings-save-btn {
-    background: #3182ce;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    background: #3182ce !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
   }
   
   .settings-save-btn:hover {
-    background: #2c5282;
+    background: #2c5282 !important;
   }
   
   .settings-save-btn.success {
-    background: #38a169;
+    background: #38a169 !important;
   }
   
   .settings-save-btn.error {
-    background: #e53e3e;
+    background: #e53e3e !important;
   }
   
   .settings-cancel-btn {
-    background: #e2e8f0;
-    color: #4a5568;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    background: #e2e8f0 !important;
+    color: #4a5568 !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
   }
   
   .settings-cancel-btn:hover {
-    background: #cbd5e0;
+    background: #cbd5e0 !important;
   }
   
   .dark-theme .settings-cancel-btn {
-    background: #4a5568;
-    color: #e2e8f0;
+    background: #4a5568 !important;
+    color: #e2e8f0 !important;
   }
   
   .dark-theme .settings-cancel-btn:hover {
-    background: #2d3748;
+    background: #2d3748 !important;
   }
   
   /* Responsive design */
   @media (max-width: 768px) {
     .settings-modal {
-      width: 95vw;
-      max-height: 90vh;
+      width: 95vw !important;
+      max-height: 90vh !important;
     }
     
     .settings-modal-body {
-      flex-direction: column;
+      flex-direction: column !important;
     }
     
     .settings-sidebar {
-      width: 100%;
-      max-height: 200px;
-      border-right: none;
-      border-bottom: 1px solid #e2e8f0;
+      width: 100% !important;
+      max-height: 200px !important;
+      border-right: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
     }
     
     .dark-theme .settings-sidebar {
-      border-bottom-color: #4a5568;
+      border-bottom-color: #4a5568 !important;
     }
     
     .settings-nav-item {
-      padding: 8px 16px;
+      padding: 8px 16px !important;
     }
     
     .settings-content {
-      padding: 16px;
+      padding: 16px !important;
     }
   }
   
-  /* Integration styles for existing managers */
-  .plugins-section-content,
-  .appearance-section-content,
-  .fonts-section-content {
-    /* These will inherit styles from their respective managers */
-  }
-  
-  /* Plugin category styles (from PluginManager) */
-  .plugin-category {
+  /* Plugin category styles */
+  .settings-modal .plugin-category {
     margin-bottom: 24px;
   }
   
-  .plugin-category h3 {
+  .settings-modal .plugin-category h3 {
     margin: 0 0 12px 0;
     font-size: 16px;
     font-weight: 600;
@@ -390,11 +384,11 @@
     text-transform: capitalize;
   }
   
-  .dark-theme .plugin-category h3 {
+  .dark-theme .settings-modal .plugin-category h3 {
     color: #e2e8f0;
   }
   
-  .plugin-item {
+  .settings-modal .plugin-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -402,59 +396,59 @@
     border-bottom: 1px solid #f1f5f9;
   }
   
-  .dark-theme .plugin-item {
+  .dark-theme .settings-modal .plugin-item {
     border-bottom-color: #4a5568;
   }
   
-  .plugin-item:last-child {
+  .settings-modal .plugin-item:last-child {
     border-bottom: none;
   }
   
-  .plugin-info {
+  .settings-modal .plugin-info {
     flex: 1;
   }
   
-  .plugin-name {
+  .settings-modal .plugin-name {
     font-weight: 500;
     color: #2d3748;
     margin-bottom: 2px;
   }
   
-  .dark-theme .plugin-name {
+  .dark-theme .settings-modal .plugin-name {
     color: #e2e8f0;
   }
   
-  .plugin-description {
+  .settings-modal .plugin-description {
     font-size: 13px;
     color: #718096;
     line-height: 1.4;
   }
   
-  .dark-theme .plugin-description {
+  .dark-theme .settings-modal .plugin-description {
     color: #a0aec0;
   }
   
-  .reload-required {
+  .settings-modal .reload-required {
     color: #d69e2e;
     font-size: 11px;
     font-weight: normal;
   }
   
   /* Toggle switch styles */
-  .switch {
+  .settings-modal .switch {
     position: relative;
     display: inline-block;
     width: 44px;
     height: 24px;
   }
   
-  .switch input {
+  .settings-modal .switch input {
     opacity: 0;
     width: 0;
     height: 0;
   }
   
-  .slider {
+  .settings-modal .slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -466,7 +460,7 @@
     border-radius: 24px;
   }
   
-  .slider:before {
+  .settings-modal .slider:before {
     position: absolute;
     content: "";
     height: 18px;
@@ -478,34 +472,34 @@
     border-radius: 50%;
   }
   
-  input:checked + .slider {
+  .settings-modal input:checked + .slider {
     background-color: #3182ce;
   }
   
-  input:checked + .slider:before {
+  .settings-modal input:checked + .slider:before {
     transform: translateX(20px);
   }
   
-  .dark-theme .slider {
+  .dark-theme .settings-modal .slider {
     background-color: #4a5568;
   }
   
-  .dark-theme input:checked + .slider {
+  .dark-theme .settings-modal input:checked + .slider {
     background-color: #63b3ed;
   }
   
   /* Appearance settings styles */
-  .appearance-settings-content .style-settings-section {
+  .settings-modal .appearance-settings-content .style-settings-section {
     margin-bottom: 32px;
     padding-bottom: 24px;
     border-bottom: 1px solid #f1f5f9;
   }
   
-  .dark-theme .appearance-settings-content .style-settings-section {
+  .dark-theme .settings-modal .appearance-settings-content .style-settings-section {
     border-bottom-color: #4a5568;
   }
   
-  .appearance-settings-content .style-settings-section:last-child {
+  .settings-modal .appearance-settings-content .style-settings-section:last-child {
     border-bottom: none;
   }
   
