@@ -66,10 +66,12 @@ const SubsidiaryImageManager = (function() {
           <div class="dcim-subsidiary-info">
             <div class="dcim-subsidiary-title">${image.filename}</div>
             <div class="dcim-subsidiary-actions">
-              <button class="btn-small view-subsidiary" data-id="${image.id}">View</button>
-              <button class="btn-small promote-subsidiary" data-id="${image.id}">Promote</button>
-              <button class="btn-small detach-subsidiary" data-id="${image.id}">Detach</button>
-              <button class="btn-small delete-subsidiary" data-id="${image.id}">Delete</button>
+              <div class="dcim-action-row">
+                <button class="btn-mini view-subsidiary" data-id="${image.id}" title="View Details">👁️</button>
+                <button class="btn-mini promote-subsidiary" data-id="${image.id}" title="Promote to Main">↑</button>
+                <button class="btn-mini detach-subsidiary" data-id="${image.id}" title="Detach from Group">⚡</button>
+                <button class="btn-mini delete-subsidiary" data-id="${image.id}" title="Delete Image">✕</button>
+              </div>
             </div>
           </div>
         `;
@@ -418,7 +420,7 @@ const SubsidiaryImageManager = (function() {
                 <th style="width: 80px;">Thumbnail</th>
                 <th>Filename</th>
                 <th>Size</th>
-                <th>Actions</th>
+                <th style="width: 140px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -435,10 +437,12 @@ const SubsidiaryImageManager = (function() {
               <td>${img.filename}</td>
               <td>${formatFileSize(img.file_size || 0)}</td>
               <td>
-                <button class="btn-small view-subsidiary" data-id="${img.id}">View</button>
-                <button class="btn-small promote-subsidiary" data-id="${img.id}">Promote</button>
-                <button class="btn-small detach-subsidiary" data-id="${img.id}">Detach</button>
-                <button class="btn-small delete-subsidiary" data-id="${img.id}">Delete</button>
+                <div class="dcim-table-actions">
+                  <button class="btn-mini view-subsidiary" data-id="${img.id}" title="View Details">👁️</button>
+                  <button class="btn-mini promote-subsidiary" data-id="${img.id}" title="Promote to Main">↑</button>
+                  <button class="btn-mini detach-subsidiary" data-id="${img.id}" title="Detach from Group">⚡</button>
+                  <button class="btn-mini delete-subsidiary" data-id="${img.id}" title="Delete Image">✕</button>
+                </div>
               </td>
             </tr>
           `;
