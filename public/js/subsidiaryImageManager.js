@@ -68,7 +68,8 @@ const SubsidiaryImageManager = (function() {
             <div class="dcim-subsidiary-actions">
               <button class="btn-small view-subsidiary" data-id="${image.id}">View</button>
               <button class="btn-small promote-subsidiary" data-id="${image.id}">Promote</button>
-              <button class="btn-small remove-subsidiary" data-id="${image.id}">Remove</button>
+              <button class="btn-small detach-subsidiary" data-id="${image.id}">Detach</button>
+              <button class="btn-small delete-subsidiary" data-id="${image.id}">Delete</button>
             </div>
           </div>
         `;
@@ -84,9 +85,14 @@ const SubsidiaryImageManager = (function() {
           promoteSubsidiaryImage(image.id, parentId);
         });
         
-        card.querySelector('.remove-subsidiary').addEventListener('click', (e) => {
+        card.querySelector('.detach-subsidiary').addEventListener('click', (e) => {
           e.stopPropagation();
-          removeSubsidiaryImage(image.id, parentId);
+          detachSubsidiaryImage(image.id, parentId);
+        });
+        
+        card.querySelector('.delete-subsidiary').addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteSubsidiaryImage(image.id, parentId);
         });
         
         gridContainer.appendChild(card);
@@ -290,12 +296,12 @@ const SubsidiaryImageManager = (function() {
     }
     
     /**
-     * Removes the subsidiary relationship without deleting the image
-     * @param {string} subsidiaryId - The subsidiary image ID to remove
+     * Detaches a subsidiary image from its parent (makes it independent)
+     * @param {string} subsidiaryId - The subsidiary image ID to detach
      * @param {string} parentId - The parent image ID
      */
-    async function removeSubsidiaryImage(subsidiaryId, parentId) {
-      if (!confirm('Remove this subsidiary image? This will not delete the image, just remove the relationship.')) {
+    async function detachSubsidiaryImage(subsidiaryId, parentId) {
+      if (!confirm('Detach this subsidiary image from the group? It will become an independent major image.')) {
         return;
       }
       
@@ -305,15 +311,43 @@ const SubsidiaryImageManager = (function() {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to remove subsidiary image');
+          throw new Error('Failed to detach subsidiary image');
         }
         
         // Refresh the subsidiary images list
         loadSubsidiaryImages(parentId);
         
       } catch (error) {
-        console.error('Error removing subsidiary image:', error);
-        alert('Failed to remove subsidiary image: ' + error.message);
+        console.error('Error detaching subsidiary image:', error);
+        alert('Failed to detach subsidiary image: ' + error.message);
+      }
+    }
+    
+    /**
+     * Deletes a subsidiary image completely
+     * @param {string} subsidiaryId - The subsidiary image ID to delete
+     * @param {string} parentId - The parent image ID
+     */
+    async function deleteSubsidiaryImage(subsidiaryId, parentId) {
+      if (!confirm('Permanently delete this subsidiary image? This action cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/dcim/${subsidiaryId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete subsidiary image');
+        }
+        
+        // Refresh the subsidiary images list
+        loadSubsidiaryImages(parentId);
+        
+      } catch (error) {
+        console.error('Error deleting subsidiary image:', error);
+        alert('Failed to delete subsidiary image: ' + error.message);
       }
     }
     
@@ -403,7 +437,8 @@ const SubsidiaryImageManager = (function() {
               <td>
                 <button class="btn-small view-subsidiary" data-id="${img.id}">View</button>
                 <button class="btn-small promote-subsidiary" data-id="${img.id}">Promote</button>
-                <button class="btn-small remove-subsidiary" data-id="${img.id}">Remove</button>
+                <button class="btn-small detach-subsidiary" data-id="${img.id}">Detach</button>
+                <button class="btn-small delete-subsidiary" data-id="${img.id}">Delete</button>
               </td>
             </tr>
           `;
@@ -433,9 +468,18 @@ const SubsidiaryImageManager = (function() {
           });
         });
         
-        container.querySelectorAll('.remove-subsidiary').forEach(btn => {
+        container.querySelectorAll('.detach-subsidiary').forEach(btn => {
           btn.addEventListener('click', () => {
-            removeSubsidiaryImage(btn.dataset.id, parentId)
+            detachSubsidiaryImage(btn.dataset.id, parentId)
+              .then(() => {
+                loadAndDisplaySubsidiaries(parentId);
+              });
+          });
+        });
+        
+        container.querySelectorAll('.delete-subsidiary').forEach(btn => {
+          btn.addEventListener('click', () => {
+            deleteSubsidiaryImage(btn.dataset.id, parentId)
               .then(() => {
                 loadAndDisplaySubsidiaries(parentId);
               });
@@ -469,7 +513,8 @@ const SubsidiaryImageManager = (function() {
       showAddSubsidiaryForm,
       addSubsidiaryImage,
       promoteSubsidiaryImage,
-      removeSubsidiaryImage,
+      detachSubsidiaryImage,
+      deleteSubsidiaryImage,
       showManageSubsidiariesDialog,
       loadAndDisplaySubsidiaries,
       closeManageSubsidiariesDialog

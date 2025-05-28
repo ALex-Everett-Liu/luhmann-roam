@@ -11,7 +11,7 @@ const THUMBNAIL_SIZE = 180;
 const DEFAULT_ASSET_DIR = path.join(__dirname, '../public/attachment/dcim');
 const DEFAULT_THUMB_DIR = path.join(__dirname, '../public/attachment/thumbnails');
 
-// Ensure directories exist
+// Ensures default asset and thumbnail directories exist on startup, creates them recursively if missing
 [DEFAULT_ASSET_DIR, DEFAULT_THUMB_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });

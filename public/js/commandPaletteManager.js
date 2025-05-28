@@ -372,6 +372,9 @@ const CommandPaletteManager = (function() {
         // Register DCIM Manager commands
         registerDcimManagerCommands();
         
+        // Register Dev Test Panel commands
+        registerDevTestPanelCommands();
+        
         // Register other module commands
         registerModuleCommands();
     }
@@ -1102,6 +1105,127 @@ const CommandPaletteManager = (function() {
                 },
                 category: 'Images',
                 keywords: ['ranking', 'filter', 'custom', 'range', 'image']
+            });
+        }
+    }
+    
+    /**
+     * Register Dev Test Panel Manager commands
+     */
+    function registerDevTestPanelCommands() {
+        // Check if DevTestPanelManager exists
+        if (window.DevTestPanelManager) {
+            registerCommand({
+                name: 'Open Dev Test Panel',
+                action: () => {
+                    window.DevTestPanelManager.openModal();
+                },
+                category: 'Development',
+                shortcut: 'Alt+D',
+                keywords: ['dev', 'test', 'panel', 'development', 'debug', 'statistics', 'code']
+            });
+            
+            registerCommand({
+                name: 'View Code Statistics',
+                action: () => {
+                    window.DevTestPanelManager.openModal();
+                    
+                    // Switch to statistics tab after modal opens
+                    setTimeout(() => {
+                        const statsTab = document.querySelector('.tab[data-tab="stats"]');
+                        if (statsTab) {
+                            statsTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Development',
+                keywords: ['code', 'statistics', 'stats', 'analysis', 'metrics', 'functions', 'variables']
+            });
+            
+            registerCommand({
+                name: 'Refresh Code Statistics',
+                action: () => {
+                    if (window.DevTestPanelManager.loadStatistics) {
+                        window.DevTestPanelManager.loadStatistics();
+                    } else {
+                        // Fallback: open modal and refresh
+                        window.DevTestPanelManager.openModal();
+                        setTimeout(() => {
+                            const statsTab = document.querySelector('.tab[data-tab="stats"]');
+                            if (statsTab) {
+                                statsTab.click();
+                                setTimeout(() => {
+                                    const refreshButton = document.getElementById('refresh-statistics');
+                                    if (refreshButton) {
+                                        refreshButton.click();
+                                    }
+                                }, 100);
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Development',
+                keywords: ['refresh', 'reload', 'code', 'statistics', 'update', 'analysis']
+            });
+            
+            registerCommand({
+                name: 'View Test Entries',
+                action: () => {
+                    window.DevTestPanelManager.openModal();
+                    
+                    // Switch to entries tab after modal opens
+                    setTimeout(() => {
+                        const entriesTab = document.querySelector('.tab[data-tab="entries"]');
+                        if (entriesTab) {
+                            entriesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Development',
+                keywords: ['test', 'entries', 'functions', 'api', 'variables', 'testing']
+            });
+            
+            registerCommand({
+                name: 'Add New Test Entry',
+                action: () => {
+                    window.DevTestPanelManager.openModal();
+                    
+                    // Switch to add entry tab after modal opens
+                    setTimeout(() => {
+                        const addEntryTab = document.querySelector('.tab[data-tab="add-entry"]');
+                        if (addEntryTab) {
+                            addEntryTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Development',
+                keywords: ['add', 'new', 'test', 'entry', 'function', 'api', 'variable', 'create']
+            });
+            
+            registerCommand({
+                name: 'Refresh Test Entries',
+                action: () => {
+                    if (window.DevTestPanelManager.loadEntries) {
+                        window.DevTestPanelManager.loadEntries();
+                    } else {
+                        // Fallback: open modal and refresh
+                        window.DevTestPanelManager.openModal();
+                        setTimeout(() => {
+                            const entriesTab = document.querySelector('.tab[data-tab="entries"]');
+                            if (entriesTab) {
+                                entriesTab.click();
+                                setTimeout(() => {
+                                    const refreshButton = document.getElementById('refresh-entries');
+                                    if (refreshButton) {
+                                        refreshButton.click();
+                                    }
+                                }, 100);
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Development',
+                keywords: ['refresh', 'reload', 'test', 'entries', 'update']
             });
         }
     }
