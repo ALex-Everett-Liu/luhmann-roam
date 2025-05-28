@@ -14,6 +14,25 @@ const NodeSizeManager = (function() {
       isInitialized = true;
     }
     
+    // Helper function to update local node data (similar to app.js)
+    function updateLocalNodeData(nodeId, updateData) {
+      // Update in the global nodes array if it exists
+      if (window.nodes && Array.isArray(window.nodes)) {
+        for (let i = 0; i < window.nodes.length; i++) {
+          if (window.nodes[i].id === nodeId) {
+            if (updateData.node_size !== undefined) {
+              window.nodes[i].node_size = updateData.node_size;
+            }
+            console.log(`Updated local data for top-level node ${nodeId} with size ${updateData.node_size}`);
+            return;
+          }
+        }
+      }
+      
+      // If not found at top level, it might be a child node
+      console.log(`Node ${nodeId} not found in top-level nodes, may be a child node`);
+    }
+    
     // Open modal to adjust node size
     function openNodeSizeModal(nodeId) {
       console.log('Opening node size modal for node:', nodeId);
@@ -48,7 +67,7 @@ const NodeSizeManager = (function() {
           
           // Add description
           const description = document.createElement('p');
-          description.textContent = 'Adjust the size of this node in the grid visualization.';
+          description.textContent = 'Adjust the size of this node for visualizations and other features.';
           modalContent.appendChild(description);
           
           // Create size input with range slider
@@ -161,11 +180,11 @@ const NodeSizeManager = (function() {
               
               closeModal();
               
-              // Redraw the grid visualization if it's visible
-              if (window.NodeGridVisualizer) {
-                console.log('Refreshing grid visualization');
-                window.NodeGridVisualizer.loadAndVisualizeAllNodes();
-              }
+              // Update local node data only - no visualization refreshes
+              updateLocalNodeData(nodeId, { node_size: newSize });
+              
+              // Show success notification
+              showSuccessNotification(`Node size updated to ${newSize}`);
               
               resolve(true);
             } catch (error) {
@@ -213,6 +232,35 @@ const NodeSizeManager = (function() {
       });
     }
     
+    // Helper function to show success notification (similar to content copying)
+    function showSuccessNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'node-size-notification';
+      notification.textContent = message;
+      
+      // Style the notification
+      notification.style.position = 'fixed';
+      notification.style.top = '20px';
+      notification.style.right = '20px';
+      notification.style.backgroundColor = '#4CAF50';
+      notification.style.color = 'white';
+      notification.style.padding = '12px 20px';
+      notification.style.borderRadius = '4px';
+      notification.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+      notification.style.zIndex = '10000';
+      notification.style.fontSize = '14px';
+      notification.style.fontWeight = 'bold';
+      
+      document.body.appendChild(notification);
+      
+      // Remove notification after 3 seconds
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 3000);
+    }
+    
     // Reset all node sizes to default (20)
     async function resetAllNodeSizes() {
       try {
@@ -224,10 +272,16 @@ const NodeSizeManager = (function() {
           throw new Error('Failed to reset node sizes');
         }
         
-        // Redraw the grid visualization if it's visible
-        if (window.NodeGridVisualizer) {
-          NodeGridVisualizer.loadAndVisualizeAllNodes();
+        // Update all local node data to default size
+        if (window.nodes && Array.isArray(window.nodes)) {
+          window.nodes.forEach(node => {
+            node.node_size = 20; // Reset to default
+          });
+          console.log('Updated all local node sizes to default (20)');
         }
+        
+        // Show success notification
+        showSuccessNotification('All node sizes reset to default (20)');
         
         return true;
       } catch (error) {

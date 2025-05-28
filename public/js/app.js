@@ -1495,28 +1495,33 @@ document.addEventListener('DOMContentLoaded', () => {
       
       console.log(`Successfully copied content for node ${nodeId}`);
       
-      // Refresh the UI to show the updated content
-      if (window.fetchNodes) {
-        await window.fetchNodes(true);
+      // CHANGED: Instead of full refresh, just update the local node data
+      // Find and update the node in the local nodes array
+      updateLocalNodeData(nodeId, updateData);
+      
+      // Update the DOM element directly if it exists
+      const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+      if (nodeElement) {
+        // Find the other language container and update it
+        const otherLangContainer = nodeElement.querySelector('.node-text-other-language');
+        if (otherLangContainer) {
+          const newContent = sourceContent.replace(/\\n/g, '\n');
+          otherLangContainer.textContent = newContent;
+          console.log(`Updated DOM for node ${nodeId} with new content`);
+        }
       }
       
       // Show success message
       const notification = document.createElement('div');
-      notification.style.position = 'fixed';
-      notification.style.top = '20px';
-      notification.style.right = '20px';
-      notification.style.backgroundColor = '#4CAF50';
-      notification.style.color = 'white';
-      notification.style.padding = '10px 15px';
-      notification.style.borderRadius = '4px';
-      notification.style.zIndex = '10000';
-      notification.style.fontSize = '14px';
+      notification.className = 'content-copy-notification';
       notification.textContent = successMessage;
       document.body.appendChild(notification);
       
       // Remove notification after 2 seconds
       setTimeout(() => {
-        document.body.removeChild(notification);
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
       }, 2000);
       
       return true;
