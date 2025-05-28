@@ -210,7 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Display content based on current language from I18n
     const currentLanguage = I18n.getCurrentLanguage();
     const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-    nodeText.textContent = displayContent;
+
+    // Convert \n to actual line breaks for display
+    const contentWithLineBreaks = displayContent.replace(/\\n/g, '\n');
+    nodeText.textContent = contentWithLineBreaks;
     
     // Set language attribute for proper font application
     if (currentLanguage === 'zh' || hasChineseText(displayContent)) {
@@ -250,6 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
         savedContent = nodeText.textContent.replace(linkCountElement.textContent, '');
       }
       
+      // Convert line breaks to \n for storage
+      savedContent = savedContent.replace(/\n/g, '\\n');
+      
       // Only save if content has actually changed
       if (originalContent !== savedContent) {
         console.log(`Content changed from "${originalContent}" to "${savedContent}"`);
@@ -271,8 +277,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     nodeText.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        e.preventDefault();
-        addChildNode(node.id);
+        // Check if Shift+Enter is pressed for line break, or Ctrl+Enter for child node
+        if (e.shiftKey) {
+          // Allow default behavior (line break)
+          return;
+        } else if (e.ctrlKey) {
+          // Ctrl+Enter creates a child node
+          e.preventDefault();
+          addChildNode(node.id);
+        } else {
+          // Regular Enter creates a line break (allow default behavior)
+          return;
+        }
       } else if (e.key === 'Tab') {
         e.preventDefault();
         if (e.shiftKey) {

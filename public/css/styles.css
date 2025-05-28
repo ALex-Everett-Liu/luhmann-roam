@@ -121,6 +121,10 @@ body {
   min-height: 24px;
   outline: none;
   border: 1px solid transparent;
+  /* Add these properties for multi-line support */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .node-text:focus {

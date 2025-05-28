@@ -408,7 +408,14 @@ exports.searchNodes = async (req, res) => {
     
     const nodes = await db.all(sqlQuery, params);
     
-    res.json(nodes);
+    // When returning nodes, ensure line breaks are preserved
+    const processedNodes = nodes.map(node => ({
+      ...node,
+      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
+      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+    }));
+    
+    res.json(processedNodes);
   } catch (error) {
     console.error('Error searching nodes:', error);
     res.status(500).json({ error: 'Error searching nodes' });
