@@ -2253,3 +2253,21 @@ kbd {
 #summary-tab {
   width: 100%;
 }
+
+.node-text-other-language {
+  font-size: 0.9em;
+  color: #555;
+  background-color: #f8f9fa;
+  padding: 8px; /* Increased padding */
+  margin-top: 8px; /* Increased margin */
+  border: 1px dashed #ddd; /* Softer border */
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5; /* Improved readability */
+}
+
+.node-text-other-language[lang="zh"] {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; /* Or your preferred Chinese font */
+}

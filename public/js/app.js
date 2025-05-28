@@ -202,166 +202,110 @@ document.addEventListener('DOMContentLoaded', () => {
       nodeContent.appendChild(bullet);
     }
     
-    // Node text
+    // Node text (editable)
     const nodeText = document.createElement('div');
     nodeText.className = 'node-text';
     nodeText.contentEditable = true;
     
-    // Display content based on current language from I18n
     const currentLanguage = I18n.getCurrentLanguage();
-    const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+    let displayContent, otherLangContent, otherLangCode;
 
-    // Log the content as received from the server before any processing
-    console.log(`Node ${node.id} displayContent from server (raw):`, displayContent);
-    console.log(`Node ${node.id} displayContent from server (JSON.stringified):`, JSON.stringify(displayContent));
+    if (currentLanguage === 'en') {
+      displayContent = node.content;
+      otherLangContent = node.content_zh;
+      otherLangCode = 'zh';
+    } else {
+      displayContent = node.content_zh || node.content; // Fallback to EN if ZH is empty
+      otherLangContent = node.content;
+      otherLangCode = 'en';
+    }
     
-    // The displayContent from the server API should already have \n for line breaks
-    // (because the controller converted \\n from DB to \n)
-    // So, direct assignment to textContent should work with 'white-space: pre-wrap'.
-    nodeText.textContent = displayContent;
-    
-    // Force the white-space style directly via JavaScript as a test
+    // Make sure displayContent is never undefined or null for the editable field
+    nodeText.textContent = displayContent || ''; // Use empty string if null/undefined
+
+    // Styling for the editable field (already done in previous steps)
     nodeText.style.whiteSpace = 'pre-wrap';
     nodeText.style.wordWrap = 'break-word';
     nodeText.style.overflowWrap = 'break-word';
-    
-    // Add debugging to see what's actually being set
-    console.log(`Node ${node.id} setting textContent to:`, JSON.stringify(displayContent));
-    console.log(`Node ${node.id} textContent after setting:`, JSON.stringify(nodeText.textContent));
-    console.log(`Node ${node.id} innerHTML after setting:`, JSON.stringify(nodeText.innerHTML));
-    
-    // Let's also check the computed styles
-    setTimeout(() => {
-      const computedStyle = window.getComputedStyle(nodeText);
-      console.log(`Node ${node.id} white-space style:`, computedStyle.whiteSpace);
-    }, 100);
-    
-    // Set language attribute for proper font application
-    if (currentLanguage === 'zh' || hasChineseText(displayContent)) {
+
+    // Set language attribute for the editable field
+    if (currentLanguage === 'zh' || hasChineseText(nodeText.textContent)) {
       nodeText.setAttribute('lang', 'zh');
     } else {
       nodeText.removeAttribute('lang');
     }
-    
-    // Add link count if the node has links
-    if (node.link_count && node.link_count > 0) {
-      const linkCount = document.createElement('sup');
-      linkCount.className = 'link-count';
-      linkCount.textContent = node.link_count;
-      nodeText.appendChild(linkCount);
-    }
-    
-    // Add focus tracking to the node text
-    nodeText.addEventListener('focus', () => {
-      lastFocusedNodeId = node.id;
-      console.log(`Node ${node.id} focused`);
-    });
-    
-    nodeText.addEventListener('blur', async () => {
-      console.log(`Node ${node.id} blur event triggered`);
+
+    // ADD THE MISSING BLUR EVENT HANDLER HERE
+    nodeText.addEventListener('blur', async function() {
+      const currentContent = nodeText.innerText; // Use innerText to preserve line breaks
+      const originalContent = currentLanguage === 'en' ? (node.content || '') : (node.content_zh || node.content || '');
       
-      // Fetch the latest node data to ensure we have current values
-      const nodeResponse = await fetch(`/api/nodes/${node.id}`);
-      const currentNode = await nodeResponse.json();
+      console.log(`Blur event for node ${node.id}:`);
+      console.log(`- Current content: "${currentContent}"`);
+      console.log(`- Original content: "${originalContent}"`);
       
-      const currentLanguage = I18n.getCurrentLanguage();
-      let originalContent = currentLanguage === 'en' ? currentNode.content : currentNode.content_zh;
+      // Convert line breaks to \n for storage
+      const savedContent = currentContent.replace(/\n/g, '\\n');
+      const normalizedOriginal = originalContent.replace(/\\n/g, '\n');
       
-      // Use innerText to better capture visual line breaks
-      let savedContent = nodeText.innerText; 
+      console.log(`- Saved content (with \\n): "${savedContent}"`);
+      console.log(`- Normalized original: "${normalizedOriginal}"`);
       
-      // Handle removing the link count from the content if present
-      const linkCountElement = nodeText.querySelector('.link-count');
-      if (linkCountElement && linkCountElement.parentNode === nodeText) { // Ensure it's a direct child
-        // A more robust way to remove the link count if it's always the last element
-        if (nodeText.lastChild === linkCountElement) {
-            let tempSavedContent = "";
-            // Iterate over child nodes to build content string, excluding the link count
-            for (let i = 0; i < nodeText.childNodes.length; i++) {
-                if (nodeText.childNodes[i] !== linkCountElement) {
-                    tempSavedContent += nodeText.childNodes[i].textContent;
-                }
-            }
-            savedContent = tempSavedContent;
-        } else {
-            // Fallback to previous method if link count is not the last child
-            // This might be less reliable with innerText if link count text appears elsewhere
-            savedContent = savedContent.replace(linkCountElement.textContent, '');
-        }
-      }
-      
-      // Convert all types of line breaks (LF, CRLF, CR) to \\n for storage
-      savedContent = savedContent.replace(/\r\n|\r|\n/g, '\\n');
-      
-      // The originalContent from the API (via getNodeById) has \n (converted from DB's \\n by controller)
-      // Convert it to \\n format for proper comparison. Also handle all newline types.
-      if (originalContent) {
-        originalContent = originalContent.replace(/\r\n|\r|\n/g, '\\n');
-      }
-      
-      // Only save if content has actually changed
-      if (originalContent !== savedContent) {
-        console.log(`Content changed from "${originalContent}" to "${savedContent}"`);
+      if (currentContent !== normalizedOriginal) {
+        console.log(`Content changed for node ${node.id}, saving...`);
         
         let success;
         if (currentLanguage === 'en') {
-          // When updating English content, also ensure Chinese content is properly formatted
-          const formattedContentZh = currentNode.content_zh ? currentNode.content_zh.replace(/\r\n|\r|\n/g, '\\n') : currentNode.content_zh;
-          success = await updateNodeContent(node.id, savedContent, formattedContentZh);
+          success = await updateNodeContent(node.id, savedContent, undefined);
         } else {
-          // When updating Chinese content, also ensure English content is properly formatted  
-          const formattedContent = currentNode.content ? currentNode.content.replace(/\r\n|\r|\n/g, '\\n') : currentNode.content;
-          success = await updateNodeContent(node.id, formattedContent, savedContent);
+          success = await updateNodeContent(node.id, undefined, savedContent);
         }
         
-        if (!success) {
-          console.error(`Failed to save node ${node.id}`);
-          // Optionally show an error message to the user
+        if (success) {
+          console.log(`Successfully saved content for node ${node.id}`);
+          // Update the local node data
+          if (currentLanguage === 'en') {
+            node.content = currentContent;
+          } else {
+            node.content_zh = currentContent;
+          }
+        } else {
+          console.error(`Failed to save content for node ${node.id}`);
         }
       } else {
-        console.log(`No content change detected for node ${node.id}. Original: "${originalContent}", Saved: "${savedContent}"`);
+        console.log(`No content change detected for node ${node.id}`);
       }
     });
-    nodeText.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        // Check if Shift+Enter is pressed for line break, or Ctrl+Enter for child node
-        if (e.shiftKey) {
-          // Allow default behavior (line break)
-          return;
-        } else if (e.ctrlKey) {
-          // Ctrl+Enter creates a child node
-          e.preventDefault();
-          addChildNode(node.id);
-        } else {
-          // Regular Enter creates a line break (allow default behavior)
-          return;
-        }
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          // Outdent - Shift+Tab
-          outdentNode(node.id);
-        } else {
-          // Indent - Tab
-          indentNode(node.id);
-        }
-      } else if (e.key === 'ArrowUp' && e.altKey && e.shiftKey) {
-        e.preventDefault();
-        moveNodeUp(node.id);
-      } else if (e.key === 'ArrowDown' && e.altKey && e.shiftKey) {
-        e.preventDefault();
-        moveNodeDown(node.id);
-      } else if (e.key === 'm' && e.altKey) {
-        // Alt+M to open move node modal
-        e.preventDefault();
-        PositionManager.openMoveNodeModal(node.id);
-      } else if (e.key === '#' && e.altKey) {
-        // Alt+# to open position adjustment modal
-        e.preventDefault();
-        PositionManager.openPositionAdjustModal(node.id);
+
+    nodeContent.appendChild(nodeText); // Add the editable text field
+
+    // Read-only view for the OTHER language
+    if (otherLangContent) { // Only show if there's content in the other language
+      const otherLanguageText = document.createElement('div');
+      otherLanguageText.className = 'node-text-other-language'; // Add a CSS class for styling
+      otherLanguageText.textContent = otherLangContent.replace(/\\n/g, '\n'); // Ensure newlines are displayed
+
+      // Basic styling for read-only view (can be moved to CSS)
+      otherLanguageText.style.fontSize = '0.9em';
+      otherLanguageText.style.color = '#555';
+      otherLanguageText.style.backgroundColor = '#f8f9fa';
+      otherLanguageText.style.padding = '5px';
+      otherLanguageText.style.marginTop = '5px';
+      otherLanguageText.style.border = '1px dashed #eee';
+      otherLanguageText.style.borderRadius = '3px';
+      otherLanguageText.style.whiteSpace = 'pre-wrap'; // Important for line breaks
+      otherLanguageText.style.wordWrap = 'break-word';
+      otherLanguageText.style.overflowWrap = 'break-word';
+      
+      // Set lang attribute for the read-only field
+      if (otherLangCode === 'zh' || hasChineseText(otherLanguageText.textContent)) {
+        otherLanguageText.setAttribute('lang', 'zh');
+      } else {
+        otherLanguageText.removeAttribute('lang');
       }
-    });
-    nodeContent.appendChild(nodeText);
+
+      nodeContent.appendChild(otherLanguageText);
+    }
     
     // Node actions
     const nodeActions = document.createElement('div');
