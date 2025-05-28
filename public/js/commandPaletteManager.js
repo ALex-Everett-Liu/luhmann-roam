@@ -743,17 +743,27 @@ const CommandPaletteManager = (function() {
         // Add content copying commands for focused node
         registerCommand({
             name: 'Copy English to Chinese (Current Node)',
-            action: () => {
-                const focusedNode = document.querySelector('.node-text:focus');
-                if (focusedNode) {
-                    const nodeId = focusedNode.closest('.node').dataset.id;
-                    if (nodeId && window.copyContentBetweenLanguages) {
-                        window.copyContentBetweenLanguages(nodeId, 'en-to-zh');
+            action: async () => {
+                const nodeId = getCurrentFocusedNodeId();
+                console.log('Copy EN→ZH command executed, nodeId:', nodeId);
+                
+                if (nodeId) {
+                    if (window.copyContentBetweenLanguages) {
+                        try {
+                            const success = await window.copyContentBetweenLanguages(nodeId, 'en-to-zh');
+                            if (!success) {
+                                console.error('Copy operation returned false');
+                            }
+                        } catch (error) {
+                            console.error('Error during copy operation:', error);
+                            alert(`Failed to copy content: ${error.message}`);
+                        }
                     } else {
-                        alert('Copy function not available');
+                        console.error('copyContentBetweenLanguages function not available on window object');
+                        alert('Copy function not available. Please ensure the app is fully loaded.');
                     }
                 } else {
-                    alert('Please focus on a node first');
+                    alert('No node is currently focused. Please click on a node first.');
                 }
             },
             category: 'Language',
@@ -762,17 +772,27 @@ const CommandPaletteManager = (function() {
 
         registerCommand({
             name: 'Copy Chinese to English (Current Node)',
-            action: () => {
-                const focusedNode = document.querySelector('.node-text:focus');
-                if (focusedNode) {
-                    const nodeId = focusedNode.closest('.node').dataset.id;
-                    if (nodeId && window.copyContentBetweenLanguages) {
-                        window.copyContentBetweenLanguages(nodeId, 'zh-to-en');
+            action: async () => {
+                const nodeId = getCurrentFocusedNodeId();
+                console.log('Copy ZH→EN command executed, nodeId:', nodeId);
+                
+                if (nodeId) {
+                    if (window.copyContentBetweenLanguages) {
+                        try {
+                            const success = await window.copyContentBetweenLanguages(nodeId, 'zh-to-en');
+                            if (!success) {
+                                console.error('Copy operation returned false');
+                            }
+                        } catch (error) {
+                            console.error('Error during copy operation:', error);
+                            alert(`Failed to copy content: ${error.message}`);
+                        }
                     } else {
-                        alert('Copy function not available');
+                        console.error('copyContentBetweenLanguages function not available on window object');
+                        alert('Copy function not available. Please ensure the app is fully loaded.');
                     }
                 } else {
-                    alert('Please focus on a node first');
+                    alert('No node is currently focused. Please click on a node first.');
                 }
             },
             category: 'Language',
@@ -783,16 +803,13 @@ const CommandPaletteManager = (function() {
         registerCommand({
             name: 'Adjust Node Size (Current Node)',
             action: () => {
-                const focusedNode = document.querySelector('.node-text:focus');
-                if (focusedNode) {
-                    const nodeId = focusedNode.closest('.node').dataset.id;
-                    if (nodeId && window.NodeSizeManager) {
-                        window.NodeSizeManager.openNodeSizeModal(nodeId);
-                    } else {
-                        alert('Node Size Manager not available');
-                    }
+                const nodeId = getCurrentFocusedNodeId();
+                if (nodeId && window.NodeSizeManager) {
+                    window.NodeSizeManager.openNodeSizeModal(nodeId);
+                } else if (!nodeId) {
+                    alert('No node is currently focused. Please click on a node first.');
                 } else {
-                    alert('Please focus on a node first');
+                    alert('Node Size Manager not available');
                 }
             },
             category: 'Nodes',
@@ -1370,6 +1387,43 @@ const CommandPaletteManager = (function() {
         if (isCommandPaletteOpen) {
             renderCommandsList();
         }
+    }
+    
+    /**
+     * Helper function to get the currently focused node ID
+     * Uses multiple fallback methods to determine the "current" node
+     */
+    function getCurrentFocusedNodeId() {
+        // Method 1: Try to get from DOM focus (works when not in command palette)
+        const focusedNode = document.querySelector('.node-text:focus');
+        if (focusedNode) {
+            const nodeId = focusedNode.closest('.node').dataset.id;
+            if (nodeId) return nodeId;
+        }
+        
+        // Method 2: Try to get from BreadcrumbManager if available
+        if (window.BreadcrumbManager && window.BreadcrumbManager.getCurrentFocusedNodeId) {
+            const focusedNodeId = window.BreadcrumbManager.getCurrentFocusedNodeId();
+            if (focusedNodeId) return focusedNodeId;
+        }
+        
+        // Method 3: Use lastFocusedNodeId from app.js
+        if (window.lastFocusedNodeId) {
+            return window.lastFocusedNodeId;
+        }
+        
+        // Method 4: Try to get from global app state if available
+        if (window.currentModalNodeId) {
+            return window.currentModalNodeId;
+        }
+        
+        // Method 5: As a last resort, get the first visible node
+        const firstVisibleNode = document.querySelector('.node');
+        if (firstVisibleNode) {
+            return firstVisibleNode.dataset.id;
+        }
+        
+        return null;
     }
     
     // Public API

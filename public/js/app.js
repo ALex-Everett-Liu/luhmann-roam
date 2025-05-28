@@ -236,46 +236,55 @@ document.addEventListener('DOMContentLoaded', () => {
       nodeText.removeAttribute('lang');
     }
 
+    // ADD FOCUS TRACKING TO NODE TEXT
+    nodeText.addEventListener('focus', function() {
+        updateGlobalLastFocusedNodeId(node.id);
+        console.log(`Node ${node.id} focused, updating lastFocusedNodeId`);
+    });
+
     // ADD THE MISSING BLUR EVENT HANDLER HERE
     nodeText.addEventListener('blur', async function() {
-      const currentContent = nodeText.innerText; // Use innerText to preserve line breaks
-      const originalContent = currentLanguage === 'en' ? (node.content || '') : (node.content_zh || node.content || '');
-      
-      console.log(`Blur event for node ${node.id}:`);
-      console.log(`- Current content: "${currentContent}"`);
-      console.log(`- Original content: "${originalContent}"`);
-      
-      // Convert line breaks to \n for storage
-      const savedContent = currentContent.replace(/\n/g, '\\n');
-      const normalizedOriginal = originalContent.replace(/\\n/g, '\n');
-      
-      console.log(`- Saved content (with \\n): "${savedContent}"`);
-      console.log(`- Normalized original: "${normalizedOriginal}"`);
-      
-      if (currentContent !== normalizedOriginal) {
-        console.log(`Content changed for node ${node.id}, saving...`);
+        // Keep the lastFocusedNodeId even after blur so commands can still use it
+        // Only clear it if we're focusing on a different node
         
-        let success;
-        if (currentLanguage === 'en') {
-          success = await updateNodeContent(node.id, savedContent, undefined);
-        } else {
-          success = await updateNodeContent(node.id, undefined, savedContent);
-        }
+        const currentContent = nodeText.innerText; // Use innerText to preserve line breaks
+        const originalContent = currentLanguage === 'en' ? (node.content || '') : (node.content_zh || node.content || '');
         
-        if (success) {
-          console.log(`Successfully saved content for node ${node.id}`);
-          // Update the local node data
-          if (currentLanguage === 'en') {
-            node.content = currentContent;
-          } else {
-            node.content_zh = currentContent;
-          }
+        console.log(`Blur event for node ${node.id}:`);
+        console.log(`- Current content: "${currentContent}"`);
+        console.log(`- Original content: "${originalContent}"`);
+        
+        // Convert line breaks to \n for storage
+        const savedContent = currentContent.replace(/\n/g, '\\n');
+        const normalizedOriginal = originalContent.replace(/\\n/g, '\n');
+        
+        console.log(`- Saved content (with \\n): "${savedContent}"`);
+        console.log(`- Normalized original: "${normalizedOriginal}"`);
+        
+        if (currentContent !== normalizedOriginal) {
+            console.log(`Content changed for node ${node.id}, saving...`);
+            
+            let success;
+            if (currentLanguage === 'en') {
+                success = await updateNodeContent(node.id, savedContent, undefined);
+            } else {
+                success = await updateNodeContent(node.id, undefined, savedContent);
+            }
+            
+            if (success) {
+                console.log(`Successfully saved content for node ${node.id}`);
+                // Update the local node data
+                if (currentLanguage === 'en') {
+                    node.content = currentContent;
+                } else {
+                    node.content_zh = currentContent;
+                }
+            } else {
+                console.error(`Failed to save content for node ${node.id}`);
+            }
         } else {
-          console.error(`Failed to save content for node ${node.id}`);
+            console.log(`No content change detected for node ${node.id}`);
         }
-      } else {
-        console.log(`No content change detected for node ${node.id}`);
-      }
     });
 
     // ADD KEYBOARD EVENT HANDLER FOR TAB/SHIFT+TAB AND ENTER
@@ -1559,6 +1568,18 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to copy content. Please try again.');
       return false;
     }
+  }
+
+  // Make copyContentBetweenLanguages available globally for command palette and other modules
+  window.copyContentBetweenLanguages = copyContentBetweenLanguages;
+
+  // Make lastFocusedNodeId available globally for command palette and other modules
+  window.lastFocusedNodeId = lastFocusedNodeId;
+
+  // Update the global reference whenever lastFocusedNodeId changes
+  function updateGlobalLastFocusedNodeId(nodeId) {
+    lastFocusedNodeId = nodeId;
+    window.lastFocusedNodeId = nodeId;
   }
 });
 
