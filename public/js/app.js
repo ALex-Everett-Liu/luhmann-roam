@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentModalNodeId = null;
   let lastFocusedNodeId = null; // Add this variable to track the currently focused node
   let isInitialLoading = true; // Flag to indicate initial loading
+  let globalOtherLanguageVisible = false; // Global state for other language visibility
   
   // Application functions
   // Update language toggle button text
@@ -279,23 +280,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     nodeContent.appendChild(nodeText); // Add the editable text field
 
-    // Read-only view for the OTHER language
+    // Read-only view for the OTHER language (moved below and made toggleable)
     if (otherLangContent) { // Only show if there's content in the other language
+      // Create toggle button
+      const toggleOtherLangButton = document.createElement('button');
+      toggleOtherLangButton.className = 'toggle-other-lang-button';
+      toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
+      toggleOtherLangButton.title = `Toggle ${otherLangCode === 'zh' ? 'Chinese' : 'English'} content`;
+      toggleOtherLangButton.style.fontSize = '11px';
+      toggleOtherLangButton.style.padding = '2px 6px';
+      toggleOtherLangButton.style.marginLeft = '8px';
+      toggleOtherLangButton.style.backgroundColor = '#f0f0f0';
+      toggleOtherLangButton.style.border = '1px solid #ccc';
+      toggleOtherLangButton.style.borderRadius = '3px';
+      toggleOtherLangButton.style.cursor = 'pointer';
+      
+      // Create the other language content container
+      const otherLanguageContainer = document.createElement('div');
+      otherLanguageContainer.className = 'node-text-other-language-container';
+      otherLanguageContainer.style.display = 'none'; // Hidden by default
+      otherLanguageContainer.style.marginTop = '8px';
+      otherLanguageContainer.style.paddingLeft = '20px'; // Indent to show it's related
+      
       const otherLanguageText = document.createElement('div');
-      otherLanguageText.className = 'node-text-other-language'; // Add a CSS class for styling
+      otherLanguageText.className = 'node-text-other-language';
       otherLanguageText.textContent = otherLangContent.replace(/\\n/g, '\n'); // Ensure newlines are displayed
 
-      // Basic styling for read-only view (can be moved to CSS)
+      // Improved styling for read-only view
       otherLanguageText.style.fontSize = '0.9em';
       otherLanguageText.style.color = '#555';
       otherLanguageText.style.backgroundColor = '#f8f9fa';
-      otherLanguageText.style.padding = '5px';
-      otherLanguageText.style.marginTop = '5px';
-      otherLanguageText.style.border = '1px dashed #eee';
-      otherLanguageText.style.borderRadius = '3px';
-      otherLanguageText.style.whiteSpace = 'pre-wrap'; // Important for line breaks
+      otherLanguageText.style.padding = '8px';
+      otherLanguageText.style.border = '1px dashed #ddd';
+      otherLanguageText.style.borderRadius = '4px';
+      otherLanguageText.style.whiteSpace = 'pre-wrap';
       otherLanguageText.style.wordWrap = 'break-word';
       otherLanguageText.style.overflowWrap = 'break-word';
+      otherLanguageText.style.lineHeight = '1.5';
+      otherLanguageText.style.maxHeight = '200px'; // Limit height for very long content
+      otherLanguageText.style.overflowY = 'auto'; // Add scrolling for long content
       
       // Set lang attribute for the read-only field
       if (otherLangCode === 'zh' || hasChineseText(otherLanguageText.textContent)) {
@@ -304,12 +327,58 @@ document.addEventListener('DOMContentLoaded', () => {
         otherLanguageText.removeAttribute('lang');
       }
 
-      nodeContent.appendChild(otherLanguageText);
+      // Add a small header to indicate what language this is
+      const languageHeader = document.createElement('div');
+      languageHeader.style.fontSize = '0.8em';
+      languageHeader.style.color = '#888';
+      languageHeader.style.marginBottom = '4px';
+      languageHeader.style.fontWeight = 'bold';
+      languageHeader.textContent = otherLangCode === 'zh' ? '中文内容:' : 'English Content:';
+      
+      otherLanguageContainer.appendChild(languageHeader);
+      otherLanguageContainer.appendChild(otherLanguageText);
+      
+      // Toggle functionality
+      toggleOtherLangButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        const isVisible = otherLanguageContainer.style.display !== 'none';
+        
+        if (isVisible) {
+          otherLanguageContainer.style.display = 'none';
+          toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
+          toggleOtherLangButton.style.backgroundColor = '#f0f0f0';
+        } else {
+          otherLanguageContainer.style.display = 'block';
+          toggleOtherLangButton.innerHTML = `🙈 ${otherLangCode.toUpperCase()}`;
+          toggleOtherLangButton.style.backgroundColor = '#e8f0fe';
+        }
+      });
+      
+      // Set initial state based on global preference
+      if (globalOtherLanguageVisible) {
+        otherLanguageContainer.style.display = 'block';
+        toggleOtherLangButton.innerHTML = `🙈 ${otherLangCode.toUpperCase()}`;
+        toggleOtherLangButton.style.backgroundColor = '#e8f0fe';
+      } else {
+        otherLanguageContainer.style.display = 'none';
+        toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
+        toggleOtherLangButton.style.backgroundColor = '#f0f0f0';
+      }
+      
+      // Add the toggle button to the node actions area (we'll add it later)
+      // Store reference for later use
+      nodeContent._toggleOtherLangButton = toggleOtherLangButton;
+      nodeContent._otherLanguageContainer = otherLanguageContainer;
     }
     
     // Node actions
     const nodeActions = document.createElement('div');
     nodeActions.className = 'node-actions';
+    
+    // Add the toggle button to node actions if it exists
+    if (nodeContent._toggleOtherLangButton) {
+      nodeActions.appendChild(nodeContent._toggleOtherLangButton);
+    }
     
     // Position button
     const positionButton = document.createElement('button');
@@ -435,6 +504,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
+    
+    // Add the other language container after the main node content
+    if (nodeContent._otherLanguageContainer) {
+      nodeDiv.appendChild(nodeContent._otherLanguageContainer);
+    }
     
     // Children container
     if (children.length > 0 && node.is_expanded) {
@@ -1267,5 +1341,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add to sidebar using helper function
   addButtonToSidebar(toggleMetroMapButton);
+
+  // Add this function after the other helper functions
+  function toggleAllOtherLanguageContent() {
+    globalOtherLanguageVisible = !globalOtherLanguageVisible;
+    
+    // Update all existing other language containers
+    const allContainers = document.querySelectorAll('.node-text-other-language-container');
+    const allToggleButtons = document.querySelectorAll('.toggle-other-lang-button');
+    
+    allContainers.forEach(container => {
+      container.style.display = globalOtherLanguageVisible ? 'block' : 'none';
+    });
+    
+    allToggleButtons.forEach(button => {
+      const langCode = button.innerHTML.includes('ZH') ? 'zh' : 'en';
+      if (globalOtherLanguageVisible) {
+        button.innerHTML = `🙈 ${langCode.toUpperCase()}`;
+        button.style.backgroundColor = '#e8f0fe';
+      } else {
+        button.innerHTML = `👁️ ${langCode.toUpperCase()}`;
+        button.style.backgroundColor = '#f0f0f0';
+      }
+    });
+    
+    // Update the global toggle button
+    const globalToggleButton = document.getElementById('global-toggle-other-lang');
+    if (globalToggleButton) {
+      if (globalOtherLanguageVisible) {
+        globalToggleButton.textContent = '🙈 Hide All Translations';
+        globalToggleButton.classList.add('active');
+      } else {
+        globalToggleButton.textContent = '👁️ Show All Translations';
+        globalToggleButton.classList.remove('active');
+      }
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('globalOtherLanguageVisible', globalOtherLanguageVisible.toString());
+  }
+
+  // Add this after the other sidebar buttons (around line 820 where other buttons are added)
+    // Add global toggle for other language content
+    const globalToggleOtherLangButton = document.createElement('button');
+    globalToggleOtherLangButton.id = 'global-toggle-other-lang';
+    globalToggleOtherLangButton.className = 'feature-toggle';
+    globalToggleOtherLangButton.textContent = '👁️ Show All Translations';
+    globalToggleOtherLangButton.title = 'Toggle visibility of all other language content';
+    globalToggleOtherLangButton.addEventListener('click', toggleAllOtherLanguageContent);
+
+    // Add to sidebar using helper function
+    addButtonToSidebar(globalToggleOtherLangButton);
+
+  // Add this near the initialization code to restore the saved preference
+    // Restore global other language visibility preference
+    const savedGlobalOtherLanguageVisible = localStorage.getItem('globalOtherLanguageVisible');
+    if (savedGlobalOtherLanguageVisible === 'true') {
+      globalOtherLanguageVisible = true;
+      const globalToggleButton = document.getElementById('global-toggle-other-lang');
+      if (globalToggleButton) {
+        globalToggleButton.textContent = '🙈 Hide All Translations';
+        globalToggleButton.classList.add('active');
+      }
+    }
 });
 

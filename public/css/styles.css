@@ -2258,16 +2258,121 @@ kbd {
   font-size: 0.9em;
   color: #555;
   background-color: #f8f9fa;
-  padding: 8px; /* Increased padding */
-  margin-top: 8px; /* Increased margin */
-  border: 1px dashed #ddd; /* Softer border */
+  padding: 8px;
+  margin-top: 8px;
+  border: 1px dashed #ddd;
   border-radius: 4px;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  line-height: 1.5; /* Improved readability */
+  line-height: 1.5;
 }
 
 .node-text-other-language[lang="zh"] {
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; /* Or your preferred Chinese font */
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* Add these styles for the other language content */
+.toggle-other-lang-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s;
+}
+
+.toggle-other-lang-button:hover {
+  background-color: #e0e0e0;
+}
+
+.node-text-other-language-container {
+  margin-top: 8px;
+  padding-left: 20px;
+  border-left: 2px solid #e0e0e0;
+  position: relative;
+}
+
+.node-text-other-language-container::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #4285f4;
+  opacity: 0.3;
+}
+
+.node-text-other-language {
+  font-size: 0.9em;
+  color: #555;
+  background-color: #f8f9fa;
+  padding: 8px;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.node-text-other-language[lang="zh"] {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* Scrollbar styling for the other language content */
+.node-text-other-language::-webkit-scrollbar {
+  width: 6px;
+}
+
+.node-text-other-language::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.node-text-other-language::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.node-text-other-language::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Global toggle button for other language content */
+#global-toggle-other-lang {
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+#global-toggle-other-lang:hover {
+  background-color: #e9ecef;
+  border-color: #1a73e8;
+}
+
+#global-toggle-other-lang.active {
+  background-color: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+  font-weight: 500;
+}
+
+/* Update the feature-toggle class to work better with the new button */
+.feature-toggle {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: left;
 }
