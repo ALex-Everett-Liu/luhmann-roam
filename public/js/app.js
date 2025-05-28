@@ -211,9 +211,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentLanguage = I18n.getCurrentLanguage();
     const displayContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
 
-    // Convert \n to actual line breaks for display
-    const contentWithLineBreaks = displayContent.replace(/\\n/g, '\n');
-    nodeText.textContent = contentWithLineBreaks;
+    // Log the content as received from the server before any processing
+    console.log(`Node ${node.id} displayContent from server (raw):`, displayContent);
+    console.log(`Node ${node.id} displayContent from server (JSON.stringified):`, JSON.stringify(displayContent));
+    
+    // The displayContent from the server API should already have \n for line breaks
+    // (because the controller converted \\n from DB to \n)
+    // So, direct assignment to textContent should work with 'white-space: pre-wrap'.
+    nodeText.textContent = displayContent;
+    
+    // Force the white-space style directly via JavaScript as a test
+    nodeText.style.whiteSpace = 'pre-wrap';
+    nodeText.style.wordWrap = 'break-word';
+    nodeText.style.overflowWrap = 'break-word';
+    
+    // Add debugging to see what's actually being set
+    console.log(`Node ${node.id} setting textContent to:`, JSON.stringify(displayContent));
+    console.log(`Node ${node.id} textContent after setting:`, JSON.stringify(nodeText.textContent));
+    console.log(`Node ${node.id} innerHTML after setting:`, JSON.stringify(nodeText.innerHTML));
+    
+    // Let's also check the computed styles
+    setTimeout(() => {
+      const computedStyle = window.getComputedStyle(nodeText);
+      console.log(`Node ${node.id} white-space style:`, computedStyle.whiteSpace);
+    }, 100);
     
     // Set language attribute for proper font application
     if (currentLanguage === 'zh' || hasChineseText(displayContent)) {
@@ -284,9 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let success;
         if (currentLanguage === 'en') {
-          success = await updateNodeContent(node.id, savedContent, currentNode.content_zh);
+          // When updating English content, also ensure Chinese content is properly formatted
+          const formattedContentZh = currentNode.content_zh ? currentNode.content_zh.replace(/\r\n|\r|\n/g, '\\n') : currentNode.content_zh;
+          success = await updateNodeContent(node.id, savedContent, formattedContentZh);
         } else {
-          success = await updateNodeContent(node.id, currentNode.content, savedContent);
+          // When updating Chinese content, also ensure English content is properly formatted  
+          const formattedContent = currentNode.content ? currentNode.content.replace(/\r\n|\r|\n/g, '\\n') : currentNode.content;
+          success = await updateNodeContent(node.id, formattedContent, savedContent);
         }
         
         if (!success) {
@@ -523,52 +548,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update node content
   async function updateNodeContent(nodeId, content, content_zh) {
     try {
-      console.log(`Saving node ${nodeId}:`, { content, content_zh });
+      console.log(`updateNodeContent called for ${nodeId} with:`, { content_param: content, content_zh_param: content_zh });
+      
+      // Simple approach: just pass the content as-is since the blur handler already formatted it correctly
       const updateData = {};
       
-      // Check if this is the first edit of a default node
-      let isFirstEdit = false;
-      
-      // Fetch the current node data directly from the server to ensure accuracy
-      console.log(`Fetching current node data for ${nodeId} to check if it's a first edit`);
-      const nodeResponse = await fetch(`/api/nodes/${nodeId}`);
-      const node = await nodeResponse.json();
-      
-      console.log(`Current node data:`, node);
-      
-      // Define default content values using I18n
-      const defaultEnContent = I18n.t('newNode');
-      const defaultZhContent = I18n.t('newNode');
-      
-      // Check if the node still has default content in either language field
-      if ((node.content === defaultEnContent || node.content === defaultZhContent) && 
-          (node.content_zh === defaultEnContent || node.content_zh === defaultZhContent)) {
-        isFirstEdit = true;
-        console.log(`First edit detected for node ${nodeId} - will update both language fields`);
+      if (content !== undefined) {
+        updateData.content = content;
       }
-      
-      // For first edit, update both language fields with the same content
-      if (isFirstEdit) {
-        // Use I18n.getCurrentLanguage() instead of currentLanguage
-        const currentLanguage = I18n.getCurrentLanguage();
-        const editedContent = currentLanguage === 'en' ? content : content_zh;
-        console.log(`Using ${currentLanguage} content for both fields: "${editedContent}"`);
-        
-        updateData.content = editedContent;
-        updateData.content_zh = editedContent;
-      } else {
-        // Use I18n.getCurrentLanguage() instead of currentLanguage
-        const currentLanguage = I18n.getCurrentLanguage();
-        console.log(`Not first edit, only updating ${currentLanguage} content`);
-        if (content !== null) {
-          updateData.content = content;
-        }
-        
-        if (content_zh !== null) {
-          updateData.content_zh = content_zh;
-        }
+      if (content_zh !== undefined) {
+        updateData.content_zh = content_zh;
       }
-      
+
       console.log(`Sending update request for node ${nodeId} with data:`, updateData);
       
       const response = await fetch(`/api/nodes/${nodeId}`, {
@@ -585,11 +576,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
       }
       
-      const updatedNode = await response.json();
-      console.log(`Successfully saved node ${nodeId}:`, updatedNode);
+      const updatedNodeFromServer = await response.json();
+      console.log(`Successfully saved node ${nodeId}:`, updatedNodeFromServer);
       
-      // Update the node in our local data structure to ensure consistency
-      updateLocalNodeData(nodeId, updateData);
+      // Update the node in our local data structure (nodes array) to ensure consistency
+      // The updatedNodeFromServer contains \\n, so we need to process it for local display cache
+      const processedUpdateForLocalCache = {
+          content: updatedNodeFromServer.content ? updatedNodeFromServer.content.replace(/\\n/g, '\n') : updatedNodeFromServer.content,
+          content_zh: updatedNodeFromServer.content_zh ? updatedNodeFromServer.content_zh.replace(/\\n/g, '\n') : updatedNodeFromServer.content_zh,
+      };
+      updateLocalNodeData(nodeId, processedUpdateForLocalCache);
       
       return true;
     } catch (error) {
@@ -1328,3 +1324,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add to sidebar using helper function
   addButtonToSidebar(toggleMetroMapButton);
 });
+

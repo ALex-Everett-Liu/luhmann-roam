@@ -24,11 +24,16 @@ exports.getAllRootNodes = async (req, res) => {
     `);
     
     // Process line breaks for display
-    const processedNodes = nodes.map(node => ({
-      ...node,
-      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
-      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
-    }));
+    const processedNodes = nodes.map(node => {
+      console.log(`Node ${node.id} content from DB:`, JSON.stringify(node.content));
+      const newContent = node.content ? node.content.replace(/\\n/g, '\n') : node.content;
+      console.log(`Node ${node.id} content after replace:`, JSON.stringify(newContent));
+      return {
+        ...node,
+        content: newContent,
+        content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+      };
+    });
     
     res.json(processedNodes);
   } catch (error) {
@@ -55,11 +60,16 @@ exports.getChildNodes = async (req, res) => {
     `, id);
     
     // Process line breaks for display
-    const processedNodes = nodes.map(node => ({
-      ...node,
-      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
-      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
-    }));
+    const processedNodes = nodes.map(node => {
+      console.log(`Node ${node.id} content from DB:`, JSON.stringify(node.content));
+      const newContent = node.content ? node.content.replace(/\\n/g, '\n') : node.content;
+      console.log(`Node ${node.id} content after replace:`, JSON.stringify(newContent));
+      return {
+        ...node,
+        content: newContent,
+        content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+      };
+    });
     
     res.json(processedNodes);
   } catch (error) {
@@ -138,8 +148,16 @@ exports.updateNode = async (req, res) => {
     query += ' WHERE id = ?'; // The query is finalized by adding a WHERE clause to specify which node to update based on its ID. The id is added to the parameters array.
     params.push(id);
     
+    // Add these logging statements before the database update
+    console.log('Executing update with query:', query);
+    console.log('Executing update with params:', JSON.stringify(params));
+    
     await db.run(query, params);
     const node = await db.get('SELECT * FROM nodes WHERE id = ?', id); // Fetching the Updated Node: After the update, this line retrieves the complete record of the updated node from the database using its ID. This is useful for returning the full details of the node in the response.
+    
+    // Add this logging statement after fetching the updated node
+    console.log('Node after update from DB:', JSON.stringify(node));
+    
     res.json(node);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -208,6 +226,10 @@ exports.getNodeById = async (req, res) => {
       content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
       content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
     };
+    
+    console.log(`Node ${id} content from DB:`, JSON.stringify(node.content));
+    const newContent = node.content ? node.content.replace(/\\n/g, '\n') : node.content;
+    console.log(`Node ${id} content after replace:`, JSON.stringify(newContent));
     
     res.json(processedNode);
   } catch (error) {
