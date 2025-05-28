@@ -23,7 +23,14 @@ exports.getAllRootNodes = async (req, res) => {
       ORDER BY n.position
     `);
     
-    res.json(nodes);
+    // Process line breaks for display
+    const processedNodes = nodes.map(node => ({
+      ...node,
+      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
+      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+    }));
+    
+    res.json(processedNodes);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -47,7 +54,14 @@ exports.getChildNodes = async (req, res) => {
       ORDER BY n.position
     `, id);
     
-    res.json(nodes);
+    // Process line breaks for display
+    const processedNodes = nodes.map(node => ({
+      ...node,
+      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
+      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+    }));
+    
+    res.json(processedNodes);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -188,7 +202,14 @@ exports.getNodeById = async (req, res) => {
       return res.status(404).json({ error: 'Node not found' });
     }
     
-    res.json(node);
+    // Process line breaks for display
+    const processedNode = {
+      ...node,
+      content: node.content ? node.content.replace(/\\n/g, '\n') : node.content,
+      content_zh: node.content_zh ? node.content_zh.replace(/\\n/g, '\n') : node.content_zh
+    };
+    
+    res.json(processedNode);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

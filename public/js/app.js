@@ -245,16 +245,38 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const currentLanguage = I18n.getCurrentLanguage();
       let originalContent = currentLanguage === 'en' ? currentNode.content : currentNode.content_zh;
-      let savedContent = nodeText.textContent;
+      
+      // Use innerText to better capture visual line breaks
+      let savedContent = nodeText.innerText; 
       
       // Handle removing the link count from the content if present
       const linkCountElement = nodeText.querySelector('.link-count');
-      if (linkCountElement) {
-        savedContent = nodeText.textContent.replace(linkCountElement.textContent, '');
+      if (linkCountElement && linkCountElement.parentNode === nodeText) { // Ensure it's a direct child
+        // A more robust way to remove the link count if it's always the last element
+        if (nodeText.lastChild === linkCountElement) {
+            let tempSavedContent = "";
+            // Iterate over child nodes to build content string, excluding the link count
+            for (let i = 0; i < nodeText.childNodes.length; i++) {
+                if (nodeText.childNodes[i] !== linkCountElement) {
+                    tempSavedContent += nodeText.childNodes[i].textContent;
+                }
+            }
+            savedContent = tempSavedContent;
+        } else {
+            // Fallback to previous method if link count is not the last child
+            // This might be less reliable with innerText if link count text appears elsewhere
+            savedContent = savedContent.replace(linkCountElement.textContent, '');
+        }
       }
       
-      // Convert line breaks to \n for storage
-      savedContent = savedContent.replace(/\n/g, '\\n');
+      // Convert all types of line breaks (LF, CRLF, CR) to \\n for storage
+      savedContent = savedContent.replace(/\r\n|\r|\n/g, '\\n');
+      
+      // The originalContent from the API (via getNodeById) has \n (converted from DB's \\n by controller)
+      // Convert it to \\n format for proper comparison. Also handle all newline types.
+      if (originalContent) {
+        originalContent = originalContent.replace(/\r\n|\r|\n/g, '\\n');
+      }
       
       // Only save if content has actually changed
       if (originalContent !== savedContent) {
@@ -272,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Optionally show an error message to the user
         }
       } else {
-        console.log(`No content change detected for node ${node.id}`);
+        console.log(`No content change detected for node ${node.id}. Original: "${originalContent}", Saved: "${savedContent}"`);
       }
     });
     nodeText.addEventListener('keydown', (e) => {
