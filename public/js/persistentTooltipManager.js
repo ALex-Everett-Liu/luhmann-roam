@@ -7,6 +7,7 @@ const PersistentTooltipManager = (function() {
     // Private variables
     let persistentTooltips = new Map(); // Map of nodeId -> tooltip element
     let isInitialized = false;
+    let hasShownStartupHint = false; // Track if we've shown the startup hint
     let dragState = {
         isDragging: false,
         currentTooltip: null,
@@ -24,6 +25,11 @@ const PersistentTooltipManager = (function() {
         
         setupEventListeners();
         addStyles();
+        
+        // Show startup hint after a brief delay
+        setTimeout(() => {
+            showStartupHint();
+        }, 2000); // Show after 2 seconds
         
         isInitialized = true;
         console.log('PersistentTooltipManager initialized');
@@ -126,6 +132,12 @@ const PersistentTooltipManager = (function() {
                 transform: translateY(-1px);
             }
 
+            /* Hide original hover tooltips when persistent tooltips are active */
+            body.has-persistent-tooltips .node-content:hover .node-actions {
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
             /* Dark theme support */
             body.dark-theme .persistent-tooltip {
                 background-color: var(--dark-surface-color, #2d2d2d);
@@ -146,25 +158,42 @@ const PersistentTooltipManager = (function() {
                 color: #4285f4;
             }
 
-            /* Hotkey indicator */
-            .persistent-tooltip-hotkey {
+            /* Startup hint styles */
+            .persistent-tooltip-startup-hint {
                 position: fixed;
                 bottom: 20px;
                 right: 20px;
-                background-color: rgba(66, 133, 244, 0.9);
+                background-color: rgba(66, 133, 244, 0.95);
                 color: white;
-                padding: 8px 12px;
-                border-radius: 6px;
-                font-size: 12px;
+                padding: 12px 16px;
+                border-radius: 8px;
+                font-size: 14px;
                 font-weight: 500;
                 z-index: 1001;
-                pointer-events: none;
+                pointer-events: auto;
                 opacity: 0;
-                transition: opacity 0.3s ease;
+                transform: translateY(20px);
+                transition: all 0.4s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                max-width: 280px;
+                cursor: pointer;
             }
 
-            .persistent-tooltip-hotkey.show {
+            .persistent-tooltip-startup-hint.show {
                 opacity: 1;
+                transform: translateY(0);
+            }
+
+            .persistent-tooltip-startup-hint:hover {
+                background-color: rgba(66, 133, 244, 1);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+            }
+
+            .persistent-tooltip-startup-hint::after {
+                content: " (Click to dismiss)";
+                font-size: 12px;
+                opacity: 0.8;
             }
         `;
         document.head.appendChild(style);
@@ -184,9 +213,52 @@ const PersistentTooltipManager = (function() {
         // Listen for escape key to close all persistent tooltips
         document.addEventListener('keydown', handleEscapeKey);
         
-        // Show hotkey hint when hovering over nodes
-        document.addEventListener('mouseover', handleNodeHover);
-        document.addEventListener('mouseout', handleNodeHoverOut);
+        // Remove the hover event listeners for showing hints
+        // document.addEventListener('mouseover', handleNodeHover);
+        // document.addEventListener('mouseout', handleNodeHoverOut);
+    }
+
+    /**
+     * Show startup hint
+     */
+    function showStartupHint() {
+        if (hasShownStartupHint) return;
+        
+        const hint = document.createElement('div');
+        hint.id = 'persistent-tooltip-startup-hint';
+        hint.className = 'persistent-tooltip-startup-hint';
+        hint.textContent = 'Tip: Hover over any node and press Ctrl+T to pin its action buttons';
+        
+        // Add click to dismiss
+        hint.addEventListener('click', () => {
+            hint.classList.remove('show');
+            setTimeout(() => {
+                if (hint.parentNode) {
+                    hint.parentNode.removeChild(hint);
+                }
+            }, 400);
+        });
+        
+        document.body.appendChild(hint);
+        
+        // Show the hint
+        setTimeout(() => {
+            hint.classList.add('show');
+        }, 100);
+        
+        // Auto-hide after 8 seconds
+        setTimeout(() => {
+            if (hint.classList.contains('show')) {
+                hint.classList.remove('show');
+                setTimeout(() => {
+                    if (hint.parentNode) {
+                        hint.parentNode.removeChild(hint);
+                    }
+                }, 400);
+            }
+        }, 8000);
+        
+        hasShownStartupHint = true;
     }
 
     /**
@@ -218,52 +290,6 @@ const PersistentTooltipManager = (function() {
     }
 
     /**
-     * Handle node hover to show hotkey hint
-     */
-    function handleNodeHover(event) {
-        const nodeContent = event.target.closest('.node-content');
-        if (nodeContent && !dragState.isDragging) {
-            showHotkeyHint();
-        }
-    }
-
-    /**
-     * Handle node hover out to hide hotkey hint
-     */
-    function handleNodeHoverOut(event) {
-        const nodeContent = event.target.closest('.node-content');
-        if (!nodeContent || !event.relatedTarget?.closest('.node-content')) {
-            hideHotkeyHint();
-        }
-    }
-
-    /**
-     * Show hotkey hint
-     */
-    function showHotkeyHint() {
-        let hint = document.getElementById('persistent-tooltip-hotkey-hint');
-        if (!hint) {
-            hint = document.createElement('div');
-            hint.id = 'persistent-tooltip-hotkey-hint';
-            hint.className = 'persistent-tooltip-hotkey';
-            hint.textContent = 'Press Ctrl+T to pin tooltip';
-            document.body.appendChild(hint);
-        }
-        
-        hint.classList.add('show');
-    }
-
-    /**
-     * Hide hotkey hint
-     */
-    function hideHotkeyHint() {
-        const hint = document.getElementById('persistent-tooltip-hotkey-hint');
-        if (hint) {
-            hint.classList.remove('show');
-        }
-    }
-
-    /**
      * Toggle persistent tooltip for a node
      */
     function togglePersistentTooltip(nodeId, nodeContent) {
@@ -273,6 +299,17 @@ const PersistentTooltipManager = (function() {
         } else {
             // Create new persistent tooltip
             createPersistentTooltip(nodeId, nodeContent);
+        }
+    }
+
+    /**
+     * Update body class to control original tooltip visibility
+     */
+    function updateBodyClass() {
+        if (persistentTooltips.size > 0) {
+            document.body.classList.add('has-persistent-tooltips');
+        } else {
+            document.body.classList.remove('has-persistent-tooltips');
         }
     }
 
@@ -365,6 +402,9 @@ const PersistentTooltipManager = (function() {
         document.body.appendChild(tooltip);
         persistentTooltips.set(nodeId, tooltip);
 
+        // Update body class to hide original tooltips
+        updateBodyClass();
+
         console.log(`Created persistent tooltip for node ${nodeId}`);
     }
 
@@ -444,6 +484,10 @@ const PersistentTooltipManager = (function() {
         if (tooltip) {
             tooltip.remove();
             persistentTooltips.delete(nodeId);
+            
+            // Update body class to potentially show original tooltips again
+            updateBodyClass();
+            
             console.log(`Closed persistent tooltip for node ${nodeId}`);
         }
     }
@@ -456,6 +500,10 @@ const PersistentTooltipManager = (function() {
             tooltip.remove();
         });
         persistentTooltips.clear();
+        
+        // Update body class to show original tooltips again
+        updateBodyClass();
+        
         console.log('Closed all persistent tooltips');
     }
 
