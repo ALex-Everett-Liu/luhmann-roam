@@ -73,98 +73,112 @@ const GraphManagementUI = (function() {
             </div>
           </div>
         </div>
-        
-        <!-- Modals -->
-        <div id="vertex-modal" class="modal">
-          <div class="modal-content">
-            <h3 id="vertex-modal-title">Add Vertex</h3>
-            <form id="vertex-form">
-              <label>Label (English)*:</label>
-              <input type="text" id="vertex-label" required>
-              
-              <label>Label (Chinese):</label>
-              <input type="text" id="vertex-label-zh">
-              
-              <label>Type:</label>
-              <select id="vertex-type">
-                <option value="concept">Concept</option>
-                <option value="entity">Entity</option>
-                <option value="event">Event</option>
-                <option value="location">Location</option>
-                <option value="person">Person</option>
-                <option value="custom">Custom</option>
-              </select>
-              
-              <label>Color:</label>
-              <input type="color" id="vertex-color" value="#666666">
-              
-              <label>Size:</label>
-              <input type="number" id="vertex-size" min="0.1" max="5" step="0.1" value="1.0">
-              
-              <div class="modal-actions">
-                <button type="submit" class="primary-btn">Save</button>
-                <button type="button" id="cancel-vertex" class="secondary-btn">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-        
-        <div id="edge-modal" class="modal">
-          <div class="modal-content">
-            <h3 id="edge-modal-title">Add Edge</h3>
-            <form id="edge-form">
-              <label>Source Vertex*:</label>
-              <div class="vertex-selector-container">
-                <input type="text" id="edge-source-search" placeholder="Search source vertex..." class="vertex-search-input">
-                <div id="edge-source-dropdown" class="vertex-dropdown">
-                  <div class="vertex-dropdown-content">
-                    <div class="vertex-option" data-value="">Select source vertex...</div>
-                  </div>
-                </div>
-                <input type="hidden" id="edge-source" required>
-              </div>
-              
-              <label>Target Vertex*:</label>
-              <div class="vertex-selector-container">
-                <input type="text" id="edge-target-search" placeholder="Search target vertex..." class="vertex-search-input">
-                <div id="edge-target-dropdown" class="vertex-dropdown">
-                  <div class="vertex-dropdown-content">
-                    <div class="vertex-option" data-value="">Select target vertex...</div>
-                  </div>
-                </div>
-                <input type="hidden" id="edge-target" required>
-              </div>
-              
-              <label>Relationship Type:</label>
-              <select id="edge-relationship">
-                <option value="relates_to">Relates To</option>
-                <option value="depends_on">Depends On</option>
-                <option value="part_of">Part Of</option>
-                <option value="causes">Causes</option>
-                <option value="similar_to">Similar To</option>
-                <option value="opposite_of">Opposite Of</option>
-                <option value="custom">Custom</option>
-              </select>
-              
-              <label>Weight:</label>
-              <input type="number" id="edge-weight" min="0.1" max="10" step="0.1" value="1.0">
-              
-              <label>Direction:</label>
-              <select id="edge-direction">
-                <option value="directed">Directed (A → B)</option>
-                <option value="undirected">Undirected (A ↔ B)</option>
-              </select>
-              
-              <div class="modal-actions">
-                <button type="submit" class="primary-btn">Save</button>
-                <button type="button" id="cancel-edge" class="secondary-btn">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
       `;
       
       document.body.appendChild(container);
+      
+      // Create modals separately at body level for better centering
+      createModals();
+    }
+    
+    function createModals() {
+      // Vertex Modal
+      const vertexModal = document.createElement('div');
+      vertexModal.id = 'vertex-modal';
+      vertexModal.className = 'graph-modal';
+      vertexModal.innerHTML = `
+        <div class="graph-modal-content">
+          <h3 id="vertex-modal-title">Add Vertex</h3>
+          <form id="vertex-form">
+            <label>Label (English)*:</label>
+            <input type="text" id="vertex-label" required>
+            
+            <label>Label (Chinese):</label>
+            <input type="text" id="vertex-label-zh">
+            
+            <label>Type:</label>
+            <select id="vertex-type">
+              <option value="concept">Concept</option>
+              <option value="entity">Entity</option>
+              <option value="event">Event</option>
+              <option value="location">Location</option>
+              <option value="person">Person</option>
+              <option value="custom">Custom</option>
+            </select>
+            
+            <label>Color:</label>
+            <input type="color" id="vertex-color" value="#666666">
+            
+            <label>Size:</label>
+            <input type="number" id="vertex-size" min="0.1" max="5" step="0.1" value="1.0">
+            
+            <div class="modal-actions">
+              <button type="submit" class="primary-btn">Save</button>
+              <button type="button" id="cancel-vertex" class="secondary-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(vertexModal);
+      
+      // Edge Modal
+      const edgeModal = document.createElement('div');
+      edgeModal.id = 'edge-modal';
+      edgeModal.className = 'graph-modal';
+      edgeModal.innerHTML = `
+        <div class="graph-modal-content">
+          <h3 id="edge-modal-title">Add Edge</h3>
+          <form id="edge-form">
+            <label>Source Vertex*:</label>
+            <div class="vertex-selector-container">
+              <input type="text" id="edge-source-search" placeholder="Search source vertex..." class="vertex-search-input">
+              <div id="edge-source-dropdown" class="vertex-dropdown">
+                <div class="vertex-dropdown-content">
+                  <div class="vertex-option" data-value="">Select source vertex...</div>
+                </div>
+              </div>
+              <input type="hidden" id="edge-source" required>
+            </div>
+            
+            <label>Target Vertex*:</label>
+            <div class="vertex-selector-container">
+              <input type="text" id="edge-target-search" placeholder="Search target vertex..." class="vertex-search-input">
+              <div id="edge-target-dropdown" class="vertex-dropdown">
+                <div class="vertex-dropdown-content">
+                  <div class="vertex-option" data-value="">Select target vertex...</div>
+                </div>
+              </div>
+              <input type="hidden" id="edge-target" required>
+            </div>
+            
+            <label>Relationship Type:</label>
+            <select id="edge-relationship">
+              <option value="relates_to">Relates To</option>
+              <option value="depends_on">Depends On</option>
+              <option value="part_of">Part Of</option>
+              <option value="causes">Causes</option>
+              <option value="similar_to">Similar To</option>
+              <option value="opposite_of">Opposite Of</option>
+              <option value="custom">Custom</option>
+            </select>
+            
+            <label>Weight:</label>
+            <input type="number" id="edge-weight" min="0.1" max="10" step="0.1" value="1.0">
+            
+            <label>Direction:</label>
+            <select id="edge-direction">
+              <option value="directed">Directed (A → B)</option>
+              <option value="undirected">Undirected (A ↔ B)</option>
+            </select>
+            
+            <div class="modal-actions">
+              <button type="submit" class="primary-btn">Save</button>
+              <button type="button" id="cancel-edge" class="secondary-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(edgeModal);
     }
     
     function setupEventHandlers() {

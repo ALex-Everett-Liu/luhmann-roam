@@ -256,20 +256,23 @@
     margin: 0;
   }
   
-  /* Modal Styles - Updated for better centering */
+  /* Modal Styles - Fixed centering */
   .graph-management-container .modal {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     background: rgba(0, 0, 0, 0.5);
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 1004;
+    z-index: 1010; /* Higher than parent container */
     padding: 20px;
     box-sizing: border-box;
+    /* Remove any inherited positioning constraints */
+    margin: 0;
+    transform: none;
   }
   
   .graph-management-container .modal.show {
@@ -287,6 +290,9 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     transform: scale(1);
     transition: transform 0.2s ease-out;
+    /* Ensure it's centered */
+    margin: auto;
+    position: relative;
   }
   
   /* Add animation for modal appearance */
@@ -469,6 +475,230 @@
     }
     
     .graph-management-container .vertex-dropdown {
+      max-height: 200px;
+    }
+  }
+
+  /* New Modal Styles - Properly centered */
+  .graph-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Higher than graph management container */
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .graph-modal.show {
+    display: flex;
+  }
+
+  .graph-modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(1);
+    transition: transform 0.2s ease-out;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Add animation for modal appearance */
+  .graph-modal:not(.show) .graph-modal-content {
+    transform: scale(0.9);
+  }
+
+  .graph-modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2c3e50;
+  }
+
+  .graph-modal-content form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .graph-modal-content label {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  .graph-modal-content input,
+  .graph-modal-content select {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .graph-modal-content input:focus,
+  .graph-modal-content select:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+
+  .graph-modal-content .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  .graph-modal-content .primary-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .graph-modal-content .primary-btn:hover {
+    background: #2980b9;
+  }
+
+  .graph-modal-content .secondary-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+
+  .graph-modal-content .secondary-btn:hover {
+    background: #5a6268;
+  }
+
+  /* Vertex selector styles for new modals */
+  .graph-modal-content .vertex-selector-container {
+    position: relative;
+    margin-bottom: 15px;
+  }
+
+  .graph-modal-content .vertex-search-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .graph-modal-content .vertex-search-input:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+
+  .graph-modal-content .vertex-search-input.has-selection {
+    background: #e8f4fd;
+    border-color: #3498db;
+  }
+
+  .graph-modal-content .vertex-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 2001;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .graph-modal-content .vertex-dropdown.show {
+    display: block;
+  }
+
+  .graph-modal-content .vertex-dropdown-content {
+    padding: 0;
+  }
+
+  .graph-modal-content .vertex-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .graph-modal-content .vertex-option:last-child {
+    border-bottom: none;
+  }
+
+  .graph-modal-content .vertex-option:hover {
+    background: #f8f9fa;
+  }
+
+  .graph-modal-content .vertex-option.highlighted {
+    background: #3498db;
+    color: white;
+  }
+
+  .graph-modal-content .vertex-option-label {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .graph-modal-content .vertex-option-meta {
+    font-size: 12px;
+    color: #6c757d;
+    margin-left: 10px;
+  }
+
+  .graph-modal-content .vertex-option.highlighted .vertex-option-meta {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .graph-modal-content .no-vertices-message {
+    padding: 15px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  /* Responsive adjustments for new modals */
+  @media (max-width: 768px) {
+    .graph-modal {
+      padding: 10px;
+    }
+    
+    .graph-modal-content {
+      width: 100%;
+      max-width: none;
+      max-height: 95vh;
+      padding: 20px;
+    }
+    
+    .graph-modal-content .vertex-dropdown {
       max-height: 200px;
     }
   }

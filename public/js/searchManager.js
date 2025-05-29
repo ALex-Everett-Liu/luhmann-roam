@@ -309,6 +309,11 @@ const SearchManager = (function() {
     modalBody.appendChild(twoPanel);
     
     // Add search functionality with advanced features
+    // Create a separate debounced function for saving to recent searches (5 seconds)
+    const debouncedSaveSearch = debounce((query) => {
+      addRecentSearch(query);
+    }, 5000);
+
     searchInput.addEventListener('input', debounce(async (e) => {
       const query = e.target.value.trim();
       if (query.length < 2) {
@@ -317,8 +322,8 @@ const SearchManager = (function() {
       }
       
       try {
-        // Add to recent searches if query is executed
-        addRecentSearch(query);
+        // Only trigger the delayed save to recent searches (5 seconds after user stops typing)
+        debouncedSaveSearch(query);
         
         // Include the current language in the search request
         const advancedMode = advancedSearchToggle.checked;
@@ -756,6 +761,9 @@ const SearchManager = (function() {
     `;
     
     resultItem.addEventListener('click', () => {
+      // Save the search immediately when user clicks a result
+      addRecentSearch(searchInput.value.trim());
+      
       navigateToNode(node.id);
       closeSearchModal();
     });
@@ -792,6 +800,9 @@ const SearchManager = (function() {
     `;
     
     resultItem.addEventListener('click', () => {
+      // Save the search immediately when user clicks a result
+      addRecentSearch(searchInput.value.trim());
+      
       // Navigate to the node and open its markdown
       navigateToNode(markdownResult.id);
       
