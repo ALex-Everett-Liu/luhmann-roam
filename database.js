@@ -473,6 +473,40 @@ try {
     console.log('Variable-specific columns may already exist or other error:', error.message);
   }
   
+  // Create word_groups table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS word_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER
+    )
+  `);
+  
+  // Create word_group_items table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS word_group_items (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      word TEXT NOT NULL,
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (group_id) REFERENCES word_groups (id) ON DELETE CASCADE,
+      UNIQUE(group_id, word)
+    )
+  `);
+  
+  // Add indices for word groups
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_word_group_items_group_id ON word_group_items(group_id);
+    CREATE INDEX IF NOT EXISTS idx_word_group_items_word ON word_group_items(word);
+    CREATE INDEX IF NOT EXISTS idx_word_groups_name ON word_groups(name);
+  `);
+  
   console.log(`Database for vault: ${vaultName} initialized`);
   return db;
 }

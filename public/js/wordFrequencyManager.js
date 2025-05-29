@@ -427,9 +427,11 @@ const WordFrequencyManager = (function() {
             const row = document.createElement('tr');
             const percentage = ((item.count / totalWords) * 100).toFixed(2);
             
+            const customGroupIndicator = item.isCustomGroup ? ' <span style="color: #28a745; font-weight: bold;">✓</span>' : '';
+            
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${item.stem}</td>
+                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${item.stem}${customGroupIndicator}</td>
                 <td class="count-cell">${item.count.toLocaleString()}</td>
                 <td class="percentage-cell">${percentage}%</td>
             `;
@@ -437,7 +439,7 @@ const WordFrequencyManager = (function() {
             // Add click handler to show word forms
             const wordCell = row.querySelector('.word-cell');
             wordCell.addEventListener('click', () => {
-                showWordForms(item.stem, item.forms);
+                showWordForms(item.stem, item.forms, item.isCustomGroup);
             });
             
             tableBody.appendChild(row);
@@ -574,11 +576,16 @@ const WordFrequencyManager = (function() {
     }
     
     /**
-     * Shows the original forms of a stemmed word
+     * Shows the original forms of a stemmed word with editing capabilities
      */
-    function showWordForms(stem, forms) {
-        let formsHtml = `<div style="max-height: 300px; overflow-y: auto;">`;
+    function showWordForms(stem, forms, isCustomGroup = false) {
+        let formsHtml = `<div style="max-height: 400px; overflow-y: auto;">`;
         formsHtml += `<h4>Original forms for "${stem}":</h4>`;
+        
+        if (isCustomGroup) {
+            formsHtml += `<p style="color: #28a745; font-size: 12px; margin: 5px 0;"><strong>✓ Custom Group</strong></p>`;
+        }
+        
         formsHtml += `<table style="width: 100%; border-collapse: collapse;">`;
         formsHtml += `<thead><tr><th style="border: 1px solid #ddd; padding: 8px;">Word</th><th style="border: 1px solid #ddd; padding: 8px;">Count</th></tr></thead>`;
         formsHtml += `<tbody>`;
@@ -590,9 +597,21 @@ const WordFrequencyManager = (function() {
             formsHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${form}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${count}</td></tr>`;
         }
         
-        formsHtml += `</tbody></table></div>`;
+        formsHtml += `</tbody></table>`;
         
-        // Create a simple modal-like overlay
+        // Add action buttons
+        formsHtml += `<div style="margin-top: 15px; text-align: center;">`;
+        if (isCustomGroup) {
+            formsHtml += `<button id="edit-word-group" style="margin: 5px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit Group</button>`;
+        } else {
+            formsHtml += `<button id="create-word-group" style="margin: 5px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Create Custom Group</button>`;
+        }
+        formsHtml += `<button id="manage-all-groups" style="margin: 5px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Manage All Groups</button>`;
+        formsHtml += `</div>`;
+        
+        formsHtml += `</div>`;
+        
+        // Create modal (same as before)
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -612,7 +631,7 @@ const WordFrequencyManager = (function() {
             background: white;
             padding: 20px;
             border-radius: 8px;
-            max-width: 500px;
+            max-width: 600px;
             max-height: 80vh;
             overflow: auto;
             position: relative;
@@ -643,6 +662,33 @@ const WordFrequencyManager = (function() {
         
         modal.innerHTML = formsHtml;
         modal.appendChild(closeButton);
+        
+        // Add event listeners for buttons
+        const createGroupBtn = modal.querySelector('#create-word-group');
+        const editGroupBtn = modal.querySelector('#edit-word-group');
+        const manageAllBtn = modal.querySelector('#manage-all-groups');
+        
+        if (createGroupBtn) {
+            createGroupBtn.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+                openCreateGroupModal(stem, Object.keys(forms));
+            });
+        }
+        
+        if (editGroupBtn) {
+            editGroupBtn.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+                openEditGroupModal(stem, Object.keys(forms));
+            });
+        }
+        
+        if (manageAllBtn) {
+            manageAllBtn.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+                openWordGroupsManager();
+            });
+        }
+        
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
     }
