@@ -527,6 +527,19 @@ document.addEventListener('DOMContentLoaded', () => {
       BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
     }
 
+    // Focus button (replaces double-click functionality)
+    const focusButton = document.createElement('button');
+    focusButton.className = 'focus-button';
+    focusButton.innerHTML = '🎯';
+    focusButton.title = 'Focus on this node (Alt+F when hovering)';
+    focusButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.BreadcrumbManager) {
+        window.BreadcrumbManager.focusOnNode(node.id);
+      }
+    });
+    nodeActions.appendChild(focusButton);
+    
     // Default focus button
     const defaultFocusButton = document.createElement('button');
     defaultFocusButton.className = 'default-focus-button';

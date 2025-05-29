@@ -433,3 +433,24 @@ kbd {
 .node-text-other-language::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* Add styling for the focus button */
+.focus-button {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 2px;
+  transition: background-color 0.2s;
+}
+
+.focus-button:hover {
+  background-color: #1976D2;
+}
+
+.focus-button:active {
+  background-color: #0D47A1;
+}

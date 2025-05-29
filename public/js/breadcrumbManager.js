@@ -505,19 +505,24 @@ const BreadcrumbManager = (function() {
 }
   
   /**
-   * Handles click events on nodes to focus them
+   * Handles hover events on nodes to enable focus hotkey
    * @param {HTMLElement} nodeElement - The node element
    * @param {string} nodeId - The ID of the node
    */
   function addNodeFocusHandler(nodeElement, nodeId) {
-    // Add double-click handler for node focus
-    nodeElement.addEventListener('dblclick', (e) => {
-      // Prevent default behavior and propagation
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Focus on the node
-      focusOnNode(nodeId);
+    // Remove the old double-click handler - we'll use a button and hotkey instead
+    
+    // Add hover tracking for hotkey functionality
+    nodeElement.addEventListener('mouseenter', () => {
+      // Store the hovered node ID for hotkey access
+      window.hoveredNodeId = nodeId;
+    });
+    
+    nodeElement.addEventListener('mouseleave', () => {
+      // Clear the hovered node ID when mouse leaves
+      if (window.hoveredNodeId === nodeId) {
+        window.hoveredNodeId = null;
+      }
     });
   }
   

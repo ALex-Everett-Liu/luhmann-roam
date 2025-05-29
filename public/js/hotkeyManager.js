@@ -823,12 +823,20 @@ const HotkeyManager = (function() {
      * Register global hotkeys that work throughout the application
      */
     function registerGlobalHotkeys() {
-      // Register Ctrl+F equivalent with Alt+F
+      // Register focus hotkey - Alt+F to focus on hovered node or open search
       globalHotkeys['f'] = {
-        description: 'Search',
+        description: 'Focus on Hovered Node / Search',
         action: () => {
-          if (window.SearchManager) {
-            window.SearchManager.openSearchModal();
+          // Check if there's a hovered node
+          if (window.hoveredNodeId) {
+            if (window.BreadcrumbManager) {
+              window.BreadcrumbManager.focusOnNode(window.hoveredNodeId);
+            }
+          } else {
+            // Fallback to search if no node is hovered
+            if (window.SearchManager) {
+              window.SearchManager.openSearchModal();
+            }
           }
         }
       };
