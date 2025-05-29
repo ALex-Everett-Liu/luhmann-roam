@@ -1137,6 +1137,11 @@ document.addEventListener('DOMContentLoaded', () => {
     HotkeyManager.initialize();
   }
 
+  // Initialize the PersistentTooltipManager
+  if (window.PersistentTooltipManager) {
+    PersistentTooltipManager.initialize();
+  }
+
   // Add this to the initialization code
   if (window.CommandPaletteManager) {
     CommandPaletteManager.initialize();

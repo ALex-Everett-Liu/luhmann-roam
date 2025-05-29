@@ -989,8 +989,19 @@ const HotkeyManager = (function() {
                 <td style="padding: 8px; border-bottom: 1px solid #eee;"><kbd>Alt</kbd> + <kbd>#</kbd></td>
                 <td style="padding: 8px; border-bottom: 1px solid #eee;">Open position adjustment modal</td>
               </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;"><kbd>Ctrl</kbd> + <kbd>T</kbd></td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">Pin/unpin node tooltip (when hovering over a node)</td>
+              </tr>
             </tbody>
           </table>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h3>Persistent Tooltips</h3>
+          <p>When hovering over a node, press <kbd>Ctrl</kbd> + <kbd>T</kbd> to pin the tooltip. 
+          Pinned tooltips can be dragged to any position and remain visible until closed.</p>
+          <p>Press <kbd>Escape</kbd> to close all persistent tooltips at once.</p>
         </div>
         
         <div>

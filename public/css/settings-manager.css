@@ -52,7 +52,8 @@
     max-height: 80vh !important;
     overflow: hidden !important;
     position: relative !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   
   .dark-theme .settings-modal {
@@ -65,6 +66,7 @@
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
+    min-height: 0 !important; /* Important for flex scrolling */
   }
   
   /* Modal header */
@@ -75,6 +77,7 @@
     padding: 20px 24px !important;
     border-bottom: 1px solid #e2e8f0 !important;
     background: #f8fafc !important;
+    flex-shrink: 0 !important; /* Prevent header from shrinking */
   }
   
   .dark-theme .settings-modal-header {
@@ -119,6 +122,7 @@
     display: flex !important;
     flex: 1 !important;
     overflow: hidden !important;
+    min-height: 0 !important; /* Important for flex scrolling */
   }
   
   /* Settings sidebar navigation */
@@ -129,11 +133,44 @@
     overflow-y: auto !important;
     padding: 16px 0 !important;
     flex-shrink: 0 !important;
+    /* Custom scrollbar styling */
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e0 #f8fafc !important;
+  }
+  
+  .settings-sidebar::-webkit-scrollbar {
+    width: 6px !important;
+  }
+  
+  .settings-sidebar::-webkit-scrollbar-track {
+    background: #f8fafc !important;
+  }
+  
+  .settings-sidebar::-webkit-scrollbar-thumb {
+    background: #cbd5e0 !important;
+    border-radius: 3px !important;
+  }
+  
+  .settings-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af !important;
   }
   
   .dark-theme .settings-sidebar {
     background: #1a202c !important;
     border-right-color: #4a5568 !important;
+    scrollbar-color: #4a5568 #1a202c !important;
+  }
+  
+  .dark-theme .settings-sidebar::-webkit-scrollbar-track {
+    background: #1a202c !important;
+  }
+  
+  .dark-theme .settings-sidebar::-webkit-scrollbar-thumb {
+    background: #4a5568 !important;
+  }
+  
+  .dark-theme .settings-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #6b7280 !important;
   }
   
   .settings-nav-item {
@@ -189,16 +226,51 @@
     color: #a0aec0 !important;
   }
   
-  /* Settings content area */
+  /* Settings content area - FIXED SCROLLING */
   .settings-content {
     flex: 1 !important;
     padding: 24px !important;
     overflow-y: auto !important;
     background: white !important;
+    min-height: 0 !important; /* Critical for flex scrolling */
+    /* Custom scrollbar styling */
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e0 white !important;
+  }
+  
+  .settings-content::-webkit-scrollbar {
+    width: 8px !important;
+  }
+  
+  .settings-content::-webkit-scrollbar-track {
+    background: white !important;
+    border-radius: 4px !important;
+  }
+  
+  .settings-content::-webkit-scrollbar-thumb {
+    background: #cbd5e0 !important;
+    border-radius: 4px !important;
+  }
+  
+  .settings-content::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af !important;
   }
   
   .dark-theme .settings-content {
     background: #2d3748 !important;
+    scrollbar-color: #4a5568 #2d3748 !important;
+  }
+  
+  .dark-theme .settings-content::-webkit-scrollbar-track {
+    background: #2d3748 !important;
+  }
+  
+  .dark-theme .settings-content::-webkit-scrollbar-thumb {
+    background: #4a5568 !important;
+  }
+  
+  .dark-theme .settings-content::-webkit-scrollbar-thumb:hover {
+    background: #6b7280 !important;
   }
   
   /* Section header */
@@ -285,6 +357,7 @@
     padding: 20px 24px !important;
     border-top: 1px solid #e2e8f0 !important;
     background: #f8fafc !important;
+    flex-shrink: 0 !important; /* Prevent footer from shrinking */
   }
   
   .dark-theme .settings-modal-footer {
