@@ -65,14 +65,14 @@ const GraphAnalysisVisualizer = (function() {
         
         <div class="control-section">
           <h4>Layout</h4>
-          <select id="layout-selector">
+          <select id="graph-layout-selector">
             <option value="cose">Force-directed (Cose)</option>
             <option value="circle">Circle</option>
             <option value="grid">Grid</option>
             <option value="breadthfirst">Hierarchical</option>
             <option value="concentric">Concentric</option>
           </select>
-          <button id="apply-layout">Apply Layout</button>
+          <button id="apply-graph-layout">Apply Layout</button>
         </div>
         
         <div class="control-section">
@@ -114,7 +114,7 @@ const GraphAnalysisVisualizer = (function() {
       document.getElementById('close-graph-analysis').addEventListener('click', hide);
       
       // Layout controls
-      document.getElementById('apply-layout').addEventListener('click', applyLayout);
+      document.getElementById('apply-graph-layout').addEventListener('click', applyLayout);
       
       // Analysis controls
       document.getElementById('run-centrality').addEventListener('click', runCentralityAnalysis);
@@ -237,7 +237,7 @@ const GraphAnalysisVisualizer = (function() {
     }
     
     function applyLayout() {
-      const layoutName = document.getElementById('layout-selector').value;
+      const layoutName = document.getElementById('graph-layout-selector').value;
       const layout = cy.layout({ name: layoutName, animate: true });
       layout.run();
     }

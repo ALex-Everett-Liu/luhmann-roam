@@ -6,7 +6,7 @@
     width: 100vw;
     height: 100vh;
     background: #1a1a1a;
-    z-index: 1000;
+    z-index: 1002;
     display: none;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
@@ -30,43 +30,45 @@
     border-left: 1px solid #444;
   }
   
-  .control-section {
+  /* Namespace all control sections under graph analysis */
+  .graph-analysis-container .control-section {
     margin-bottom: 25px;
     padding-bottom: 15px;
     border-bottom: 1px solid #444;
   }
   
-  .control-section:last-child {
+  .graph-analysis-container .control-section:last-child {
     border-bottom: none;
   }
   
-  .control-section h3 {
+  .graph-analysis-container .control-section h3 {
     margin: 0 0 15px 0;
     color: #3498db;
     font-size: 18px;
     font-weight: 600;
   }
   
-  .control-section h4 {
+  .graph-analysis-container .control-section h4 {
     margin: 0 0 10px 0;
     color: #ecf0f1;
     font-size: 14px;
     font-weight: 500;
   }
   
-  .control-section h5 {
+  .graph-analysis-container .control-section h5 {
     margin: 0 0 8px 0;
     color: #bdc3c7;
     font-size: 13px;
   }
   
-  .control-section h6 {
+  .graph-analysis-container .control-section h6 {
     margin: 0 0 5px 0;
     color: #95a5a6;
     font-size: 12px;
   }
   
-  .control-section select {
+  /* Namespace selects and buttons */
+  .graph-analysis-container .control-section select {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -77,12 +79,12 @@
     font-size: 13px;
   }
   
-  .control-section select:focus {
+  .graph-analysis-container .control-section select:focus {
     outline: none;
     border-color: #3498db;
   }
   
-  .control-section button {
+  .graph-analysis-container .control-section button {
     width: 100%;
     padding: 10px;
     margin-bottom: 8px;
@@ -96,15 +98,16 @@
     transition: background-color 0.2s;
   }
   
-  .control-section button:hover {
+  .graph-analysis-container .control-section button:hover {
     background: #2980b9;
   }
   
-  .control-section button:active {
+  .graph-analysis-container .control-section button:active {
     background: #21618c;
   }
   
-  #close-graph-analysis {
+  /* Specific button styling */
+  .graph-analysis-container #close-graph-analysis {
     float: right;
     width: auto;
     padding: 5px 10px;
@@ -114,15 +117,15 @@
     font-weight: bold;
   }
   
-  #close-graph-analysis:hover {
+  .graph-analysis-container #close-graph-analysis:hover {
     background: #c0392b;
   }
   
-  /* Results sections */
-  #centrality-results,
-  #community-results,
-  #graph-stats,
-  #node-info {
+  /* Results sections - namespace them */
+  .graph-analysis-container #centrality-results,
+  .graph-analysis-container #community-results,
+  .graph-analysis-container #graph-stats,
+  .graph-analysis-container #node-info {
     background: #34495e;
     padding: 10px;
     border-radius: 4px;
@@ -131,43 +134,43 @@
     line-height: 1.4;
   }
   
-  #centrality-results p,
-  #community-results p,
-  #graph-stats p,
-  #node-info p {
+  .graph-analysis-container #centrality-results p,
+  .graph-analysis-container #community-results p,
+  .graph-analysis-container #graph-stats p,
+  .graph-analysis-container #node-info p {
     margin: 5px 0;
     color: #bdc3c7;
   }
   
-  #node-info {
+  .graph-analysis-container #node-info {
     min-height: 100px;
   }
   
   /* Scrollbar styling for the control panel */
-  .graph-control-panel::-webkit-scrollbar {
+  .graph-analysis-container .graph-control-panel::-webkit-scrollbar {
     width: 8px;
   }
   
-  .graph-control-panel::-webkit-scrollbar-track {
+  .graph-analysis-container .graph-control-panel::-webkit-scrollbar-track {
     background: #2a2a2a;
   }
   
-  .graph-control-panel::-webkit-scrollbar-thumb {
+  .graph-analysis-container .graph-control-panel::-webkit-scrollbar-thumb {
     background: #555;
     border-radius: 4px;
   }
   
-  .graph-control-panel::-webkit-scrollbar-thumb:hover {
+  .graph-analysis-container .graph-control-panel::-webkit-scrollbar-thumb:hover {
     background: #666;
   }
   
   /* Responsive design for smaller screens */
   @media (max-width: 1024px) {
-    .graph-control-panel {
+    .graph-analysis-container .graph-control-panel {
       width: 250px;
     }
     
-    #graph-canvas {
+    .graph-analysis-container #graph-canvas {
       width: calc(100% - 250px);
     }
   }
@@ -177,7 +180,7 @@
       flex-direction: column;
     }
     
-    .graph-control-panel {
+    .graph-analysis-container .graph-control-panel {
       width: 100%;
       height: 200px;
       float: none;
@@ -185,7 +188,7 @@
       border-bottom: 1px solid #444;
     }
     
-    #graph-canvas {
+    .graph-analysis-container #graph-canvas {
       width: 100%;
       height: calc(100% - 200px);
       float: none;
@@ -193,34 +196,34 @@
   }
   
   /* Loading states */
-  .control-section button:disabled {
+  .graph-analysis-container .control-section button:disabled {
     background: #7f8c8d;
     cursor: not-allowed;
   }
   
-  .loading {
+  .graph-analysis-container .loading {
     opacity: 0.7;
     pointer-events: none;
   }
   
   /* Analysis results styling */
-  .metric-item {
+  .graph-analysis-container .metric-item {
     display: flex;
     justify-content: space-between;
     margin: 3px 0;
   }
   
-  .metric-name {
+  .graph-analysis-container .metric-name {
     color: #bdc3c7;
   }
   
-  .metric-value {
+  .graph-analysis-container .metric-value {
     color: #3498db;
     font-weight: 500;
   }
   
   /* Community colors preview */
-  .community-color {
+  .graph-analysis-container .community-color {
     display: inline-block;
     width: 12px;
     height: 12px;

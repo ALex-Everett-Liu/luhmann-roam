@@ -41,7 +41,8 @@
 @import './features/graph-management.css';
 /* @import './features/hotkeys.css'; */
 
-/* Utilities */
+/* Utilities - import last to override if needed */
 @import './utilities/animations.css';
 @import './utilities/language.css';
+@import './utilities/z-index.css';
 /* @import './utilities/utilities.css'; */

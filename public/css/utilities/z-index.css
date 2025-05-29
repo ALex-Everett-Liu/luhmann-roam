@@ -1,0 +1,39 @@
+/* Z-index hierarchy for the entire application */
+:root {
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 1000;
+    --z-word-frequency: 1001;
+    --z-graph-analysis: 1002;
+    --z-graph-management: 1003;
+    --z-graph-management-modal: 1004;
+    --z-tooltip: 2000;
+    --z-notification: 3000;
+  }
+  
+  /* Apply consistent z-index values */
+  .word-frequency-modal-overlay {
+    z-index: var(--z-word-frequency) !important;
+  }
+  
+  .graph-analysis-container {
+    z-index: var(--z-graph-analysis) !important;
+  }
+  
+  .graph-management-container {
+    z-index: var(--z-graph-management) !important;
+  }
+  
+  .graph-management-container .modal {
+    z-index: var(--z-graph-management-modal) !important;
+  }
+  
+  /* Filter and search components */
+  .filter-section .search-results {
+    z-index: var(--z-dropdown) !important;
+  }
+  
+  .filter-search-results {
+    z-index: var(--z-dropdown) !important;
+  }
