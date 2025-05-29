@@ -6,6 +6,8 @@ const GraphManagementUI = (function() {
     let container;
     let verticesData = [];
     let edgesData = [];
+    let sourceVertexSelector = null;
+    let targetVertexSelector = null;
     
     function initialize() {
       createContainer();
@@ -112,14 +114,26 @@ const GraphManagementUI = (function() {
             <h3 id="edge-modal-title">Add Edge</h3>
             <form id="edge-form">
               <label>Source Vertex*:</label>
-              <select id="edge-source" required>
-                <option value="">Select source vertex...</option>
-              </select>
+              <div class="vertex-selector-container">
+                <input type="text" id="edge-source-search" placeholder="Search source vertex..." class="vertex-search-input">
+                <div id="edge-source-dropdown" class="vertex-dropdown">
+                  <div class="vertex-dropdown-content">
+                    <div class="vertex-option" data-value="">Select source vertex...</div>
+                  </div>
+                </div>
+                <input type="hidden" id="edge-source" required>
+              </div>
               
               <label>Target Vertex*:</label>
-              <select id="edge-target" required>
-                <option value="">Select target vertex...</option>
-              </select>
+              <div class="vertex-selector-container">
+                <input type="text" id="edge-target-search" placeholder="Search target vertex..." class="vertex-search-input">
+                <div id="edge-target-dropdown" class="vertex-dropdown">
+                  <div class="vertex-dropdown-content">
+                    <div class="vertex-option" data-value="">Select target vertex...</div>
+                  </div>
+                </div>
+                <input type="hidden" id="edge-target" required>
+              </div>
               
               <label>Relationship Type:</label>
               <select id="edge-relationship">
@@ -177,6 +191,14 @@ const GraphManagementUI = (function() {
       // Import functionality
       document.getElementById('load-nodes-btn').addEventListener('click', loadNodesForImport);
       document.getElementById('import-selected-btn').addEventListener('click', importSelectedNodes);
+      
+      // Initialize vertex selectors after modal is created
+      initializeVertexSelectors();
+    }
+    
+    function initializeVertexSelectors() {
+      sourceVertexSelector = new VertexSelector('edge-source');
+      targetVertexSelector = new VertexSelector('edge-target');
     }
     
     function switchTab(e) {
@@ -305,16 +327,9 @@ const GraphManagementUI = (function() {
       // Load vertices for dropdowns
       await loadVertices();
       
-      const sourceSelect = document.getElementById('edge-source');
-      const targetSelect = document.getElementById('edge-target');
-      
-      // Populate vertex dropdowns
-      const vertexOptions = verticesData.map(v => 
-        `<option value="${v.id}">${v.label}</option>`
-      ).join('');
-      
-      sourceSelect.innerHTML = '<option value="">Select source vertex...</option>' + vertexOptions;
-      targetSelect.innerHTML = '<option value="">Select target vertex...</option>' + vertexOptions;
+      // Update vertex selectors with current data
+      sourceVertexSelector.updateVertices(verticesData);
+      targetVertexSelector.updateVertices(verticesData);
       
       const modal = document.getElementById('edge-modal');
       const title = document.getElementById('edge-modal-title');
@@ -324,8 +339,11 @@ const GraphManagementUI = (function() {
         // Edit mode
         const edge = edgesData.find(e => e.id === edgeId);
         title.textContent = 'Edit Edge';
-        document.getElementById('edge-source').value = edge.source_vertex_id;
-        document.getElementById('edge-target').value = edge.target_vertex_id;
+        
+        // Set vertex selections
+        sourceVertexSelector.setSelection(edge.source_vertex_id);
+        targetVertexSelector.setSelection(edge.target_vertex_id);
+        
         document.getElementById('edge-relationship').value = edge.relationship_type;
         document.getElementById('edge-weight').value = edge.weight;
         document.getElementById('edge-direction').value = edge.direction;
@@ -334,6 +352,8 @@ const GraphManagementUI = (function() {
         // Add mode
         title.textContent = 'Add Edge';
         form.reset();
+        sourceVertexSelector.clearSelection();
+        targetVertexSelector.clearSelection();
         delete form.dataset.edgeId;
       }
       
@@ -545,3 +565,146 @@ const GraphManagementUI = (function() {
   })();
   
   window.GraphManagementUI = GraphManagementUI;
+
+class VertexSelector {
+  constructor(fieldId) {
+    this.fieldId = fieldId;
+    this.searchInput = document.getElementById(`${fieldId}-search`);
+    this.dropdown = document.getElementById(`${fieldId}-dropdown`);
+    this.dropdownContent = this.dropdown.querySelector('.vertex-dropdown-content');
+    this.hiddenInput = document.getElementById(fieldId);
+    this.vertices = [];
+    this.filteredVertices = [];
+    this.selectedVertex = null;
+    this.highlightedIndex = -1;
+    
+    this.setupEventListeners();
+  }
+  
+  setupEventListeners() {
+    // Search input events
+    this.searchInput.addEventListener('input', (e) => this.handleSearch(e));
+    this.searchInput.addEventListener('focus', () => this.showDropdown());
+    this.searchInput.addEventListener('keydown', (e) => this.handleKeydown(e));
+    
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+      if (!this.searchInput.contains(e.target) && !this.dropdown.contains(e.target)) {
+        this.hideDropdown();
+      }
+    });
+  }
+  
+  updateVertices(vertices) {
+    this.vertices = vertices;
+    this.filteredVertices = [...vertices];
+    this.renderOptions();
+  }
+  
+  handleSearch(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    
+    if (!searchTerm) {
+      this.filteredVertices = [...this.vertices];
+    } else {
+      this.filteredVertices = this.vertices.filter(vertex => {
+        const label = (vertex.label || '').toLowerCase();
+        const labelZh = (vertex.label_zh || '').toLowerCase();
+        const type = (vertex.type || '').toLowerCase();
+        return label.includes(searchTerm) || labelZh.includes(searchTerm) || type.includes(searchTerm);
+      });
+    }
+    
+    this.highlightedIndex = -1;
+    this.renderOptions();
+    this.showDropdown();
+  }
+  
+  handleKeydown(e) {
+    if (!this.dropdown.classList.contains('show')) return;
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        this.highlightedIndex = Math.min(this.highlightedIndex + 1, this.filteredVertices.length - 1);
+        this.updateHighlight();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        this.highlightedIndex = Math.max(this.highlightedIndex - 1, -1);
+        this.updateHighlight();
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (this.highlightedIndex >= 0) {
+          this.selectVertex(this.filteredVertices[this.highlightedIndex]);
+        }
+        break;
+      case 'Escape':
+        this.hideDropdown();
+        break;
+    }
+  }
+  
+  renderOptions() {
+    if (this.filteredVertices.length === 0) {
+      this.dropdownContent.innerHTML = '<div class="no-vertices-message">No vertices found</div>';
+      return;
+    }
+    
+    this.dropdownContent.innerHTML = this.filteredVertices.map((vertex, index) => `
+      <div class="vertex-option" data-vertex-id="${vertex.id}" data-index="${index}">
+        <div class="vertex-option-label">${vertex.label}</div>
+        <div class="vertex-option-meta">${vertex.type}${vertex.label_zh ? ` | ${vertex.label_zh}` : ''}</div>
+      </div>
+    `).join('');
+    
+    // Add click handlers
+    this.dropdownContent.querySelectorAll('.vertex-option').forEach(option => {
+      option.addEventListener('click', () => {
+        const vertexId = option.dataset.vertexId;
+        const vertex = this.vertices.find(v => v.id === vertexId);
+        if (vertex) {
+          this.selectVertex(vertex);
+        }
+      });
+    });
+  }
+  
+  updateHighlight() {
+    this.dropdownContent.querySelectorAll('.vertex-option').forEach((option, index) => {
+      option.classList.toggle('highlighted', index === this.highlightedIndex);
+    });
+  }
+  
+  selectVertex(vertex) {
+    this.selectedVertex = vertex;
+    this.searchInput.value = vertex.label;
+    this.searchInput.classList.add('has-selection');
+    this.hiddenInput.value = vertex.id;
+    this.hideDropdown();
+  }
+  
+  setSelection(vertexId) {
+    const vertex = this.vertices.find(v => v.id === vertexId);
+    if (vertex) {
+      this.selectVertex(vertex);
+    }
+  }
+  
+  clearSelection() {
+    this.selectedVertex = null;
+    this.searchInput.value = '';
+    this.searchInput.classList.remove('has-selection');
+    this.hiddenInput.value = '';
+  }
+  
+  showDropdown() {
+    this.dropdown.classList.add('show');
+  }
+  
+  hideDropdown() {
+    this.dropdown.classList.remove('show');
+    this.highlightedIndex = -1;
+  }
+}
