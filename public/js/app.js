@@ -1611,5 +1611,67 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Setting up SettingsManager initialization from app.js');
     SettingsManager.initialize();
   }
+
+  // Initialize the GraphAnalysisVisualizer
+  if (window.GraphAnalysisVisualizer) {
+    console.log('Setting up GraphAnalysisVisualizer initialization from app.js');
+    GraphAnalysisVisualizer.initialize();
+  }
+
+  // Add a toggle button for the graph analysis visualizer
+  const toggleGraphAnalysisButton = document.createElement('button');
+  toggleGraphAnalysisButton.id = 'toggle-graph-analysis';
+  toggleGraphAnalysisButton.className = 'feature-toggle';
+  toggleGraphAnalysisButton.textContent = 'Graph Analysis';
+  toggleGraphAnalysisButton.title = 'Open advanced graph analysis and visualization';
+
+  toggleGraphAnalysisButton.addEventListener('click', function() {
+    console.log('Graph Analysis button clicked');
+    console.log('GraphAnalysisVisualizer exists:', !!window.GraphAnalysisVisualizer);
+    
+    if (window.GraphAnalysisVisualizer) {
+      const isVisible = GraphAnalysisVisualizer.isVisible();
+      console.log('Is currently visible:', isVisible);
+      
+      if (isVisible) {
+        console.log('Hiding graph analysis');
+        GraphAnalysisVisualizer.hide();
+      } else {
+        console.log('Showing graph analysis');
+        GraphAnalysisVisualizer.show();
+      }
+    } else {
+      console.error('GraphAnalysisVisualizer is not available');
+      alert('Graph Analysis module not loaded. Please refresh the page.');
+    }
+  });
+
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggleGraphAnalysisButton);
+
+  // Initialize the GraphManagementUI
+  if (window.GraphManagementUI) {
+    console.log('Setting up GraphManagementUI initialization from app.js');
+    GraphManagementUI.initialize();
+  }
+
+  // Add graph management button
+  const toggleGraphManagementButton = document.createElement('button');
+  toggleGraphManagementButton.id = 'toggle-graph-management';
+  toggleGraphManagementButton.className = 'feature-toggle';
+  toggleGraphManagementButton.textContent = 'Graph Management';
+  toggleGraphManagementButton.title = 'Manage graph vertices and edges';
+
+  toggleGraphManagementButton.addEventListener('click', function() {
+    if (window.GraphManagementUI) {
+      if (GraphManagementUI.isVisible()) {
+        GraphManagementUI.hide();
+      } else {
+        GraphManagementUI.show();
+      }
+    }
+  });
+
+  addButtonToSidebar(toggleGraphManagementButton);
 });
 

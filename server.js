@@ -28,6 +28,8 @@ const metroMapRoutes = require('./routes/metroMapRoutes');
 const markdownSearchRoutes = require('./routes/markdownSearchRoutes');
 const wordFrequencyRoutes = require('./routes/wordFrequencyRoutes');
 const wordGroupRoutes = require('./routes/wordGroupRoutes');
+const graphRoutes = require('./routes/graphRoutes');
+const graphManagementRoutes = require('./routes/graphManagementRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -765,6 +767,8 @@ app.use('/api/metro-map', metroMapRoutes);
 // Add this route registration with the other routes
 app.use('/api/word-frequency', wordFrequencyRoutes);
 app.use('/api/word-groups', wordGroupRoutes);
+app.use('/api/graph', graphRoutes);
+app.use('/api/graph-management', graphManagementRoutes);
 
 // Add this after the database initialization
 // Create vaults directory if it doesn't exist

@@ -507,6 +507,99 @@ try {
     CREATE INDEX IF NOT EXISTS idx_word_groups_name ON word_groups(name);
   `);
   
+  // Add these graph tables to the initializeDatabase function
+
+  // Create graph_vertices table - separate from outliner nodes
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_vertices (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      label_zh TEXT,
+      type TEXT DEFAULT 'concept',
+      properties TEXT, -- JSON string for flexible properties
+      source_node_id TEXT, -- Optional reference to outliner node
+      x_position REAL,
+      y_position REAL,
+      size REAL DEFAULT 1.0,
+      color TEXT DEFAULT '#666666',
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (source_node_id) REFERENCES nodes (id) ON DELETE SET NULL
+    )
+  `);
+
+  // Create graph_edges table - separate from generic links
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_edges (
+      id TEXT PRIMARY KEY,
+      source_vertex_id TEXT NOT NULL,
+      target_vertex_id TEXT NOT NULL,
+      relationship_type TEXT DEFAULT 'relates_to',
+      weight REAL DEFAULT 1.0,
+      direction TEXT DEFAULT 'directed', -- 'directed', 'undirected'
+      properties TEXT, -- JSON string for flexible properties
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (source_vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE,
+      FOREIGN KEY (target_vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE,
+      UNIQUE(source_vertex_id, target_vertex_id, relationship_type)
+    )
+  `);
+
+  // Create graph_layouts table - store different layout configurations
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_layouts (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      layout_algorithm TEXT DEFAULT 'force-directed',
+      layout_data TEXT, -- JSON string storing positions and parameters
+      is_default BOOLEAN DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    )
+  `);
+
+  // Create graph_analysis_results table - store computed metrics
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_analysis_results (
+      id TEXT PRIMARY KEY,
+      vertex_id TEXT,
+      analysis_type TEXT NOT NULL, -- 'centrality', 'community', 'clustering', etc.
+      metric_name TEXT NOT NULL, -- 'betweenness', 'pagerank', 'modularity', etc.
+      metric_value REAL,
+      properties TEXT, -- Additional analysis data as JSON
+      computed_at INTEGER,
+      FOREIGN KEY (vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create graph_communities table - store community detection results
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_communities (
+      id TEXT PRIMARY KEY,
+      community_id TEXT NOT NULL,
+      vertex_id TEXT NOT NULL,
+      algorithm TEXT DEFAULT 'louvain',
+      modularity REAL,
+      created_at INTEGER,
+      FOREIGN KEY (vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Add indices for graph tables performance
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_vertex_id);
+    CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_vertex_id);
+    CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(relationship_type);
+    CREATE INDEX IF NOT EXISTS idx_graph_analysis_vertex ON graph_analysis_results(vertex_id);
+    CREATE INDEX IF NOT EXISTS idx_graph_analysis_type ON graph_analysis_results(analysis_type);
+    CREATE INDEX IF NOT EXISTS idx_graph_communities_community ON graph_communities(community_id);
+    CREATE INDEX IF NOT EXISTS idx_graph_vertices_type ON graph_vertices(type);
+  `);
+
   console.log(`Database for vault: ${vaultName} initialized`);
   return db;
 }
