@@ -1101,6 +1101,78 @@ const CommandPaletteManager = (function() {
                 window.MetroMapVisualizer.show(nodeId);
             }
         }
+
+        // Add Word Frequency commands if WordFrequencyManager exists
+        if (window.WordFrequencyManager) {
+            registerCommand({
+                name: 'Open Word Frequency Analysis',
+                action: () => {
+                    if (window.WordFrequencyManager.openModal) {
+                        window.WordFrequencyManager.openModal();
+                    }
+                },
+                category: 'Analysis',
+                shortcut: 'Alt+W',
+                keywords: ['word', 'frequency', 'analysis', 'statistics', 'text', 'count', 'stem']
+            });
+            
+            registerCommand({
+                name: 'Word Frequency - Chart View',
+                action: () => {
+                    if (window.WordFrequencyManager.openModal) {
+                        window.WordFrequencyManager.openModal();
+                        
+                        // Switch to chart expanded view after modal opens
+                        setTimeout(() => {
+                            const expandChartButton = document.getElementById('expand-chart');
+                            if (expandChartButton) {
+                                expandChartButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Analysis',
+                keywords: ['word', 'frequency', 'chart', 'graph', 'visualization', 'bar']
+            });
+            
+            registerCommand({
+                name: 'Word Frequency - Table View',
+                action: () => {
+                    if (window.WordFrequencyManager.openModal) {
+                        window.WordFrequencyManager.openModal();
+                        
+                        // Switch to table expanded view after modal opens
+                        setTimeout(() => {
+                            const expandTableButton = document.getElementById('expand-table');
+                            if (expandTableButton) {
+                                expandTableButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Analysis',
+                keywords: ['word', 'frequency', 'table', 'list', 'data', 'detailed']
+            });
+            
+            registerCommand({
+                name: 'Refresh Word Frequency Analysis',
+                action: () => {
+                    if (window.WordFrequencyManager.openModal) {
+                        window.WordFrequencyManager.openModal();
+                        
+                        // Click refresh button after modal opens
+                        setTimeout(() => {
+                            const refreshButton = document.getElementById('refresh-word-freq');
+                            if (refreshButton) {
+                                refreshButton.click();
+                            }
+                        }, 500);
+                    }
+                },
+                category: 'Analysis',
+                keywords: ['word', 'frequency', 'refresh', 'reload', 'update', 'analysis']
+            });
+        }
     }
     
     /**

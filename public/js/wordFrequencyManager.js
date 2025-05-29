@@ -118,7 +118,7 @@ const WordFrequencyManager = (function() {
                     
                     <div class="word-frequency-chart-container" id="chart-container">
                         <div class="chart-header">
-                            <h3>Top 20 Most Frequent Words</h3>
+                            <h3>Top 20 Most Frequent Stems</h3>
                             <button id="expand-chart" class="expand-button" title="Expand chart to full view">⛶</button>
                         </div>
                         <canvas id="word-frequency-chart"></canvas>
@@ -126,14 +126,14 @@ const WordFrequencyManager = (function() {
                     
                     <div class="word-frequency-table-container" id="table-container">
                         <div class="table-header">
-                            <h3>Word Frequency Table</h3>
+                            <h3>Word Stem Frequency Table</h3>
                             <button id="expand-table" class="expand-button" title="Expand table to full view">⛶</button>
                         </div>
                         <table class="word-frequency-table" id="word-freq-table">
                             <thead>
                                 <tr>
                                     <th>Rank</th>
-                                    <th>Word</th>
+                                    <th>Stem</th>
                                     <th>Count</th>
                                     <th>Percentage</th>
                                 </tr>
@@ -616,4 +616,44 @@ const WordFrequencyManager = (function() {
             max-height: 80vh;
             overflow: auto;
             position: relative;
-        `
+        `;
+        
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        `;
+        
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(overlay);
+        });
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+            }
+        });
+        
+        modal.innerHTML = formsHtml;
+        modal.appendChild(closeButton);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+    }
+    
+    // Public API
+    return {
+        initialize,
+        openModal,
+        closeModal
+    };
+})();
+
+// Export to global scope
+window.WordFrequencyManager = WordFrequencyManager;
