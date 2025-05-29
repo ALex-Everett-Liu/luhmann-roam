@@ -119,9 +119,9 @@
     letter-spacing: 0.5px;
 }
 
-/* Chart Container - Normal State */
+/* Chart Container - Simple fixed heights */
 .word-frequency-chart-container {
-    height: 300px;
+    height: 250px;
     margin-bottom: 20px;
     padding: 15px;
     background: var(--background-secondary, #f8f9fa);
@@ -135,9 +135,8 @@
 
 /* Chart Container - Expanded State */
 .word-frequency-chart-container.expanded {
-    height: calc(100vh - 200px); /* Full height minus space for header/nav */
+    height: calc(100vh - 150px); /* Simple viewport calculation */
     margin-bottom: 0;
-    flex: none; /* Don't use flex sizing */
 }
 
 .chart-header,
@@ -171,20 +170,20 @@
     background: var(--primary-color-dark, #0056b3);
 }
 
-/* Chart sizing */
+/* Chart sizing - Simple and stable */
 #word-frequency-chart {
     width: 100% !important;
-    height: 250px !important; /* Fixed height for normal view */
+    height: 200px !important;
 }
 
-/* Chart in expanded view gets more height */
+/* Chart in expanded view */
 .word-frequency-chart-container.expanded #word-frequency-chart {
-    height: calc(100vh - 300px) !important; /* Full height minus headers and padding */
+    height: calc(100vh - 350px) !important; /* Increased from 250px to 350px */
 }
 
-/* Table Container - Normal State */
+/* Table Container - Simple fixed heights */
 .word-frequency-table-container {
-    height: 400px; /* Fixed height for normal view */
+    height: 350px; /* Fixed height for normal view */
     overflow-y: auto;
     overflow-x: hidden;
     border: 1px solid var(--border-color, #e9ecef);
@@ -199,8 +198,7 @@
 
 /* Table Container - Expanded State */
 .word-frequency-table-container.expanded {
-    height: calc(100vh - 200px); /* Full height minus space for header/nav */
-    flex: none; /* Don't use flex sizing */
+    height: calc(100vh - 300px); /* Simple viewport calculation */
 }
 
 .word-frequency-table {
@@ -321,11 +319,11 @@
     }
     
     .word-frequency-chart-container {
-        height: 250px;
+        height: 200px;
     }
     
     .word-frequency-chart-container.expanded {
-        height: calc(100vh - 150px);
+        height: calc(100vh - 120px);
     }
     
     .word-frequency-table-container {
@@ -333,7 +331,7 @@
     }
     
     .word-frequency-table-container.expanded {
-        height: calc(100vh - 150px);
+        height: calc(100vh - 120px);
     }
     
     .chart-header h3,
@@ -347,11 +345,11 @@
     }
     
     #word-frequency-chart {
-        height: 200px !important;
+        height: 150px !important;
     }
     
     .word-frequency-chart-container.expanded #word-frequency-chart {
-        height: calc(100vh - 250px) !important;
+        height: calc(100vh - 200px) !important;
     }
 }
 
