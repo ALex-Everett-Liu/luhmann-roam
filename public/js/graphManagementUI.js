@@ -316,16 +316,35 @@ const GraphManagementUI = (function() {
         delete form.dataset.vertexId;
       }
       
-      modal.style.display = 'block';
+      // Show modal with animation
+      modal.classList.add('show');
+      modal.style.display = 'flex';
     }
     
     function closeVertexModal() {
-      document.getElementById('vertex-modal').style.display = 'none';
+      const modal = document.getElementById('vertex-modal');
+      modal.classList.remove('show');
+      // Small delay to allow animation
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 200);
     }
     
     async function openEdgeModal(edgeId = null) {
       // Load vertices for dropdowns
       await loadVertices();
+      
+      // Initialize vertex selectors if not already done
+      if (!sourceVertexSelector) {
+        try {
+          sourceVertexSelector = new VertexSelector('edge-source');
+          targetVertexSelector = new VertexSelector('edge-target');
+        } catch (error) {
+          console.error('Error initializing vertex selectors:', error);
+          setupSimpleDropdowns();
+          return;
+        }
+      }
       
       // Update vertex selectors with current data
       sourceVertexSelector.updateVertices(verticesData);
@@ -357,11 +376,18 @@ const GraphManagementUI = (function() {
         delete form.dataset.edgeId;
       }
       
-      modal.style.display = 'block';
+      // Show modal with animation
+      modal.classList.add('show');
+      modal.style.display = 'flex';
     }
     
     function closeEdgeModal() {
-      document.getElementById('edge-modal').style.display = 'none';
+      const modal = document.getElementById('edge-modal');
+      modal.classList.remove('show');
+      // Small delay to allow animation
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 200);
     }
     
     async function saveVertex(e) {
@@ -569,10 +595,21 @@ const GraphManagementUI = (function() {
 class VertexSelector {
   constructor(fieldId) {
     this.fieldId = fieldId;
+    
+    // Check if elements exist
     this.searchInput = document.getElementById(`${fieldId}-search`);
     this.dropdown = document.getElementById(`${fieldId}-dropdown`);
-    this.dropdownContent = this.dropdown.querySelector('.vertex-dropdown-content');
     this.hiddenInput = document.getElementById(fieldId);
+    
+    if (!this.searchInput || !this.dropdown || !this.hiddenInput) {
+      throw new Error(`VertexSelector: Required elements not found for ${fieldId}`);
+    }
+    
+    this.dropdownContent = this.dropdown.querySelector('.vertex-dropdown-content');
+    if (!this.dropdownContent) {
+      throw new Error(`VertexSelector: Dropdown content not found for ${fieldId}`);
+    }
+    
     this.vertices = [];
     this.filteredVertices = [];
     this.selectedVertex = null;
@@ -584,7 +621,7 @@ class VertexSelector {
   setupEventListeners() {
     // Search input events
     this.searchInput.addEventListener('input', (e) => this.handleSearch(e));
-    this.searchInput.addEventListener('focus', () => this.showDropdown());
+    this.searchInput.addEventListener('focus', () => this.handleFocus());
     this.searchInput.addEventListener('keydown', (e) => this.handleKeydown(e));
     
     // Click outside to close
@@ -596,28 +633,82 @@ class VertexSelector {
   }
   
   updateVertices(vertices) {
-    this.vertices = vertices;
-    this.filteredVertices = [...vertices];
-    this.renderOptions();
+    this.vertices = vertices || [];
+    this.filteredVertices = []; // Don't show all initially
+    // Clear dropdown content initially
+    this.dropdownContent.innerHTML = '<div class="no-vertices-message">Start typing to search vertices...</div>';
+  }
+  
+  handleFocus() {
+    // Only show dropdown if there's already a search term or selection
+    if (this.searchInput.value.trim()) {
+      this.handleSearch({ target: this.searchInput });
+    } else {
+      // Show a hint message
+      this.dropdownContent.innerHTML = '<div class="no-vertices-message">Start typing to search vertices...</div>';
+      this.showDropdown();
+    }
   }
   
   handleSearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
+    const searchTerm = e.target.value.toLowerCase().trim();
     
     if (!searchTerm) {
-      this.filteredVertices = [...this.vertices];
-    } else {
-      this.filteredVertices = this.vertices.filter(vertex => {
-        const label = (vertex.label || '').toLowerCase();
-        const labelZh = (vertex.label_zh || '').toLowerCase();
-        const type = (vertex.type || '').toLowerCase();
-        return label.includes(searchTerm) || labelZh.includes(searchTerm) || type.includes(searchTerm);
-      });
+      this.filteredVertices = [];
+      this.dropdownContent.innerHTML = '<div class="no-vertices-message">Start typing to search vertices...</div>';
+      this.showDropdown();
+      return;
     }
+    
+    // Only search if user typed at least 1 character
+    this.filteredVertices = this.vertices.filter(vertex => {
+      const label = (vertex.label || '').toLowerCase();
+      const labelZh = (vertex.label_zh || '').toLowerCase();
+      const type = (vertex.type || '').toLowerCase();
+      return label.includes(searchTerm) || labelZh.includes(searchTerm) || type.includes(searchTerm);
+    });
     
     this.highlightedIndex = -1;
     this.renderOptions();
     this.showDropdown();
+  }
+  
+  renderOptions() {
+    if (!this.dropdownContent) return;
+    
+    if (this.filteredVertices.length === 0) {
+      this.dropdownContent.innerHTML = '<div class="no-vertices-message">No vertices found matching your search</div>';
+      return;
+    }
+    
+    // Limit results to prevent performance issues
+    const maxResults = 50;
+    const displayVertices = this.filteredVertices.slice(0, maxResults);
+    
+    let html = displayVertices.map((vertex, index) => `
+      <div class="vertex-option" data-vertex-id="${vertex.id}" data-index="${index}">
+        <div class="vertex-option-label">${vertex.label || 'Untitled'}</div>
+        <div class="vertex-option-meta">${vertex.type || 'unknown'}${vertex.label_zh ? ` | ${vertex.label_zh}` : ''}</div>
+      </div>
+    `).join('');
+    
+    // Show message if there are more results
+    if (this.filteredVertices.length > maxResults) {
+      html += `<div class="no-vertices-message">Showing ${maxResults} of ${this.filteredVertices.length} results. Type more to narrow down.</div>`;
+    }
+    
+    this.dropdownContent.innerHTML = html;
+    
+    // Add click handlers
+    this.dropdownContent.querySelectorAll('.vertex-option').forEach(option => {
+      option.addEventListener('click', () => {
+        const vertexId = option.dataset.vertexId;
+        const vertex = this.vertices.find(v => v.id === vertexId);
+        if (vertex) {
+          this.selectVertex(vertex);
+        }
+      });
+    });
   }
   
   handleKeydown(e) {
@@ -644,31 +735,6 @@ class VertexSelector {
         this.hideDropdown();
         break;
     }
-  }
-  
-  renderOptions() {
-    if (this.filteredVertices.length === 0) {
-      this.dropdownContent.innerHTML = '<div class="no-vertices-message">No vertices found</div>';
-      return;
-    }
-    
-    this.dropdownContent.innerHTML = this.filteredVertices.map((vertex, index) => `
-      <div class="vertex-option" data-vertex-id="${vertex.id}" data-index="${index}">
-        <div class="vertex-option-label">${vertex.label}</div>
-        <div class="vertex-option-meta">${vertex.type}${vertex.label_zh ? ` | ${vertex.label_zh}` : ''}</div>
-      </div>
-    `).join('');
-    
-    // Add click handlers
-    this.dropdownContent.querySelectorAll('.vertex-option').forEach(option => {
-      option.addEventListener('click', () => {
-        const vertexId = option.dataset.vertexId;
-        const vertex = this.vertices.find(v => v.id === vertexId);
-        if (vertex) {
-          this.selectVertex(vertex);
-        }
-      });
-    });
   }
   
   updateHighlight() {

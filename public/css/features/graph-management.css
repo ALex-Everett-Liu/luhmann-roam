@@ -256,7 +256,7 @@
     margin: 0;
   }
   
-  /* Modal Styles */
+  /* Modal Styles - Updated for better centering */
   .graph-management-container .modal {
     position: fixed;
     top: 0;
@@ -268,6 +268,8 @@
     justify-content: center;
     align-items: center;
     z-index: 1004;
+    padding: 20px;
+    box-sizing: border-box;
   }
   
   .graph-management-container .modal.show {
@@ -278,10 +280,18 @@
     background: white;
     padding: 25px;
     border-radius: 8px;
-    width: 90%;
+    width: 100%;
     max-width: 500px;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(1);
+    transition: transform 0.2s ease-out;
+  }
+  
+  /* Add animation for modal appearance */
+  .graph-management-container .modal:not(.show) .modal-content {
+    transform: scale(0.9);
   }
   
   .graph-management-container .modal-content h3 {
@@ -323,54 +333,21 @@
     margin-top: 20px;
   }
   
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .graph-management-content {
-      padding: 10px;
-    }
-    
-    .graph-management-container .data-item {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    
-    .graph-management-container .item-actions {
-      align-self: flex-end;
-    }
-    
-    .graph-management-container .modal-content {
-      width: 95%;
-      padding: 20px;
-    }
+  /* Improved hint message styling */
+  .graph-management-container .no-vertices-message {
+    padding: 15px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    font-size: 13px;
   }
   
-  /* Searchable Vertex Selector Styles */
-  .graph-management-container .vertex-selector-container {
-    position: relative;
-    margin-bottom: 15px;
+  .graph-management-container .no-vertices-message.hint {
+    color: #3498db;
+    font-style: normal;
   }
   
-  .graph-management-container .vertex-search-input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    font-size: 14px;
-    background: white;
-    cursor: pointer;
-  }
-  
-  .graph-management-container .vertex-search-input:focus {
-    outline: none;
-    border-color: #3498db;
-  }
-  
-  .graph-management-container .vertex-search-input.has-selection {
-    background: #e8f4fd;
-    border-color: #3498db;
-  }
-  
+  /* Limit dropdown height for better performance */
   .graph-management-container .vertex-dropdown {
     position: absolute;
     top: 100%;
@@ -380,11 +357,11 @@
     border: 1px solid #dee2e6;
     border-top: none;
     border-radius: 0 0 4px 4px;
-    max-height: 200px;
+    max-height: 250px; /* Increased slightly */
     overflow-y: auto;
     z-index: 1005;
     display: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
   
   .graph-management-container .vertex-dropdown.show {
@@ -438,9 +415,60 @@
     color: rgba(255, 255, 255, 0.8);
   }
   
-  .graph-management-container .no-vertices-message {
-    padding: 15px;
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
+  /* Searchable Vertex Selector Styles */
+  .graph-management-container .vertex-selector-container {
+    position: relative;
+    margin-bottom: 15px;
+  }
+  
+  .graph-management-container .vertex-search-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+  }
+  
+  .graph-management-container .vertex-search-input:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+  
+  .graph-management-container .vertex-search-input.has-selection {
+    background: #e8f4fd;
+    border-color: #3498db;
+  }
+  
+  /* Responsive adjustments for modal */
+  @media (max-width: 768px) {
+    .graph-management-content {
+      padding: 10px;
+    }
+    
+    .graph-management-container .data-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    
+    .graph-management-container .item-actions {
+      align-self: flex-end;
+    }
+    
+    .graph-management-container .modal {
+      padding: 10px;
+    }
+    
+    .graph-management-container .modal-content {
+      width: 100%;
+      max-width: none;
+      max-height: 95vh;
+      padding: 20px;
+    }
+    
+    .graph-management-container .vertex-dropdown {
+      max-height: 200px;
+    }
   }
