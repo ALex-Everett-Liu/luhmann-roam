@@ -253,7 +253,7 @@ const WordFrequencyManager = (function() {
                 // Recreate chart for expanded view
                 setTimeout(() => {
                     const minLength = parseInt(modalElement.querySelector('#min-length').value);
-                    const filteredData = wordFrequencyData.filter(item => item.word.length >= minLength);
+                    const filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
                     updateChart(filteredData.slice(0, 50)); // Show more words in expanded view
                 }, 100);
                 break;
@@ -344,8 +344,8 @@ const WordFrequencyManager = (function() {
             const wordLimit = modalElement.querySelector('#word-limit').value;
             const showChart = modalElement.querySelector('#show-chart').checked;
             
-            // Filter data based on minimum length
-            let filteredData = wordFrequencyData.filter(item => item.word.length >= minLength);
+            // Filter data based on minimum stem length
+            let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
             
             // Limit number of words if not "all"
             if (wordLimit !== 'all') {
@@ -387,26 +387,26 @@ const WordFrequencyManager = (function() {
         if (!statsContainer) return;
         
         const totalWords = data.reduce((sum, item) => sum + item.count, 0);
-        const uniqueWords = data.length;
-        const totalUniqueWords = wordFrequencyData.length;
+        const uniqueStems = data.length;
+        const totalUniqueStems = wordFrequencyData.length;
         
         statsContainer.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-item">
                     <div class="stat-value">${totalWords.toLocaleString()}</div>
-                    <div class="stat-label">Total Words (filtered)</div>
+                    <div class="stat-label">Total Occurrences (filtered)</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">${uniqueWords.toLocaleString()}</div>
-                    <div class="stat-label">Unique Words (filtered)</div>
+                    <div class="stat-value">${uniqueStems.toLocaleString()}</div>
+                    <div class="stat-label">Unique Stems (filtered)</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">${totalUniqueWords.toLocaleString()}</div>
-                    <div class="stat-label">Total Unique Words</div>
+                    <div class="stat-value">${totalUniqueStems.toLocaleString()}</div>
+                    <div class="stat-label">Total Unique Stems</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">${data.length > 0 ? data[0].word : 'N/A'}</div>
-                    <div class="stat-label">Most Frequent Word</div>
+                    <div class="stat-value">${data.length > 0 ? data[0].stem : 'N/A'}</div>
+                    <div class="stat-label">Most Frequent Stem</div>
                 </div>
             </div>
         `;
@@ -429,10 +429,16 @@ const WordFrequencyManager = (function() {
             
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td class="word-cell">${item.word}</td>
+                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${item.stem}</td>
                 <td class="count-cell">${item.count.toLocaleString()}</td>
                 <td class="percentage-cell">${percentage}%</td>
             `;
+            
+            // Add click handler to show word forms
+            const wordCell = row.querySelector('.word-cell');
+            wordCell.addEventListener('click', () => {
+                showWordForms(item.stem, item.forms);
+            });
             
             tableBody.appendChild(row);
         });
@@ -463,9 +469,9 @@ const WordFrequencyManager = (function() {
         currentChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.map(item => item.word),
+                labels: data.map(item => item.stem),
                 datasets: [{
-                    label: 'Word Frequency',
+                    label: 'Stem Frequency',
                     data: data.map(item => item.count),
                     backgroundColor: 'rgba(54, 162, 235, 0.6)',
                     borderColor: 'rgba(54, 162, 235, 1)',
@@ -486,7 +492,7 @@ const WordFrequencyManager = (function() {
                     x: {
                         title: {
                             display: true,
-                            text: 'Words'
+                            text: 'Word Stems'
                         },
                         ticks: {
                             maxRotation: isExpanded ? 45 : 45,
@@ -500,7 +506,7 @@ const WordFrequencyManager = (function() {
                 plugins: {
                     title: {
                         display: true,
-                        text: isExpanded ? `Top ${data.length} Most Frequent Words` : 'Top 20 Most Frequent Words',
+                        text: isExpanded ? `Top ${data.length} Most Frequent Stems` : 'Top 20 Most Frequent Stems',
                         font: {
                             size: isExpanded ? 18 : 14
                         }
@@ -567,13 +573,47 @@ const WordFrequencyManager = (function() {
         }
     }
     
-    // Public API
-    return {
-        initialize,
-        openModal,
-        closeModal
-    };
-})();
-
-// Export to global scope
-window.WordFrequencyManager = WordFrequencyManager;
+    /**
+     * Shows the original forms of a stemmed word
+     */
+    function showWordForms(stem, forms) {
+        let formsHtml = `<div style="max-height: 300px; overflow-y: auto;">`;
+        formsHtml += `<h4>Original forms for "${stem}":</h4>`;
+        formsHtml += `<table style="width: 100%; border-collapse: collapse;">`;
+        formsHtml += `<thead><tr><th style="border: 1px solid #ddd; padding: 8px;">Word</th><th style="border: 1px solid #ddd; padding: 8px;">Count</th></tr></thead>`;
+        formsHtml += `<tbody>`;
+        
+        // Sort forms by count descending
+        const sortedForms = Object.entries(forms).sort((a, b) => b[1] - a[1]);
+        
+        for (const [form, count] of sortedForms) {
+            formsHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${form}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${count}</td></tr>`;
+        }
+        
+        formsHtml += `</tbody></table></div>`;
+        
+        // Create a simple modal-like overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: auto;
+            position: relative;
+        `
