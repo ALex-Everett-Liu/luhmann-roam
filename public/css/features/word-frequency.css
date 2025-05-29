@@ -31,7 +31,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-height: 0; /* Important: allows flex children to shrink below content size */
+    padding: 0 20px 20px 20px;
 }
 
 /* Navigation for expanded views */
@@ -60,7 +60,7 @@
     border-bottom: 1px solid var(--border-color, #ddd);
     margin-bottom: 20px;
     flex-wrap: wrap;
-    flex-shrink: 0; /* Prevent controls from shrinking */
+    flex-shrink: 0;
 }
 
 .display-options {
@@ -88,7 +88,7 @@
 /* Statistics */
 .word-frequency-stats {
     margin-bottom: 20px;
-    flex-shrink: 0; /* Prevent stats from shrinking */
+    flex-shrink: 0;
 }
 
 .stats-grid {
@@ -119,22 +119,25 @@
     letter-spacing: 0.5px;
 }
 
-/* Chart */
+/* Chart Container - Normal State */
 .word-frequency-chart-container {
-    height: 250px;
+    height: 300px;
     margin-bottom: 20px;
     padding: 15px;
     background: var(--background-secondary, #f8f9fa);
     border-radius: 8px;
     border: 1px solid var(--border-color, #e9ecef);
-    flex-shrink: 0; /* Prevent chart from shrinking */
+    flex-shrink: 0;
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
+/* Chart Container - Expanded State */
 .word-frequency-chart-container.expanded {
-    height: calc(100vh - 150px); /* Take most of the screen height */
+    height: calc(100vh - 200px); /* Full height minus space for header/nav */
     margin-bottom: 0;
-    flex: 1;
+    flex: none; /* Don't use flex sizing */
 }
 
 .chart-header,
@@ -142,7 +145,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    flex-shrink: 0;
 }
 
 .chart-header h3,
@@ -167,36 +171,42 @@
     background: var(--primary-color-dark, #0056b3);
 }
 
+/* Chart sizing */
 #word-frequency-chart {
     width: 100% !important;
-    height: calc(100% - 40px) !important; /* Account for header */
+    height: 250px !important; /* Fixed height for normal view */
 }
 
-/* Table */
+/* Chart in expanded view gets more height */
+.word-frequency-chart-container.expanded #word-frequency-chart {
+    height: calc(100vh - 300px) !important; /* Full height minus headers and padding */
+}
+
+/* Table Container - Normal State */
 .word-frequency-table-container {
-    flex: 1;
-    overflow-y: auto; /* Force vertical scrollbar when needed */
-    overflow-x: hidden; /* Hide horizontal scrollbar */
+    height: 400px; /* Fixed height for normal view */
+    overflow-y: auto;
+    overflow-x: hidden;
     border: 1px solid var(--border-color, #e9ecef);
     border-radius: 8px;
-    min-height: 300px;
-    max-height: 500px; /* Add back max-height but make it larger */
     padding: 15px;
     background: var(--background-secondary, #f8f9fa);
     position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
 }
 
+/* Table Container - Expanded State */
 .word-frequency-table-container.expanded {
-    max-height: calc(100vh - 150px); /* Take most of the screen height */
-    min-height: calc(100vh - 150px);
-    flex: 1;
+    height: calc(100vh - 200px); /* Full height minus space for header/nav */
+    flex: none; /* Don't use flex sizing */
 }
 
 .word-frequency-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
-    margin-top: 10px; /* Account for header */
 }
 
 .word-frequency-table th {
@@ -259,11 +269,6 @@
     background: var(--text-secondary, #a8a8a8);
 }
 
-/* Force scrollbar to always be visible */
-.word-frequency-table-container {
-    scrollbar-gutter: stable; /* Reserve space for scrollbar */
-}
-
 /* Loading and Error States */
 .loading-indicator {
     display: flex;
@@ -295,6 +300,10 @@
         height: 95%;
     }
     
+    .word-frequency-content {
+        padding: 0 10px 10px 10px;
+    }
+    
     .word-frequency-controls {
         flex-direction: column;
         align-items: stretch;
@@ -312,21 +321,19 @@
     }
     
     .word-frequency-chart-container {
-        height: 200px;
+        height: 250px;
     }
     
     .word-frequency-chart-container.expanded {
-        height: calc(100vh - 100px);
+        height: calc(100vh - 150px);
     }
     
     .word-frequency-table-container {
-        min-height: 250px;
-        max-height: 400px; /* Smaller max height on mobile */
+        height: 300px;
     }
     
     .word-frequency-table-container.expanded {
-        max-height: calc(100vh - 100px);
-        min-height: calc(100vh - 100px);
+        height: calc(100vh - 150px);
     }
     
     .chart-header h3,
@@ -337,6 +344,14 @@
     .expand-button {
         padding: 4px 8px;
         font-size: 12px;
+    }
+    
+    #word-frequency-chart {
+        height: 200px !important;
+    }
+    
+    .word-frequency-chart-container.expanded #word-frequency-chart {
+        height: calc(100vh - 250px) !important;
     }
 }
 
@@ -361,7 +376,6 @@
         border-color: var(--border-color-dark, #636e72);
     }
     
-    /* Dark mode scrollbar */
     .word-frequency-table-container::-webkit-scrollbar-track {
         background: var(--background-secondary-dark, #2d3436);
     }
