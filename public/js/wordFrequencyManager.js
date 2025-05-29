@@ -693,6 +693,517 @@ const WordFrequencyManager = (function() {
         document.body.appendChild(overlay);
     }
     
+    /**
+     * Opens the create group modal
+     */
+    function openCreateGroupModal(suggestedName, words) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        `;
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: auto;
+            position: relative;
+        `;
+        
+        modal.innerHTML = `
+            <h3>Create Custom Word Group</h3>
+            <form id="create-group-form">
+                <div style="margin-bottom: 15px;">
+                    <label for="group-display-name" style="display: block; margin-bottom: 5px; font-weight: bold;">Display Name:</label>
+                    <input type="text" id="group-display-name" value="${suggestedName}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="group-name" style="display: block; margin-bottom: 5px; font-weight: bold;">Internal Name:</label>
+                    <input type="text" id="group-name" value="${suggestedName.toLowerCase().replace(/[^a-z0-9]/g, '_')}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label for="group-description" style="display: block; margin-bottom: 5px; font-weight: bold;">Description (optional):</label>
+                    <textarea id="group-description" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 60px;" placeholder="Describe what this group represents..."></textarea>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Words in this group:</label>
+                    <div id="words-container" style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; min-height: 100px; background: #f9f9f9;">
+                        ${words.map(word => `
+                            <span class="word-tag" style="display: inline-block; background: #007bff; color: white; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 12px;">
+                                ${word}
+                                <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: 5px; cursor: pointer;">×</button>
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div style="margin-top: 5px;">
+                        <input type="text" id="new-word-input" placeholder="Add more words..." style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; margin-right: 5px;">
+                        <button type="button" id="add-word-btn" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Add</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Create Group</button>
+                    <button type="button" id="cancel-create" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        `;
+        
+        // Close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        `;
+        closeButton.addEventListener('click', () => document.body.removeChild(overlay));
+        modal.appendChild(closeButton);
+        
+        // Add word functionality
+        const newWordInput = modal.querySelector('#new-word-input');
+        const addWordBtn = modal.querySelector('#add-word-btn');
+        const wordsContainer = modal.querySelector('#words-container');
+        
+        function addWord() {
+            const word = newWordInput.value.trim();
+            if (word) {
+                const wordTag = document.createElement('span');
+                wordTag.className = 'word-tag';
+                wordTag.style.cssText = 'display: inline-block; background: #007bff; color: white; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 12px;';
+                wordTag.innerHTML = `
+                    ${word}
+                    <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: 5px; cursor: pointer;">×</button>
+                `;
+                wordsContainer.appendChild(wordTag);
+                newWordInput.value = '';
+            }
+        }
+        
+        addWordBtn.addEventListener('click', addWord);
+        newWordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addWord();
+            }
+        });
+        
+        // Form submission
+        modal.querySelector('#create-group-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const displayName = modal.querySelector('#group-display-name').value.trim();
+            const name = modal.querySelector('#group-name').value.trim();
+            const description = modal.querySelector('#group-description').value.trim();
+            const wordTags = modal.querySelectorAll('.word-tag');
+            const groupWords = Array.from(wordTags).map(tag => tag.textContent.replace('×', '').trim());
+            
+            try {
+                const response = await fetch('/api/word-groups', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        display_name: displayName,
+                        description,
+                        words: groupWords
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Word group created successfully!');
+                    document.body.removeChild(overlay);
+                    // Refresh the word frequency analysis
+                    loadWordFrequencyData();
+                } else {
+                    const error = await response.json();
+                    alert(`Error creating group: ${error.error}`);
+                }
+            } catch (error) {
+                console.error('Error creating word group:', error);
+                alert('Failed to create word group');
+            }
+        });
+        
+        // Cancel button
+        modal.querySelector('#cancel-create').addEventListener('click', () => {
+            document.body.removeChild(overlay);
+        });
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        // Focus on the display name input
+        setTimeout(() => modal.querySelector('#group-display-name').focus(), 100);
+    }
+    
+    /**
+     * Opens the edit group modal
+     */
+    async function openEditGroupModal(stem, words) {
+        try {
+            // First, find the group that contains this stem
+            const response = await fetch('/api/word-groups');
+            const groups = await response.json();
+            
+            const group = groups.find(g => g.display_name === stem || g.name === stem);
+            if (!group) {
+                alert('Group not found');
+                return;
+            }
+            
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+            `;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                overflow: auto;
+                position: relative;
+            `;
+            
+            modal.innerHTML = `
+                <h3>Edit Word Group</h3>
+                <form id="edit-group-form">
+                    <div style="margin-bottom: 15px;">
+                        <label for="edit-group-display-name" style="display: block; margin-bottom: 5px; font-weight: bold;">Display Name:</label>
+                        <input type="text" id="edit-group-display-name" value="${group.display_name}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="edit-group-name" style="display: block; margin-bottom: 5px; font-weight: bold;">Internal Name:</label>
+                        <input type="text" id="edit-group-name" value="${group.name}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="edit-group-description" style="display: block; margin-bottom: 5px; font-weight: bold;">Description (optional):</label>
+                        <textarea id="edit-group-description" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 60px;" placeholder="Describe what this group represents...">${group.description || ''}</textarea>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Words in this group:</label>
+                        <div id="edit-words-container" style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; min-height: 100px; background: #f9f9f9;">
+                            ${group.words.map(word => `
+                                <span class="word-tag" style="display: inline-block; background: #007bff; color: white; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 12px;">
+                                    ${word}
+                                    <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: 5px; cursor: pointer;">×</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                        <div style="margin-top: 5px;">
+                            <input type="text" id="edit-new-word-input" placeholder="Add more words..." style="padding: 6px; border: 1px solid #ddd; border-radius: 4px; margin-right: 5px;">
+                            <button type="button" id="edit-add-word-btn" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Add</button>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Update Group</button>
+                        <button type="button" id="delete-group" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Delete Group</button>
+                        <button type="button" id="cancel-edit" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    </div>
+                </form>
+            `;
+            
+            // Close button
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '×';
+            closeButton.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #999;
+            `;
+            closeButton.addEventListener('click', () => document.body.removeChild(overlay));
+            modal.appendChild(closeButton);
+            
+            // Add word functionality
+            const newWordInput = modal.querySelector('#edit-new-word-input');
+            const addWordBtn = modal.querySelector('#edit-add-word-btn');
+            const wordsContainer = modal.querySelector('#edit-words-container');
+            
+            function addWord() {
+                const word = newWordInput.value.trim();
+                if (word) {
+                    const wordTag = document.createElement('span');
+                    wordTag.className = 'word-tag';
+                    wordTag.style.cssText = 'display: inline-block; background: #007bff; color: white; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 12px;';
+                    wordTag.innerHTML = `
+                        ${word}
+                        <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: 5px; cursor: pointer;">×</button>
+                    `;
+                    wordsContainer.appendChild(wordTag);
+                    newWordInput.value = '';
+                }
+            }
+            
+            addWordBtn.addEventListener('click', addWord);
+            newWordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addWord();
+                }
+            });
+            
+            // Form submission
+            modal.querySelector('#edit-group-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const displayName = modal.querySelector('#edit-group-display-name').value.trim();
+                const name = modal.querySelector('#edit-group-name').value.trim();
+                const description = modal.querySelector('#edit-group-description').value.trim();
+                const wordTags = modal.querySelectorAll('.word-tag');
+                const groupWords = Array.from(wordTags).map(tag => tag.textContent.replace('×', '').trim());
+                
+                try {
+                    const response = await fetch(`/api/word-groups/${group.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            display_name: displayName,
+                            description,
+                            words: groupWords
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        alert('Word group updated successfully!');
+                        document.body.removeChild(overlay);
+                        // Refresh the word frequency analysis
+                        loadWordFrequencyData();
+                    } else {
+                        const error = await response.json();
+                        alert(`Error updating group: ${error.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error updating word group:', error);
+                    alert('Failed to update word group');
+                }
+            });
+            
+            // Delete button
+            modal.querySelector('#delete-group').addEventListener('click', async () => {
+                if (confirm(`Are you sure you want to delete the word group "${group.display_name}"?`)) {
+                    try {
+                        const response = await fetch(`/api/word-groups/${group.id}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            alert('Word group deleted successfully!');
+                            document.body.removeChild(overlay);
+                            // Refresh the word frequency analysis
+                            loadWordFrequencyData();
+                        } else {
+                            alert('Failed to delete word group');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting word group:', error);
+                        alert('Failed to delete word group');
+                    }
+                }
+            });
+            
+            // Cancel button
+            modal.querySelector('#cancel-edit').addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+            
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            
+            // Focus on the display name input
+            setTimeout(() => modal.querySelector('#edit-group-display-name').focus(), 100);
+            
+        } catch (error) {
+            console.error('Error loading group for editing:', error);
+            alert('Failed to load group information');
+        }
+    }
+    
+    /**
+     * Opens the word groups manager
+     */
+    async function openWordGroupsManager() {
+        try {
+            const response = await fetch('/api/word-groups');
+            const groups = await response.json();
+            
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+            `;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 800px;
+                width: 90%;
+                max-height: 80vh;
+                overflow: auto;
+                position: relative;
+            `;
+            
+            let groupsHtml = `
+                <h3>Word Groups Manager</h3>
+                <div style="margin-bottom: 15px;">
+                    <button id="create-new-group" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Create New Group</button>
+                </div>
+            `;
+            
+            if (groups.length === 0) {
+                groupsHtml += '<p>No word groups created yet.</p>';
+            } else {
+                groupsHtml += `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Display Name</th>
+                                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Words</th>
+                                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                groups.forEach(group => {
+                    const wordsPreview = group.words.slice(0, 5).join(', ') + (group.words.length > 5 ? `... (+${group.words.length - 5} more)` : '');
+                    groupsHtml += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 12px; font-weight: bold;">${group.display_name}</td>
+                            <td style="border: 1px solid #ddd; padding: 12px; font-family: monospace; font-size: 12px;">${wordsPreview}</td>
+                            <td style="border: 1px solid #ddd; padding: 12px;">
+                                <button onclick="editGroup('${group.id}')" style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px; font-size: 12px;">Edit</button>
+                                <button onclick="deleteGroup('${group.id}', '${group.display_name}')" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                groupsHtml += '</tbody></table>';
+            }
+            
+            modal.innerHTML = groupsHtml;
+            
+            // Close button
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '×';
+            closeButton.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #999;
+            `;
+            closeButton.addEventListener('click', () => document.body.removeChild(overlay));
+            modal.appendChild(closeButton);
+            
+            // Create new group button
+            const createNewGroupBtn = modal.querySelector('#create-new-group');
+            if (createNewGroupBtn) {
+                createNewGroupBtn.addEventListener('click', () => {
+                    document.body.removeChild(overlay);
+                    openCreateGroupModal('New Group', []);
+                });
+            }
+            
+            // Add global functions for edit and delete (temporary)
+            window.editGroup = async (groupId) => {
+                const group = groups.find(g => g.id === groupId);
+                if (group) {
+                    document.body.removeChild(overlay);
+                    openEditGroupModal(group.display_name, group.words);
+                }
+            };
+            
+            window.deleteGroup = async (groupId, groupName) => {
+                if (confirm(`Are you sure you want to delete the word group "${groupName}"?`)) {
+                    try {
+                        const response = await fetch(`/api/word-groups/${groupId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            alert('Word group deleted successfully!');
+                            document.body.removeChild(overlay);
+                            loadWordFrequencyData();
+                        } else {
+                            alert('Failed to delete word group');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting word group:', error);
+                        alert('Failed to delete word group');
+                    }
+                }
+            };
+            
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+            
+        } catch (error) {
+            console.error('Error loading word groups:', error);
+            alert('Failed to load word groups');
+        }
+    }
+    
     // Public API
     return {
         initialize,
