@@ -8,6 +8,7 @@ const WordFrequencyManager = (function() {
     let wordFrequencyData = [];
     let initialized = false;
     let currentChart = null;
+    let currentView = 'overview'; // 'overview', 'chart-expanded', 'table-expanded'
     
     /**
      * Initializes the word frequency manager
@@ -76,6 +77,12 @@ const WordFrequencyManager = (function() {
                 </div>
                 
                 <div class="word-frequency-content" id="word-freq-content" style="display: none;">
+                    <!-- Navigation breadcrumb for expanded views -->
+                    <div class="word-frequency-nav" id="word-freq-nav" style="display: none;">
+                        <button id="back-to-overview" class="btn btn-secondary">← Back to Overview</button>
+                        <span id="current-view-title"></span>
+                    </div>
+                    
                     <div class="word-frequency-controls">
                         <button id="refresh-word-freq" class="btn btn-primary">Refresh Analysis</button>
                         <div class="display-options">
@@ -110,10 +117,18 @@ const WordFrequencyManager = (function() {
                     </div>
                     
                     <div class="word-frequency-chart-container" id="chart-container">
+                        <div class="chart-header">
+                            <h3>Top 20 Most Frequent Words</h3>
+                            <button id="expand-chart" class="expand-button" title="Expand chart to full view">⛶</button>
+                        </div>
                         <canvas id="word-frequency-chart"></canvas>
                     </div>
                     
-                    <div class="word-frequency-table-container">
+                    <div class="word-frequency-table-container" id="table-container">
+                        <div class="table-header">
+                            <h3>Word Frequency Table</h3>
+                            <button id="expand-table" class="expand-button" title="Expand table to full view">⛶</button>
+                        </div>
                         <table class="word-frequency-table" id="word-freq-table">
                             <thead>
                                 <tr>
@@ -175,12 +190,84 @@ const WordFrequencyManager = (function() {
             minLengthSelect.addEventListener('change', updateDisplay);
         }
         
+        // Expand buttons
+        const expandChartButton = modalElement.querySelector('#expand-chart');
+        const expandTableButton = modalElement.querySelector('#expand-table');
+        const backToOverviewButton = modalElement.querySelector('#back-to-overview');
+        
+        if (expandChartButton) {
+            expandChartButton.addEventListener('click', () => switchView('chart-expanded'));
+        }
+        
+        if (expandTableButton) {
+            expandTableButton.addEventListener('click', () => switchView('table-expanded'));
+        }
+        
+        if (backToOverviewButton) {
+            backToOverviewButton.addEventListener('click', () => switchView('overview'));
+        }
+        
         // Close modal when clicking outside
         modalElement.addEventListener('click', (e) => {
             if (e.target === modalElement) {
                 closeModal();
             }
         });
+    }
+    
+    /**
+     * Switches between different view modes
+     */
+    function switchView(newView) {
+        currentView = newView;
+        
+        const navElement = modalElement.querySelector('#word-freq-nav');
+        const statsElement = modalElement.querySelector('#word-freq-stats');
+        const controlsElement = modalElement.querySelector('.word-frequency-controls');
+        const chartContainer = modalElement.querySelector('#chart-container');
+        const tableContainer = modalElement.querySelector('#table-container');
+        const currentViewTitle = modalElement.querySelector('#current-view-title');
+        
+        // Reset all containers to default state
+        chartContainer.classList.remove('expanded');
+        tableContainer.classList.remove('expanded');
+        
+        switch (newView) {
+            case 'overview':
+                navElement.style.display = 'none';
+                statsElement.style.display = 'block';
+                controlsElement.style.display = 'flex';
+                chartContainer.style.display = modalElement.querySelector('#show-chart').checked ? 'block' : 'none';
+                tableContainer.style.display = 'block';
+                break;
+                
+            case 'chart-expanded':
+                navElement.style.display = 'flex';
+                statsElement.style.display = 'none';
+                controlsElement.style.display = 'none';
+                chartContainer.style.display = 'block';
+                chartContainer.classList.add('expanded');
+                tableContainer.style.display = 'none';
+                currentViewTitle.textContent = 'Chart View';
+                
+                // Recreate chart for expanded view
+                setTimeout(() => {
+                    const minLength = parseInt(modalElement.querySelector('#min-length').value);
+                    const filteredData = wordFrequencyData.filter(item => item.word.length >= minLength);
+                    updateChart(filteredData.slice(0, 50)); // Show more words in expanded view
+                }, 100);
+                break;
+                
+            case 'table-expanded':
+                navElement.style.display = 'flex';
+                statsElement.style.display = 'none';
+                controlsElement.style.display = 'none';
+                chartContainer.style.display = 'none';
+                tableContainer.style.display = 'block';
+                tableContainer.classList.add('expanded');
+                currentViewTitle.textContent = 'Table View';
+                break;
+        }
     }
     
     /**
@@ -193,6 +280,7 @@ const WordFrequencyManager = (function() {
         }
         
         modalElement.style.display = 'flex';
+        currentView = 'overview';
         
         // Load data when opening
         loadWordFrequencyData();
@@ -204,6 +292,7 @@ const WordFrequencyManager = (function() {
     function closeModal() {
         if (modalElement) {
             modalElement.style.display = 'none';
+            currentView = 'overview';
             
             // Destroy chart if it exists
             if (currentChart) {
@@ -270,10 +359,13 @@ const WordFrequencyManager = (function() {
             updateTable(filteredData);
             
             // Update chart
-            if (showChart) {
-                updateChart(filteredData.slice(0, 20)); // Show top 20 in chart
+            if (showChart && currentView !== 'table-expanded') {
+                const chartData = currentView === 'chart-expanded' ? 
+                    filteredData.slice(0, 50) : // More words in expanded view
+                    filteredData.slice(0, 20);  // Standard view
+                updateChart(chartData);
                 modalElement.querySelector('#chart-container').style.display = 'block';
-            } else {
+            } else if (currentView !== 'chart-expanded') {
                 modalElement.querySelector('#chart-container').style.display = 'none';
                 if (currentChart) {
                     currentChart.destroy();
@@ -366,6 +458,8 @@ const WordFrequencyManager = (function() {
         
         const ctx = canvas.getContext('2d');
         
+        const isExpanded = currentView === 'chart-expanded';
+        
         currentChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -395,15 +489,21 @@ const WordFrequencyManager = (function() {
                             text: 'Words'
                         },
                         ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
+                            maxRotation: isExpanded ? 45 : 45,
+                            minRotation: isExpanded ? 45 : 45,
+                            font: {
+                                size: isExpanded ? 12 : 10
+                            }
                         }
                     }
                 },
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Top 20 Most Frequent Words'
+                        text: isExpanded ? `Top ${data.length} Most Frequent Words` : 'Top 20 Most Frequent Words',
+                        font: {
+                            size: isExpanded ? 18 : 14
+                        }
                     },
                     legend: {
                         display: false
@@ -437,6 +537,9 @@ const WordFrequencyManager = (function() {
         if (loading) loading.style.display = 'none';
         if (content) content.style.display = 'block';
         if (error) error.style.display = 'none';
+        
+        // Ensure we're in overview mode when content loads
+        switchView('overview');
     }
     
     /**
