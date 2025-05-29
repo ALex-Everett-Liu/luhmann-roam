@@ -565,3 +565,29 @@ body.has-background-image.bg-content-custom .node-actions {
   background-color: var(--preview-custom-bg);
   color: var(--preview-custom-text);
 }
+
+/* Fix for Chinese text with custom colors - higher specificity */
+body.has-background-image.bg-content-custom .node-text[lang="zh"],
+body.has-background-image.bg-content-custom [lang="zh"],
+body.has-background-image.bg-content-custom .chinese-text {
+  color: var(--custom-text-color) !important;
+}
+
+/* Also fix for light and dark content adjustments */
+body.has-background-image.bg-content-light .node-text[lang="zh"],
+body.has-background-image.bg-content-light [lang="zh"],
+body.has-background-image.bg-content-light .chinese-text {
+  color: #333333 !important;
+}
+
+body.has-background-image.bg-content-dark .node-text[lang="zh"],
+body.has-background-image.bg-content-dark [lang="zh"],
+body.has-background-image.bg-content-dark .chinese-text {
+  color: #e0e0e0 !important;
+}
+
+/* Fix for focused Chinese text as well */
+body.has-background-image.bg-content-custom .node-text[lang="zh"]:focus,
+body.has-background-image.bg-content-custom [lang="zh"]:focus {
+  color: var(--custom-text-color) !important;
+}

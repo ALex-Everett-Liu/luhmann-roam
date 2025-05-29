@@ -723,9 +723,8 @@ const HotkeyManager = (function() {
     function registerStaticHotkeys() {
       // Register sidebar buttons
       registerElementHotkey('add-root-node', 'a', 'Add root node');
-      registerElementHotkey('save-changes', 's', 'Save changes');
+      registerElementHotkey('save-changes', 'v', 'Save changes');
       registerElementHotkey('language-toggle', 'l', 'Toggle language');
-      registerElementHotkey('search-nodes-button', 'f', 'Search nodes');
       
       // Register any filter buttons
       const filterButton = document.querySelector('.filter-button');
@@ -823,9 +822,9 @@ const HotkeyManager = (function() {
      * Register global hotkeys that work throughout the application
      */
     function registerGlobalHotkeys() {
-      // Register focus hotkey - Alt+F to focus on hovered node or open search
+      // Alt+F to focus on the currently hovered node
       globalHotkeys['f'] = {
-        description: 'Focus on Hovered Node / Search',
+        description: 'Focus on Hovered Node',
         action: () => {
           // Check if there's a hovered node
           if (window.hoveredNodeId) {
@@ -833,10 +832,18 @@ const HotkeyManager = (function() {
               window.BreadcrumbManager.focusOnNode(window.hoveredNodeId);
             }
           } else {
-            // Fallback to search if no node is hovered
-            if (window.SearchManager) {
-              window.SearchManager.openSearchModal();
-            }
+            // Show a brief message if no node is hovered
+            console.log('No node is currently hovered. Hover over a node first, then press Alt+F to focus on it.');
+          }
+        }
+      };
+      
+      // Alt+S for search
+      globalHotkeys['s'] = {
+        description: 'Search Nodes',
+        action: () => {
+          if (window.SearchManager) {
+            window.SearchManager.openSearchModal();
           }
         }
       };
