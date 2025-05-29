@@ -1,0 +1,281 @@
+/* Word Frequency Analyzer Styles */
+
+.word-frequency-modal-overlay {
+    z-index: 1001;
+}
+
+.word-frequency-modal {
+    width: 90%;
+    max-width: 1200px;
+    height: 90%;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+}
+
+.word-frequency-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.word-frequency-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.word-frequency-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0; /* Important: allows flex children to shrink below content size */
+}
+
+/* Controls */
+.word-frequency-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color, #ddd);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    flex-shrink: 0; /* Prevent controls from shrinking */
+}
+
+.display-options {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.display-options label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.display-options select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Statistics */
+.word-frequency-stats {
+    margin-bottom: 20px;
+    flex-shrink: 0; /* Prevent stats from shrinking */
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: var(--background-secondary, #f8f9fa);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e9ecef);
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color, #007bff);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary, #6c757d);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Chart */
+.word-frequency-chart-container {
+    height: 300px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--background-secondary, #f8f9fa);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e9ecef);
+    flex-shrink: 0; /* Prevent chart from shrinking */
+}
+
+#word-frequency-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Table */
+.word-frequency-table-container {
+    flex: 1;
+    overflow-y: auto; /* Force vertical scrollbar when needed */
+    overflow-x: hidden; /* Hide horizontal scrollbar */
+    border: 1px solid var(--border-color, #e9ecef);
+    border-radius: 8px;
+    min-height: 200px; /* Ensure minimum height for scrolling */
+    max-height: 400px; /* Limit maximum height to ensure scrolling */
+}
+
+.word-frequency-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.word-frequency-table th {
+    background: var(--background-secondary, #f8f9fa);
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color, #e9ecef);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.word-frequency-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-light, #f1f3f4);
+}
+
+.word-frequency-table tbody tr:hover {
+    background: var(--background-hover, #f8f9fa);
+}
+
+.word-cell {
+    font-weight: 500;
+    font-family: 'Courier New', monospace;
+    color: var(--primary-color, #007bff);
+}
+
+.count-cell,
+.percentage-cell {
+    text-align: right;
+    font-weight: 500;
+}
+
+.count-cell {
+    color: var(--text-primary, #212529);
+}
+
+.percentage-cell {
+    color: var(--text-secondary, #6c757d);
+}
+
+/* Scrollbar styling for better visibility */
+.word-frequency-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.word-frequency-table-container::-webkit-scrollbar-track {
+    background: var(--background-secondary, #f1f1f1);
+    border-radius: 4px;
+}
+
+.word-frequency-table-container::-webkit-scrollbar-thumb {
+    background: var(--border-color, #c1c1c1);
+    border-radius: 4px;
+}
+
+.word-frequency-table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary, #a8a8a8);
+}
+
+/* Loading and Error States */
+.loading-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--text-secondary, #6c757d);
+}
+
+.error-message {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--error-color, #dc3545);
+    text-align: center;
+    padding: 20px;
+}
+
+.error-message p {
+    margin-bottom: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .word-frequency-modal {
+        width: 95%;
+        height: 95%;
+    }
+    
+    .word-frequency-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .display-options {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .word-frequency-chart-container {
+        height: 250px;
+    }
+    
+    .word-frequency-table-container {
+        max-height: 300px; /* Smaller max height on mobile */
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .stat-item {
+        background: var(--background-secondary-dark, #2d3436);
+        border-color: var(--border-color-dark, #636e72);
+    }
+    
+    .word-frequency-table th {
+        background: var(--background-secondary-dark, #2d3436);
+    }
+    
+    .word-frequency-chart-container {
+        background: var(--background-secondary-dark, #2d3436);
+        border-color: var(--border-color-dark, #636e72);
+    }
+    
+    /* Dark mode scrollbar */
+    .word-frequency-table-container::-webkit-scrollbar-track {
+        background: var(--background-secondary-dark, #2d3436);
+    }
+    
+    .word-frequency-table-container::-webkit-scrollbar-thumb {
+        background: var(--border-color-dark, #636e72);
+    }
+    
+    .word-frequency-table-container::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary, #a8a8a8);
+    }
+}

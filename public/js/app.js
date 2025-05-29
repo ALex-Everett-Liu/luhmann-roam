@@ -1179,6 +1179,12 @@ document.addEventListener('DOMContentLoaded', () => {
     VaultManager.initialize();
   }
 
+  // Initialize the WordFrequencyManager
+  if (window.WordFrequencyManager) {
+    console.log('Setting up WordFrequencyManager initialization from app.js');
+    WordFrequencyManager.initialize();
+  }
+
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 

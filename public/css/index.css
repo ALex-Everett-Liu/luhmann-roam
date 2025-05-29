@@ -36,6 +36,7 @@
 @import './features/export-import.css';
 @import './features/vault-manager.css';
 @import './features/metro-map-visualizer.css';
+@import './features/word-frequency.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities */

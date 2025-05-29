@@ -26,6 +26,7 @@ const databaseExportImportRoutes = require('./routes/databaseExportImportRoutes'
 const vaultRoutes = require('./routes/vaultRoutes');
 const metroMapRoutes = require('./routes/metroMapRoutes');
 const markdownSearchRoutes = require('./routes/markdownSearchRoutes');
+const wordFrequencyRoutes = require('./routes/wordFrequencyRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -757,8 +758,11 @@ app.use('/api/database', databaseExportImportRoutes);
 // Use the vault routes
 app.use('/api/vaults', vaultRoutes);
 
-// In server.js, add this with other route registrations
+// add this with other route registrations
 app.use('/api/metro-map', metroMapRoutes);
+
+// Add this route registration with the other routes
+app.use('/api/word-frequency', wordFrequencyRoutes);
 
 // Add this after the database initialization
 // Create vaults directory if it doesn't exist
