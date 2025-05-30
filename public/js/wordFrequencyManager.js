@@ -1025,9 +1025,14 @@ const WordFrequencyManager = (function() {
                 `${actualRank} <span style="font-size: 10px; color: #666;">(#${index + 1})</span>` : 
                 `${index + 1}`;
             
+            // Add custom group badge to the stem cell for better alignment
+            const customGroupBadge = isCustomGroupAtEnd ? 
+                ' <span style="font-size: 10px; color: #28a745; font-weight: bold; background: rgba(40, 167, 69, 0.15); padding: 1px 4px; border-radius: 2px; margin-left: 8px; border: 1px solid #28a745;">Custom</span>' : 
+                '';
+            
             row.innerHTML = `
                 <td>${displayRank}</td>
-                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${displayStem}${customGroupIndicator}</td>
+                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${displayStem}${customGroupIndicator}${customGroupBadge}</td>
                 <td class="count-cell">${item.count.toLocaleString()}</td>
                 <td class="percentage-cell">${percentage}%</td>
             `;
