@@ -732,7 +732,9 @@ const WordFrequencyManager = (function() {
                 
                 // Recreate chart for expanded view
                 setTimeout(() => {
-                    const dataToShow = currentSearchTerm ? filteredWordFrequencyData : getFilteredData();
+                    const dataToShow = currentSearchTerm ? 
+                        filteredWordFrequencyData : 
+                        getFilteredDataForChart(); // Use chart-specific filtering
                     updateChart(dataToShow.slice(0, 50)); // Show more words in expanded view
                 }, 100);
                 break;
@@ -750,13 +752,63 @@ const WordFrequencyManager = (function() {
     }
     
     /**
-     * Gets filtered data based on current settings
+     * Gets filtered data based on current settings, ensuring custom groups are always included
      */
     function getFilteredData() {
         const minLength = parseInt(modalElement.querySelector('#min-length').value);
         const wordLimit = modalElement.querySelector('#word-limit').value;
         
         // Filter data based on minimum stem length
+        let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
+        
+        // If word limit is "all", return all filtered data
+        if (wordLimit === 'all') {
+            return filteredData;
+        }
+        
+        const limit = parseInt(wordLimit);
+        
+        // Separate custom groups from regular stems
+        const customGroups = filteredData.filter(item => item.isCustomGroup);
+        const regularStems = filteredData.filter(item => !item.isCustomGroup);
+        
+        // Get the top N regular stems
+        const topRegularStems = regularStems.slice(0, limit);
+        
+        // Find custom groups that are NOT in the top N
+        const customGroupsNotInTop = customGroups.filter(customGroup => {
+            return !topRegularStems.some(topStem => topStem.stem === customGroup.stem);
+        });
+        
+        // Combine: top N regular stems + custom groups not in top N (in their frequency order)
+        const result = [...topRegularStems, ...customGroupsNotInTop];
+        
+        // Sort the final result to maintain proper frequency order for display
+        // But keep custom groups at the end if they weren't in the top N
+        const finalResult = [];
+        
+        // Add items that were in the top N (maintaining their order)
+        topRegularStems.forEach(item => {
+            finalResult.push(item);
+        });
+        
+        // Add custom groups that were in the top N (they're already included above)
+        // Add custom groups that were NOT in the top N at the end
+        customGroupsNotInTop.forEach(item => {
+            finalResult.push(item);
+        });
+        
+        return finalResult;
+    }
+    
+    /**
+     * Gets filtered data for chart display (custom groups should follow normal frequency rules for charts)
+     */
+    function getFilteredDataForChart() {
+        const minLength = parseInt(modalElement.querySelector('#min-length').value);
+        const wordLimit = modalElement.querySelector('#word-limit').value;
+        
+        // For charts, we want to maintain strict frequency order
         let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
         
         // Limit number of words if not "all"
@@ -840,11 +892,13 @@ const WordFrequencyManager = (function() {
         
         try {
             // Use search results if search is active, otherwise use filtered data
-            let dataToDisplay;
+            let dataToDisplay, chartDataToDisplay;
             if (currentSearchTerm) {
                 dataToDisplay = filteredWordFrequencyData;
+                chartDataToDisplay = filteredWordFrequencyData;
             } else {
-                dataToDisplay = getFilteredData();
+                dataToDisplay = getFilteredData(); // Table data with custom groups always included
+                chartDataToDisplay = getFilteredDataForChart(); // Chart data with strict frequency order
             }
             
             // Update statistics
@@ -857,8 +911,8 @@ const WordFrequencyManager = (function() {
             const showChart = modalElement.querySelector('#show-chart').checked;
             if (showChart && currentView !== 'table-expanded') {
                 const chartData = currentView === 'chart-expanded' ? 
-                    dataToDisplay.slice(0, 50) : // More words in expanded view
-                    dataToDisplay.slice(0, 20);  // Standard view
+                    chartDataToDisplay.slice(0, 50) : // More words in expanded view
+                    chartDataToDisplay.slice(0, 20);  // Standard view
                 updateChart(chartData);
                 modalElement.querySelector('#chart-container').style.display = 'block';
             } else if (currentView !== 'chart-expanded') {
@@ -885,8 +939,18 @@ const WordFrequencyManager = (function() {
         const totalWords = data.reduce((sum, item) => sum + item.count, 0);
         const uniqueStems = data.length;
         const totalUniqueStems = wordFrequencyData.length;
+        const customGroupsCount = data.filter(item => item.isCustomGroup).length;
         
         const searchSuffix = currentSearchTerm ? ' (search results)' : ' (filtered)';
+        
+        // Check if we're showing custom groups at the end
+        const wordLimit = modalElement.querySelector('#word-limit').value;
+        const hasCustomGroupsAtEnd = !currentSearchTerm && 
+                                   wordLimit !== 'all' && 
+                                   customGroupsCount > 0;
+        
+        const customGroupNote = hasCustomGroupsAtEnd ? 
+            ` (includes ${customGroupsCount} custom group${customGroupsCount > 1 ? 's' : ''})` : '';
         
         statsContainer.innerHTML = `
             <div class="stats-grid">
@@ -896,7 +960,7 @@ const WordFrequencyManager = (function() {
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${uniqueStems.toLocaleString()}</div>
-                    <div class="stat-label">Unique Stems${searchSuffix}</div>
+                    <div class="stat-label">Unique Stems${searchSuffix}${customGroupNote}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${totalUniqueStems.toLocaleString()}</div>
@@ -923,9 +987,15 @@ const WordFrequencyManager = (function() {
         
         tableBody.innerHTML = '';
         
+        // Calculate the actual rank for each item in the full dataset
+        const fullDataSorted = [...wordFrequencyData].sort((a, b) => b.count - a.count);
+        
         data.forEach((item, index) => {
             const row = document.createElement('tr');
             const percentage = ((item.count / totalWords) * 100).toFixed(2);
+            
+            // Find the actual rank in the full dataset
+            const actualRank = fullDataSorted.findIndex(fullItem => fullItem.stem === item.stem) + 1;
             
             const customGroupIndicator = item.isCustomGroup ? ' <span style="color: #28a745; font-weight: bold;">✓</span>' : '';
             
@@ -938,10 +1008,25 @@ const WordFrequencyManager = (function() {
             
             // Add search result indicator
             const searchResultClass = isSearchResults ? ' search-result' : '';
-            row.className = `table-row${searchResultClass}`;
+            
+            // Add custom group indicator class if it's a custom group shown at the end
+            const wordLimit = modalElement.querySelector('#word-limit').value;
+            const isCustomGroupAtEnd = item.isCustomGroup && 
+                                     wordLimit !== 'all' && 
+                                     actualRank > parseInt(wordLimit) && 
+                                     !isSearchResults;
+            
+            const customGroupAtEndClass = isCustomGroupAtEnd ? ' custom-group-at-end' : '';
+            
+            row.className = `table-row${searchResultClass}${customGroupAtEndClass}`;
+            
+            // Show actual rank for custom groups at the end, display rank for others
+            const displayRank = isCustomGroupAtEnd ? 
+                `${actualRank} <span style="font-size: 10px; color: #666;">(#${index + 1})</span>` : 
+                `${index + 1}`;
             
             row.innerHTML = `
-                <td>${index + 1}</td>
+                <td>${displayRank}</td>
                 <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${displayStem}${customGroupIndicator}</td>
                 <td class="count-cell">${item.count.toLocaleString()}</td>
                 <td class="percentage-cell">${percentage}%</td>

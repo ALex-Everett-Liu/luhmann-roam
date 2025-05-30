@@ -655,3 +655,62 @@ mark {
         background-color: rgba(255, 193, 7, 0.3) !important;
     }
 }
+
+/* Custom group at end styling */
+.table-row.custom-group-at-end {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+    border-left: 3px solid var(--success-color, #28a745);
+    position: relative;
+}
+
+.table-row.custom-group-at-end:hover {
+    background-color: rgba(40, 167, 69, 0.2) !important;
+}
+
+.table-row.custom-group-at-end::before {
+    content: "Custom Group";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--success-color, #28a745);
+    font-weight: bold;
+    background: rgba(40, 167, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--success-color, #28a745);
+}
+
+/* Ensure custom group indicator doesn't overlap with other content */
+.table-row.custom-group-at-end td:last-child {
+    padding-right: 100px;
+}
+
+/* Dark mode support for custom groups */
+@media (prefers-color-scheme: dark) {
+    .table-row.custom-group-at-end {
+        background-color: rgba(40, 167, 69, 0.15) !important;
+        border-left-color: var(--success-color, #28a745);
+    }
+    
+    .table-row.custom-group-at-end:hover {
+        background-color: rgba(40, 167, 69, 0.25) !important;
+    }
+    
+    .table-row.custom-group-at-end::before {
+        background: rgba(40, 167, 69, 0.2);
+        color: var(--success-color, #28a745);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-row.custom-group-at-end::before {
+        display: none; /* Hide the "Custom Group" label on mobile to save space */
+    }
+    
+    .table-row.custom-group-at-end td:last-child {
+        padding-right: 15px; /* Reset padding on mobile */
+    }
+}
