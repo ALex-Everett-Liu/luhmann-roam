@@ -6,6 +6,8 @@ const WordFrequencyManager = (function() {
     // Private variables
     let modalElement = null;
     let wordFrequencyData = [];
+    let filteredWordFrequencyData = []; // Add filtered data for search
+    let currentSearchTerm = ''; // Track current search term
     let initialized = false;
     let currentChart = null;
     let currentView = 'overview'; // 'overview', 'chart-expanded', 'table-expanded'
@@ -129,6 +131,21 @@ const WordFrequencyManager = (function() {
                             <h3>Word Stem Frequency Table</h3>
                             <button id="expand-table" class="expand-button" title="Expand table to full view">⛶</button>
                         </div>
+                        
+                        <!-- Search Section -->
+                        <div class="word-search-section" id="word-search-section">
+                            <div class="word-search-controls">
+                                <input type="text" id="word-search-input" placeholder="Search for a word or stem..." style="padding: 8px; width: 300px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px;">
+                                <button id="clear-search" class="btn btn-secondary" style="padding: 6px 12px;">Clear</button>
+                                <button id="create-group-from-search" class="btn btn-success" style="padding: 6px 12px; margin-left: 10px;" disabled>Create Group</button>
+                            </div>
+                            
+                            <!-- Search Results Summary -->
+                            <div class="search-results-summary" id="search-results-summary" style="display: none; margin-top: 10px; padding: 10px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;">
+                                <!-- Search results info will be populated here -->
+                            </div>
+                        </div>
+                        
                         <table class="word-frequency-table" id="word-freq-table">
                             <thead>
                                 <tr>
@@ -190,6 +207,41 @@ const WordFrequencyManager = (function() {
             minLengthSelect.addEventListener('change', updateDisplay);
         }
         
+        // Search controls
+        const searchInput = modalElement.querySelector('#word-search-input');
+        const clearSearchButton = modalElement.querySelector('#clear-search');
+        const createGroupFromSearchButton = modalElement.querySelector('#create-group-from-search');
+        
+        if (searchInput) {
+            // Add debounced search functionality
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    handleSearch();
+                }, 300); // 300ms debounce
+            });
+            
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    clearTimeout(searchTimeout);
+                    handleSearch();
+                }
+            });
+            
+            // Add autocomplete functionality
+            setupAutocomplete(searchInput);
+        }
+        
+        if (clearSearchButton) {
+            clearSearchButton.addEventListener('click', clearSearch);
+        }
+        
+        if (createGroupFromSearchButton) {
+            createGroupFromSearchButton.addEventListener('click', createGroupFromSearchResults);
+        }
+        
         // Expand buttons
         const expandChartButton = modalElement.querySelector('#expand-chart');
         const expandTableButton = modalElement.querySelector('#expand-table');
@@ -213,6 +265,434 @@ const WordFrequencyManager = (function() {
                 closeModal();
             }
         });
+    }
+    
+    /**
+     * Sets up autocomplete functionality for the search input
+     */
+    function setupAutocomplete(searchInput) {
+        let autocompleteContainer = null;
+        let currentSuggestions = [];
+        let selectedIndex = -1;
+        
+        // Create autocomplete container
+        function createAutocompleteContainer() {
+            if (autocompleteContainer) return;
+            
+            autocompleteContainer = document.createElement('div');
+            autocompleteContainer.className = 'word-search-autocomplete';
+            autocompleteContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                border-radius: 0 0 4px 4px;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            `;
+            
+            // Position relative to search input
+            const searchControls = searchInput.parentElement;
+            searchControls.style.position = 'relative';
+            searchControls.appendChild(autocompleteContainer);
+        }
+        
+        // Show suggestions
+        async function showSuggestions(partialWord) {
+            if (!partialWord || partialWord.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/word-frequency/suggestions?q=${encodeURIComponent(partialWord)}&limit=8`);
+                if (!response.ok) return;
+                
+                const suggestions = await response.json();
+                currentSuggestions = suggestions;
+                selectedIndex = -1;
+                
+                if (suggestions.length === 0) {
+                    hideSuggestions();
+                    return;
+                }
+                
+                createAutocompleteContainer();
+                
+                autocompleteContainer.innerHTML = suggestions.map((suggestion, index) => {
+                    const typeLabel = suggestion.type === 'stem' ? 'stem' : 'form';
+                    const customIndicator = suggestion.isCustomGroup ? ' ✓' : '';
+                    return `
+                        <div class="autocomplete-item" data-index="${index}" style="
+                            padding: 8px 12px;
+                            cursor: pointer;
+                            border-bottom: 1px solid #f0f0f0;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        ">
+                            <span style="font-family: 'Courier New', monospace; color: #007bff;">
+                                ${suggestion.word}${customIndicator}
+                            </span>
+                            <span style="font-size: 12px; color: #666;">
+                                ${suggestion.count.toLocaleString()} (${typeLabel})
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Add click handlers
+                autocompleteContainer.querySelectorAll('.autocomplete-item').forEach((item, index) => {
+                    item.addEventListener('click', () => {
+                        selectSuggestion(index);
+                    });
+                    
+                    item.addEventListener('mouseenter', () => {
+                        selectedIndex = index;
+                        updateSelection();
+                    });
+                });
+                
+                autocompleteContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching suggestions:', error);
+                hideSuggestions();
+            }
+        }
+        
+        // Hide suggestions
+        function hideSuggestions() {
+            if (autocompleteContainer) {
+                autocompleteContainer.style.display = 'none';
+            }
+            currentSuggestions = [];
+            selectedIndex = -1;
+        }
+        
+        // Select a suggestion
+        function selectSuggestion(index) {
+            if (index >= 0 && index < currentSuggestions.length) {
+                const suggestion = currentSuggestions[index];
+                searchInput.value = suggestion.word;
+                hideSuggestions();
+                handleSearch();
+            }
+        }
+        
+        // Update visual selection
+        function updateSelection() {
+            if (!autocompleteContainer) return;
+            
+            const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.style.backgroundColor = '#e8f0fe';
+                } else {
+                    item.style.backgroundColor = '';
+                }
+            });
+        }
+        
+        // Handle keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+            if (!autocompleteContainer || autocompleteContainer.style.display === 'none') {
+                return;
+            }
+            
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                    updateSelection();
+                    break;
+                    
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelection();
+                    break;
+                    
+                case 'Enter':
+                    if (selectedIndex >= 0) {
+                        e.preventDefault();
+                        selectSuggestion(selectedIndex);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    e.preventDefault();
+                    hideSuggestions();
+                    break;
+            }
+        });
+        
+        // Show suggestions on input
+        let suggestionTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(suggestionTimeout);
+            suggestionTimeout = setTimeout(() => {
+                showSuggestions(e.target.value.trim());
+            }, 200);
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !autocompleteContainer?.contains(e.target)) {
+                hideSuggestions();
+            }
+        });
+        
+        // Hide suggestions when search input loses focus (with delay for clicks)
+        searchInput.addEventListener('blur', () => {
+            setTimeout(hideSuggestions, 150);
+        });
+    }
+    
+    /**
+     * Enhanced search functionality using the API
+     */
+    async function handleSearch() {
+        const searchInput = modalElement.querySelector('#word-search-input');
+        const searchTerm = searchInput.value.trim();
+        currentSearchTerm = searchTerm;
+        
+        if (!searchTerm) {
+            clearSearch();
+            return;
+        }
+        
+        try {
+            // Show loading state
+            const summaryElement = modalElement.querySelector('#search-results-summary');
+            summaryElement.innerHTML = '<div style="color: #666;">Searching...</div>';
+            summaryElement.style.display = 'block';
+            
+            // Use API search for more accurate results
+            const response = await fetch(`/api/word-frequency/search?q=${encodeURIComponent(searchTerm)}`);
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status}`);
+            }
+            
+            const searchResults = await response.json();
+            updateSearchResultsFromAPI(searchResults);
+            
+        } catch (error) {
+            console.error('Error searching:', error);
+            // Fall back to local search
+            const searchResults = findWordMatches(searchTerm);
+            updateSearchResults(searchResults);
+        }
+    }
+    
+    /**
+     * Updates display with API search results
+     */
+    function updateSearchResultsFromAPI(apiResults) {
+        const { searchTerm, results } = apiResults;
+        const { matchingStems, totalMatchingStems, allMatchingForms, totalMatchingForms, 
+                totalMatchingCount, matchPercentage, combinedRanking } = results;
+        
+        // Update filtered data
+        filteredWordFrequencyData = matchingStems;
+        
+        // Show search results summary
+        const summaryElement = modalElement.querySelector('#search-results-summary');
+        const createGroupButton = modalElement.querySelector('#create-group-from-search');
+        
+        if (matchingStems.length === 0) {
+            summaryElement.innerHTML = `
+                <div style="color: #666;">
+                    <strong>No matches found for "${searchTerm}"</strong>
+                </div>
+            `;
+            summaryElement.style.display = 'block';
+            createGroupButton.disabled = true;
+        } else {
+            summaryElement.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <strong>Search Results for "${searchTerm}":</strong>
+                        <span style="margin-left: 15px;">
+                            ${totalMatchingStems} matching stem${totalMatchingStems > 1 ? 's' : ''} | 
+                            ${totalMatchingForms} word variant${totalMatchingForms > 1 ? 's' : ''} | 
+                            Total count: <strong>${totalMatchingCount.toLocaleString()}</strong> | 
+                            Percentage: <strong>${matchPercentage}%</strong>
+                            ${combinedRanking ? ` | Combined rank: <strong>#${combinedRanking}</strong>` : ''}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        ${allMatchingForms.slice(0, 5).join(', ')}${allMatchingForms.length > 5 ? '...' : ''}
+                    </div>
+                </div>
+            `;
+            summaryElement.style.display = 'block';
+            createGroupButton.disabled = false;
+        }
+        
+        // Update table with search results
+        updateTable(filteredWordFrequencyData, true);
+        
+        // Update chart if visible
+        const showChart = modalElement.querySelector('#show-chart').checked;
+        if (showChart && currentView !== 'table-expanded') {
+            const chartData = filteredWordFrequencyData.slice(0, 20);
+            updateChart(chartData);
+        }
+    }
+    
+    /**
+     * Finds word matches including stems and variants
+     */
+    function findWordMatches(searchTerm) {
+        const matchingData = [];
+        const allMatchingForms = new Set();
+        
+        wordFrequencyData.forEach(item => {
+            let isMatch = false;
+            
+            // Check if stem matches
+            if (item.stem.toLowerCase().includes(searchTerm)) {
+                isMatch = true;
+            }
+            
+            // Check if any word form matches
+            const matchingForms = Object.keys(item.forms).filter(form => 
+                form.toLowerCase().includes(searchTerm)
+            );
+            
+            if (matchingForms.length > 0) {
+                isMatch = true;
+                matchingForms.forEach(form => allMatchingForms.add(form));
+            }
+            
+            if (isMatch) {
+                matchingData.push({
+                    ...item,
+                    matchingForms: matchingForms
+                });
+            }
+        });
+        
+        return {
+            stems: matchingData,
+            allForms: Array.from(allMatchingForms),
+            searchTerm: searchTerm
+        };
+    }
+    
+    /**
+     * Updates display with search results
+     */
+    function updateSearchResults(searchResults) {
+        const { stems, allForms, searchTerm } = searchResults;
+        
+        // Update filtered data
+        filteredWordFrequencyData = stems;
+        
+        // Show search results summary
+        const summaryElement = modalElement.querySelector('#search-results-summary');
+        const createGroupButton = modalElement.querySelector('#create-group-from-search');
+        
+        if (stems.length === 0) {
+            summaryElement.innerHTML = `
+                <div style="color: #666;">
+                    <strong>No matches found for "${searchTerm}"</strong>
+                </div>
+            `;
+            summaryElement.style.display = 'block';
+            createGroupButton.disabled = true;
+        } else {
+            const totalCount = stems.reduce((sum, item) => sum + item.count, 0);
+            const totalWordsInData = wordFrequencyData.reduce((sum, item) => sum + item.count, 0);
+            const percentage = ((totalCount / totalWordsInData) * 100).toFixed(2);
+            
+            // Calculate overall ranking (if all variants were grouped)
+            const allDataSorted = [...wordFrequencyData].sort((a, b) => b.count - a.count);
+            const rankPosition = allDataSorted.findIndex(item => item.count <= totalCount) + 1;
+            
+            summaryElement.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Search Results for "${searchTerm}":</strong>
+                        <span style="margin-left: 15px;">
+                            ${stems.length} matching stem${stems.length > 1 ? 's' : ''} | 
+                            ${allForms.length} word variant${allForms.length > 1 ? 's' : ''} | 
+                            Total count: <strong>${totalCount.toLocaleString()}</strong> | 
+                            Percentage: <strong>${percentage}%</strong>
+                            ${rankPosition <= wordFrequencyData.length ? ` | Combined rank: <strong>#${rankPosition}</strong>` : ''}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #666;">
+                        ${allForms.slice(0, 5).join(', ')}${allForms.length > 5 ? '...' : ''}
+                    </div>
+                </div>
+            `;
+            summaryElement.style.display = 'block';
+            createGroupButton.disabled = false;
+        }
+        
+        // Update table with search results
+        updateTable(filteredWordFrequencyData, true);
+        
+        // Update chart if visible
+        const showChart = modalElement.querySelector('#show-chart').checked;
+        if (showChart && currentView !== 'table-expanded') {
+            const chartData = filteredWordFrequencyData.slice(0, 20);
+            updateChart(chartData);
+            modalElement.querySelector('#chart-container').style.display = 'block';
+        } else if (currentView !== 'chart-expanded') {
+            modalElement.querySelector('#chart-container').style.display = 'none';
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+        }
+    }
+    
+    /**
+     * Clears search and shows all data
+     */
+    function clearSearch() {
+        const searchInput = modalElement.querySelector('#word-search-input');
+        const summaryElement = modalElement.querySelector('#search-results-summary');
+        const createGroupButton = modalElement.querySelector('#create-group-from-search');
+        
+        searchInput.value = '';
+        currentSearchTerm = '';
+        filteredWordFrequencyData = [];
+        summaryElement.style.display = 'none';
+        createGroupButton.disabled = true;
+        
+        // Restore normal display
+        updateDisplay();
+    }
+    
+    /**
+     * Creates a custom group from search results
+     */
+    async function createGroupFromSearchResults() {
+        if (filteredWordFrequencyData.length === 0 || !currentSearchTerm) {
+            alert('No search results to create group from');
+            return;
+        }
+        
+        // Collect all word forms from search results
+        const allWords = new Set();
+        filteredWordFrequencyData.forEach(item => {
+            Object.keys(item.forms).forEach(form => allWords.add(form));
+        });
+        
+        const wordsArray = Array.from(allWords);
+        const suggestedName = currentSearchTerm.charAt(0).toUpperCase() + currentSearchTerm.slice(1);
+        
+        // Open create group modal with search results
+        openCreateGroupModal(suggestedName, wordsArray);
     }
     
     /**
@@ -252,9 +732,8 @@ const WordFrequencyManager = (function() {
                 
                 // Recreate chart for expanded view
                 setTimeout(() => {
-                    const minLength = parseInt(modalElement.querySelector('#min-length').value);
-                    const filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
-                    updateChart(filteredData.slice(0, 50)); // Show more words in expanded view
+                    const dataToShow = currentSearchTerm ? filteredWordFrequencyData : getFilteredData();
+                    updateChart(dataToShow.slice(0, 50)); // Show more words in expanded view
                 }, 100);
                 break;
                 
@@ -268,6 +747,24 @@ const WordFrequencyManager = (function() {
                 currentViewTitle.textContent = 'Table View';
                 break;
         }
+    }
+    
+    /**
+     * Gets filtered data based on current settings
+     */
+    function getFilteredData() {
+        const minLength = parseInt(modalElement.querySelector('#min-length').value);
+        const wordLimit = modalElement.querySelector('#word-limit').value;
+        
+        // Filter data based on minimum stem length
+        let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
+        
+        // Limit number of words if not "all"
+        if (wordLimit !== 'all') {
+            filteredData = filteredData.slice(0, parseInt(wordLimit));
+        }
+        
+        return filteredData;
     }
     
     /**
@@ -293,6 +790,9 @@ const WordFrequencyManager = (function() {
         if (modalElement) {
             modalElement.style.display = 'none';
             currentView = 'overview';
+            
+            // Clear search state
+            clearSearch();
             
             // Destroy chart if it exists
             if (currentChart) {
@@ -339,30 +839,26 @@ const WordFrequencyManager = (function() {
         }
         
         try {
-            // Get current filter settings
-            const minLength = parseInt(modalElement.querySelector('#min-length').value);
-            const wordLimit = modalElement.querySelector('#word-limit').value;
-            const showChart = modalElement.querySelector('#show-chart').checked;
-            
-            // Filter data based on minimum stem length
-            let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
-            
-            // Limit number of words if not "all"
-            if (wordLimit !== 'all') {
-                filteredData = filteredData.slice(0, parseInt(wordLimit));
+            // Use search results if search is active, otherwise use filtered data
+            let dataToDisplay;
+            if (currentSearchTerm) {
+                dataToDisplay = filteredWordFrequencyData;
+            } else {
+                dataToDisplay = getFilteredData();
             }
             
             // Update statistics
-            updateStatistics(filteredData);
+            updateStatistics(dataToDisplay);
             
             // Update table
-            updateTable(filteredData);
+            updateTable(dataToDisplay, !!currentSearchTerm);
             
             // Update chart
+            const showChart = modalElement.querySelector('#show-chart').checked;
             if (showChart && currentView !== 'table-expanded') {
                 const chartData = currentView === 'chart-expanded' ? 
-                    filteredData.slice(0, 50) : // More words in expanded view
-                    filteredData.slice(0, 20);  // Standard view
+                    dataToDisplay.slice(0, 50) : // More words in expanded view
+                    dataToDisplay.slice(0, 20);  // Standard view
                 updateChart(chartData);
                 modalElement.querySelector('#chart-container').style.display = 'block';
             } else if (currentView !== 'chart-expanded') {
@@ -390,15 +886,17 @@ const WordFrequencyManager = (function() {
         const uniqueStems = data.length;
         const totalUniqueStems = wordFrequencyData.length;
         
+        const searchSuffix = currentSearchTerm ? ' (search results)' : ' (filtered)';
+        
         statsContainer.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-item">
                     <div class="stat-value">${totalWords.toLocaleString()}</div>
-                    <div class="stat-label">Total Occurrences (filtered)</div>
+                    <div class="stat-label">Total Occurrences${searchSuffix}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${uniqueStems.toLocaleString()}</div>
-                    <div class="stat-label">Unique Stems (filtered)</div>
+                    <div class="stat-label">Unique Stems${searchSuffix}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${totalUniqueStems.toLocaleString()}</div>
@@ -406,7 +904,7 @@ const WordFrequencyManager = (function() {
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${data.length > 0 ? data[0].stem : 'N/A'}</div>
-                    <div class="stat-label">Most Frequent Stem</div>
+                    <div class="stat-label">Most Frequent Stem${currentSearchTerm ? ' (in results)' : ''}</div>
                 </div>
             </div>
         `;
@@ -415,11 +913,13 @@ const WordFrequencyManager = (function() {
     /**
      * Updates the word frequency table
      */
-    function updateTable(data) {
+    function updateTable(data, isSearchResults = false) {
         const tableBody = modalElement.querySelector('#word-freq-table tbody');
         if (!tableBody) return;
         
-        const totalWords = data.reduce((sum, item) => sum + item.count, 0);
+        const totalWords = isSearchResults ? 
+            wordFrequencyData.reduce((sum, item) => sum + item.count, 0) : // Use total for percentage calculation
+            data.reduce((sum, item) => sum + item.count, 0);
         
         tableBody.innerHTML = '';
         
@@ -429,9 +929,20 @@ const WordFrequencyManager = (function() {
             
             const customGroupIndicator = item.isCustomGroup ? ' <span style="color: #28a745; font-weight: bold;">✓</span>' : '';
             
+            // Add search highlighting
+            let displayStem = item.stem;
+            if (currentSearchTerm && item.stem.toLowerCase().includes(currentSearchTerm)) {
+                const regex = new RegExp(`(${currentSearchTerm})`, 'gi');
+                displayStem = item.stem.replace(regex, '<mark style="background: yellow; padding: 1px 2px;">$1</mark>');
+            }
+            
+            // Add search result indicator
+            const searchResultClass = isSearchResults ? ' search-result' : '';
+            row.className = `table-row${searchResultClass}`;
+            
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${item.stem}${customGroupIndicator}</td>
+                <td class="word-cell" style="cursor: pointer;" title="Click to see original forms">${displayStem}${customGroupIndicator}</td>
                 <td class="count-cell">${item.count.toLocaleString()}</td>
                 <td class="percentage-cell">${percentage}%</td>
             `;
@@ -467,6 +978,7 @@ const WordFrequencyManager = (function() {
         const ctx = canvas.getContext('2d');
         
         const isExpanded = currentView === 'chart-expanded';
+        const titleSuffix = currentSearchTerm ? ` (Search: "${currentSearchTerm}")` : '';
         
         currentChart = new Chart(ctx, {
             type: 'bar',
@@ -475,8 +987,8 @@ const WordFrequencyManager = (function() {
                 datasets: [{
                     label: 'Stem Frequency',
                     data: data.map(item => item.count),
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: currentSearchTerm ? 'rgba(255, 193, 7, 0.6)' : 'rgba(54, 162, 235, 0.6)',
+                    borderColor: currentSearchTerm ? 'rgba(255, 193, 7, 1)' : 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
                 }]
             },
@@ -508,7 +1020,7 @@ const WordFrequencyManager = (function() {
                 plugins: {
                     title: {
                         display: true,
-                        text: isExpanded ? `Top ${data.length} Most Frequent Stems` : 'Top 20 Most Frequent Stems',
+                        text: (isExpanded ? `Top ${data.length} Most Frequent Stems` : 'Top 20 Most Frequent Stems') + titleSuffix,
                         font: {
                             size: isExpanded ? 18 : 14
                         }
@@ -594,7 +1106,14 @@ const WordFrequencyManager = (function() {
         const sortedForms = Object.entries(forms).sort((a, b) => b[1] - a[1]);
         
         for (const [form, count] of sortedForms) {
-            formsHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${form}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${count}</td></tr>`;
+            // Highlight search term in word forms if search is active
+            let displayForm = form;
+            if (currentSearchTerm && form.toLowerCase().includes(currentSearchTerm)) {
+                const regex = new RegExp(`(${currentSearchTerm})`, 'gi');
+                displayForm = form.replace(regex, '<mark style="background: yellow; padding: 1px 2px;">$1</mark>');
+            }
+            
+            formsHtml += `<tr><td style="border: 1px solid #ddd; padding: 8px;">${displayForm}</td><td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${count}</td></tr>`;
         }
         
         formsHtml += `</tbody></table>`;
@@ -1184,6 +1703,7 @@ const WordFrequencyManager = (function() {
                         if (response.ok) {
                             alert('Word group deleted successfully!');
                             document.body.removeChild(overlay);
+                            // Refresh the word frequency analysis
                             loadWordFrequencyData();
                         } else {
                             alert('Failed to delete word group');

@@ -134,6 +134,192 @@ async function analyzeWordFrequency() {
   }
 }
 
+/**
+ * Search for words and their variants in the frequency data
+ * @param {string} searchTerm - The term to search for
+ * @returns {Promise<Object>} Search results with matching stems and statistics
+ */
+async function searchWordFrequency(searchTerm) {
+  try {
+    if (!searchTerm || typeof searchTerm !== 'string') {
+      throw new Error('Search term is required and must be a string');
+    }
+
+    const frequencyData = await analyzeWordFrequency();
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    
+    if (!lowerSearchTerm) {
+      throw new Error('Search term cannot be empty');
+    }
+
+    const matchingStems = [];
+    const allMatchingForms = new Set();
+    let totalMatchingCount = 0;
+
+    // Search through all stems and their forms
+    frequencyData.forEach(item => {
+      let isMatch = false;
+      const matchingForms = [];
+
+      // Check if stem matches
+      if (item.stem.toLowerCase().includes(lowerSearchTerm)) {
+        isMatch = true;
+      }
+
+      // Check if any word form matches
+      Object.keys(item.forms).forEach(form => {
+        if (form.toLowerCase().includes(lowerSearchTerm)) {
+          isMatch = true;
+          matchingForms.push(form);
+          allMatchingForms.add(form);
+        }
+      });
+
+      if (isMatch) {
+        matchingStems.push({
+          ...item,
+          matchingForms: matchingForms,
+          searchRelevance: calculateSearchRelevance(item, lowerSearchTerm)
+        });
+        totalMatchingCount += item.count;
+      }
+    });
+
+    // Sort by relevance (exact matches first, then by frequency)
+    matchingStems.sort((a, b) => {
+      if (a.searchRelevance !== b.searchRelevance) {
+        return b.searchRelevance - a.searchRelevance;
+      }
+      return b.count - a.count;
+    });
+
+    // Calculate statistics
+    const totalWordsInCorpus = frequencyData.reduce((sum, item) => sum + item.count, 0);
+    const matchPercentage = totalWordsInCorpus > 0 ? (totalMatchingCount / totalWordsInCorpus) * 100 : 0;
+    
+    // Calculate combined ranking if all variants were grouped
+    const combinedRanking = frequencyData.findIndex(item => item.count <= totalMatchingCount) + 1;
+
+    return {
+      searchTerm: searchTerm,
+      results: {
+        matchingStems: matchingStems,
+        totalMatchingStems: matchingStems.length,
+        allMatchingForms: Array.from(allMatchingForms),
+        totalMatchingForms: allMatchingForms.size,
+        totalMatchingCount: totalMatchingCount,
+        matchPercentage: parseFloat(matchPercentage.toFixed(2)),
+        combinedRanking: combinedRanking <= frequencyData.length ? combinedRanking : null,
+        totalStemsInCorpus: frequencyData.length,
+        totalWordsInCorpus: totalWordsInCorpus
+      }
+    };
+  } catch (error) {
+    console.error('Error searching word frequency:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calculate search relevance score for ranking results
+ * @param {Object} item - The frequency data item
+ * @param {string} searchTerm - The search term
+ * @returns {number} Relevance score (higher is more relevant)
+ */
+function calculateSearchRelevance(item, searchTerm) {
+  let score = 0;
+  
+  // Exact stem match gets highest score
+  if (item.stem.toLowerCase() === searchTerm) {
+    score += 1000;
+  } else if (item.stem.toLowerCase().startsWith(searchTerm)) {
+    score += 500;
+  } else if (item.stem.toLowerCase().includes(searchTerm)) {
+    score += 100;
+  }
+  
+  // Check word forms
+  Object.keys(item.forms).forEach(form => {
+    const lowerForm = form.toLowerCase();
+    if (lowerForm === searchTerm) {
+      score += 800;
+    } else if (lowerForm.startsWith(searchTerm)) {
+      score += 400;
+    } else if (lowerForm.includes(searchTerm)) {
+      score += 80;
+    }
+  });
+  
+  // Add frequency bonus (logarithmic to prevent overwhelming exact matches)
+  score += Math.log(item.count + 1) * 10;
+  
+  return score;
+}
+
+/**
+ * Get word suggestions based on partial input
+ * @param {string} partialWord - Partial word to get suggestions for
+ * @param {number} limit - Maximum number of suggestions to return
+ * @returns {Promise<Array>} Array of suggested words with their frequencies
+ */
+async function getWordSuggestions(partialWord, limit = 10) {
+  try {
+    if (!partialWord || typeof partialWord !== 'string') {
+      return [];
+    }
+
+    const frequencyData = await analyzeWordFrequency();
+    const lowerPartial = partialWord.toLowerCase().trim();
+    
+    if (lowerPartial.length < 2) {
+      return [];
+    }
+
+    const suggestions = [];
+
+    // Collect suggestions from stems and word forms
+    frequencyData.forEach(item => {
+      // Check stem
+      if (item.stem.toLowerCase().startsWith(lowerPartial)) {
+        suggestions.push({
+          word: item.stem,
+          type: 'stem',
+          count: item.count,
+          isCustomGroup: item.isCustomGroup
+        });
+      }
+
+      // Check word forms
+      Object.entries(item.forms).forEach(([form, count]) => {
+        if (form.toLowerCase().startsWith(lowerPartial)) {
+          suggestions.push({
+            word: form,
+            type: 'form',
+            count: count,
+            stem: item.stem,
+            isCustomGroup: item.isCustomGroup
+          });
+        }
+      });
+    });
+
+    // Sort by frequency and remove duplicates
+    const uniqueSuggestions = suggestions
+      .sort((a, b) => b.count - a.count)
+      .filter((item, index, arr) => 
+        arr.findIndex(other => other.word === item.word) === index
+      )
+      .slice(0, limit);
+
+    return uniqueSuggestions;
+  } catch (error) {
+    console.error('Error getting word suggestions:', error);
+    return [];
+  }
+}
+
 module.exports = {
-  analyzeWordFrequency
+  analyzeWordFrequency,
+  searchWordFrequency,
+  getWordSuggestions
 };
