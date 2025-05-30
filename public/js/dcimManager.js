@@ -1506,7 +1506,7 @@ function debugToggleButton() {
         }
 
         card.innerHTML = `
-          <img src="${image.thumbnail_path || image.url}" alt="${image.filename}" class="dcim-thumbnail" onerror="this.src='/images/default-thumbnail.jpg'">
+          <img src="${convertPathToWebUrl(image.thumbnail_path) || convertPathToWebUrl(image.url) || image.url || '/images/default-thumbnail.jpg'}" alt="${image.filename}" class="dcim-thumbnail" onerror="this.src='/images/default-thumbnail.jpg'">
           ${subsidiaryIndicator}
           ${mediaIndicator}
           <div class="dcim-image-info">
@@ -1743,7 +1743,7 @@ function debugToggleButton() {
       viewerContainer.style.display = 'flex';
       
       // Set image source - prefer local file path over remote URL for better performance
-      const imageSrc = image.file_path || image.url;
+      const imageSrc = convertPathToWebUrl(image.file_path) || convertPathToWebUrl(image.url) || image.url;
       if (!imageSrc) {
         alert('No media source available');
         return;
@@ -2220,6 +2220,33 @@ function debugToggleButton() {
       } catch (error) {
         console.error('Error loading image viewer settings:', error);
       }
+    }
+
+    
+    function convertPathToWebUrl(filePath) {
+      if (!filePath) return null;
+      
+      // If it's already a web URL (starts with /), return as-is
+      if (filePath.startsWith('/')) {
+        return filePath;
+      }
+      
+      // Find the "public/attachment" part in the path and convert to web URL
+      const attachmentIndex = filePath.indexOf('public/attachment');
+      if (attachmentIndex !== -1) {
+        // Extract everything after "public"
+        const relativePath = filePath.substring(attachmentIndex + 6); // 6 = length of "public"
+        return relativePath.replace(/\\/g, '/'); // Convert Windows backslashes to forward slashes
+      }
+      
+      // Fallback: if the path contains "attachment", try to extract from there
+      const attachmentOnlyIndex = filePath.indexOf('attachment');
+      if (attachmentOnlyIndex !== -1) {
+        const relativePath = filePath.substring(attachmentOnlyIndex);
+        return '/' + relativePath.replace(/\\/g, '/');
+      }
+      
+      return null;
     }
     
     /**
