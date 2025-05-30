@@ -702,3 +702,204 @@
       max-height: 200px;
     }
   }
+
+  /* Search and Filter Bar */
+  .graph-management-container .search-filter-bar {
+    background: white;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .graph-management-container .search-container {
+    position: relative;
+    flex: 1;
+  }
+
+  .graph-management-container .search-input {
+    width: 100%;
+    padding: 10px 40px 10px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+
+  .graph-management-container .search-input:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+
+  .graph-management-container .clear-search-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .graph-management-container .clear-search-btn:hover {
+    background: #f8f9fa;
+    color: #495057;
+  }
+
+  .graph-management-container .filter-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .graph-management-container .filter-select {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    min-width: 120px;
+  }
+
+  .graph-management-container .filter-select:focus {
+    outline: none;
+    border-color: #3498db;
+  }
+
+  /* Results Info */
+  .graph-management-container .results-info {
+    padding: 8px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .graph-management-container .results-text {
+    font-size: 13px;
+    color: #6c757d;
+    font-weight: 500;
+  }
+
+  /* Pagination */
+  .graph-management-container .pagination-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .graph-management-container .pagination {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+  }
+
+  .graph-management-container .page-btn {
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 40px;
+    transition: all 0.2s;
+  }
+
+  .graph-management-container .page-btn:hover {
+    background: #f8f9fa;
+    border-color: #adb5bd;
+  }
+
+  .graph-management-container .page-btn.active {
+    background: #3498db;
+    border-color: #3498db;
+    color: white;
+  }
+
+  .graph-management-container .page-btn:disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #dee2e6;
+  }
+
+  .graph-management-container .page-ellipsis {
+    padding: 8px 4px;
+    color: #6c757d;
+    font-size: 14px;
+  }
+
+  /* Responsive adjustments for search and pagination */
+  @media (max-width: 768px) {
+    .graph-management-container .search-filter-bar {
+      padding: 10px;
+    }
+    
+    .graph-management-container .filter-container {
+      flex-direction: column;
+    }
+    
+    .graph-management-container .filter-select {
+      min-width: auto;
+      width: 100%;
+    }
+    
+    .graph-management-container .pagination {
+      flex-wrap: wrap;
+      gap: 3px;
+      padding: 8px;
+    }
+    
+    .graph-management-container .page-btn {
+      padding: 6px 10px;
+      font-size: 13px;
+      min-width: 35px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .graph-management-container .search-filter-bar {
+      gap: 8px;
+    }
+    
+    .graph-management-container .pagination {
+      justify-content: flex-start;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+    
+    .graph-management-container .page-btn {
+      flex-shrink: 0;
+    }
+  }
+
+  /* Enhanced empty message for filtered results */
+  .graph-management-container .empty-message {
+    text-align: center;
+    color: #6c757d;
+    padding: 40px;
+    font-style: italic;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+  }
+
+  .graph-management-container .empty-message.filtered {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+  }

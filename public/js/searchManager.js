@@ -761,8 +761,12 @@ const SearchManager = (function() {
     `;
     
     resultItem.addEventListener('click', () => {
-      // Save the search immediately when user clicks a result
-      addRecentSearch(searchInput.value.trim());
+      // Get the search input value from the DOM when clicked
+      const searchInput = searchModalElement?.querySelector('.node-search');
+      if (searchInput && searchInput.value.trim()) {
+        // Save the search immediately when user clicks a result
+        addRecentSearch(searchInput.value.trim());
+      }
       
       navigateToNode(node.id);
       closeSearchModal();
@@ -800,8 +804,12 @@ const SearchManager = (function() {
     `;
     
     resultItem.addEventListener('click', () => {
-      // Save the search immediately when user clicks a result
-      addRecentSearch(searchInput.value.trim());
+      // Get the search input value from the DOM when clicked
+      const searchInput = searchModalElement?.querySelector('.node-search');
+      if (searchInput && searchInput.value.trim()) {
+        // Save the search immediately when user clicks a result
+        addRecentSearch(searchInput.value.trim());
+      }
       
       // Navigate to the node and open its markdown
       navigateToNode(markdownResult.id);

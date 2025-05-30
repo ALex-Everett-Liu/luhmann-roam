@@ -9,6 +9,21 @@ const GraphManagementUI = (function() {
     let sourceVertexSelector = null;
     let targetVertexSelector = null;
     
+    // Pagination and search state
+    let verticesState = {
+      currentPage: 1,
+      itemsPerPage: 20,
+      searchTerm: '',
+      filteredData: []
+    };
+    
+    let edgesState = {
+      currentPage: 1,
+      itemsPerPage: 20,
+      searchTerm: '',
+      filteredData: []
+    };
+    
     function initialize() {
       createContainer();
       setupEventHandlers();
@@ -49,7 +64,39 @@ const GraphManagementUI = (function() {
                 <button id="add-vertex-btn" class="primary-btn">Add Vertex</button>
                 <button id="refresh-vertices-btn" class="secondary-btn">Refresh</button>
               </div>
+              
+              <!-- Search and Filter Bar for Vertices -->
+              <div class="search-filter-bar">
+                <div class="search-container">
+                  <input type="text" id="vertices-search" placeholder="Search vertices by label, type, or Chinese name..." class="search-input">
+                  <button id="clear-vertices-search" class="clear-search-btn">×</button>
+                </div>
+                <div class="filter-container">
+                  <select id="vertices-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="concept">Concept</option>
+                    <option value="entity">Entity</option>
+                    <option value="event">Event</option>
+                    <option value="location">Location</option>
+                    <option value="person">Person</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <select id="vertices-per-page" class="filter-select">
+                    <option value="10">10 per page</option>
+                    <option value="20" selected>20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Results Info -->
+              <div id="vertices-results-info" class="results-info"></div>
+              
               <div id="vertices-list" class="data-list"></div>
+              
+              <!-- Pagination -->
+              <div id="vertices-pagination" class="pagination-container"></div>
             </div>
             
             <!-- Edges Tab -->
@@ -58,7 +105,45 @@ const GraphManagementUI = (function() {
                 <button id="add-edge-btn" class="primary-btn">Add Edge</button>
                 <button id="refresh-edges-btn" class="secondary-btn">Refresh</button>
               </div>
+              
+              <!-- Search and Filter Bar for Edges -->
+              <div class="search-filter-bar">
+                <div class="search-container">
+                  <input type="text" id="edges-search" placeholder="Search edges by source, target, or relationship..." class="search-input">
+                  <button id="clear-edges-search" class="clear-search-btn">×</button>
+                </div>
+                <div class="filter-container">
+                  <select id="edges-relationship-filter" class="filter-select">
+                    <option value="">All Relationships</option>
+                    <option value="relates_to">Relates To</option>
+                    <option value="depends_on">Depends On</option>
+                    <option value="part_of">Part Of</option>
+                    <option value="causes">Causes</option>
+                    <option value="similar_to">Similar To</option>
+                    <option value="opposite_of">Opposite Of</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <select id="edges-direction-filter" class="filter-select">
+                    <option value="">All Directions</option>
+                    <option value="directed">Directed</option>
+                    <option value="undirected">Undirected</option>
+                  </select>
+                  <select id="edges-per-page" class="filter-select">
+                    <option value="10">10 per page</option>
+                    <option value="20" selected>20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Results Info -->
+              <div id="edges-results-info" class="results-info"></div>
+              
               <div id="edges-list" class="data-list"></div>
+              
+              <!-- Pagination -->
+              <div id="edges-pagination" class="pagination-container"></div>
             </div>
             
             <!-- Import Tab -->
@@ -196,6 +281,19 @@ const GraphManagementUI = (function() {
       document.getElementById('refresh-vertices-btn').addEventListener('click', loadVertices);
       document.getElementById('refresh-edges-btn').addEventListener('click', loadEdges);
       
+      // Search and filter handlers for vertices
+      document.getElementById('vertices-search').addEventListener('input', handleVerticesSearch);
+      document.getElementById('clear-vertices-search').addEventListener('click', clearVerticesSearch);
+      document.getElementById('vertices-type-filter').addEventListener('change', handleVerticesFilter);
+      document.getElementById('vertices-per-page').addEventListener('change', handleVerticesPerPageChange);
+      
+      // Search and filter handlers for edges
+      document.getElementById('edges-search').addEventListener('input', handleEdgesSearch);
+      document.getElementById('clear-edges-search').addEventListener('click', clearEdgesSearch);
+      document.getElementById('edges-relationship-filter').addEventListener('change', handleEdgesFilter);
+      document.getElementById('edges-direction-filter').addEventListener('change', handleEdgesFilter);
+      document.getElementById('edges-per-page').addEventListener('change', handleEdgesPerPageChange);
+      
       // Modal handling
       document.getElementById('vertex-form').addEventListener('submit', saveVertex);
       document.getElementById('edge-form').addEventListener('submit', saveEdge);
@@ -234,11 +332,102 @@ const GraphManagementUI = (function() {
       }
     }
     
+    // Search and filter functions for vertices
+    function handleVerticesSearch(e) {
+      verticesState.searchTerm = e.target.value.toLowerCase();
+      verticesState.currentPage = 1;
+      filterAndRenderVertices();
+    }
+    
+    function clearVerticesSearch() {
+      document.getElementById('vertices-search').value = '';
+      verticesState.searchTerm = '';
+      verticesState.currentPage = 1;
+      filterAndRenderVertices();
+    }
+    
+    function handleVerticesFilter() {
+      verticesState.currentPage = 1;
+      filterAndRenderVertices();
+    }
+    
+    function handleVerticesPerPageChange(e) {
+      verticesState.itemsPerPage = parseInt(e.target.value);
+      verticesState.currentPage = 1;
+      filterAndRenderVertices();
+    }
+    
+    function filterAndRenderVertices() {
+      const typeFilter = document.getElementById('vertices-type-filter').value;
+      
+      verticesState.filteredData = verticesData.filter(vertex => {
+        const matchesSearch = !verticesState.searchTerm || 
+          (vertex.label || '').toLowerCase().includes(verticesState.searchTerm) ||
+          (vertex.label_zh || '').toLowerCase().includes(verticesState.searchTerm) ||
+          (vertex.type || '').toLowerCase().includes(verticesState.searchTerm);
+        
+        const matchesType = !typeFilter || vertex.type === typeFilter;
+        
+        return matchesSearch && matchesType;
+      });
+      
+      renderVerticesList();
+      renderVerticesPagination();
+      updateVerticesResultsInfo();
+    }
+    
+    // Search and filter functions for edges
+    function handleEdgesSearch(e) {
+      edgesState.searchTerm = e.target.value.toLowerCase();
+      edgesState.currentPage = 1;
+      filterAndRenderEdges();
+    }
+    
+    function clearEdgesSearch() {
+      document.getElementById('edges-search').value = '';
+      edgesState.searchTerm = '';
+      edgesState.currentPage = 1;
+      filterAndRenderEdges();
+    }
+    
+    function handleEdgesFilter() {
+      edgesState.currentPage = 1;
+      filterAndRenderEdges();
+    }
+    
+    function handleEdgesPerPageChange(e) {
+      edgesState.itemsPerPage = parseInt(e.target.value);
+      edgesState.currentPage = 1;
+      filterAndRenderEdges();
+    }
+    
+    function filterAndRenderEdges() {
+      const relationshipFilter = document.getElementById('edges-relationship-filter').value;
+      const directionFilter = document.getElementById('edges-direction-filter').value;
+      
+      edgesState.filteredData = edgesData.filter(edge => {
+        const matchesSearch = !edgesState.searchTerm || 
+          (edge.source_label || '').toLowerCase().includes(edgesState.searchTerm) ||
+          (edge.target_label || '').toLowerCase().includes(edgesState.searchTerm) ||
+          (edge.relationship_type || '').toLowerCase().includes(edgesState.searchTerm);
+        
+        const matchesRelationship = !relationshipFilter || edge.relationship_type === relationshipFilter;
+        const matchesDirection = !directionFilter || edge.direction === directionFilter;
+        
+        return matchesSearch && matchesRelationship && matchesDirection;
+      });
+      
+      renderEdgesList();
+      renderEdgesPagination();
+      updateEdgesResultsInfo();
+    }
+    
     async function loadVertices() {
       try {
         const response = await fetch('/api/graph-management/vertices');
         verticesData = await response.json();
-        renderVerticesList();
+        verticesState.currentPage = 1;
+        filterAndRenderVertices();
       } catch (error) {
         console.error('Error loading vertices:', error);
         alert('Error loading vertices');
@@ -249,7 +438,8 @@ const GraphManagementUI = (function() {
       try {
         const response = await fetch('/api/graph-management/edges');
         edgesData = await response.json();
-        renderEdgesList();
+        edgesState.currentPage = 1;
+        filterAndRenderEdges();
       } catch (error) {
         console.error('Error loading edges:', error);
         alert('Error loading edges');
@@ -259,12 +449,16 @@ const GraphManagementUI = (function() {
     function renderVerticesList() {
       const listContainer = document.getElementById('vertices-list');
       
-      if (verticesData.length === 0) {
-        listContainer.innerHTML = '<p class="empty-message">No vertices found. Create your first vertex!</p>';
+      if (verticesState.filteredData.length === 0) {
+        listContainer.innerHTML = '<p class="empty-message">No vertices found matching your criteria.</p>';
         return;
       }
       
-      listContainer.innerHTML = verticesData.map(vertex => `
+      const startIndex = (verticesState.currentPage - 1) * verticesState.itemsPerPage;
+      const endIndex = startIndex + verticesState.itemsPerPage;
+      const pageData = verticesState.filteredData.slice(startIndex, endIndex);
+      
+      listContainer.innerHTML = pageData.map(vertex => `
         <div class="data-item" data-id="${vertex.id}">
           <div class="item-info">
             <div class="item-title">${vertex.label}</div>
@@ -285,12 +479,16 @@ const GraphManagementUI = (function() {
     function renderEdgesList() {
       const listContainer = document.getElementById('edges-list');
       
-      if (edgesData.length === 0) {
-        listContainer.innerHTML = '<p class="empty-message">No edges found. Create your first edge!</p>';
+      if (edgesState.filteredData.length === 0) {
+        listContainer.innerHTML = '<p class="empty-message">No edges found matching your criteria.</p>';
         return;
       }
       
-      listContainer.innerHTML = edgesData.map(edge => `
+      const startIndex = (edgesState.currentPage - 1) * edgesState.itemsPerPage;
+      const endIndex = startIndex + edgesState.itemsPerPage;
+      const pageData = edgesState.filteredData.slice(startIndex, endIndex);
+      
+      listContainer.innerHTML = pageData.map(edge => `
         <div class="data-item" data-id="${edge.id}">
           <div class="item-info">
             <div class="item-title">${edge.source_label} → ${edge.target_label}</div>
@@ -306,6 +504,156 @@ const GraphManagementUI = (function() {
           </div>
         </div>
       `).join('');
+    }
+    
+    function renderVerticesPagination() {
+      const container = document.getElementById('vertices-pagination');
+      const totalPages = Math.ceil(verticesState.filteredData.length / verticesState.itemsPerPage);
+      
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      let paginationHTML = '<div class="pagination">';
+      
+      // Previous button
+      if (verticesState.currentPage > 1) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToVerticesPage(${verticesState.currentPage - 1})">‹ Previous</button>`;
+      }
+      
+      // Page numbers
+      const startPage = Math.max(1, verticesState.currentPage - 2);
+      const endPage = Math.min(totalPages, verticesState.currentPage + 2);
+      
+      if (startPage > 1) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToVerticesPage(1)">1</button>`;
+        if (startPage > 2) {
+          paginationHTML += '<span class="page-ellipsis">...</span>';
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === verticesState.currentPage ? 'active' : '';
+        paginationHTML += `<button class="page-btn ${isActive}" onclick="GraphManagementUI.goToVerticesPage(${i})">${i}</button>`;
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          paginationHTML += '<span class="page-ellipsis">...</span>';
+        }
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToVerticesPage(${totalPages})">${totalPages}</button>`;
+      }
+      
+      // Next button
+      if (verticesState.currentPage < totalPages) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToVerticesPage(${verticesState.currentPage + 1})">Next ›</button>`;
+      }
+      
+      paginationHTML += '</div>';
+      container.innerHTML = paginationHTML;
+    }
+    
+    function renderEdgesPagination() {
+      const container = document.getElementById('edges-pagination');
+      const totalPages = Math.ceil(edgesState.filteredData.length / edgesState.itemsPerPage);
+      
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      let paginationHTML = '<div class="pagination">';
+      
+      // Previous button
+      if (edgesState.currentPage > 1) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToEdgesPage(${edgesState.currentPage - 1})">‹ Previous</button>`;
+      }
+      
+      // Page numbers
+      const startPage = Math.max(1, edgesState.currentPage - 2);
+      const endPage = Math.min(totalPages, edgesState.currentPage + 2);
+      
+      if (startPage > 1) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToEdgesPage(1)">1</button>`;
+        if (startPage > 2) {
+          paginationHTML += '<span class="page-ellipsis">...</span>';
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === edgesState.currentPage ? 'active' : '';
+        paginationHTML += `<button class="page-btn ${isActive}" onclick="GraphManagementUI.goToEdgesPage(${i})">${i}</button>`;
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          paginationHTML += '<span class="page-ellipsis">...</span>';
+        }
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToEdgesPage(${totalPages})">${totalPages}</button>`;
+      }
+      
+      // Next button
+      if (edgesState.currentPage < totalPages) {
+        paginationHTML += `<button class="page-btn" onclick="GraphManagementUI.goToEdgesPage(${edgesState.currentPage + 1})">Next ›</button>`;
+      }
+      
+      paginationHTML += '</div>';
+      container.innerHTML = paginationHTML;
+    }
+    
+    function updateVerticesResultsInfo() {
+      const container = document.getElementById('vertices-results-info');
+      const total = verticesState.filteredData.length;
+      const totalOriginal = verticesData.length;
+      
+      if (total === 0) {
+        container.innerHTML = `<span class="results-text">No vertices found</span>`;
+      } else {
+        const startIndex = (verticesState.currentPage - 1) * verticesState.itemsPerPage + 1;
+        const endIndex = Math.min(startIndex + verticesState.itemsPerPage - 1, total);
+        
+        let text = `Showing ${startIndex}-${endIndex} of ${total} vertices`;
+        if (total !== totalOriginal) {
+          text += ` (filtered from ${totalOriginal} total)`;
+        }
+        
+        container.innerHTML = `<span class="results-text">${text}</span>`;
+      }
+    }
+    
+    function updateEdgesResultsInfo() {
+      const container = document.getElementById('edges-results-info');
+      const total = edgesState.filteredData.length;
+      const totalOriginal = edgesData.length;
+      
+      if (total === 0) {
+        container.innerHTML = `<span class="results-text">No edges found</span>`;
+      } else {
+        const startIndex = (edgesState.currentPage - 1) * edgesState.itemsPerPage + 1;
+        const endIndex = Math.min(startIndex + edgesState.itemsPerPage - 1, total);
+        
+        let text = `Showing ${startIndex}-${endIndex} of ${total} edges`;
+        if (total !== totalOriginal) {
+          text += ` (filtered from ${totalOriginal} total)`;
+        }
+        
+        container.innerHTML = `<span class="results-text">${text}</span>`;
+      }
+    }
+    
+    function goToVerticesPage(page) {
+      verticesState.currentPage = page;
+      renderVerticesList();
+      renderVerticesPagination();
+      updateVerticesResultsInfo();
+    }
+    
+    function goToEdgesPage(page) {
+      edgesState.currentPage = page;
+      renderEdgesList();
+      renderEdgesPagination();
+      updateEdgesResultsInfo();
     }
     
     function openVertexModal(vertexId = null) {
@@ -600,7 +948,9 @@ const GraphManagementUI = (function() {
       editVertex: (id) => openVertexModal(id),
       editEdge: (id) => openEdgeModal(id),
       deleteVertex,
-      deleteEdge
+      deleteEdge,
+      goToVerticesPage,
+      goToEdgesPage
     };
   })();
   

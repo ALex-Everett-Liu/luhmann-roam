@@ -1742,8 +1742,8 @@ function debugToggleButton() {
       converterView.style.display = 'none';
       viewerContainer.style.display = 'flex';
       
-      // Set image source - prefer the original URL over file path
-      const imageSrc = image.url || image.file_path;
+      // Set image source - prefer local file path over remote URL for better performance
+      const imageSrc = image.file_path || image.url;
       if (!imageSrc) {
         alert('No media source available');
         return;
