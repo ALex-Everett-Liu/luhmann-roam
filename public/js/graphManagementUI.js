@@ -191,6 +191,11 @@ const GraphManagementUI = (function() {
               <option value="custom">Custom</option>
             </select>
             
+            <div id="vertex-custom-type-container" class="custom-type-container" style="display: none;">
+              <label>Custom Type Name*:</label>
+              <input type="text" id="vertex-custom-type" placeholder="Enter custom type name...">
+            </div>
+            
             <label>Color:</label>
             <input type="color" id="vertex-color" value="#666666">
             
@@ -247,6 +252,11 @@ const GraphManagementUI = (function() {
               <option value="custom">Custom</option>
             </select>
             
+            <div id="edge-custom-relationship-container" class="custom-type-container" style="display: none;">
+              <label>Custom Relationship Type*:</label>
+              <input type="text" id="edge-custom-relationship" placeholder="Enter custom relationship type...">
+            </div>
+            
             <label>Weight:</label>
             <input type="number" id="edge-weight" min="0.1" max="10" step="0.1" value="1.0">
             
@@ -299,6 +309,10 @@ const GraphManagementUI = (function() {
       document.getElementById('edge-form').addEventListener('submit', saveEdge);
       document.getElementById('cancel-vertex').addEventListener('click', closeVertexModal);
       document.getElementById('cancel-edge').addEventListener('click', closeEdgeModal);
+      
+      // Custom type handlers
+      document.getElementById('vertex-type').addEventListener('change', handleVertexTypeChange);
+      document.getElementById('edge-relationship').addEventListener('change', handleEdgeRelationshipChange);
       
       // Import functionality
       document.getElementById('load-nodes-btn').addEventListener('click', loadNodesForImport);
@@ -427,6 +441,7 @@ const GraphManagementUI = (function() {
         const response = await fetch('/api/graph-management/vertices');
         verticesData = await response.json();
         verticesState.currentPage = 1;
+        updateVertexTypeFilter();
         filterAndRenderVertices();
       } catch (error) {
         console.error('Error loading vertices:', error);
@@ -439,10 +454,130 @@ const GraphManagementUI = (function() {
         const response = await fetch('/api/graph-management/edges');
         edgesData = await response.json();
         edgesState.currentPage = 1;
+        updateEdgeRelationshipFilter();
         filterAndRenderEdges();
       } catch (error) {
         console.error('Error loading edges:', error);
         alert('Error loading edges');
+      }
+    }
+    
+    function updateVertexTypeFilter() {
+      const typeFilter = document.getElementById('vertices-type-filter');
+      const currentValue = typeFilter.value;
+      
+      // Get unique types from data
+      const uniqueTypes = [...new Set(verticesData.map(v => v.type).filter(Boolean))];
+      
+      // Predefined types
+      const predefinedTypes = [
+        { value: 'concept', label: 'Concept' },
+        { value: 'entity', label: 'Entity' },
+        { value: 'event', label: 'Event' },
+        { value: 'location', label: 'Location' },
+        { value: 'person', label: 'Person' },
+        { value: 'imported_node', label: 'Imported Node' }
+      ];
+      
+      // Custom types (not in predefined list)
+      const customTypes = uniqueTypes
+        .filter(type => !predefinedTypes.some(p => p.value === type))
+        .sort()
+        .map(type => ({ value: type, label: type.charAt(0).toUpperCase() + type.slice(1) }));
+      
+      // Rebuild options
+      typeFilter.innerHTML = '<option value="">All Types</option>';
+      
+      // Add predefined types that exist in data
+      predefinedTypes.forEach(type => {
+        if (uniqueTypes.includes(type.value)) {
+          const option = document.createElement('option');
+          option.value = type.value;
+          option.textContent = type.label;
+          typeFilter.appendChild(option);
+        }
+      });
+      
+      // Add separator if there are custom types
+      if (customTypes.length > 0) {
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '── Custom Types ──';
+        typeFilter.appendChild(separator);
+        
+        // Add custom types
+        customTypes.forEach(type => {
+          const option = document.createElement('option');
+          option.value = type.value;
+          option.textContent = type.label;
+          typeFilter.appendChild(option);
+        });
+      }
+      
+      // Restore previous selection if it still exists
+      if (currentValue && uniqueTypes.includes(currentValue)) {
+        typeFilter.value = currentValue;
+      }
+    }
+    
+    function updateEdgeRelationshipFilter() {
+      const relationshipFilter = document.getElementById('edges-relationship-filter');
+      const currentValue = relationshipFilter.value;
+      
+      // Get unique relationship types from data
+      const uniqueRelationships = [...new Set(edgesData.map(e => e.relationship_type).filter(Boolean))];
+      
+      // Predefined relationship types
+      const predefinedRelationships = [
+        { value: 'relates_to', label: 'Relates To' },
+        { value: 'depends_on', label: 'Depends On' },
+        { value: 'part_of', label: 'Part Of' },
+        { value: 'causes', label: 'Causes' },
+        { value: 'similar_to', label: 'Similar To' },
+        { value: 'opposite_of', label: 'Opposite Of' }
+      ];
+      
+      // Custom relationship types (not in predefined list)
+      const customRelationships = uniqueRelationships
+        .filter(rel => !predefinedRelationships.some(p => p.value === rel))
+        .sort()
+        .map(rel => ({ 
+          value: rel, 
+          label: rel.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+        }));
+      
+      // Rebuild options
+      relationshipFilter.innerHTML = '<option value="">All Relationships</option>';
+      
+      // Add predefined relationships that exist in data
+      predefinedRelationships.forEach(rel => {
+        if (uniqueRelationships.includes(rel.value)) {
+          const option = document.createElement('option');
+          option.value = rel.value;
+          option.textContent = rel.label;
+          relationshipFilter.appendChild(option);
+        }
+      });
+      
+      // Add separator if there are custom relationships
+      if (customRelationships.length > 0) {
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '── Custom Relationships ──';
+        relationshipFilter.appendChild(separator);
+        
+        // Add custom relationships
+        customRelationships.forEach(rel => {
+          const option = document.createElement('option');
+          option.value = rel.value;
+          option.textContent = rel.label;
+          relationshipFilter.appendChild(option);
+        });
+      }
+      
+      // Restore previous selection if it still exists
+      if (currentValue && uniqueRelationships.includes(currentValue)) {
+        relationshipFilter.value = currentValue;
       }
     }
     
@@ -660,6 +795,8 @@ const GraphManagementUI = (function() {
       const modal = document.getElementById('vertex-modal');
       const title = document.getElementById('vertex-modal-title');
       const form = document.getElementById('vertex-form');
+      const customContainer = document.getElementById('vertex-custom-type-container');
+      const customInput = document.getElementById('vertex-custom-type');
       
       if (vertexId) {
         // Edit mode
@@ -667,7 +804,21 @@ const GraphManagementUI = (function() {
         title.textContent = 'Edit Vertex';
         document.getElementById('vertex-label').value = vertex.label;
         document.getElementById('vertex-label-zh').value = vertex.label_zh || '';
-        document.getElementById('vertex-type').value = vertex.type;
+        
+        // Handle custom types
+        const predefinedTypes = ['concept', 'entity', 'event', 'location', 'person'];
+        if (predefinedTypes.includes(vertex.type)) {
+          document.getElementById('vertex-type').value = vertex.type;
+          customContainer.style.display = 'none';
+          customInput.required = false;
+          customInput.value = '';
+        } else {
+          document.getElementById('vertex-type').value = 'custom';
+          customContainer.style.display = 'block';
+          customInput.required = true;
+          customInput.value = vertex.type;
+        }
+        
         document.getElementById('vertex-color').value = vertex.color;
         document.getElementById('vertex-size').value = vertex.size;
         form.dataset.vertexId = vertexId;
@@ -675,6 +826,9 @@ const GraphManagementUI = (function() {
         // Add mode
         title.textContent = 'Add Vertex';
         form.reset();
+        customContainer.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
         delete form.dataset.vertexId;
       }
       
@@ -715,6 +869,8 @@ const GraphManagementUI = (function() {
       const modal = document.getElementById('edge-modal');
       const title = document.getElementById('edge-modal-title');
       const form = document.getElementById('edge-form');
+      const customContainer = document.getElementById('edge-custom-relationship-container');
+      const customInput = document.getElementById('edge-custom-relationship');
       
       if (edgeId) {
         // Edit mode
@@ -725,7 +881,20 @@ const GraphManagementUI = (function() {
         sourceVertexSelector.setSelection(edge.source_vertex_id);
         targetVertexSelector.setSelection(edge.target_vertex_id);
         
-        document.getElementById('edge-relationship').value = edge.relationship_type;
+        // Handle custom relationship types
+        const predefinedRelationships = ['relates_to', 'depends_on', 'part_of', 'causes', 'similar_to', 'opposite_of'];
+        if (predefinedRelationships.includes(edge.relationship_type)) {
+          document.getElementById('edge-relationship').value = edge.relationship_type;
+          customContainer.style.display = 'none';
+          customInput.required = false;
+          customInput.value = '';
+        } else {
+          document.getElementById('edge-relationship').value = 'custom';
+          customContainer.style.display = 'block';
+          customInput.required = true;
+          customInput.value = edge.relationship_type;
+        }
+        
         document.getElementById('edge-weight').value = edge.weight;
         document.getElementById('edge-direction').value = edge.direction;
         form.dataset.edgeId = edgeId;
@@ -735,6 +904,9 @@ const GraphManagementUI = (function() {
         form.reset();
         sourceVertexSelector.clearSelection();
         targetVertexSelector.clearSelection();
+        customContainer.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
         delete form.dataset.edgeId;
       }
       
@@ -758,10 +930,26 @@ const GraphManagementUI = (function() {
       const form = e.target;
       const isEdit = !!form.dataset.vertexId;
       
+      // Determine the actual type value
+      const typeSelect = document.getElementById('vertex-type');
+      const customTypeInput = document.getElementById('vertex-custom-type');
+      let actualType;
+      
+      if (typeSelect.value === 'custom') {
+        actualType = customTypeInput.value.trim();
+        if (!actualType) {
+          alert('Please enter a custom type name');
+          customTypeInput.focus();
+          return;
+        }
+      } else {
+        actualType = typeSelect.value;
+      }
+      
       const data = {
         label: document.getElementById('vertex-label').value,
         label_zh: document.getElementById('vertex-label-zh').value,
-        type: document.getElementById('vertex-type').value,
+        type: actualType,
         color: document.getElementById('vertex-color').value,
         size: parseFloat(document.getElementById('vertex-size').value)
       };
@@ -798,10 +986,26 @@ const GraphManagementUI = (function() {
       const form = e.target;
       const isEdit = !!form.dataset.edgeId;
       
+      // Determine the actual relationship type value
+      const relationshipSelect = document.getElementById('edge-relationship');
+      const customRelationshipInput = document.getElementById('edge-custom-relationship');
+      let actualRelationshipType;
+      
+      if (relationshipSelect.value === 'custom') {
+        actualRelationshipType = customRelationshipInput.value.trim();
+        if (!actualRelationshipType) {
+          alert('Please enter a custom relationship type');
+          customRelationshipInput.focus();
+          return;
+        }
+      } else {
+        actualRelationshipType = relationshipSelect.value;
+      }
+      
       const data = {
         source_vertex_id: document.getElementById('edge-source').value,
         target_vertex_id: document.getElementById('edge-target').value,
-        relationship_type: document.getElementById('edge-relationship').value,
+        relationship_type: actualRelationshipType,
         weight: parseFloat(document.getElementById('edge-weight').value),
         direction: document.getElementById('edge-direction').value
       };
@@ -1136,5 +1340,35 @@ class VertexSelector {
   hideDropdown() {
     this.dropdown.classList.remove('show');
     this.highlightedIndex = -1;
+  }
+}
+
+function handleVertexTypeChange(e) {
+  const customContainer = document.getElementById('vertex-custom-type-container');
+  const customInput = document.getElementById('vertex-custom-type');
+  
+  if (e.target.value === 'custom') {
+    customContainer.style.display = 'block';
+    customInput.required = true;
+    customInput.focus();
+  } else {
+    customContainer.style.display = 'none';
+    customInput.required = false;
+    customInput.value = '';
+  }
+}
+
+function handleEdgeRelationshipChange(e) {
+  const customContainer = document.getElementById('edge-custom-relationship-container');
+  const customInput = document.getElementById('edge-custom-relationship');
+  
+  if (e.target.value === 'custom') {
+    customContainer.style.display = 'block';
+    customInput.required = true;
+    customInput.focus();
+  } else {
+    customContainer.style.display = 'none';
+    customInput.required = false;
+    customInput.value = '';
   }
 }

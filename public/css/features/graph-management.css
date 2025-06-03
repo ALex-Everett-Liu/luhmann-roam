@@ -903,3 +903,81 @@
     background: #f8f9fa;
     border-color: #e9ecef;
   }
+
+  /* Custom Type Container Styles */
+  .graph-modal-content .custom-type-container {
+    margin-top: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .graph-modal-content .custom-type-container label {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .graph-modal-content .custom-type-container input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    box-sizing: border-box;
+  }
+
+  .graph-modal-content .custom-type-container input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+  }
+
+  .graph-modal-content .custom-type-container input::placeholder {
+    color: #6c757d;
+    font-style: italic;
+  }
+
+  /* Animation for showing/hiding custom containers */
+  .graph-modal-content .custom-type-container[style*="display: none"] {
+    opacity: 0;
+    max-height: 0;
+    padding: 0 15px;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .graph-modal-content .custom-type-container[style*="display: block"] {
+    opacity: 1;
+    max-height: 200px;
+    padding: 15px;
+    margin-top: 10px;
+  }
+
+  /* Enhanced form styling for better visual hierarchy */
+  .graph-modal-content form > label {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .graph-modal-content form > label:first-child {
+    margin-top: 0;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .graph-modal-content .custom-type-container {
+      padding: 12px;
+      margin-top: 8px;
+    }
+    
+    .graph-modal-content .custom-type-container input {
+      padding: 8px;
+      font-size: 13px;
+    }
+  }
