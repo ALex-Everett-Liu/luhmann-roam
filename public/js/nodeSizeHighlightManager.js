@@ -24,7 +24,10 @@ const NodeSizeHighlightManager = (function() {
         isEnabled = savedState === 'true';
         
         if (isEnabled) {
-            applyHighlights();
+            // Delay initial application to ensure DOM is ready
+            setTimeout(() => {
+                applyHighlights();
+            }, 500);
         }
     }
 
@@ -58,55 +61,74 @@ const NodeSizeHighlightManager = (function() {
      * Apply highlights to all nodes based on size comparison
      */
     async function applyHighlights() {
-        if (!isEnabled) return;
+        if (!isEnabled) {
+            console.log('❌ Highlights not applied - feature is disabled');
+            return;
+        }
 
-        console.log('Applying node size highlights...');
+        console.log('🔍 Applying node size highlights...');
         
         try {
-            // Get all nodes from the server to ensure we have complete data with node_size
-            const response = await fetch('/api/nodes?includeChildren=true');
-            const rootNodes = await response.json();
-            
             // Clear previous highlights
             clearHighlights();
             
-            // Build a flat map of all nodes for easy lookup
+            // Get all currently displayed nodes from the DOM
+            const nodeElements = document.querySelectorAll('.node[data-id]');
+            console.log(`📊 Found ${nodeElements.length} nodes in DOM`);
+            
+            if (nodeElements.length === 0) {
+                console.log('❌ No nodes found in DOM, skipping highlight application');
+                return;
+            }
+            
+            // Build a map of all nodes with their data
             const allNodes = new Map();
-            await buildNodeMap(rootNodes, allNodes);
+            await buildNodeMapFromDOM(nodeElements, allNodes);
+            
+            console.log(`📋 Built node map with ${allNodes.size} nodes`);
             
             // Check each node for highlighting
+            let highlightCount = 0;
             for (const [nodeId, nodeData] of allNodes.entries()) {
                 if (shouldHighlightNode(nodeId, nodeData, allNodes)) {
                     highlightNode(nodeId);
                     highlightedNodes.add(nodeId);
+                    highlightCount++;
+                    console.log(`⭐ Highlighted node ${nodeId} with size ${nodeData.node_size}`);
                 }
             }
             
-            console.log(`Applied highlights to ${highlightedNodes.size} nodes`);
+            console.log(`✅ Applied highlights to ${highlightCount} nodes`);
             
         } catch (error) {
-            console.error('Error applying node size highlights:', error);
+            console.error('❌ Error applying node size highlights:', error);
         }
     }
 
     /**
-     * Recursively build a flat map of all nodes including children
+     * Build a map of all nodes from DOM elements and fetch their data
      */
-    async function buildNodeMap(nodes, nodeMap) {
-        for (const node of nodes) {
-            nodeMap.set(node.id, node);
-            
-            // Get children if they exist and node is expanded
-            if (node.is_expanded) {
+    async function buildNodeMapFromDOM(nodeElements, nodeMap) {
+        console.log('🔄 Building node map from DOM...');
+        for (const nodeElement of nodeElements) {
+            const nodeId = nodeElement.dataset.id;
+            if (nodeId) {
                 try {
-                    const childrenResponse = await fetch(`/api/nodes/${node.id}/children`);
-                    const children = await childrenResponse.json();
-                    await buildNodeMap(children, nodeMap);
+                    // Fetch node data from API to get node_size and parent info
+                    const response = await fetch(`/api/nodes/${nodeId}`);
+                    if (response.ok) {
+                        const nodeData = await response.json();
+                        nodeMap.set(nodeId, nodeData);
+                        console.log(`📝 Loaded node ${nodeId}: size=${nodeData.node_size || 20}, parent=${nodeData.parent_id || 'none'}`);
+                    } else {
+                        console.warn(`⚠️ Failed to fetch node ${nodeId}: ${response.status}`);
+                    }
                 } catch (error) {
-                    console.error(`Error fetching children for node ${node.id}:`, error);
+                    console.error(`❌ Error fetching data for node ${nodeId}:`, error);
                 }
             }
         }
+        console.log(`✅ Finished building node map`);
     }
 
     /**
@@ -114,8 +136,11 @@ const NodeSizeHighlightManager = (function() {
      */
     function shouldHighlightNode(nodeId, nodeData, allNodes) {
         const nodeSize = nodeData.node_size || 20; // Default size is 20
-        let maxComparisonSize = nodeSize;
+        let maxComparisonSize = nodeSize; // ✅ Start with the current node's size!
         let hasComparisons = false;
+        let comparisonNodes = [];
+
+        console.log(`🔍 Checking node ${nodeId} (size: ${nodeSize})...`);
 
         // Compare with parent
         if (nodeData.parent_id) {
@@ -123,30 +148,70 @@ const NodeSizeHighlightManager = (function() {
             if (parent) {
                 const parentSize = parent.node_size || 20;
                 maxComparisonSize = Math.max(maxComparisonSize, parentSize);
+                comparisonNodes.push(`parent(${parentSize})`);
                 hasComparisons = true;
+                console.log(`  👆 Parent ${nodeData.parent_id}: size=${parentSize}`);
+            } else {
+                console.log(`  👆 Parent ${nodeData.parent_id}: not found in current view`);
             }
+        } else {
+            console.log(`  👆 No parent (root node)`);
         }
 
         // Compare with siblings (nodes with same parent)
+        let siblingCount = 0;
         for (const [siblingId, siblingData] of allNodes.entries()) {
             if (siblingId !== nodeId && siblingData.parent_id === nodeData.parent_id) {
                 const siblingSize = siblingData.node_size || 20;
                 maxComparisonSize = Math.max(maxComparisonSize, siblingSize);
+                comparisonNodes.push(`sibling(${siblingSize})`);
                 hasComparisons = true;
+                siblingCount++;
+                console.log(`  👥 Sibling ${siblingId}: size=${siblingSize}`);
             }
+        }
+        if (siblingCount === 0) {
+            console.log(`  👥 No siblings found`);
         }
 
         // Compare with children
+        let childCount = 0;
         for (const [childId, childData] of allNodes.entries()) {
             if (childData.parent_id === nodeId) {
                 const childSize = childData.node_size || 20;
                 maxComparisonSize = Math.max(maxComparisonSize, childSize);
+                comparisonNodes.push(`child(${childSize})`);
                 hasComparisons = true;
+                childCount++;
+                console.log(`  👶 Child ${childId}: size=${childSize}`);
             }
+        }
+        if (childCount === 0) {
+            console.log(`  👶 No children found`);
+        }
+
+        // Debug logging
+        if (hasComparisons) {
+            console.log(`  📊 Node ${nodeId}: size=${nodeSize}, max=${maxComparisonSize}, comparisons=[${comparisonNodes.join(', ')}]`);
+        } else {
+            console.log(`  📊 Node ${nodeId}: size=${nodeSize}, no family members to compare with`);
         }
 
         // Only highlight if this node has the maximum size and there were comparisons to make
-        return hasComparisons && nodeSize === maxComparisonSize && nodeSize > 20; // Only highlight if size is above default
+        // Also require that the size is above default (20)
+        const shouldHighlight = hasComparisons && nodeSize === maxComparisonSize && nodeSize > 20;
+        
+        if (shouldHighlight) {
+            console.log(`  ✅ Node ${nodeId} SHOULD be highlighted (size: ${nodeSize} is max and > 20)`);
+        } else if (!hasComparisons) {
+            console.log(`  ❌ Node ${nodeId} NOT highlighted: no family members to compare`);
+        } else if (nodeSize !== maxComparisonSize) {
+            console.log(`  ❌ Node ${nodeId} NOT highlighted: size ${nodeSize} is not max (${maxComparisonSize})`);
+        } else if (nodeSize <= 20) {
+            console.log(`  ❌ Node ${nodeId} NOT highlighted: size ${nodeSize} is not > 20`);
+        }
+        
+        return shouldHighlight;
     }
 
     /**
@@ -157,12 +222,20 @@ const NodeSizeHighlightManager = (function() {
         if (nodeElement) {
             nodeElement.classList.add('size-highlighted');
             
+            // Get the actual node size for the indicator
+            const nodeSize = getNodeSizeFromElement(nodeElement) || 20;
+            
+            // Add special styling for very large nodes
+            if (nodeSize > 50) {
+                nodeElement.setAttribute('data-large-size', 'true');
+            }
+            
             // Add a small indicator showing the size
             const existingIndicator = nodeElement.querySelector('.size-highlight-indicator');
             if (!existingIndicator) {
                 const indicator = document.createElement('div');
                 indicator.className = 'size-highlight-indicator';
-                indicator.title = 'Largest node size in family group';
+                indicator.title = `Largest node size in family group (size: ${nodeSize})`;
                 indicator.innerHTML = '⭐';
                 
                 // Add to node content area
@@ -171,7 +244,24 @@ const NodeSizeHighlightManager = (function() {
                     nodeContent.appendChild(indicator);
                 }
             }
+            
+            console.log(`✅ Applied highlight to node ${nodeId} in DOM`);
+        } else {
+            console.warn(`⚠️ Could not find DOM element for node ${nodeId}`);
         }
+    }
+
+    /**
+     * Get node size from DOM element or fetch from API
+     */
+    function getNodeSizeFromElement(nodeElement) {
+        // Try to get from data attribute first
+        if (nodeElement.dataset.nodeSize) {
+            return parseInt(nodeElement.dataset.nodeSize);
+        }
+        
+        // Fallback to default
+        return 20;
     }
 
     /**
@@ -179,16 +269,20 @@ const NodeSizeHighlightManager = (function() {
      */
     function clearHighlights() {
         // Remove CSS classes
-        document.querySelectorAll('.node.size-highlighted').forEach(node => {
+        const highlightedElements = document.querySelectorAll('.node.size-highlighted');
+        highlightedElements.forEach(node => {
             node.classList.remove('size-highlighted');
+            node.removeAttribute('data-large-size');
         });
         
         // Remove indicators
-        document.querySelectorAll('.size-highlight-indicator').forEach(indicator => {
+        const indicators = document.querySelectorAll('.size-highlight-indicator');
+        indicators.forEach(indicator => {
             indicator.remove();
         });
         
         highlightedNodes.clear();
+        console.log(`🧹 Cleared ${highlightedElements.length} highlights and ${indicators.length} indicators`);
     }
 
     /**
@@ -207,11 +301,60 @@ const NodeSizeHighlightManager = (function() {
      */
     function refreshHighlights() {
         if (isEnabled) {
+            console.log('🔄 Refreshing highlights...');
             // Delay to allow DOM updates to complete
             setTimeout(() => {
                 applyHighlights();
-            }, 100);
+            }, 200);
         }
+    }
+
+    /**
+     * Debug function to check current state
+     */
+    function debug() {
+        console.log('🐛 NodeSizeHighlightManager Debug Info:');
+        console.log(`  - Initialized: ${isInitialized}`);
+        console.log(`  - Enabled: ${isEnabled}`);
+        console.log(`  - Highlighted nodes: ${highlightedNodes.size}`);
+        
+        const nodeElements = document.querySelectorAll('.node[data-id]');
+        console.log(`  - DOM nodes found: ${nodeElements.length}`);
+        
+        const highlightedElements = document.querySelectorAll('.node.size-highlighted');
+        console.log(`  - Currently highlighted elements: ${highlightedElements.length}`);
+        
+        const indicators = document.querySelectorAll('.size-highlight-indicator');
+        console.log(`  - Star indicators: ${indicators.length}`);
+        
+        // List all nodes with their IDs
+        nodeElements.forEach((el, index) => {
+            console.log(`  - Node ${index + 1}: ${el.dataset.id}`);
+        });
+        
+        return {
+            initialized: isInitialized,
+            enabled: isEnabled,
+            highlightedCount: highlightedNodes.size,
+            domNodesCount: nodeElements.length,
+            highlightedElementsCount: highlightedElements.length,
+            indicatorsCount: indicators.length
+        };
+    }
+
+    /**
+     * Force apply highlights (for testing)
+     */
+    function forceApply() {
+        console.log('🔧 Force applying highlights...');
+        const wasEnabled = isEnabled;
+        isEnabled = true;
+        applyHighlights().then(() => {
+            if (!wasEnabled) {
+                console.log('🔧 Restoring original enabled state');
+                isEnabled = wasEnabled;
+            }
+        });
     }
 
     // Public API
@@ -221,7 +364,9 @@ const NodeSizeHighlightManager = (function() {
         getEnabled,
         applyHighlights,
         clearHighlights,
-        refreshHighlights
+        refreshHighlights,
+        debug,
+        forceApply
     };
 })();
 

@@ -1697,27 +1697,29 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('NodeSizeHighlightManager exists:', !!window.NodeSizeHighlightManager);
     
     if (window.NodeSizeHighlightManager) {
-      NodeSizeHighlightManager.toggle();
-      
-      // Show notification
-      const isEnabled = NodeSizeHighlightManager.getEnabled();
-      const notification = document.createElement('div');
-      notification.className = 'size-highlight-notification';
-      notification.textContent = isEnabled ? 
-        'Size highlights enabled! Nodes with largest sizes in their family groups are now highlighted.' :
-        'Size highlights disabled.';
-      
-      document.body.appendChild(notification);
-      
-      // Remove notification after 3 seconds
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 3000);
+        console.log('Current state before toggle:', NodeSizeHighlightManager.getEnabled());
+        NodeSizeHighlightManager.toggle();
+        console.log('Current state after toggle:', NodeSizeHighlightManager.getEnabled());
+        
+        // Show notification
+        const isEnabled = NodeSizeHighlightManager.getEnabled();
+        const notification = document.createElement('div');
+        notification.className = 'size-highlight-notification';
+        notification.textContent = isEnabled ? 
+            'Size highlights enabled! Check console for debug info.' :
+            'Size highlights disabled.';
+        
+        document.body.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 3000);
     } else {
-      console.error('NodeSizeHighlightManager is not available');
-      alert('Node Size Highlight module not loaded. Please refresh the page.');
+        console.error('NodeSizeHighlightManager is not available');
+        alert('Node Size Highlight module not loaded. Please refresh the page.');
     }
   });
 
