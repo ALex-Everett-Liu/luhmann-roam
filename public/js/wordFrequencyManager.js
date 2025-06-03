@@ -753,6 +753,7 @@ const WordFrequencyManager = (function() {
     
     /**
      * Gets filtered data based on current settings, ensuring custom groups are always included
+     * while maintaining proper frequency-based ordering
      */
     function getFilteredData() {
         const minLength = parseInt(modalElement.querySelector('#min-length').value);
@@ -768,47 +769,31 @@ const WordFrequencyManager = (function() {
         
         const limit = parseInt(wordLimit);
         
-        // Separate custom groups from regular stems
-        const customGroups = filteredData.filter(item => item.isCustomGroup);
-        const regularStems = filteredData.filter(item => !item.isCustomGroup);
+        // Get the top N items by frequency (this maintains proper ordering)
+        const topItems = filteredData.slice(0, limit);
         
-        // Get the top N regular stems
-        const topRegularStems = regularStems.slice(0, limit);
+        // Find custom groups that didn't make it into the top N
+        const customGroupsNotInTop = filteredData
+            .filter(item => item.isCustomGroup)
+            .filter(customGroup => {
+                // Check if this custom group is NOT already in the top N
+                return !topItems.some(topItem => topItem.stem === customGroup.stem);
+            });
         
-        // Find custom groups that are NOT in the top N
-        const customGroupsNotInTop = customGroups.filter(customGroup => {
-            return !topRegularStems.some(topStem => topStem.stem === customGroup.stem);
-        });
-        
-        // Combine: top N regular stems + custom groups not in top N (in their frequency order)
-        const result = [...topRegularStems, ...customGroupsNotInTop];
-        
-        // Sort the final result to maintain proper frequency order for display
-        // But keep custom groups at the end if they weren't in the top N
-        const finalResult = [];
-        
-        // Add items that were in the top N (maintaining their order)
-        topRegularStems.forEach(item => {
-            finalResult.push(item);
-        });
-        
-        // Add custom groups that were in the top N (they're already included above)
-        // Add custom groups that were NOT in the top N at the end
-        customGroupsNotInTop.forEach(item => {
-            finalResult.push(item);
-        });
-        
-        return finalResult;
+        // Combine: top N items + custom groups not in top N
+        // The top N items maintain their frequency order
+        // Custom groups not in top N are added at the end in their frequency order
+        return [...topItems, ...customGroupsNotInTop];
     }
     
     /**
-     * Gets filtered data for chart display (custom groups should follow normal frequency rules for charts)
+     * Gets filtered data for chart display (same logic as table now)
      */
     function getFilteredDataForChart() {
         const minLength = parseInt(modalElement.querySelector('#min-length').value);
         const wordLimit = modalElement.querySelector('#word-limit').value;
         
-        // For charts, we want to maintain strict frequency order
+        // Filter data based on minimum stem length
         let filteredData = wordFrequencyData.filter(item => item.stem.length >= minLength);
         
         // Limit number of words if not "all"
@@ -945,12 +930,17 @@ const WordFrequencyManager = (function() {
         
         // Check if we're showing custom groups at the end
         const wordLimit = modalElement.querySelector('#word-limit').value;
-        const hasCustomGroupsAtEnd = !currentSearchTerm && 
-                                   wordLimit !== 'all' && 
-                                   customGroupsCount > 0;
+        const limit = wordLimit === 'all' ? Infinity : parseInt(wordLimit);
+        const customGroupsAtEnd = data.filter(item => {
+            const fullDataSorted = [...wordFrequencyData].sort((a, b) => b.count - a.count);
+            const actualRank = fullDataSorted.findIndex(fullItem => fullItem.stem === item.stem) + 1;
+            return item.isCustomGroup && actualRank > limit && !currentSearchTerm;
+        }).length;
         
-        const customGroupNote = hasCustomGroupsAtEnd ? 
-            ` (includes ${customGroupsCount} custom group${customGroupsCount > 1 ? 's' : ''})` : '';
+        const customGroupNote = customGroupsCount > 0 ? 
+            (customGroupsAtEnd > 0 ? 
+                ` (includes ${customGroupsAtEnd} custom group${customGroupsAtEnd > 1 ? 's' : ''} beyond top ${limit})` :
+                ` (includes ${customGroupsCount} custom group${customGroupsCount > 1 ? 's' : ''})`) : '';
         
         statsContainer.innerHTML = `
             <div class="stats-grid">
@@ -990,6 +980,10 @@ const WordFrequencyManager = (function() {
         // Calculate the actual rank for each item in the full dataset
         const fullDataSorted = [...wordFrequencyData].sort((a, b) => b.count - a.count);
         
+        // Determine the cutoff for top N items
+        const wordLimit = modalElement.querySelector('#word-limit').value;
+        const limit = wordLimit === 'all' ? Infinity : parseInt(wordLimit);
+        
         data.forEach((item, index) => {
             const row = document.createElement('tr');
             const percentage = ((item.count / totalWords) * 100).toFixed(2);
@@ -1009,11 +1003,10 @@ const WordFrequencyManager = (function() {
             // Add search result indicator
             const searchResultClass = isSearchResults ? ' search-result' : '';
             
-            // Add custom group indicator class if it's a custom group shown at the end
-            const wordLimit = modalElement.querySelector('#word-limit').value;
+            // Check if this is a custom group that appears beyond the normal limit
             const isCustomGroupAtEnd = item.isCustomGroup && 
                                      wordLimit !== 'all' && 
-                                     actualRank > parseInt(wordLimit) && 
+                                     actualRank > limit && 
                                      !isSearchResults;
             
             const customGroupAtEndClass = isCustomGroupAtEnd ? ' custom-group-at-end' : '';
@@ -1025,7 +1018,7 @@ const WordFrequencyManager = (function() {
                 `${actualRank} <span style="font-size: 10px; color: #666;">(#${index + 1})</span>` : 
                 `${index + 1}`;
             
-            // Add custom group badge to the stem cell for better alignment
+            // Add custom group badge to the stem cell for custom groups at the end
             const customGroupBadge = isCustomGroupAtEnd ? 
                 ' <span style="font-size: 10px; color: #28a745; font-weight: bold; background: rgba(40, 167, 69, 0.15); padding: 1px 4px; border-radius: 2px; margin-left: 8px; border: 1px solid #28a745;">Custom</span>' : 
                 '';
