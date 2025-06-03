@@ -14,7 +14,7 @@ exports.getAllVertices = async (req, res) => {
       SELECT v.*, n.content as source_node_content, n.content_zh as source_node_content_zh
       FROM graph_vertices v
       LEFT JOIN nodes n ON v.source_node_id = n.id
-      ORDER BY v.created_at DESC
+      ORDER BY v.sequence_id ASC, v.created_at DESC
     `);
     
     res.json(vertices.map(v => ({
@@ -38,7 +38,7 @@ exports.getAllEdges = async (req, res) => {
       FROM graph_edges e
       JOIN graph_vertices sv ON e.source_vertex_id = sv.id
       JOIN graph_vertices tv ON e.target_vertex_id = tv.id
-      ORDER BY e.created_at DESC
+      ORDER BY e.sequence_id ASC, e.created_at DESC
     `);
     
     res.json(edges.map(e => ({
@@ -66,13 +66,13 @@ exports.createVertex = async (req, res) => {
     
     await db.run(`
       INSERT INTO graph_vertices 
-      (id, label, label_zh, type, properties, source_node_id, x_position, y_position, size, color, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, label, label_zh, type, properties, source_node_id, x_position, y_position, size, color, created_at, updated_at, sequence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, label, label_zh, type || 'concept', 
       properties ? JSON.stringify(properties) : null,
       source_node_id, x_position, y_position, size || 1.0, color || '#666666',
-      now, now
+      now, now, null  // Let trigger handle sequence_id
     ]);
     
     const vertex = await db.get('SELECT * FROM graph_vertices WHERE id = ?', id);
@@ -101,13 +101,13 @@ exports.createEdge = async (req, res) => {
     
     await db.run(`
       INSERT INTO graph_edges 
-      (id, source_vertex_id, target_vertex_id, relationship_type, weight, direction, properties, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, source_vertex_id, target_vertex_id, relationship_type, weight, direction, properties, created_at, updated_at, sequence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, source_vertex_id, target_vertex_id, 
       relationship_type || 'relates_to', weight || 1.0, direction || 'directed',
       properties ? JSON.stringify(properties) : null,
-      now, now
+      now, now, null  // Let trigger handle sequence_id
     ]);
     
     const edge = await db.get(`
@@ -273,10 +273,10 @@ exports.importFromNodes = async (req, res) => {
       
       await db.run(`
         INSERT INTO graph_vertices 
-        (id, label, label_zh, type, source_node_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (id, label, label_zh, type, source_node_id, created_at, updated_at, sequence_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        id, node.content || 'Untitled', node.content_zh, 'imported_node', nodeId, now, now
+        id, node.content || 'Untitled', node.content_zh, 'imported_node', nodeId, now, now, null  // Let trigger handle sequence_id
       ]);
       
       imported.push(id);

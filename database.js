@@ -558,7 +558,8 @@ try {
       layout_data TEXT, -- JSON string storing positions and parameters
       is_default BOOLEAN DEFAULT 0,
       created_at INTEGER,
-      updated_at INTEGER
+      updated_at INTEGER,
+      sequence_id INTEGER
     )
   `);
 
@@ -572,6 +573,7 @@ try {
       metric_value REAL,
       properties TEXT, -- Additional analysis data as JSON
       computed_at INTEGER,
+      sequence_id INTEGER,
       FOREIGN KEY (vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE
     )
   `);
@@ -585,6 +587,7 @@ try {
       algorithm TEXT DEFAULT 'louvain',
       modularity REAL,
       created_at INTEGER,
+      sequence_id INTEGER,
       FOREIGN KEY (vertex_id) REFERENCES graph_vertices (id) ON DELETE CASCADE
     )
   `);
@@ -601,7 +604,152 @@ try {
   `);
 
   console.log(`Database for vault: ${vaultName} initialized`);
+
+  // Create triggers for graph and word group tables
+  try {
+    const additionalTables = [
+      'graph_vertices',
+      'graph_edges', 
+      'graph_layouts',
+      'graph_analysis_results',
+      'graph_communities',
+      'word_groups',
+      'word_group_items'
+    ];
+    
+    for (const table of additionalTables) {
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
+        AFTER INSERT ON ${table}
+        FOR EACH ROW
+        WHEN NEW.sequence_id IS NULL
+        BEGIN
+          UPDATE ${table} 
+          SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
+          WHERE id = NEW.id;
+        END;
+      `);
+      console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
+    }
+  } catch (error) {
+    console.log('Some additional triggers might already exist:', error.message);
+  }
+
+  // Add indices for sequence_id columns on graph and word group tables
+  try {
+    const graphAndWordTables = [
+      'graph_vertices',
+      'graph_edges',
+      'graph_layouts', 
+      'graph_analysis_results',
+      'graph_communities',
+      'word_groups',
+      'word_group_items'
+    ];
+    
+    for (const table of graphAndWordTables) {
+      await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+      console.log(`Created sequence_id index for ${table} table`);
+    }
+  } catch (error) {
+    console.log('Some sequence_id indices may already exist:', error.message);
+  }
+
   return db;
+}
+
+// Function to add sequence_id columns to existing tables that might not have them
+async function addMissingSequenceIdColumns() {
+  const db = await getDb();
+  
+  try {
+    // Tables that might need sequence_id columns added
+    const tablesToUpdate = [
+      'graph_layouts',
+      'graph_analysis_results', 
+      'graph_communities'
+    ];
+    
+    for (const table of tablesToUpdate) {
+      try {
+        await db.exec(`ALTER TABLE ${table} ADD COLUMN sequence_id INTEGER;`);
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+        console.log(`Added sequence_id column and index to ${table} table`);
+      } catch (error) {
+        // Column likely already exists, which is fine
+        console.log(`sequence_id column may already exist in ${table} or other error:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.log('Error adding missing sequence_id columns:', error.message);
+  }
+}
+
+// Function to populate sequence IDs for graph and word group tables specifically
+async function populateGraphAndWordGroupSequenceIds() {
+  const db = await getDb();
+  
+  // Start a transaction for consistency
+  await db.run('BEGIN TRANSACTION');
+  
+  try {
+    // Graph and word group tables that need sequence IDs
+    const graphAndWordTables = [
+      'graph_vertices',
+      'graph_edges',
+      'graph_layouts',
+      'graph_analysis_results',
+      'graph_communities',
+      'word_groups',
+      'word_group_items'
+    ];
+    
+    // Process each table
+    for (const table of graphAndWordTables) {
+      try {
+        // First check if we need to populate sequence IDs for this table
+        const unpopulatedCount = await db.get(
+          `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`
+        );
+        
+        if (unpopulatedCount.count > 0) {
+          console.log(`Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`);
+          
+          // Get records ordered by appropriate timestamp column
+          let orderByColumn = 'created_at';
+          if (table === 'graph_analysis_results') {
+            orderByColumn = 'computed_at';
+          }
+          
+          const records = await db.all(
+            `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
+          );
+          
+          // Assign sequence IDs sequentially
+          for (let i = 0; i < records.length; i++) {
+            await db.run(
+              `UPDATE ${table} SET sequence_id = ? WHERE id = ?`,
+              [i + 1, records[i].id]
+            );
+          }
+          
+          console.log(`Successfully populated sequence IDs for ${records.length} records in ${table}`);
+        } else {
+          console.log(`All records in ${table} already have sequence IDs`);
+        }
+      } catch (error) {
+        console.log(`Error processing table ${table}:`, error.message);
+        // Continue with other tables
+      }
+    }
+    
+    await db.run('COMMIT');
+    return true;
+  } catch (error) {
+    await db.run('ROLLBACK');
+    console.error('Error populating graph and word group sequence IDs:', error);
+    return false;
+  }
 }
 
 async function populateSequenceIds() {
@@ -611,7 +759,7 @@ async function populateSequenceIds() {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Tables that need sequence IDs
+    // Tables that need sequence IDs - including new graph and word group tables
     const tables = [
       'nodes',
       'links', 
@@ -619,6 +767,16 @@ async function populateSequenceIds() {
       'tasks',
       'bookmarks',
       'blog_pages',
+      'dcim_images',
+      'metro_stations',
+      'metro_lines',
+      'graph_vertices',
+      'graph_edges',
+      'graph_layouts',
+      'graph_analysis_results',
+      'graph_communities',
+      'word_groups',
+      'word_group_items'
     ];
     
     // Process each table
@@ -633,7 +791,16 @@ async function populateSequenceIds() {
         
         // Get records ordered by created_at timestamp (or another appropriate column)
         // Adapt the ORDER BY column if some tables don't have created_at
-        const orderByColumn = table === 'blog_pages' ? 'created_at' : 'created_at';
+        let orderByColumn = 'created_at';
+        if (table === 'blog_pages') {
+          orderByColumn = 'created_at';
+        } else if (table === 'graph_analysis_results') {
+          orderByColumn = 'computed_at';
+        } else if (table === 'bookmarks') {
+          orderByColumn = 'added_at';
+        } else if (table === 'dcim_images') {
+          orderByColumn = 'creation_time';
+        }
         
         const records = await db.all(
           `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
@@ -662,4 +829,4 @@ async function populateSequenceIds() {
   }
 }
 
-module.exports = { getDb, initializeDatabase , populateSequenceIds }; 
+module.exports = { getDb, initializeDatabase, populateSequenceIds, addMissingSequenceIdColumns, populateGraphAndWordGroupSequenceIds }; 

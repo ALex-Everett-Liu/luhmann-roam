@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
       FROM word_groups wg
       LEFT JOIN word_group_items wgi ON wg.id = wgi.group_id
       GROUP BY wg.id
-      ORDER BY wg.display_name
+      ORDER BY wg.sequence_id ASC, wg.display_name
     `);
     
     // Parse the words into arrays
@@ -43,9 +43,9 @@ router.post('/', async (req, res) => {
     
     // Create the group
     await req.db.run(`
-      INSERT INTO word_groups (id, name, display_name, description, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [groupId, name, display_name, description, now, now]);
+      INSERT INTO word_groups (id, name, display_name, description, created_at, updated_at, sequence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [groupId, name, display_name, description, now, now, null]);
     
     // Add words if provided
     if (words && Array.isArray(words)) {
@@ -53,9 +53,9 @@ router.post('/', async (req, res) => {
         if (word.trim()) {
           const itemId = crypto.randomUUID();
           await req.db.run(`
-            INSERT INTO word_group_items (id, group_id, word, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-          `, [itemId, groupId, word.trim().toLowerCase(), now, now]);
+            INSERT INTO word_group_items (id, group_id, word, created_at, updated_at, sequence_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [itemId, groupId, word.trim().toLowerCase(), now, now, null]);
         }
       }
     }
@@ -96,9 +96,9 @@ router.put('/:id', async (req, res) => {
         if (word.trim()) {
           const itemId = crypto.randomUUID();
           await req.db.run(`
-            INSERT INTO word_group_items (id, group_id, word, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-          `, [itemId, id, word.trim().toLowerCase(), now, now]);
+            INSERT INTO word_group_items (id, group_id, word, created_at, updated_at, sequence_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [itemId, id, word.trim().toLowerCase(), now, now, null]);
         }
       }
     }
