@@ -6,17 +6,20 @@
     border: 2px solid #f39c12;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
-    transform: scale(1.02);
     transition: all 0.3s ease;
+    padding: 2px;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .node.size-highlighted:hover {
     box-shadow: 0 6px 16px rgba(243, 156, 18, 0.4);
-    transform: scale(1.03);
 }
 
 .node.size-highlighted .node-content {
     background: transparent;
+    box-shadow: inset 0 0 8px rgba(243, 156, 18, 0.1);
+    border-radius: 6px;
 }
 
 .size-highlight-indicator {
@@ -107,6 +110,7 @@
     background: linear-gradient(135deg, #ffe4e1 0%, #ffb3ba 100%);
     border-color: #e74c3c;
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    border-left: 4px solid #e74c3c;
 }
 
 .node.size-highlighted[data-large-size="true"] .size-highlight-indicator {
