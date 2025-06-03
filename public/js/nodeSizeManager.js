@@ -185,6 +185,11 @@ const NodeSizeManager = (function() {
               
               // Show success notification
               showSuccessNotification(`Node size updated to ${newSize}`);
+
+              // Refresh size highlights if enabled
+              if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
+                NodeSizeHighlightManager.refreshHighlights();
+              }
               
               resolve(true);
             } catch (error) {

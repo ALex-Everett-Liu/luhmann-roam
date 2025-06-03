@@ -25,6 +25,7 @@
 @import './features/command-palette.css';
 @import './features/node-grid-visualizer.css';
 @import './features/node-size-manager.css';
+@import './features/node-size-highlight.css';
 @import './features/font-manager.css';
 @import './features/style-settings.css';
 @import './features/high-contrast.css';

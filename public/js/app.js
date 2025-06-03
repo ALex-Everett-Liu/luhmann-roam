@@ -134,6 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.DragDropManager) {
       DragDropManager.setupDragAndDrop();
     }
+
+    // Refresh size highlights if enabled
+    if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
+      NodeSizeHighlightManager.refreshHighlights();
+    }
     
     // Try to restore scroll position
     setTimeout(() => {
@@ -1673,5 +1678,50 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   addButtonToSidebar(toggleGraphManagementButton);
+
+  // Initialize the NodeSizeHighlightManager
+  if (window.NodeSizeHighlightManager) {
+    console.log('Setting up NodeSizeHighlightManager initialization from app.js');
+    NodeSizeHighlightManager.initialize();
+  }
+
+  // Add a toggle button for the node size highlight feature
+  const toggleSizeHighlightButton = document.createElement('button');
+  toggleSizeHighlightButton.id = 'toggle-size-highlight';
+  toggleSizeHighlightButton.className = 'feature-toggle';
+  toggleSizeHighlightButton.textContent = 'Enable Size Highlights';
+  toggleSizeHighlightButton.title = 'Highlight nodes with the largest size in their family group';
+
+  toggleSizeHighlightButton.addEventListener('click', function() {
+    console.log('Size Highlight button clicked');
+    console.log('NodeSizeHighlightManager exists:', !!window.NodeSizeHighlightManager);
+    
+    if (window.NodeSizeHighlightManager) {
+      NodeSizeHighlightManager.toggle();
+      
+      // Show notification
+      const isEnabled = NodeSizeHighlightManager.getEnabled();
+      const notification = document.createElement('div');
+      notification.className = 'size-highlight-notification';
+      notification.textContent = isEnabled ? 
+        'Size highlights enabled! Nodes with largest sizes in their family groups are now highlighted.' :
+        'Size highlights disabled.';
+      
+      document.body.appendChild(notification);
+      
+      // Remove notification after 3 seconds
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 3000);
+    } else {
+      console.error('NodeSizeHighlightManager is not available');
+      alert('Node Size Highlight module not loaded. Please refresh the page.');
+    }
+  });
+
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggleSizeHighlightButton);
 });
 
