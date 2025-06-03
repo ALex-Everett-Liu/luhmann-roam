@@ -14,11 +14,116 @@ const CommandPaletteManager = (function() {
     let commandsList = null;
     let isInitialized = false;
     
+    // Command usage tracking variables
+    let commandUsageCounts = {};
+    let recentCommands = [];
+    const MAX_RECENT_COMMANDS = 10;
+    
+    /**
+     * Load command usage counts from localStorage
+     */
+    function loadCommandUsageCounts() {
+        try {
+            const saved = localStorage.getItem('command_palette_usage_counts');
+            if (saved) {
+                commandUsageCounts = JSON.parse(saved);
+                console.log('Loaded command usage counts:', commandUsageCounts);
+            }
+        } catch (error) {
+            console.error('Error loading command usage counts:', error);
+            commandUsageCounts = {};
+        }
+    }
+    
+    /**
+     * Save command usage counts to localStorage
+     */
+    function saveCommandUsageCounts() {
+        try {
+            localStorage.setItem('command_palette_usage_counts', JSON.stringify(commandUsageCounts));
+        } catch (error) {
+            console.error('Error saving command usage counts:', error);
+        }
+    }
+    
+    /**
+     * Load recent commands from localStorage
+     */
+    function loadRecentCommands() {
+        try {
+            const saved = localStorage.getItem('command_palette_recent_commands');
+            if (saved) {
+                recentCommands = JSON.parse(saved);
+                console.log('Loaded recent commands:', recentCommands);
+            }
+        } catch (error) {
+            console.error('Error loading recent commands:', error);
+            recentCommands = [];
+        }
+    }
+    
+    /**
+     * Save recent commands to localStorage
+     */
+    function saveRecentCommands() {
+        try {
+            localStorage.setItem('command_palette_recent_commands', JSON.stringify(recentCommands));
+        } catch (error) {
+            console.error('Error saving recent commands:', error);
+        }
+    }
+    
+    /**
+     * Track command usage
+     * @param {string} commandName - The name of the command to track
+     */
+    function trackCommandUsage(commandName) {
+        // Increment usage count
+        if (!commandUsageCounts[commandName]) {
+            commandUsageCounts[commandName] = 0;
+        }
+        commandUsageCounts[commandName]++;
+        console.log(`Incremented usage count for command "${commandName}" to ${commandUsageCounts[commandName]}`);
+        
+        // Add to recent commands (remove if already exists, then add to front)
+        const existingIndex = recentCommands.indexOf(commandName);
+        if (existingIndex !== -1) {
+            recentCommands.splice(existingIndex, 1);
+        }
+        recentCommands.unshift(commandName);
+        
+        // Keep only the last MAX_RECENT_COMMANDS
+        if (recentCommands.length > MAX_RECENT_COMMANDS) {
+            recentCommands = recentCommands.slice(0, MAX_RECENT_COMMANDS);
+        }
+        
+        console.log('Updated recent commands:', recentCommands);
+        
+        // Save to localStorage
+        saveCommandUsageCounts();
+        saveRecentCommands();
+    }
+    
+    /**
+     * Get recent commands that still exist in the current command list
+     * @returns {Array} Array of recent command objects
+     */
+    function getValidRecentCommands() {
+        return recentCommands
+            .map(commandName => commands.find(cmd => cmd.name === commandName))
+            .filter(cmd => cmd !== undefined)
+            .slice(0, MAX_RECENT_COMMANDS);
+    }
+    
     /**
      * Initialize the Command Palette Manager
      */
     function initialize() {
         if (isInitialized) return;
+        
+        // Load usage tracking data
+        loadCommandUsageCounts();
+        loadRecentCommands();
         
         // Setup keyboard shortcut for opening the command palette (Ctrl+P)
         document.addEventListener('keydown', function(e) {
@@ -222,61 +327,86 @@ const CommandPaletteManager = (function() {
         // Clear the list
         commandsList.innerHTML = '';
         
-        if (filteredCommands.length === 0) {
-            const noResults = document.createElement('div');
-            noResults.className = 'command-palette-no-results';
-            noResults.textContent = 'No matching commands found';
-            commandsList.appendChild(noResults);
-            return;
-        }
-        
         // Create a document fragment for better performance
         const fragment = document.createDocumentFragment();
         
-        // Add each command to the list
-        filteredCommands.forEach((command, index) => {
-            const item = document.createElement('div');
-            item.className = 'command-palette-item';
-            if (index === selectedCommandIndex) {
-                item.className += ' selected';
-            }
+        // Show recent commands section if search is empty and we have recent commands
+        const query = searchInput.value.toLowerCase().trim();
+        const validRecentCommands = getValidRecentCommands();
+        
+        if (!query && validRecentCommands.length > 0) {
+            // Create recent commands section
+            const recentSection = document.createElement('div');
+            recentSection.className = 'command-palette-recent-section';
             
-            const leftSide = document.createElement('div');
+            const recentHeader = document.createElement('div');
+            recentHeader.className = 'command-palette-section-header';
+            recentHeader.textContent = 'Recently Used';
+            recentSection.appendChild(recentHeader);
             
-            const nameElement = document.createElement('div');
-            nameElement.className = 'command-palette-item-name';
-            nameElement.textContent = command.name;
-            leftSide.appendChild(nameElement);
-            
-            if (command.category) {
-                const categoryElement = document.createElement('div');
-                categoryElement.className = 'command-palette-item-category';
-                categoryElement.textContent = command.category;
-                leftSide.appendChild(categoryElement);
-            }
-            
-            item.appendChild(leftSide);
-            
-            if (command.shortcut) {
-                const shortcutElement = document.createElement('div');
-                shortcutElement.className = 'command-palette-item-shortcut';
-                shortcutElement.textContent = command.shortcut;
-                item.appendChild(shortcutElement);
-            }
-            
-            // Add click handler
-            item.addEventListener('click', () => {
-                executeCommand(command);
+            // Add recent commands
+            validRecentCommands.forEach((command, index) => {
+                const item = createCommandItem(command, index);
+                recentSection.appendChild(item);
             });
             
-            // Add mouse over handler to update selection
-            item.addEventListener('mouseover', () => {
-                selectedCommandIndex = index;
-                renderCommandsList();
-            });
+            fragment.appendChild(recentSection);
             
-            fragment.appendChild(item);
-        });
+            // Update selectedCommandIndex to account for recent commands
+            if (selectedCommandIndex < validRecentCommands.length) {
+                // Selection is in recent commands
+                filteredCommands = validRecentCommands.concat(commands.filter(cmd => 
+                    !validRecentCommands.some(recent => recent.name === cmd.name)
+                ));
+            } else {
+                // Adjust selection for the all commands section
+                filteredCommands = validRecentCommands.concat(commands.filter(cmd => 
+                    !validRecentCommands.some(recent => recent.name === cmd.name)
+                ));
+            }
+            
+            // Add separator and all commands section
+            if (commands.length > validRecentCommands.length) {
+                const separator = document.createElement('div');
+                separator.className = 'command-palette-separator';
+                fragment.appendChild(separator);
+                
+                const allSection = document.createElement('div');
+                allSection.className = 'command-palette-all-section';
+                
+                const allHeader = document.createElement('div');
+                allHeader.className = 'command-palette-section-header';
+                allHeader.textContent = 'All Commands';
+                allSection.appendChild(allHeader);
+                
+                // Add remaining commands (excluding recent ones)
+                const remainingCommands = commands.filter(cmd => 
+                    !validRecentCommands.some(recent => recent.name === cmd.name)
+                );
+                
+                remainingCommands.forEach((command, index) => {
+                    const actualIndex = validRecentCommands.length + index;
+                    const item = createCommandItem(command, actualIndex);
+                    allSection.appendChild(item);
+                });
+                
+                fragment.appendChild(allSection);
+            }
+        } else {
+            // Regular filtered commands display
+            if (filteredCommands.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'command-palette-no-results';
+                noResults.textContent = 'No matching commands found';
+                fragment.appendChild(noResults);
+            } else {
+                // Add each command to the list
+                filteredCommands.forEach((command, index) => {
+                    const item = createCommandItem(command, index);
+                    fragment.appendChild(item);
+                });
+            }
+        }
         
         // Add the commands to the list
         commandsList.appendChild(fragment);
@@ -289,10 +419,79 @@ const CommandPaletteManager = (function() {
     }
     
     /**
+     * Create a command item element
+     * @param {Object} command - The command object
+     * @param {number} index - The index in the filtered commands
+     * @returns {HTMLElement} The command item element
+     */
+    function createCommandItem(command, index) {
+        const item = document.createElement('div');
+        item.className = 'command-palette-item';
+        if (index === selectedCommandIndex) {
+            item.className += ' selected';
+        }
+        
+        const leftSide = document.createElement('div');
+        leftSide.className = 'command-palette-item-left';
+        
+        const nameElement = document.createElement('div');
+        nameElement.className = 'command-palette-item-name';
+        nameElement.textContent = command.name;
+        leftSide.appendChild(nameElement);
+        
+        if (command.category) {
+            const categoryElement = document.createElement('div');
+            categoryElement.className = 'command-palette-item-category';
+            categoryElement.textContent = command.category;
+            leftSide.appendChild(categoryElement);
+        }
+        
+        item.appendChild(leftSide);
+        
+        const rightSide = document.createElement('div');
+        rightSide.className = 'command-palette-item-right';
+        
+        // Add usage count badge
+        const usageCount = commandUsageCounts[command.name] || 0;
+        if (usageCount > 0) {
+            const usageBadge = document.createElement('div');
+            usageBadge.className = 'command-palette-usage-count';
+            usageBadge.textContent = usageCount.toString();
+            usageBadge.title = `Used ${usageCount} times`;
+            rightSide.appendChild(usageBadge);
+        }
+        
+        if (command.shortcut) {
+            const shortcutElement = document.createElement('div');
+            shortcutElement.className = 'command-palette-item-shortcut';
+            shortcutElement.textContent = command.shortcut;
+            rightSide.appendChild(shortcutElement);
+        }
+        
+        item.appendChild(rightSide);
+        
+        // Add click handler
+        item.addEventListener('click', () => {
+            executeCommand(command);
+        });
+        
+        // Add mouse over handler to update selection
+        item.addEventListener('mouseover', () => {
+            selectedCommandIndex = index;
+            renderCommandsList();
+        });
+        
+        return item;
+    }
+    
+    /**
      * Execute a command and close the palette
      * @param {Object} command - The command to execute
      */
     function executeCommand(command) {
+        // Track command usage before execution
+        trackCommandUsage(command.name);
+        
         // Close the command palette first
         closeCommandPalette();
         
@@ -1506,8 +1705,16 @@ const CommandPaletteManager = (function() {
         openCommandPalette,
         closeCommandPalette,
         updateLanguage,
-        // Expose for testing only
-        _getCommands: () => commands
+        // Expose for testing and debugging
+        _getCommands: () => commands,
+        _getUsageCounts: () => commandUsageCounts,
+        _getRecentCommands: () => recentCommands,
+        _resetUsageData: () => {
+            commandUsageCounts = {};
+            recentCommands = [];
+            saveCommandUsageCounts();
+            saveRecentCommands();
+        }
     };
 })();
 
