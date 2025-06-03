@@ -72,8 +72,8 @@ exports.searchMarkdownFiles = async (req, res) => {
         }
         
         if (matches) {
-          // Get node information from database
-          const node = await db.get('SELECT id, content, content_zh, parent_id FROM nodes WHERE id = ?', fileInfo.nodeId);
+          // Get node information from database including timestamps
+          const node = await db.get('SELECT id, content, content_zh, parent_id, created_at, updated_at FROM nodes WHERE id = ?', fileInfo.nodeId);
           
           if (node) {
             // Get node content based on language
@@ -97,7 +97,9 @@ exports.searchMarkdownFiles = async (req, res) => {
               parent_id: node.parent_id,
               parent_content: parentContent,
               filename: fileInfo.filename,
-              contentLength: content.length
+              contentLength: content.length,
+              created_at: node.created_at,
+              updated_at: node.updated_at
             });
           }
         }
@@ -205,7 +207,7 @@ async function searchNodes(req) {
       return [];
     }
     
-    // Modified query to join with parent nodes to get their content
+    // Modified query to include timestamps and join with parent nodes to get their content
     const sqlQuery = `
       SELECT 
         n.id, 
@@ -215,6 +217,8 @@ async function searchNodes(req) {
         n.is_expanded,
         n.has_markdown,
         n.position,
+        n.created_at,
+        n.updated_at,
         (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count,
         p.content as parent_content,
         p.content_zh as parent_content_zh

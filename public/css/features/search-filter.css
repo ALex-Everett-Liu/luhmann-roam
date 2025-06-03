@@ -608,3 +608,99 @@
   background-color: #f8f9fa;
   border-radius: 4px;
 }
+
+/* Search sorting controls */
+.search-sorting-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.search-sort-by, .search-sort-order {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background-color: white;
+  font-size: 14px;
+}
+
+.search-sort-by:focus, .search-sort-order:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+/* Search result timestamps */
+.search-result-timestamps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.search-result-timestamps strong {
+  color: #495057;
+  font-weight: 600;
+}
+
+/* Responsive design for timestamp info */
+@media (max-width: 768px) {
+  .search-result-timestamps {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .search-sorting-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* Enhanced search result styling */
+.search-result-item {
+  position: relative;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.search-result-item:hover {
+  background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Improved spacing and typography */
+.search-result-content {
+  font-weight: 500;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.search-result-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 500px;
+  color: #888;
+  font-style: italic;
+  font-size: 0.9em;
+  margin-bottom: 4px;
+}

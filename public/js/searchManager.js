@@ -7,10 +7,225 @@ const SearchManager = (function() {
   let currentLanguage = 'en';
   let searchModalElement = null;
   let recentSearches = [];
+  let currentSearchResults = { nodes: [], markdown: [] }; // Store current results for sorting
   
   // Define constant for localStorage key
   const STORAGE_KEY = 'luhmann_roam_recent_searches';
   
+  /**
+   * Format timestamp to readable date/time
+   * @param {number} timestamp - Unix timestamp in milliseconds
+   * @returns {string} Formatted date string
+   */
+  function formatTimestamp(timestamp) {
+    if (!timestamp) return 'N/A';
+    
+    const date = new Date(timestamp);
+    
+    // Format: YYYY-MM-DD HH:MM:SS
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  /**
+   * Create sorting controls for search results
+   * @returns {HTMLElement} The sorting controls container
+   */
+  function createSortingControls() {
+    const sortingContainer = document.createElement('div');
+    sortingContainer.className = 'search-sorting-controls';
+    sortingContainer.style.display = 'flex';
+    sortingContainer.style.gap = '10px';
+    sortingContainer.style.alignItems = 'center';
+    sortingContainer.style.marginBottom = '10px';
+    sortingContainer.style.padding = '8px';
+    sortingContainer.style.backgroundColor = '#f8f9fa';
+    sortingContainer.style.borderRadius = '4px';
+    sortingContainer.style.border = '1px solid #e9ecef';
+    
+    // Sort by label
+    const sortLabel = document.createElement('span');
+    sortLabel.textContent = window.I18n ? I18n.t('sortBy') : 'Sort by:';
+    sortLabel.style.fontWeight = 'bold';
+    sortLabel.style.fontSize = '14px';
+    
+    // Sort by dropdown
+    const sortBySelect = document.createElement('select');
+    sortBySelect.className = 'search-sort-by';
+    sortBySelect.style.padding = '4px 8px';
+    sortBySelect.style.borderRadius = '4px';
+    sortBySelect.style.border = '1px solid #ddd';
+    
+    const sortOptions = [
+      { value: 'relevance', text: window.I18n ? I18n.t('relevance') : 'Relevance' },
+      { value: 'created', text: window.I18n ? I18n.t('creationTime') : 'Creation Time' },
+      { value: 'updated', text: window.I18n ? I18n.t('lastModified') : 'Last Modified' },
+      { value: 'content', text: window.I18n ? I18n.t('content') : 'Content' }
+    ];
+    
+    sortOptions.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      sortBySelect.appendChild(optionElement);
+    });
+    
+    // Sort order dropdown
+    const sortOrderSelect = document.createElement('select');
+    sortOrderSelect.className = 'search-sort-order';
+    sortOrderSelect.style.padding = '4px 8px';
+    sortOrderSelect.style.borderRadius = '4px';
+    sortOrderSelect.style.border = '1px solid #ddd';
+    
+    const orderOptions = [
+      { value: 'desc', text: window.I18n ? I18n.t('descending') : 'Newest First' },
+      { value: 'asc', text: window.I18n ? I18n.t('ascending') : 'Oldest First' }
+    ];
+    
+    orderOptions.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      sortOrderSelect.appendChild(optionElement);
+    });
+    
+    // Add event listeners for sorting
+    const handleSort = () => {
+      const sortBy = sortBySelect.value;
+      const sortOrder = sortOrderSelect.value;
+      applySorting(sortBy, sortOrder);
+    };
+    
+    sortBySelect.addEventListener('change', handleSort);
+    sortOrderSelect.addEventListener('change', handleSort);
+    
+    // Assemble controls
+    sortingContainer.appendChild(sortLabel);
+    sortingContainer.appendChild(sortBySelect);
+    sortingContainer.appendChild(sortOrderSelect);
+    
+    return sortingContainer;
+  }
+
+  /**
+   * Apply sorting to current search results
+   * @param {string} sortBy - What to sort by ('relevance', 'created', 'updated', 'content')
+   * @param {string} sortOrder - Sort order ('asc' or 'desc')
+   */
+  function applySorting(sortBy, sortOrder) {
+    const sortFunction = (a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'created':
+          aValue = a.created_at || 0;
+          bValue = b.created_at || 0;
+          break;
+        case 'updated':
+          aValue = a.updated_at || 0;
+          bValue = b.updated_at || 0;
+          break;
+        case 'content':
+          const currentLang = currentLanguage;
+          aValue = (currentLang === 'en' ? a.content : (a.content_zh || a.content)) || '';
+          bValue = (currentLang === 'en' ? b.content : (b.content_zh || b.content)) || '';
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+          break;
+        default: // 'relevance' - keep original order
+          return 0;
+      }
+      
+      if (sortBy === 'content') {
+        // For text, use string comparison
+        if (sortOrder === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
+      } else {
+        // For timestamps, use numeric comparison
+        if (sortOrder === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      }
+    };
+    
+    // Sort both nodes and markdown results
+    currentSearchResults.nodes.sort(sortFunction);
+    currentSearchResults.markdown.sort(sortFunction);
+    
+    // Re-render the search results
+    renderSearchResults();
+  }
+
+  /**
+   * Render search results to the DOM
+   */
+  function renderSearchResults() {
+    const searchResults = searchModalElement.querySelector('.search-results');
+    if (!searchResults) return;
+    
+    searchResults.innerHTML = '';
+    
+    const totalResults = (currentSearchResults.nodes.length || 0) + (currentSearchResults.markdown.length || 0);
+    
+    if (totalResults === 0) {
+      searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching results found'}</div>`;
+      return;
+    }
+    
+    // Add sorting controls
+    const sortingControls = createSortingControls();
+    searchResults.appendChild(sortingControls);
+    
+    // Add a header showing result counts
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'search-results-header';
+    headerDiv.innerHTML = `
+      <div class="results-summary">
+        <span class="total-count">${totalResults} total results</span>
+        <span class="node-count">${currentSearchResults.nodes.length} nodes</span>
+        <span class="markdown-count">${currentSearchResults.markdown.length} markdown files</span>
+      </div>
+    `;
+    searchResults.appendChild(headerDiv);
+    
+    // Display node results
+    if (currentSearchResults.nodes && currentSearchResults.nodes.length > 0) {
+      const nodeHeader = document.createElement('div');
+      nodeHeader.className = 'result-category-header';
+      nodeHeader.innerHTML = `<h4>📝 Node Content (${currentSearchResults.nodes.length})</h4>`;
+      searchResults.appendChild(nodeHeader);
+      
+      currentSearchResults.nodes.forEach(node => {
+        const resultItem = createNodeResultItem(node);
+        searchResults.appendChild(resultItem);
+      });
+    }
+    
+    // Display markdown results
+    if (currentSearchResults.markdown && currentSearchResults.markdown.length > 0) {
+      const markdownHeader = document.createElement('div');
+      markdownHeader.className = 'result-category-header';
+      markdownHeader.innerHTML = `<h4>📄 Markdown Files (${currentSearchResults.markdown.length})</h4>`;
+      searchResults.appendChild(markdownHeader);
+      
+      currentSearchResults.markdown.forEach(markdownResult => {
+        const resultItem = createMarkdownResultItem(markdownResult);
+        searchResults.appendChild(resultItem);
+      });
+    }
+  }
+
   /**
    * Creates and opens the search modal
    */
@@ -318,6 +533,7 @@ const SearchManager = (function() {
       const query = e.target.value.trim();
       if (query.length < 2) {
         searchResults.innerHTML = '';
+        currentSearchResults = { nodes: [], markdown: [] };
         return;
       }
       
@@ -334,51 +550,14 @@ const SearchManager = (function() {
         );
         const data = await response.json();
         
-        searchResults.innerHTML = '';
+        // Store current results for sorting
+        currentSearchResults = {
+          nodes: data.nodes || [],
+          markdown: data.markdown || []
+        };
         
-        const totalResults = data.total || 0;
-        if (totalResults === 0) {
-          searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching results found'}</div>`;
-          return;
-        }
-        
-        // Add a header showing result counts
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'search-results-header';
-        headerDiv.innerHTML = `
-          <div class="results-summary">
-            <span class="total-count">${totalResults} total results</span>
-            <span class="node-count">${data.nodes.length} nodes</span>
-            <span class="markdown-count">${data.markdown.length} markdown files</span>
-          </div>
-        `;
-        searchResults.appendChild(headerDiv);
-        
-        // Display node results
-        if (data.nodes && data.nodes.length > 0) {
-          const nodeHeader = document.createElement('div');
-          nodeHeader.className = 'result-category-header';
-          nodeHeader.innerHTML = `<h4>📝 Node Content (${data.nodes.length})</h4>`;
-          searchResults.appendChild(nodeHeader);
-          
-          data.nodes.forEach(node => {
-            const resultItem = createNodeResultItem(node);
-            searchResults.appendChild(resultItem);
-          });
-        }
-        
-        // Display markdown results
-        if (data.markdown && data.markdown.length > 0) {
-          const markdownHeader = document.createElement('div');
-          markdownHeader.className = 'result-category-header';
-          markdownHeader.innerHTML = `<h4>📄 Markdown Files (${data.markdown.length})</h4>`;
-          searchResults.appendChild(markdownHeader);
-          
-          data.markdown.forEach(markdownResult => {
-            const resultItem = createMarkdownResultItem(markdownResult);
-            searchResults.appendChild(resultItem);
-          });
-        }
+        // Render the results
+        renderSearchResults();
         
       } catch (error) {
         console.error('Error searching:', error);
@@ -754,11 +933,36 @@ const SearchManager = (function() {
       breadcrumb = `<div class="search-result-path">${getNodePath(node)}</div>`;
     }
     
+    // Create timestamp information
+    const timestampInfo = document.createElement('div');
+    timestampInfo.className = 'search-result-timestamps';
+    timestampInfo.style.display = 'flex';
+    timestampInfo.style.justifyContent = 'space-between';
+    timestampInfo.style.fontSize = '12px';
+    timestampInfo.style.color = '#6c757d';
+    timestampInfo.style.marginTop = '8px';
+    timestampInfo.style.padding = '6px 8px';
+    timestampInfo.style.backgroundColor = '#f8f9fa';
+    timestampInfo.style.borderRadius = '4px';
+    timestampInfo.style.border = '1px solid #e9ecef';
+    
+    const createdInfo = document.createElement('span');
+    createdInfo.innerHTML = `<strong>Created:</strong> ${formatTimestamp(node.created_at)}`;
+    
+    const updatedInfo = document.createElement('span');
+    updatedInfo.innerHTML = `<strong>Updated:</strong> ${formatTimestamp(node.updated_at)}`;
+    
+    timestampInfo.appendChild(createdInfo);
+    timestampInfo.appendChild(updatedInfo);
+    
     resultItem.innerHTML = `
       <div class="result-type-badge node-badge">Node</div>
       <div class="search-result-content">${nodeContent}</div>
       ${breadcrumb}
     `;
+    
+    // Add timestamp info after the main content
+    resultItem.appendChild(timestampInfo);
     
     resultItem.addEventListener('click', () => {
       // Get the search input value from the DOM when clicked
@@ -792,6 +996,28 @@ const SearchManager = (function() {
       breadcrumb = `<div class="search-result-path">Parent: ${markdownResult.parent_content}</div>`;
     }
     
+    // Create timestamp information for markdown results
+    const timestampInfo = document.createElement('div');
+    timestampInfo.className = 'search-result-timestamps';
+    timestampInfo.style.display = 'flex';
+    timestampInfo.style.justifyContent = 'space-between';
+    timestampInfo.style.fontSize = '12px';
+    timestampInfo.style.color = '#6c757d';
+    timestampInfo.style.marginTop = '8px';
+    timestampInfo.style.padding = '6px 8px';
+    timestampInfo.style.backgroundColor = '#f8f9fa';
+    timestampInfo.style.borderRadius = '4px';
+    timestampInfo.style.border = '1px solid #e9ecef';
+    
+    const createdInfo = document.createElement('span');
+    createdInfo.innerHTML = `<strong>Created:</strong> ${formatTimestamp(markdownResult.created_at)}`;
+    
+    const updatedInfo = document.createElement('span');
+    updatedInfo.innerHTML = `<strong>Updated:</strong> ${formatTimestamp(markdownResult.updated_at)}`;
+    
+    timestampInfo.appendChild(createdInfo);
+    timestampInfo.appendChild(updatedInfo);
+    
     resultItem.innerHTML = `
       <div class="result-type-badge markdown-badge">Markdown</div>
       <div class="search-result-node-title">${nodeContent}</div>
@@ -802,6 +1028,9 @@ const SearchManager = (function() {
         <span class="content-length">${Math.round(markdownResult.contentLength / 1000)}k chars</span>
       </div>
     `;
+    
+    // Add timestamp info after the main content
+    resultItem.appendChild(timestampInfo);
     
     resultItem.addEventListener('click', () => {
       // Get the search input value from the DOM when clicked

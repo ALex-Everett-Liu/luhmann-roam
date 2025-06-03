@@ -426,7 +426,7 @@ exports.searchNodes = async (req, res) => {
       return res.json([]);
     }
     
-    // Modified query to join with parent nodes to get their content
+    // Modified query to include timestamps and join with parent nodes to get their content
     const sqlQuery = `
       SELECT 
         n.id, 
@@ -436,6 +436,8 @@ exports.searchNodes = async (req, res) => {
         n.is_expanded,
         n.has_markdown,
         n.position,
+        n.created_at,
+        n.updated_at,
         (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count,
         p.content as parent_content,
         p.content_zh as parent_content_zh

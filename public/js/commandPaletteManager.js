@@ -574,6 +574,12 @@ const CommandPaletteManager = (function() {
         // Register Dev Test Panel commands
         registerDevTestPanelCommands();
         
+        // Register Graph Management commands
+        registerGraphManagementCommands();
+        
+        // Register Graph Analysis commands
+        registerGraphAnalysisCommands();
+        
         // Register other module commands
         registerModuleCommands();
     }
@@ -1634,6 +1640,353 @@ const CommandPaletteManager = (function() {
                 },
                 category: 'Development',
                 keywords: ['refresh', 'reload', 'test', 'entries', 'update']
+            });
+        }
+    }
+    
+    /**
+     * Register Graph Management UI commands
+     */
+    function registerGraphManagementCommands() {
+        // Check if GraphManagementUI exists
+        if (window.GraphManagementUI) {
+            registerCommand({
+                name: 'Open Graph Management',
+                action: () => {
+                    window.GraphManagementUI.show();
+                },
+                category: 'Graph',
+                shortcut: 'Alt+G',
+                keywords: ['graph', 'management', 'vertices', 'edges', 'data', 'network']
+            });
+            
+            registerCommand({
+                name: 'Graph Management - Vertices Tab',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Switch to vertices tab after modal opens
+                    setTimeout(() => {
+                        const verticesTab = document.querySelector('.tab-btn[data-tab="vertices"]');
+                        if (verticesTab) {
+                            verticesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'vertices', 'nodes', 'management', 'create', 'edit']
+            });
+            
+            registerCommand({
+                name: 'Graph Management - Edges Tab',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Switch to edges tab after modal opens
+                    setTimeout(() => {
+                        const edgesTab = document.querySelector('.tab-btn[data-tab="edges"]');
+                        if (edgesTab) {
+                            edgesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'edges', 'relationships', 'connections', 'management', 'create']
+            });
+            
+            registerCommand({
+                name: 'Graph Management - Import Tab',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Switch to import tab after modal opens
+                    setTimeout(() => {
+                        const importTab = document.querySelector('.tab-btn[data-tab="import"]');
+                        if (importTab) {
+                            importTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'import', 'nodes', 'outliner', 'convert', 'vertices']
+            });
+            
+            registerCommand({
+                name: 'Add New Graph Vertex',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Open add vertex modal after management UI opens
+                    setTimeout(() => {
+                        const addVertexBtn = document.getElementById('add-vertex-btn');
+                        if (addVertexBtn) {
+                            addVertexBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'vertex', 'node', 'add', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Add New Graph Edge',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Switch to edges tab and open add edge modal
+                    setTimeout(() => {
+                        const edgesTab = document.querySelector('.tab-btn[data-tab="edges"]');
+                        if (edgesTab) {
+                            edgesTab.click();
+                            
+                            setTimeout(() => {
+                                const addEdgeBtn = document.getElementById('add-edge-btn');
+                                if (addEdgeBtn) {
+                                    addEdgeBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'edge', 'relationship', 'connection', 'add', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Refresh Graph Data',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Refresh both vertices and edges
+                    setTimeout(() => {
+                        const refreshVerticesBtn = document.getElementById('refresh-vertices-btn');
+                        const refreshEdgesBtn = document.getElementById('refresh-edges-btn');
+                        
+                        if (refreshVerticesBtn) {
+                            refreshVerticesBtn.click();
+                        }
+                        
+                        setTimeout(() => {
+                            if (refreshEdgesBtn) {
+                                refreshEdgesBtn.click();
+                            }
+                        }, 100);
+                    }, 500);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'refresh', 'reload', 'update', 'data', 'vertices', 'edges']
+            });
+            
+            registerCommand({
+                name: 'Import Nodes to Graph',
+                action: () => {
+                    window.GraphManagementUI.show();
+                    
+                    // Switch to import tab and load nodes
+                    setTimeout(() => {
+                        const importTab = document.querySelector('.tab-btn[data-tab="import"]');
+                        if (importTab) {
+                            importTab.click();
+                            
+                            setTimeout(() => {
+                                const loadNodesBtn = document.getElementById('load-nodes-btn');
+                                if (loadNodesBtn) {
+                                    loadNodesBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Graph',
+                keywords: ['graph', 'import', 'nodes', 'outliner', 'load', 'convert']
+            });
+        }
+    }
+    
+    /**
+     * Register Graph Analysis Visualizer commands
+     */
+    function registerGraphAnalysisCommands() {
+        // Check if GraphAnalysisVisualizer exists
+        if (window.GraphAnalysisVisualizer) {
+            registerCommand({
+                name: 'Open Graph Analysis Visualizer',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                },
+                category: 'Graph Analysis',
+                shortcut: 'Alt+V',
+                keywords: ['graph', 'analysis', 'visualizer', 'network', 'cytoscape', 'visualization']
+            });
+            
+            registerCommand({
+                name: 'Toggle Graph Analysis Visualizer',
+                action: () => {
+                    if (window.GraphAnalysisVisualizer.isVisible()) {
+                        window.GraphAnalysisVisualizer.hide();
+                    } else {
+                        window.GraphAnalysisVisualizer.show();
+                    }
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'analysis', 'toggle', 'visualizer', 'show', 'hide']
+            });
+            
+            registerCommand({
+                name: 'Apply Force-Directed Layout',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Apply cose layout after visualizer opens
+                    setTimeout(() => {
+                        const layoutSelector = document.getElementById('graph-layout-selector');
+                        const applyLayoutBtn = document.getElementById('apply-graph-layout');
+                        
+                        if (layoutSelector && applyLayoutBtn) {
+                            layoutSelector.value = 'cose';
+                            applyLayoutBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'layout', 'force', 'directed', 'cose', 'physics', 'spring']
+            });
+            
+            registerCommand({
+                name: 'Apply Circle Layout',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Apply circle layout after visualizer opens
+                    setTimeout(() => {
+                        const layoutSelector = document.getElementById('graph-layout-selector');
+                        const applyLayoutBtn = document.getElementById('apply-graph-layout');
+                        
+                        if (layoutSelector && applyLayoutBtn) {
+                            layoutSelector.value = 'circle';
+                            applyLayoutBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'layout', 'circle', 'circular', 'arrangement']
+            });
+            
+            registerCommand({
+                name: 'Apply Hierarchical Layout',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Apply breadthfirst layout after visualizer opens
+                    setTimeout(() => {
+                        const layoutSelector = document.getElementById('graph-layout-selector');
+                        const applyLayoutBtn = document.getElementById('apply-graph-layout');
+                        
+                        if (layoutSelector && applyLayoutBtn) {
+                            layoutSelector.value = 'breadthfirst';
+                            applyLayoutBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'layout', 'hierarchical', 'tree', 'breadth', 'first']
+            });
+            
+            registerCommand({
+                name: 'Calculate PageRank Centrality',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Run PageRank analysis after visualizer opens
+                    setTimeout(() => {
+                        const centralitySelector = document.getElementById('centrality-algorithm');
+                        const runCentralityBtn = document.getElementById('run-centrality');
+                        
+                        if (centralitySelector && runCentralityBtn) {
+                            centralitySelector.value = 'pagerank';
+                            runCentralityBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'pagerank', 'centrality', 'analysis', 'importance', 'ranking']
+            });
+            
+            registerCommand({
+                name: 'Calculate Betweenness Centrality',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Run Betweenness analysis after visualizer opens
+                    setTimeout(() => {
+                        const centralitySelector = document.getElementById('centrality-algorithm');
+                        const runCentralityBtn = document.getElementById('run-centrality');
+                        
+                        if (centralitySelector && runCentralityBtn) {
+                            centralitySelector.value = 'betweenness';
+                            runCentralityBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'betweenness', 'centrality', 'analysis', 'bridge', 'connector']
+            });
+            
+            registerCommand({
+                name: 'Calculate Closeness Centrality',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Run Closeness analysis after visualizer opens
+                    setTimeout(() => {
+                        const centralitySelector = document.getElementById('centrality-algorithm');
+                        const runCentralityBtn = document.getElementById('run-centrality');
+                        
+                        if (centralitySelector && runCentralityBtn) {
+                            centralitySelector.value = 'closeness';
+                            runCentralityBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'closeness', 'centrality', 'analysis', 'proximity', 'distance']
+            });
+            
+            registerCommand({
+                name: 'Detect Communities (Louvain)',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Run community detection after visualizer opens
+                    setTimeout(() => {
+                        const communitySelector = document.getElementById('community-algorithm');
+                        const detectCommunitiesBtn = document.getElementById('detect-communities');
+                        
+                        if (communitySelector && detectCommunitiesBtn) {
+                            communitySelector.value = 'louvain';
+                            detectCommunitiesBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'community', 'detection', 'louvain', 'clustering', 'groups']
+            });
+            
+            registerCommand({
+                name: 'View Graph Statistics',
+                action: () => {
+                    window.GraphAnalysisVisualizer.show();
+                    
+                    // Focus on the statistics section
+                    setTimeout(() => {
+                        const statsSection = document.getElementById('graph-stats');
+                        if (statsSection) {
+                            statsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 500);
+                },
+                category: 'Graph Analysis',
+                keywords: ['graph', 'statistics', 'stats', 'metrics', 'density', 'vertices', 'edges']
             });
         }
     }
