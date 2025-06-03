@@ -5,6 +5,7 @@ logs/
 markdown/
 backups/
 vaults/
+temp/
 public/attachment
 public/blog
 public/fonts

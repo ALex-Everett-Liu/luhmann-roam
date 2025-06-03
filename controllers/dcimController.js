@@ -203,8 +203,18 @@ exports.addImage = async (req, res) => {
       const assetDir = await getAssetDirectory();
       const assetPath = path.join(assetDir, finalFilename);
       
-      // Write the buffer to the file system
-      fs.writeFileSync(assetPath, file.buffer);
+      // Handle both disk storage (file.path) and memory storage (file.buffer)
+      if (file.path) {
+        // Disk storage - move/copy the file from temp location
+        fs.copyFileSync(file.path, assetPath);
+        // Clean up the temp file
+        fs.unlinkSync(file.path);
+      } else if (file.buffer) {
+        // Memory storage - write buffer to file
+        fs.writeFileSync(assetPath, file.buffer);
+      } else {
+        return res.status(400).json({ error: 'No file data available' });
+      }
       
       finalFilePath = assetPath;
       
@@ -769,9 +779,20 @@ exports.addSubsidiaryImage = async (req, res) => {
       const assetDir = await getAssetDirectory();
       const assetPath = path.join(assetDir, finalFilename);
       
-      // Write the buffer to the file system
+      // Handle both disk storage (file.path) and memory storage (file.buffer)
       try {
-        fs.writeFileSync(assetPath, file.buffer);
+        if (file.path) {
+          // Disk storage - move/copy the file from temp location
+          const fs = require('fs');
+          fs.copyFileSync(file.path, assetPath);
+          // Clean up the temp file
+          fs.unlinkSync(file.path);
+        } else if (file.buffer) {
+          // Memory storage - write buffer to file
+          fs.writeFileSync(assetPath, file.buffer);
+        } else {
+          throw new Error('No file data available (neither path nor buffer)');
+        }
         
         // Store the actual file path instead of URL
         finalFilePath = assetPath;
