@@ -822,18 +822,63 @@ const HotkeyManager = (function() {
      * Register global hotkeys that work throughout the application
      */
     function registerGlobalHotkeys() {
-      // Alt+F to focus on the currently hovered node
+      // Alt+F to focus on the last focused node (improved version)
       globalHotkeys['f'] = {
-        description: 'Focus on Hovered Node',
+        description: 'Focus on Last Node',
         action: () => {
-          // Check if there's a hovered node
-          if (window.hoveredNodeId) {
-            if (window.BreadcrumbManager) {
-              window.BreadcrumbManager.focusOnNode(window.hoveredNodeId);
+          console.log('Alt+F pressed - attempting to focus on last focused node');
+          console.log('window.lastFocusedNodeId:', window.lastFocusedNodeId);
+          console.log('window.hoveredNodeId:', window.hoveredNodeId);
+          
+          // Priority 1: Use lastFocusedNodeId if available
+          let nodeToFocus = window.lastFocusedNodeId;
+          
+          // Priority 2: Fall back to hoveredNodeId if lastFocusedNodeId is not set
+          if (!nodeToFocus && window.hoveredNodeId) {
+            nodeToFocus = window.hoveredNodeId;
+            console.log('Using hoveredNodeId as fallback:', nodeToFocus);
+          }
+          
+          // Priority 3: Try to get the currently focused text element's node
+          if (!nodeToFocus) {
+            const focusedTextElement = document.querySelector('.node-text:focus');
+            if (focusedTextElement) {
+              const nodeElement = focusedTextElement.closest('.node');
+              if (nodeElement && nodeElement.dataset.id) {
+                nodeToFocus = nodeElement.dataset.id;
+                console.log('Using currently focused text element node:', nodeToFocus);
+              }
+            }
+          }
+          
+          // Priority 4: Try to get from BreadcrumbManager if in focus mode
+          if (!nodeToFocus && window.BreadcrumbManager && window.BreadcrumbManager.getCurrentFocusedNodeId) {
+            nodeToFocus = window.BreadcrumbManager.getCurrentFocusedNodeId();
+            console.log('Using BreadcrumbManager focused node:', nodeToFocus);
+          }
+          
+          if (nodeToFocus) {
+            console.log(`Focusing on node: ${nodeToFocus}`);
+            
+            // Check if the node exists in the DOM first
+            const nodeElement = document.querySelector(`.node[data-id="${nodeToFocus}"]`);
+            if (nodeElement) {
+              console.log('Node found in DOM, using BreadcrumbManager.focusOnNode');
+              // Use BreadcrumbManager for full focus mode
+              if (window.BreadcrumbManager) {
+                window.BreadcrumbManager.focusOnNode(nodeToFocus);
+              }
+            } else {
+              console.log('Node not found in current DOM, may need to navigate to it first');
+              // Node might not be visible, try to navigate to it
+              if (window.BreadcrumbManager) {
+                window.BreadcrumbManager.focusOnNode(nodeToFocus);
+              }
             }
           } else {
-            // Show a brief message if no node is hovered
-            console.log('No node is currently hovered. Hover over a node first, then press Alt+F to focus on it.');
+            console.log('No node available to focus on');
+            // Show a more helpful message
+            alert('No node to focus on. Try clicking on a node first, or use search (Alt+S) to find a specific node.');
           }
         }
       };
@@ -863,18 +908,53 @@ const HotkeyManager = (function() {
         }
       };
       
-      // Alt+Z to focus on the last focused node
+      // Alt+Z to focus on the last focused node (text element only - different from Alt+F)
       globalHotkeys['z'] = {
-        description: 'Focus Last Node',
+        description: 'Focus Last Node Text',
         action: () => {
+          console.log('Alt+Z pressed - attempting to focus on last focused node text');
+          console.log('window.lastFocusedNodeId:', window.lastFocusedNodeId);
+          
           if (window.lastFocusedNodeId) {
             const nodeElement = document.querySelector(`.node[data-id="${window.lastFocusedNodeId}"]`);
             if (nodeElement) {
               const nodeText = nodeElement.querySelector('.node-text');
               if (nodeText) {
+                console.log('Focusing on node text element');
                 nodeText.focus();
+                
+                // Position cursor at the end if it's contenteditable
+                if (nodeText.isContentEditable) {
+                  const range = document.createRange();
+                  range.selectNodeContents(nodeText);
+                  range.collapse(false); // false means collapse to end
+                  
+                  const selection = window.getSelection();
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+              } else {
+                console.log('Node text element not found');
+              }
+            } else {
+              console.log('Node element not found in DOM');
+              // If node is not visible, try to navigate to it first
+              if (window.BreadcrumbManager) {
+                window.BreadcrumbManager.focusOnNode(window.lastFocusedNodeId);
+                // Then try to focus the text after a delay
+                setTimeout(() => {
+                  const nodeElement = document.querySelector(`.node[data-id="${window.lastFocusedNodeId}"]`);
+                  if (nodeElement) {
+                    const nodeText = nodeElement.querySelector('.node-text');
+                    if (nodeText) {
+                      nodeText.focus();
+                    }
+                  }
+                }, 500);
               }
             }
+          } else {
+            console.log('No lastFocusedNodeId available');
           }
         }
       };
