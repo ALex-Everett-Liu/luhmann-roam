@@ -1,12 +1,45 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const path = require('path');
 const dcimController = require('../controllers/dcimController');
 
-// Configure multer for memory storage
+// Configure multer for disk storage to handle large files
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const tempDir = path.join(__dirname, '../temp');
+    // Ensure temp directory exists
+    const fs = require('fs');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    cb(null, tempDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
 const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  storage: storage,
+  limits: { 
+    fileSize: 100 * 1024 * 1024, // Increase to 100MB
+    fieldSize: 100 * 1024 * 1024  // Also increase field size limit
+  },
+  fileFilter: function(req, file, cb) {
+    // Optional: Add file type validation
+    const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|mov|avi|mkv|webm/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed'));
+    }
+  }
 });
 
 // Add this at the beginning of your routes, before any other routes

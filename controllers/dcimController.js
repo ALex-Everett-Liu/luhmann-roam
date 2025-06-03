@@ -604,10 +604,22 @@ exports.convertUploadedImage = async (req, res) => {
     console.log('Converting uploaded file:', req.file);
     const quality = parseInt(req.body.quality) || 60;
     
-    // When using multer memoryStorage, file is in buffer instead of path
-    const originalBuffer = req.file.buffer;
-    if (!originalBuffer) {
-      return res.status(400).json({ error: 'No file buffer found' });
+    // Get file path (from disk storage) or buffer (from memory storage)
+    let sourcePath;
+    let originalSize;
+    let cleanup = false;
+    
+    if (req.file.path) {
+      // Disk storage - use file path
+      sourcePath = req.file.path;
+      originalSize = req.file.size;
+      cleanup = true; // We'll need to clean up the temp file
+    } else if (req.file.buffer) {
+      // Memory storage - use buffer (fallback for smaller files)
+      sourcePath = req.file.buffer;
+      originalSize = req.file.buffer.length;
+    } else {
+      return res.status(400).json({ error: 'No valid file source found' });
     }
     
     // Create filename for the output
@@ -617,44 +629,67 @@ exports.convertUploadedImage = async (req, res) => {
     
     console.log('Will convert and save to:', outputPath);
 
-    // Calculate original size from buffer
-    const originalSize = originalBuffer.length;
+    try {
+      // Convert to WebP with memory optimization for large files
+      const sharpInstance = sharp(sourcePath, {
+        // Optimize for large files
+        limitInputPixels: false, // Remove pixel limit
+        sequentialRead: true,    // Use sequential reading for large files
+      });
+      
+      await sharpInstance
+        .webp({ 
+          quality: quality,
+          effort: 4, // Balance between compression and speed
+          lossless: false,
+          nearLossless: false,
+          smartSubsample: true,
+          reductionEffort: 4
+        })
+        .toFile(outputPath);
 
-    // Convert directly from buffer to WebP
-    await sharp(originalBuffer)
-      .webp({ quality: quality })
-      .toFile(outputPath);
+      // Get converted file size
+      const convertedSize = fs.statSync(outputPath).size;
 
-    // Get converted file size
-    const convertedSize = fs.statSync(outputPath).size;
+      // Clean up temporary file if using disk storage
+      if (cleanup && fs.existsSync(sourcePath)) {
+        fs.unlinkSync(sourcePath);
+      }
 
-    // Get relative path or full path based on directory location
-    let outputUrl = null;
-    const publicDirPrefix = path.join(__dirname, '../public');
-    if (assetDir.startsWith(publicDirPrefix)) {
-      const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
-      outputUrl = `${relativePath}/${filename}`;
+      // Get relative path or full path based on directory location
+      let outputUrl = null;
+      const publicDirPrefix = path.join(__dirname, '../public');
+      if (assetDir.startsWith(publicDirPrefix)) {
+        const relativePath = assetDir.substring(publicDirPrefix.length).replace(/\\/g, '/');
+        outputUrl = `${relativePath}/${filename}`;
+      }
+
+      console.log('Conversion successful:', {
+        originalSize,
+        convertedSize,
+        outputPath,
+        outputUrl
+      });
+
+      res.json({
+        success: true,
+        originalFile: req.file.originalname,
+        convertedFile: filename,
+        originalSize: formatFileSize(originalSize),
+        convertedSize: formatFileSize(convertedSize),
+        originalSizeBytes: originalSize,
+        convertedSizeBytes: convertedSize,
+        savingsPercent: ((originalSize - convertedSize) / originalSize * 100).toFixed(2),
+        outputPath: outputUrl || outputPath,
+        file_path: outputPath
+      });
+    } catch (conversionError) {
+      // Clean up on error
+      if (cleanup && fs.existsSync(sourcePath)) {
+        fs.unlinkSync(sourcePath);
+      }
+      throw conversionError;
     }
-
-    console.log('Conversion successful:', {
-      originalSize,
-      convertedSize,
-      outputPath,
-      outputUrl
-    });
-
-    res.json({
-      success: true,
-      originalFile: req.file.originalname,
-      convertedFile: filename,
-      originalSize: formatFileSize(originalSize),
-      convertedSize: formatFileSize(convertedSize),
-      originalSizeBytes: originalSize,
-      convertedSizeBytes: convertedSize,
-      savingsPercent: ((originalSize - convertedSize) / originalSize * 100).toFixed(2),
-      outputPath: outputUrl || outputPath, // Return URL if available, otherwise path
-      file_path: outputPath // Always include the file path
-    });
   } catch (error) {
     console.error('Error converting image:', error);
     res.status(500).json({ error: 'Error converting image: ' + error.message });
