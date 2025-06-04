@@ -284,3 +284,238 @@ exports.getTaskBySequenceId = async (req, res) => {
     res.status(500).json({ error: 'Database error when retrieving task by sequence ID' });
   }
 };
+
+/**
+ * Get task statistics
+ * GET /api/tasks/statistics?days=30&category=coding
+ */
+exports.getTaskStatistics = async (req, res) => {
+  try {
+    const { days = 7, category, startDate, endDate } = req.query;
+    const db = req.db;
+    
+    // Build date filter
+    let dateFilter = '';
+    let dateParams = [];
+    
+    if (startDate && endDate) {
+      dateFilter = 'AND date BETWEEN ? AND ?';
+      dateParams = [startDate, endDate];
+    } else {
+      const daysNum = parseInt(days) || 7;
+      const startDateCalc = new Date();
+      startDateCalc.setDate(startDateCalc.getDate() - daysNum);
+      const startDateStr = startDateCalc.toISOString().split('T')[0];
+      
+      dateFilter = 'AND date >= ?';
+      dateParams = [startDateStr];
+    }
+    
+    // Base query for tasks with category filter
+    let categoryJoin = '';
+    let categoryFilter = '';
+    let categoryParams = [];
+    
+    if (category) {
+      categoryJoin = `
+        LEFT JOIN task_category_assignments tca ON t.id = tca.task_id
+        LEFT JOIN task_categories tc ON tca.category_id = tc.id
+      `;
+      categoryFilter = 'AND tc.name = ?';
+      categoryParams = [category];
+    }
+    
+    // Get task groups (grouped by base name)
+    const taskGroups = await db.all(`
+      SELECT 
+        CASE 
+          WHEN name LIKE '% [0-9][0-9]' THEN SUBSTR(name, 1, LENGTH(name) - 3)
+          WHEN name LIKE '% [0-9]' THEN SUBSTR(name, 1, LENGTH(name) - 2)
+          ELSE name
+        END as base_name,
+        COUNT(*) as task_count,
+        SUM(total_duration) as total_time,
+        SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed_count,
+        AVG(total_duration) as avg_time,
+        MIN(date) as first_date,
+        MAX(date) as last_date
+      FROM tasks t
+      ${categoryJoin}
+      WHERE 1=1 ${dateFilter} ${categoryFilter}
+      GROUP BY base_name
+      ORDER BY total_time DESC
+    `, [...dateParams, ...categoryParams]);
+    
+    // Get category statistics
+    const categoryStats = await db.all(`
+      SELECT 
+        COALESCE(tc.name, 'Uncategorized') as category_name,
+        COALESCE(tc.color, '#999999') as category_color,
+        COUNT(DISTINCT t.id) as task_count,
+        SUM(t.total_duration) as total_time,
+        SUM(CASE WHEN t.is_completed = 1 THEN 1 ELSE 0 END) as completed_count
+      FROM tasks t
+      LEFT JOIN task_category_assignments tca ON t.id = tca.task_id
+      LEFT JOIN task_categories tc ON tca.category_id = tc.id
+      WHERE 1=1 ${dateFilter}
+      GROUP BY tc.id, tc.name, tc.color
+      ORDER BY total_time DESC
+    `, dateParams);
+    
+    // Get daily statistics
+    const dailyStats = await db.all(`
+      SELECT 
+        date,
+        COUNT(*) as task_count,
+        SUM(total_duration) as total_time,
+        SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed_count
+      FROM tasks t
+      ${categoryJoin}
+      WHERE 1=1 ${dateFilter} ${categoryFilter}
+      GROUP BY date
+      ORDER BY date DESC
+    `, [...dateParams, ...categoryParams]);
+    
+    // Get overall statistics
+    const overallStats = await db.get(`
+      SELECT 
+        COUNT(*) as total_tasks,
+        SUM(total_duration) as total_time,
+        SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed_tasks,
+        AVG(total_duration) as avg_task_time,
+        COUNT(DISTINCT date) as active_days
+      FROM tasks t
+      ${categoryJoin}
+      WHERE 1=1 ${dateFilter} ${categoryFilter}
+    `, [...dateParams, ...categoryParams]);
+    
+    res.json({
+      overallStats,
+      taskGroups,
+      categoryStats,
+      dailyStats,
+      filters: {
+        days: days,
+        category: category,
+        startDate: startDate,
+        endDate: endDate
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error getting task statistics:', error);
+    res.status(500).json({ error: 'Failed to get task statistics' });
+  }
+};
+
+/**
+ * Get all task categories
+ * GET /api/tasks/categories
+ */
+exports.getTaskCategories = async (req, res) => {
+  try {
+    const db = req.db;
+    
+    const categories = await db.all(`
+      SELECT 
+        tc.*,
+        COUNT(tca.task_id) as task_count,
+        SUM(t.total_duration) as total_time
+      FROM task_categories tc
+      LEFT JOIN task_category_assignments tca ON tc.id = tca.category_id
+      LEFT JOIN tasks t ON tca.task_id = t.id
+      GROUP BY tc.id
+      ORDER BY tc.name
+    `);
+    
+    res.json(categories);
+  } catch (error) {
+    console.error('Error getting task categories:', error);
+    res.status(500).json({ error: 'Failed to get task categories' });
+  }
+};
+
+/**
+ * Create a new task category
+ * POST /api/tasks/categories
+ */
+exports.createTaskCategory = async (req, res) => {
+  try {
+    const { name, description, color = '#4285f4' } = req.body;
+    const db = req.db;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Category name is required' });
+    }
+    
+    const categoryId = uuidv4();
+    const now = Date.now();
+    
+    await db.run(`
+      INSERT INTO task_categories (id, name, description, color, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [categoryId, name, description, color, now, now]);
+    
+    const newCategory = await db.get('SELECT * FROM task_categories WHERE id = ?', categoryId);
+    
+    res.status(201).json(newCategory);
+  } catch (error) {
+    console.error('Error creating task category:', error);
+    res.status(500).json({ error: 'Failed to create task category' });
+  }
+};
+
+/**
+ * Assign task to category
+ * POST /api/tasks/:taskId/category
+ */
+exports.assignTaskToCategory = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { categoryId } = req.body;
+    const db = req.db;
+    
+    if (!categoryId) {
+      return res.status(400).json({ error: 'Category ID is required' });
+    }
+    
+    const assignmentId = uuidv4();
+    const now = Date.now();
+    
+    // Remove existing assignment first
+    await db.run(`
+      DELETE FROM task_category_assignments WHERE task_id = ?
+    `, [taskId]);
+    
+    // Add new assignment
+    await db.run(`
+      INSERT INTO task_category_assignments (id, task_id, category_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+    `, [assignmentId, taskId, categoryId, now, now]);
+    
+    res.json({ success: true, message: 'Task assigned to category successfully' });
+  } catch (error) {
+    console.error('Error assigning task to category:', error);
+    res.status(500).json({ error: 'Failed to assign task to category' });
+  }
+};
+
+/**
+ * Remove task from category
+ * DELETE /api/tasks/:taskId/category
+ */
+exports.removeTaskFromCategory = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const db = req.db;
+    
+    await db.run(`
+      DELETE FROM task_category_assignments WHERE task_id = ?
+    `, [taskId]);
+    
+    res.json({ success: true, message: 'Task removed from category successfully' });
+  } catch (error) {
+    console.error('Error removing task from category:', error);
+    res.status(500).json({ error: 'Failed to remove task from category' });
+  }
+};

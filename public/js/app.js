@@ -1394,6 +1394,12 @@ document.addEventListener('DOMContentLoaded', () => {
     CosmicNodeVisualizer2D.initialize();
   }
 
+  // Initialize the TaskStatisticsManager
+  if (window.TaskStatisticsManager) {
+    console.log('Setting up TaskStatisticsManager initialization from app.js');
+    TaskStatisticsManager.initialize();
+  }
+
   // Add a toggle button for the metro map visualizer
   const toggleMetroMapButton = document.createElement('button');
   toggleMetroMapButton.id = 'toggle-metro-map';

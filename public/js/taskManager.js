@@ -48,6 +48,7 @@ const TaskManager = (function() {
         <div class="task-creator">
           <input type="text" id="new-task-input" placeholder="${I18n.t('newTask')}">
           <button id="add-task-btn">${I18n.t('add')}</button>
+          <button id="task-statistics-btn" class="task-statistics-btn" title="Task Statistics & Analysis">📊</button>
         </div>
         
         <div class="task-controls">
@@ -86,6 +87,13 @@ const TaskManager = (function() {
     document.getElementById('sort-by-created').addEventListener('click', () => sortTasks('created'));
     document.getElementById('sort-duration-asc').addEventListener('click', () => sortTasks('durationAsc'));
     document.getElementById('sort-duration-desc').addEventListener('click', () => sortTasks('durationDesc'));
+    document.getElementById('task-statistics-btn').addEventListener('click', () => {
+      if (window.TaskStatisticsManager) {
+        TaskStatisticsManager.open();
+      } else {
+        console.error('TaskStatisticsManager not available');
+      }
+    });
   }
   
   /**

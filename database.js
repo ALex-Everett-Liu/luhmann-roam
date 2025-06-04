@@ -88,6 +88,34 @@ async function initializeDatabase(vaultName) {
     )
   `);
   
+  // Create task_categories table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS task_categories (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      color TEXT DEFAULT '#4285f4',
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER
+    )
+  `);
+  
+  // Create task_category_assignments table to link tasks to categories
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS task_category_assignments (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+      FOREIGN KEY (category_id) REFERENCES task_categories (id) ON DELETE CASCADE,
+      UNIQUE(task_id, category_id)
+    )
+  `);
+  
   // Create node_attributes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS node_attributes (
@@ -654,6 +682,13 @@ try {
   } catch (error) {
     console.log('Some sequence_id indices may already exist:', error.message);
   }
+
+  // Add indices for better performance
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_task_categories_name ON task_categories(name);
+    CREATE INDEX IF NOT EXISTS idx_task_category_assignments_task_id ON task_category_assignments(task_id);
+    CREATE INDEX IF NOT EXISTS idx_task_category_assignments_category_id ON task_category_assignments(category_id);
+  `);
 
   return db;
 }

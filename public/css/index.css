@@ -18,6 +18,7 @@
 @import './features/position-manager.css';
 @import './features/breadcrumbs.css';
 @import './features/task-manager.css';
+@import './features/task-statistics.css';
 @import './features/attribute-manager.css';
 @import './features/code-analyzer.css';
 @import './features/node.css';

@@ -27,4 +27,15 @@ router.post('/:id/pause', taskController.pauseTask);
 
 router.get('/sequence/:sequence_id', taskController.getTaskBySequenceId);
 
+// Get task statistics
+router.get('/statistics', taskController.getTaskStatistics);
+
+// Task categories routes
+router.get('/categories', taskController.getTaskCategories);
+router.post('/categories', taskController.createTaskCategory);
+
+// Task category assignment routes
+router.post('/:taskId/category', taskController.assignTaskToCategory);
+router.delete('/:taskId/category', taskController.removeTaskFromCategory);
+
 module.exports = router;

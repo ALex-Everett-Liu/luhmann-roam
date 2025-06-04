@@ -1061,6 +1061,111 @@ const CommandPaletteManager = (function() {
             });
         }
         
+        // Add Task Statistics commands if TaskStatisticsManager exists
+        if (window.TaskStatisticsManager) {
+            registerCommand({
+                name: 'Open Task Statistics & Analysis',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                    }
+                },
+                category: 'Tasks',
+                shortcut: 'Alt+T',
+                keywords: ['task', 'statistics', 'analysis', 'stats', 'time', 'tracking', 'productivity']
+            });
+            
+            registerCommand({
+                name: 'Task Statistics - Overview',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                        // Switch to overview tab after modal opens
+                        setTimeout(() => {
+                            const overviewTab = document.querySelector('.tab-button[data-tab="overview"]');
+                            if (overviewTab) {
+                                overviewTab.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['task', 'overview', 'summary', 'statistics']
+            });
+            
+            registerCommand({
+                name: 'Task Statistics - Task Groups',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                        // Switch to task groups tab after modal opens
+                        setTimeout(() => {
+                            const taskGroupsTab = document.querySelector('.tab-button[data-tab="task-groups"]');
+                            if (taskGroupsTab) {
+                                taskGroupsTab.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['task', 'groups', 'categories', 'analysis']
+            });
+            
+            registerCommand({
+                name: 'Task Statistics - Categories',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                        // Switch to categories tab after modal opens
+                        setTimeout(() => {
+                            const categoriesTab = document.querySelector('.tab-button[data-tab="categories"]');
+                            if (categoriesTab) {
+                                categoriesTab.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['task', 'categories', 'chart', 'visualization']
+            });
+            
+            registerCommand({
+                name: 'Task Statistics - Daily Trends',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                        // Switch to daily tab after modal opens
+                        setTimeout(() => {
+                            const dailyTab = document.querySelector('.tab-button[data-tab="daily"]');
+                            if (dailyTab) {
+                                dailyTab.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['task', 'daily', 'trends', 'timeline', 'progress']
+            });
+            
+            registerCommand({
+                name: 'Manage Task Categories',
+                action: () => {
+                    if (window.TaskStatisticsManager.open) {
+                        window.TaskStatisticsManager.open();
+                        // Switch to manage tab after modal opens
+                        setTimeout(() => {
+                            const manageTab = document.querySelector('.tab-button[data-tab="manage"]');
+                            if (manageTab) {
+                                manageTab.click();
+                            }
+                        }, 300);
+                    }
+                },
+                category: 'Tasks',
+                keywords: ['task', 'categories', 'manage', 'create', 'edit']
+            });
+        }
+        
         // Add Blog Manager commands if BlogManager exists
         if (window.BlogManager) {
             registerCommand({
