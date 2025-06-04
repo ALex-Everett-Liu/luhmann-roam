@@ -123,6 +123,23 @@ const TaskStatisticsManager = (function() {
                 </div>
                 
                 <div class="tab-panel" id="daily-panel">
+                    <div class="daily-chart-controls">
+                        <div class="chart-type-selector">
+                            <label>Chart Type:</label>
+                            <select id="daily-chart-type">
+                                <option value="line">Line Chart</option>
+                                <option value="bar">Bar Chart</option>
+                            </select>
+                        </div>
+                        <div class="daily-chart-metrics">
+                            <label>Show:</label>
+                            <select id="daily-chart-metric">
+                                <option value="time">Total Time</option>
+                                <option value="tasks">Task Count</option>
+                                <option value="completed">Completed Tasks</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="daily-chart" id="daily-chart">
                         <!-- Daily chart will be populated here -->
                     </div>
@@ -190,6 +207,21 @@ const TaskStatisticsManager = (function() {
         document.getElementById('new-category-name').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 createCategory();
+            }
+        });
+        
+        // Chart type and metric change handlers
+        document.getElementById('daily-chart-type')?.addEventListener('change', () => {
+            // Re-render the chart with current data
+            if (window.currentDailyStats) {
+                updateDailyChart(window.currentDailyStats);
+            }
+        });
+        
+        document.getElementById('daily-chart-metric')?.addEventListener('change', () => {
+            // Re-render the chart with current data
+            if (window.currentDailyStats) {
+                updateDailyChart(window.currentDailyStats);
             }
         });
     }
@@ -362,6 +394,8 @@ const TaskStatisticsManager = (function() {
             updateCategoriesChart(safeData.categoryStats);
             updateDailyChart(safeData.dailyStats);
             
+            window.currentDailyStats = safeData.dailyStats; // Store for chart re-rendering
+            
         } catch (error) {
             console.error('Error refreshing statistics:', error);
         }
@@ -453,7 +487,7 @@ const TaskStatisticsManager = (function() {
     }
     
     /**
-     * Update daily chart
+     * Update daily chart with line or bar chart options
      */
     function updateDailyChart(dailyStats) {
         const container = document.getElementById('daily-chart');
@@ -464,24 +498,247 @@ const TaskStatisticsManager = (function() {
             return;
         }
         
-        // Create a simple line chart representation
-        const maxTime = Math.max(...dailyStats.map(d => d.total_time));
+        // Get chart preferences
+        const chartType = document.getElementById('daily-chart-type')?.value || 'line';
+        const metric = document.getElementById('daily-chart-metric')?.value || 'time';
         
-        dailyStats.slice(0, 30).forEach(day => { // Limit to last 30 days for display
+        // Sort data by date
+        const sortedStats = [...dailyStats].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        if (chartType === 'line') {
+            createLineChart(container, sortedStats, metric);
+        } else {
+            createBarChart(container, sortedStats, metric);
+        }
+    }
+    
+    /**
+     * Create a line chart for daily statistics
+     */
+    function createLineChart(container, dailyStats, metric) {
+        // Create SVG container
+        const svgContainer = document.createElement('div');
+        svgContainer.className = 'line-chart-container';
+        
+        const width = 800;
+        const height = 300;
+        const margin = { top: 20, right: 30, bottom: 60, left: 60 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+        
+        // Get data values based on selected metric
+        const getMetricValue = (stat) => {
+            switch (metric) {
+                case 'tasks': return stat.task_count;
+                case 'completed': return stat.completed_count;
+                case 'time': 
+                default: return stat.total_time;
+            }
+        };
+        
+        const getMetricLabel = () => {
+            switch (metric) {
+                case 'tasks': return 'Tasks';
+                case 'completed': return 'Completed Tasks';
+                case 'time': 
+                default: return 'Time (hours)';
+            }
+        };
+        
+        const values = dailyStats.map(getMetricValue);
+        const maxValue = Math.max(...values);
+        const minValue = Math.min(...values);
+        
+        // Create SVG
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        svg.style.background = '#fff';
+        svg.style.border = '1px solid #e0e0e0';
+        svg.style.borderRadius = '4px';
+        
+        // Create chart group
+        const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        chartGroup.setAttribute('transform', `translate(${margin.left}, ${margin.top})`);
+        svg.appendChild(chartGroup);
+        
+        // Create scales
+        const xScale = (index) => (index / (dailyStats.length - 1)) * chartWidth;
+        const yScale = (value) => chartHeight - ((value - minValue) / (maxValue - minValue || 1)) * chartHeight;
+        
+        // Create grid lines
+        const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        gridGroup.setAttribute('class', 'grid');
+        chartGroup.appendChild(gridGroup);
+        
+        // Horizontal grid lines
+        for (let i = 0; i <= 5; i++) {
+            const y = (i / 5) * chartHeight;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', 0);
+            line.setAttribute('y1', chartHeight - y);
+            line.setAttribute('x2', chartWidth);
+            line.setAttribute('y2', chartHeight - y);
+            line.setAttribute('stroke', '#f0f0f0');
+            line.setAttribute('stroke-width', 1);
+            gridGroup.appendChild(line);
+        }
+        
+        // Create line path
+        let pathData = '';
+        dailyStats.forEach((stat, index) => {
+            const x = xScale(index);
+            const y = yScale(getMetricValue(stat));
+            
+            if (index === 0) {
+                pathData += `M ${x} ${y}`;
+            } else {
+                pathData += ` L ${x} ${y}`;
+            }
+        });
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke', '#4285f4');
+        path.setAttribute('stroke-width', 2);
+        path.setAttribute('fill', 'none');
+        chartGroup.appendChild(path);
+        
+        // Create data points
+        dailyStats.forEach((stat, index) => {
+            const x = xScale(index);
+            const y = yScale(getMetricValue(stat));
+            
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', 4);
+            circle.setAttribute('fill', '#4285f4');
+            circle.setAttribute('stroke', '#fff');
+            circle.setAttribute('stroke-width', 2);
+            
+            // Add tooltip
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            const formattedValue = metric === 'time' ? formatDuration(getMetricValue(stat)) : getMetricValue(stat);
+            title.textContent = `${stat.date}: ${formattedValue}`;
+            circle.appendChild(title);
+            
+            chartGroup.appendChild(circle);
+        });
+        
+        // Create axes
+        // X-axis
+        const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xAxis.setAttribute('x1', 0);
+        xAxis.setAttribute('y1', chartHeight);
+        xAxis.setAttribute('x2', chartWidth);
+        xAxis.setAttribute('y2', chartHeight);
+        xAxis.setAttribute('stroke', '#333');
+        xAxis.setAttribute('stroke-width', 1);
+        chartGroup.appendChild(xAxis);
+        
+        // Y-axis
+        const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        yAxis.setAttribute('x1', 0);
+        yAxis.setAttribute('y1', 0);
+        yAxis.setAttribute('x2', 0);
+        yAxis.setAttribute('y2', chartHeight);
+        yAxis.setAttribute('stroke', '#333');
+        yAxis.setAttribute('stroke-width', 1);
+        chartGroup.appendChild(yAxis);
+        
+        // Add axis labels
+        // X-axis labels (show every few dates to avoid crowding)
+        const labelInterval = Math.max(1, Math.floor(dailyStats.length / 8));
+        dailyStats.forEach((stat, index) => {
+            if (index % labelInterval === 0 || index === dailyStats.length - 1) {
+                const x = xScale(index);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', chartHeight + 20);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('fill', '#666');
+                text.textContent = new Date(stat.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                chartGroup.appendChild(text);
+            }
+        });
+        
+        // Y-axis labels
+        for (let i = 0; i <= 5; i++) {
+            const value = minValue + (maxValue - minValue) * (i / 5);
+            const y = chartHeight - (i / 5) * chartHeight;
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', -10);
+            text.setAttribute('y', y + 4);
+            text.setAttribute('text-anchor', 'end');
+            text.setAttribute('font-size', '12');
+            text.setAttribute('fill', '#666');
+            
+            if (metric === 'time') {
+                text.textContent = Math.round(value / (1000 * 60 * 60 * 1000) * 1000) / 1000 + 'h'; // Convert to hours
+            } else {
+                text.textContent = Math.round(value);
+            }
+            chartGroup.appendChild(text);
+        }
+        
+        // Chart title
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        title.setAttribute('x', chartWidth / 2);
+        title.setAttribute('y', -5);
+        title.setAttribute('text-anchor', 'middle');
+        title.setAttribute('font-size', '14');
+        title.setAttribute('font-weight', 'bold');
+        title.setAttribute('fill', '#333');
+        title.textContent = `Daily ${getMetricLabel()} Trend`;
+        chartGroup.appendChild(title);
+        
+        svgContainer.appendChild(svg);
+        container.appendChild(svgContainer);
+    }
+    
+    /**
+     * Create a bar chart for daily statistics (improved version)
+     */
+    function createBarChart(container, dailyStats, metric) {
+        // Limit to last 30 days for better display
+        const limitedStats = dailyStats.slice(-30);
+        
+        const getMetricValue = (stat) => {
+            switch (metric) {
+                case 'tasks': return stat.task_count;
+                case 'completed': return stat.completed_count;
+                case 'time': 
+                default: return stat.total_time;
+            }
+        };
+        
+        const maxValue = Math.max(...limitedStats.map(getMetricValue));
+        
+        limitedStats.forEach(day => {
             const dayElement = document.createElement('div');
             dayElement.className = 'daily-chart-item';
             
-            const percentage = maxTime > 0 ? (day.total_time / maxTime) * 100 : 0;
+            const value = getMetricValue(day);
+            const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+            
+            let displayValue;
+            if (metric === 'time') {
+                displayValue = formatDuration(value);
+            } else {
+                displayValue = value.toString();
+            }
             
             dayElement.innerHTML = `
-                <div class="daily-date">${day.date}</div>
+                <div class="daily-date">${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                 <div class="daily-bar">
                     <div class="daily-bar-fill" style="height: ${percentage}%"></div>
                 </div>
                 <div class="daily-stats">
-                    <div>${day.task_count} tasks</div>
-                    <div>${formatDuration(day.total_time)}</div>
-                    <div>${day.completed_count} done</div>
+                    <div>${displayValue}</div>
+                    <div class="daily-secondary">${day.task_count} tasks</div>
+                    <div class="daily-secondary">${day.completed_count} done</div>
                 </div>
             `;
             container.appendChild(dayElement);

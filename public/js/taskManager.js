@@ -160,11 +160,51 @@ const TaskManager = (function() {
       existingDropdown.remove();
     }
 
+    // Get the task name to show in the UI
+    const task = tasks.find(t => t.id === taskId);
+    const taskName = task ? task.name : '';
+    
+    // Determine if this task has a pattern that could be grouped
+    let hasPattern = false;
+    let baseName = taskName;
+    
+    if (/\s\d{1,2}$/.test(taskName) || /\s\(\d+\)$/.test(taskName) || 
+        /\s-\s\d+$/.test(taskName) || /\s#\d+$/.test(taskName)) {
+      hasPattern = true;
+      // Extract base name for display
+      if (/\s\d{2}$/.test(taskName)) {
+        baseName = taskName.replace(/\s\d{2}$/, '').trim();
+      } else if (/\s\d$/.test(taskName)) {
+        baseName = taskName.replace(/\s\d$/, '').trim();
+      } else if (/\s\(\d+\)$/.test(taskName)) {
+        baseName = taskName.replace(/\s\(\d+\)$/, '').trim();
+      } else if (/\s-\s\d+$/.test(taskName)) {
+        baseName = taskName.replace(/\s-\s\d+$/, '').trim();
+      } else if (/\s#\d+$/.test(taskName)) {
+        baseName = taskName.replace(/\s#\d+$/, '').trim();
+      }
+    }
+
     // Create dropdown
     const dropdown = document.createElement('div');
     dropdown.className = 'category-dropdown';
     dropdown.innerHTML = `
       <div class="category-dropdown-content">
+        ${hasPattern ? `
+          <div class="category-assignment-options">
+            <div class="assignment-option-header">Apply category to:</div>
+            <label class="assignment-option">
+              <input type="radio" name="assignment-scope" value="single" checked>
+              <span>Only "${taskName}"</span>
+            </label>
+            <label class="assignment-option">
+              <input type="radio" name="assignment-scope" value="all">
+              <span>All "${baseName}" tasks (${baseName} 01, ${baseName} 02, etc.)</span>
+            </label>
+            <div class="category-divider"></div>
+          </div>
+        ` : ''}
+        
         <div class="category-option" data-category="">
           <span class="category-color" style="background-color: #999;"></span>
           <span>No Category</span>
@@ -208,8 +248,15 @@ const TaskManager = (function() {
             }
           }
         } else {
-          // Assign category to task
-          await assignTaskToCategory(taskId, categoryId);
+          // Determine scope based on radio button selection
+          let applyToAll = false;
+          const scopeRadio = dropdown.querySelector('input[name="assignment-scope"]:checked');
+          if (scopeRadio && scopeRadio.value === 'all') {
+            applyToAll = true;
+          }
+          
+          // Assign category to task(s)
+          await assignTaskToCategory(taskId, categoryId, applyToAll);
         }
 
         dropdown.remove();
@@ -228,10 +275,15 @@ const TaskManager = (function() {
   }
   
   /**
-   * Assign task to category
+   * Assign task to category (updated to support bulk assignment)
    */
-  async function assignTaskToCategory(taskId, categoryId) {
+  async function assignTaskToCategory(taskId, categoryId, applyToAll = false) {
     try {
+      const requestBody = { categoryId };
+      if (applyToAll) {
+        requestBody.applyToAll = true;
+      }
+      
       if (categoryId) {
         // Assign to category
         const response = await fetch(`/api/tasks/${taskId}/category`, {
@@ -239,11 +291,17 @@ const TaskManager = (function() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ categoryId })
+          body: JSON.stringify(requestBody)
         });
 
         if (response.ok) {
+          const result = await response.json();
           console.log('Task assigned to category successfully');
+          
+          // Show feedback to user
+          if (result.affectedCount > 1) {
+            alert(`Category assigned to ${result.affectedCount} related tasks!`);
+          }
         }
       } else {
         // Remove from category

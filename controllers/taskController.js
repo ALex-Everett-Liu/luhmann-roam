@@ -520,34 +520,105 @@ exports.createTaskCategory = async (req, res) => {
 };
 
 /**
- * Assign task to category
+ * Assign task to category (with bulk assignment for related tasks)
  * POST /api/tasks/:taskId/category
  */
 exports.assignTaskToCategory = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { categoryId } = req.body;
+    const { categoryId, applyToAll = true } = req.body; // Add applyToAll option
     const db = req.db;
     
     if (!categoryId) {
       return res.status(400).json({ error: 'Category ID is required' });
     }
     
-    const assignmentId = uuidv4();
+    // Get the current task to determine its base name pattern
+    const currentTask = await db.get('SELECT * FROM tasks WHERE id = ?', taskId);
+    if (!currentTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
     const now = Date.now();
+    let affectedTaskIds = [taskId];
     
-    // Remove existing assignment first
-    await db.run(`
-      DELETE FROM task_category_assignments WHERE task_id = ?
-    `, [taskId]);
+    if (applyToAll) {
+      // Extract base name using the same logic as in statistics
+      let baseName = currentTask.name;
+      
+      // Pattern matching to find the base name
+      if (/\s\d{2}$/.test(currentTask.name)) {
+        baseName = currentTask.name.replace(/\s\d{2}$/, '').trim();
+      } else if (/\s\d$/.test(currentTask.name)) {
+        baseName = currentTask.name.replace(/\s\d$/, '').trim();
+      } else if (/\s\(\d+\)$/.test(currentTask.name)) {
+        baseName = currentTask.name.replace(/\s\(\d+\)$/, '').trim();
+      } else if (/\s-\s\d+$/.test(currentTask.name)) {
+        baseName = currentTask.name.replace(/\s-\s\d+$/, '').trim();
+      } else if (/\s#\d+$/.test(currentTask.name)) {
+        baseName = currentTask.name.replace(/\s#\d+$/, '').trim();
+      }
+      
+      // Find all tasks that match this base pattern
+      const relatedTasks = await db.all(`
+        SELECT id, name FROM tasks 
+        WHERE name LIKE ? OR name LIKE ? OR name LIKE ? OR name LIKE ? OR name LIKE ?
+      `, [
+        `${baseName} %`,     // "new feature 01", "new feature 02", etc.
+        `${baseName} (%`,    // "new feature (1)", "new feature (2)", etc.
+        `${baseName} - %`,   // "new feature - 1", "new feature - 2", etc.
+        `${baseName} #%`,    // "new feature #1", "new feature #2", etc.
+        baseName             // exact match
+      ]);
+      
+      // Filter to only include tasks that actually match our patterns
+      const matchingTasks = relatedTasks.filter(task => {
+        if (task.name === baseName) return true;
+        
+        const patterns = [
+          /\s\d{1,2}$/,      // space + 1-2 digits
+          /\s\(\d+\)$/,      // space + parentheses with digits
+          /\s-\s\d+$/,       // space + dash + space + digits
+          /\s#\d+$/          // space + hash + digits
+        ];
+        
+        return patterns.some(pattern => {
+          if (pattern.test(task.name)) {
+            const testBaseName = task.name.replace(pattern, '').trim();
+            return testBaseName === baseName;
+          }
+          return false;
+        });
+      });
+      
+      affectedTaskIds = matchingTasks.map(task => task.id);
+      
+      console.log(`Applying category to ${affectedTaskIds.length} related tasks for base name: "${baseName}"`);
+    }
     
-    // Add new assignment
-    await db.run(`
-      INSERT INTO task_category_assignments (id, task_id, category_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-    `, [assignmentId, taskId, categoryId, now, now]);
+    // Remove existing assignments for all affected tasks
+    if (affectedTaskIds.length > 0) {
+      const placeholders = affectedTaskIds.map(() => '?').join(',');
+      await db.run(`
+        DELETE FROM task_category_assignments WHERE task_id IN (${placeholders})
+      `, affectedTaskIds);
+    }
     
-    res.json({ success: true, message: 'Task assigned to category successfully' });
+    // Add new assignments for all affected tasks
+    for (const taskIdToAssign of affectedTaskIds) {
+      const assignmentId = uuidv4();
+      await db.run(`
+        INSERT INTO task_category_assignments (id, task_id, category_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [assignmentId, taskIdToAssign, categoryId, now, now]);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Task category assigned successfully to ${affectedTaskIds.length} task(s)`,
+      affectedCount: affectedTaskIds.length
+    });
+    
   } catch (error) {
     console.error('Error assigning task to category:', error);
     res.status(500).json({ error: 'Failed to assign task to category' });
