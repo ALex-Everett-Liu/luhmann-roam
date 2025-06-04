@@ -580,31 +580,18 @@ const TaskManager = (function() {
         <span class="task-duration">${formatDuration(task.total_duration || 0)}</span>
       </div>
       <div class="task-actions">
-        <button class="task-timestamp-btn" title="View task timestamps">🕒</button>
-        <button class="task-category-btn" title="Set Category">🏷️</button>
         ${!task.is_completed ? 
-          `<button class="task-timer-btn ${task.is_active ? 'pause' : 'start'}">${task.is_active ? '⏸' : '▶'}</button>` : 
+          `<button class="task-timer-btn ${task.is_active ? 'pause' : 'start'}" title="${task.is_active ? 'Pause task' : 'Start task'}">${task.is_active ? '⏸' : '▶'}</button>` : 
           ''
         }
-        <button class="task-delete-btn">🗑️</button>
+        <button class="task-menu-btn" title="Task options">⋮</button>
+        <button class="task-delete-btn" title="Delete task">🗑️</button>
       </div>
     `;
     
     // Add event listeners
     const checkbox = taskElement.querySelector('.task-checkbox');
     checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
-    
-    const timestampBtn = taskElement.querySelector('.task-timestamp-btn');
-    timestampBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openTaskTimestampModal(task.id);
-    });
-    
-    const categoryBtn = taskElement.querySelector('.task-category-btn');
-    categoryBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showCategorySelector(task.id, categoryBtn);
-    });
     
     const timerBtn = taskElement.querySelector('.task-timer-btn');
     if (timerBtn) {
@@ -617,10 +604,85 @@ const TaskManager = (function() {
       });
     }
     
+    const menuBtn = taskElement.querySelector('.task-menu-btn');
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showTaskMenu(task.id, menuBtn);
+    });
+    
     const deleteBtn = taskElement.querySelector('.task-delete-btn');
     deleteBtn.addEventListener('click', () => deleteTask(task.id));
     
     return taskElement;
+  }
+  
+  /**
+   * Show task menu dropdown
+   * @param {string} taskId - The ID of the task
+   * @param {HTMLElement} buttonElement - The menu button element
+   */
+  function showTaskMenu(taskId, buttonElement) {
+    // Remove any existing dropdown
+    const existingDropdown = document.querySelector('.task-menu-dropdown');
+    if (existingDropdown) {
+      existingDropdown.remove();
+    }
+
+    // Create dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'task-menu-dropdown';
+    dropdown.innerHTML = `
+      <div class="task-menu-dropdown-content">
+        <div class="task-menu-option" data-action="timestamp">
+          <span class="menu-icon">🕒</span>
+          <span>View Timestamps</span>
+        </div>
+        <div class="task-menu-option" data-action="category">
+          <span class="menu-icon">🏷️</span>
+          <span>Set Category</span>
+        </div>
+      </div>
+    `;
+
+    // Position dropdown
+    const rect = buttonElement.getBoundingClientRect();
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+    dropdown.style.left = `${rect.left + window.scrollX - 120}px`; // Offset to align better
+    dropdown.style.zIndex = '1000';
+
+    document.body.appendChild(dropdown);
+
+    // Add event listeners
+    dropdown.querySelectorAll('.task-menu-option').forEach(option => {
+      option.addEventListener('click', async (e) => {
+        const action = option.dataset.action;
+
+        if (action === 'timestamp') {
+          openTaskTimestampModal(taskId);
+        } else if (action === 'category') {
+          // Close the menu first
+          dropdown.remove();
+          // Small delay to prevent conflicts
+          setTimeout(() => {
+            showCategorySelector(taskId, buttonElement);
+          }, 100);
+          return; // Don't remove dropdown here as we're doing it above
+        }
+
+        dropdown.remove();
+      });
+    });
+
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== buttonElement) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
   }
   
   /**
