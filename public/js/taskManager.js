@@ -12,6 +12,10 @@ const TaskManager = (function() {
   let availableCategories = [];
   let isInitialized = false;
   
+  // Task timestamp modal elements
+  let taskTimestampModal = null;
+  let taskModalOverlay = null;
+  
   /**
    * Initializes the Task Manager
    */
@@ -19,6 +23,7 @@ const TaskManager = (function() {
     if (isInitialized) return;
     
     createTaskInterface();
+    createTaskTimestampModal();
     await loadCategories();
     await loadTasksForCurrentDate();
     
@@ -102,6 +107,183 @@ const TaskManager = (function() {
         console.error('TaskStatisticsManager not available');
       }
     });
+  }
+  
+  /**
+   * Creates the task timestamp modal
+   */
+  function createTaskTimestampModal() {
+    // Create modal overlay if it doesn't exist
+    if (!taskModalOverlay) {
+      taskModalOverlay = document.createElement('div');
+      taskModalOverlay.className = 'modal-overlay task-timestamp-modal-overlay';
+      taskModalOverlay.style.display = 'none';
+      document.body.appendChild(taskModalOverlay);
+      
+      // Close modal when clicking outside
+      taskModalOverlay.addEventListener('click', function(e) {
+        if (e.target === taskModalOverlay) {
+          closeTaskTimestampModal();
+        }
+      });
+    }
+    
+    // Create modal if it doesn't exist
+    if (!taskTimestampModal) {
+      taskTimestampModal = document.createElement('div');
+      taskTimestampModal.className = 'modal task-timestamp-modal';
+      
+      // Modal header
+      const modalHeader = document.createElement('div');
+      modalHeader.className = 'modal-header';
+      
+      const modalTitle = document.createElement('h2');
+      modalTitle.className = 'modal-title';
+      modalTitle.id = 'task-timestamp-modal-title';
+      modalTitle.textContent = 'Task Timestamps';
+      
+      const closeButton = document.createElement('button');
+      closeButton.className = 'modal-close';
+      closeButton.innerHTML = '&times;';
+      closeButton.addEventListener('click', closeTaskTimestampModal);
+      
+      modalHeader.appendChild(modalTitle);
+      modalHeader.appendChild(closeButton);
+      
+      // Modal body
+      const modalBody = document.createElement('div');
+      modalBody.className = 'modal-body';
+      
+      const timestampInfo = document.createElement('div');
+      timestampInfo.className = 'task-timestamp-info';
+      
+      // Task name
+      const taskNameSection = document.createElement('div');
+      taskNameSection.className = 'task-timestamp-section';
+      
+      const taskNameLabel = document.createElement('h3');
+      taskNameLabel.textContent = 'Task:';
+      
+      const taskNameDisplay = document.createElement('p');
+      taskNameDisplay.id = 'task-timestamp-name';
+      taskNameDisplay.className = 'task-name-display';
+      
+      taskNameSection.appendChild(taskNameLabel);
+      taskNameSection.appendChild(taskNameDisplay);
+      
+      // Created timestamp
+      const createdSection = document.createElement('div');
+      createdSection.className = 'task-timestamp-section';
+      
+      const createdLabel = document.createElement('h3');
+      createdLabel.id = 'task-created-label';
+      createdLabel.textContent = 'Created:';
+      
+      const createdTime = document.createElement('p');
+      createdTime.id = 'task-created-time';
+      createdTime.className = 'timestamp';
+      
+      createdSection.appendChild(createdLabel);
+      createdSection.appendChild(createdTime);
+      
+      // Updated timestamp
+      const updatedSection = document.createElement('div');
+      updatedSection.className = 'task-timestamp-section';
+      
+      const updatedLabel = document.createElement('h3');
+      updatedLabel.id = 'task-updated-label';
+      updatedLabel.textContent = 'Last Updated:';
+      
+      const updatedTime = document.createElement('p');
+      updatedTime.id = 'task-updated-time';
+      updatedTime.className = 'timestamp';
+      
+      updatedSection.appendChild(updatedLabel);
+      updatedSection.appendChild(updatedTime);
+      
+      timestampInfo.appendChild(taskNameSection);
+      timestampInfo.appendChild(createdSection);
+      timestampInfo.appendChild(updatedSection);
+      modalBody.appendChild(timestampInfo);
+      
+      // Assemble modal
+      taskTimestampModal.appendChild(modalHeader);
+      taskTimestampModal.appendChild(modalBody);
+      
+      taskModalOverlay.appendChild(taskTimestampModal);
+    }
+  }
+  
+  /**
+   * Format timestamp to readable date/time
+   * @param {number} timestamp - Unix timestamp in milliseconds
+   * @returns {string} Formatted timestamp
+   */
+  function formatTaskTimestamp(timestamp) {
+    if (!timestamp) return 'N/A';
+    
+    const date = new Date(timestamp);
+    
+    // Format: YYYY-MM-DD HH:MM:SS
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+  
+  /**
+   * Open the task timestamp modal for a specific task
+   * @param {string} taskId - The ID of the task
+   */
+  async function openTaskTimestampModal(taskId) {
+    try {
+      // Make sure the modal is created if it doesn't exist
+      if (!taskTimestampModal) {
+        createTaskTimestampModal();
+      }
+
+      // Find the task in our local tasks array
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('Task not found:', taskId);
+        return;
+      }
+      
+      // Update modal with task information
+      const taskNameElement = document.getElementById('task-timestamp-name');
+      const createdTimeElement = document.getElementById('task-created-time');
+      const updatedTimeElement = document.getElementById('task-updated-time');
+      
+      if (taskNameElement) {
+        taskNameElement.textContent = task.name;
+      }
+      
+      if (createdTimeElement) {
+        createdTimeElement.textContent = formatTaskTimestamp(task.created_at);
+      }
+      
+      if (updatedTimeElement) {
+        updatedTimeElement.textContent = formatTaskTimestamp(task.updated_at);
+      }
+      
+      // Show the modal
+      taskModalOverlay.style.display = 'flex';
+    } catch (error) {
+      console.error('Error opening task timestamp modal:', error);
+    }
+  }
+  
+  /**
+   * Close the task timestamp modal
+   */
+  function closeTaskTimestampModal() {
+    if (taskModalOverlay) {
+      taskModalOverlay.style.display = 'none';
+    }
   }
   
   /**
@@ -398,6 +580,7 @@ const TaskManager = (function() {
         <span class="task-duration">${formatDuration(task.total_duration || 0)}</span>
       </div>
       <div class="task-actions">
+        <button class="task-timestamp-btn" title="View task timestamps">🕒</button>
         <button class="task-category-btn" title="Set Category">🏷️</button>
         ${!task.is_completed ? 
           `<button class="task-timer-btn ${task.is_active ? 'pause' : 'start'}">${task.is_active ? '⏸' : '▶'}</button>` : 
@@ -410,6 +593,12 @@ const TaskManager = (function() {
     // Add event listeners
     const checkbox = taskElement.querySelector('.task-checkbox');
     checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
+    
+    const timestampBtn = taskElement.querySelector('.task-timestamp-btn');
+    timestampBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTaskTimestampModal(task.id);
+    });
     
     const categoryBtn = taskElement.querySelector('.task-category-btn');
     categoryBtn.addEventListener('click', (e) => {
