@@ -331,26 +331,74 @@ exports.getTaskStatistics = async (req, res) => {
       categoryParams = [category];
     }
     
-    // Get task groups (grouped by base name)
-    const taskGroups = await db.all(`
+    // First, get all tasks that match the filters
+    const allTasks = await db.all(`
       SELECT 
-        CASE 
-          WHEN name LIKE '% [0-9][0-9]' THEN SUBSTR(name, 1, LENGTH(name) - 3)
-          WHEN name LIKE '% [0-9]' THEN SUBSTR(name, 1, LENGTH(name) - 2)
-          ELSE name
-        END as base_name,
-        COUNT(*) as task_count,
-        SUM(total_duration) as total_time,
-        SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END) as completed_count,
-        AVG(total_duration) as avg_time,
-        MIN(date) as first_date,
-        MAX(date) as last_date
+        t.name,
+        t.total_duration,
+        t.is_completed,
+        t.date
       FROM tasks t
       ${categoryJoin}
       WHERE 1=1 ${dateFilter} ${categoryFilter}
-      GROUP BY base_name
-      ORDER BY total_time DESC
+      ORDER BY t.name
     `, [...dateParams, ...categoryParams]);
+    
+    // Group tasks by base name using JavaScript logic
+    const taskGroupsMap = new Map();
+    
+    allTasks.forEach(task => {
+      let baseName = task.name;
+      
+      // Extract base name using various patterns
+      // Pattern 1: "name 01", "name 02" (space + two digits)
+      if (/\s\d{2}$/.test(task.name)) {
+        baseName = task.name.replace(/\s\d{2}$/, '').trim();
+      }
+      // Pattern 2: "name 1", "name 2" (space + single digit)
+      else if (/\s\d$/.test(task.name)) {
+        baseName = task.name.replace(/\s\d$/, '').trim();
+      }
+      // Pattern 3: "name (1)", "name (2)" (parentheses)
+      else if (/\s\(\d+\)$/.test(task.name)) {
+        baseName = task.name.replace(/\s\(\d+\)$/, '').trim();
+      }
+      // Pattern 4: "name - 1", "name - 2" (dash)
+      else if (/\s-\s\d+$/.test(task.name)) {
+        baseName = task.name.replace(/\s-\s\d+$/, '').trim();
+      }
+      // Pattern 5: "name #1", "name #2" (hash)
+      else if (/\s#\d+$/.test(task.name)) {
+        baseName = task.name.replace(/\s#\d+$/, '').trim();
+      }
+      
+      // Initialize or update the group
+      if (!taskGroupsMap.has(baseName)) {
+        taskGroupsMap.set(baseName, {
+          base_name: baseName,
+          task_count: 0,
+          total_time: 0,
+          completed_count: 0,
+          task_names: [],
+          dates: []
+        });
+      }
+      
+      const group = taskGroupsMap.get(baseName);
+      group.task_count++;
+      group.total_time += task.total_duration || 0;
+      if (task.is_completed) group.completed_count++;
+      group.task_names.push(task.name);
+      group.dates.push(task.date);
+    });
+    
+    // Convert map to array and calculate additional stats
+    const taskGroups = Array.from(taskGroupsMap.values()).map(group => ({
+      ...group,
+      avg_time: group.task_count > 0 ? Math.round(group.total_time / group.task_count) : 0,
+      first_date: Math.min(...group.dates),
+      last_date: Math.max(...group.dates)
+    })).sort((a, b) => b.total_time - a.total_time);
     
     // Get category statistics
     const categoryStats = await db.all(`
