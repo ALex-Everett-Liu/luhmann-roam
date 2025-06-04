@@ -445,7 +445,7 @@ const GraphManagementUI = (function() {
         filterAndRenderVertices();
       } catch (error) {
         console.error('Error loading vertices:', error);
-        alert('Error loading vertices');
+        showNotification('Error loading vertices', 'error');
       }
     }
     
@@ -458,7 +458,7 @@ const GraphManagementUI = (function() {
         filterAndRenderEdges();
       } catch (error) {
         console.error('Error loading edges:', error);
-        alert('Error loading edges');
+        showNotification('Error loading edges', 'error');
       }
     }
     
@@ -938,7 +938,7 @@ const GraphManagementUI = (function() {
       if (typeSelect.value === 'custom') {
         actualType = customTypeInput.value.trim();
         if (!actualType) {
-          alert('Please enter a custom type name');
+          showNotification('Please enter a custom type name', 'warning');
           customTypeInput.focus();
           return;
         }
@@ -973,10 +973,10 @@ const GraphManagementUI = (function() {
         
         closeVertexModal();
         loadVertices();
-        alert(isEdit ? 'Vertex updated successfully!' : 'Vertex created successfully!');
+        showNotification(isEdit ? 'Vertex updated successfully!' : 'Vertex created successfully!', 'success');
       } catch (error) {
         console.error('Error saving vertex:', error);
-        alert('Error saving vertex');
+        showNotification('Error saving vertex', 'error');
       }
     }
     
@@ -994,7 +994,7 @@ const GraphManagementUI = (function() {
       if (relationshipSelect.value === 'custom') {
         actualRelationshipType = customRelationshipInput.value.trim();
         if (!actualRelationshipType) {
-          alert('Please enter a custom relationship type');
+          showNotification('Please enter a custom relationship type', 'warning');
           customRelationshipInput.focus();
           return;
         }
@@ -1029,10 +1029,10 @@ const GraphManagementUI = (function() {
         
         closeEdgeModal();
         loadEdges();
-        alert(isEdit ? 'Edge updated successfully!' : 'Edge created successfully!');
+        showNotification(isEdit ? 'Edge updated successfully!' : 'Edge created successfully!', 'success');
       } catch (error) {
         console.error('Error saving edge:', error);
-        alert('Error saving edge');
+        showNotification('Error saving edge', 'error');
       }
     }
     
@@ -1051,10 +1051,10 @@ const GraphManagementUI = (function() {
         }
         
         loadVertices();
-        alert('Vertex deleted successfully!');
+        showNotification('Vertex deleted successfully!', 'success');
       } catch (error) {
         console.error('Error deleting vertex:', error);
-        alert('Error deleting vertex');
+        showNotification('Error deleting vertex', 'error');
       }
     }
     
@@ -1073,10 +1073,10 @@ const GraphManagementUI = (function() {
         }
         
         loadEdges();
-        alert('Edge deleted successfully!');
+        showNotification('Edge deleted successfully!', 'success');
       } catch (error) {
         console.error('Error deleting edge:', error);
-        alert('Error deleting edge');
+        showNotification('Error deleting edge', 'error');
       }
     }
     
@@ -1096,7 +1096,7 @@ const GraphManagementUI = (function() {
         document.getElementById('import-selected-btn').style.display = 'block';
       } catch (error) {
         console.error('Error loading nodes:', error);
-        alert('Error loading nodes');
+        showNotification('Error loading nodes', 'error');
       }
     }
     
@@ -1105,7 +1105,7 @@ const GraphManagementUI = (function() {
       const nodeIds = Array.from(checkedBoxes).map(cb => cb.value);
       
       if (nodeIds.length === 0) {
-        alert('Please select at least one node to import');
+        showNotification('Please select at least one node to import', 'warning');
         return;
       }
       
@@ -1119,14 +1119,14 @@ const GraphManagementUI = (function() {
         const result = await response.json();
         
         if (result.success) {
-          alert(`Successfully imported ${result.imported_count} nodes as vertices!`);
+          showNotification(`Successfully imported ${result.imported_count} nodes as vertices!`, 'success');
           loadVertices();
         } else {
           throw new Error('Import failed');
         }
       } catch (error) {
         console.error('Error importing nodes:', error);
-        alert('Error importing nodes');
+        showNotification('Error importing nodes', 'error');
       }
     }
     
@@ -1371,4 +1371,62 @@ function handleEdgeRelationshipChange(e) {
     customInput.required = false;
     customInput.value = '';
   }
+}
+
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.className = 'graph-management-notification';
+  notification.textContent = message;
+  
+  // Style the notification based on type
+  const baseStyles = {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    zIndex: '10001', // Higher than modal z-index
+    fontSize: '14px',
+    fontWeight: 'bold',
+    maxWidth: '300px',
+    wordWrap: 'break-word'
+  };
+  
+  const typeStyles = {
+    success: {
+      backgroundColor: '#4CAF50',
+      color: 'white'
+    },
+    error: {
+      backgroundColor: '#f44336',
+      color: 'white'
+    },
+    warning: {
+      backgroundColor: '#ff9800',
+      color: 'white'
+    },
+    info: {
+      backgroundColor: '#2196F3',
+      color: 'white'
+    }
+  };
+  
+  // Apply styles
+  Object.assign(notification.style, baseStyles, typeStyles[type] || typeStyles.info);
+  
+  document.body.appendChild(notification);
+  
+  // Remove notification after 3 seconds
+  setTimeout(() => {
+    if (document.body.contains(notification)) {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }
+  }, 3000);
 }

@@ -981,3 +981,35 @@
       font-size: 13px;
     }
   }
+
+  /* Add notification styles */
+  .graph-management-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10001;
+    font-size: 14px;
+    font-weight: bold;
+    max-width: 300px;
+    word-wrap: break-word;
+    animation: slideInFromRight 0.3s ease-out;
+  }
+
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Stack multiple notifications */
+  .graph-management-notification:nth-of-type(n+2) {
+    top: calc(20px + (60px * var(--notification-index, 1)));
+  }
