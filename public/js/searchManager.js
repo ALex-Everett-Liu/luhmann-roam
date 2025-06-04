@@ -950,7 +950,7 @@ const SearchManager = (function() {
     createdInfo.innerHTML = `<strong>Created:</strong> ${formatTimestamp(node.created_at)}`;
     
     const updatedInfo = document.createElement('span');
-    updatedInfo.innerHTML = `<strong>Updated:</strong> ${formatTimestamp(node.updated_at)}`;
+    updatedInfo.innerHTML = `&nbsp;&nbsp;<strong>Updated:</strong> ${formatTimestamp(node.updated_at)}`;
     
     timestampInfo.appendChild(createdInfo);
     timestampInfo.appendChild(updatedInfo);
@@ -1013,7 +1013,7 @@ const SearchManager = (function() {
     createdInfo.innerHTML = `<strong>Created:</strong> ${formatTimestamp(markdownResult.created_at)}`;
     
     const updatedInfo = document.createElement('span');
-    updatedInfo.innerHTML = `<strong>Updated:</strong> ${formatTimestamp(markdownResult.updated_at)}`;
+    updatedInfo.innerHTML = `&nbsp;&nbsp;<strong>Updated:</strong> ${formatTimestamp(markdownResult.updated_at)}`;
     
     timestampInfo.appendChild(createdInfo);
     timestampInfo.appendChild(updatedInfo);
