@@ -13,7 +13,11 @@ router.get('/statistics', taskController.getTaskStatistics);
 // Task categories routes (MUST be before /:date route)
 router.get('/categories', taskController.getTaskCategories);
 router.post('/categories', taskController.createTaskCategory);
-router.get('/:taskId/category', taskController.getTaskCategory);
+
+// Individual category routes (MUST be before /:date route)
+router.get('/categories/:categoryId', taskController.getTaskCategoryById);
+router.put('/categories/:categoryId', taskController.updateTaskCategory);
+router.delete('/categories/:categoryId', taskController.deleteTaskCategory);
 
 // Get tasks for a specific date
 router.get('/:date', taskController.getTasksByDate);
@@ -37,6 +41,7 @@ router.post('/:id/pause', taskController.pauseTask);
 router.post('/:taskId/category', taskController.assignTaskToCategory);
 router.delete('/:taskId/category', taskController.removeTaskFromCategory);
 
+// Get task by sequence ID
 router.get('/sequence/:sequence_id', taskController.getTaskBySequenceId);
 
 module.exports = router;

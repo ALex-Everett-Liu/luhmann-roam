@@ -583,6 +583,133 @@ const TaskStatisticsManager = (function() {
         ].join(':');
     }
     
+    /**
+     * Edit a category
+     */
+    async function editCategory(categoryId) {
+        try {
+            // Get the category data
+            const response = await fetch(`/api/tasks/categories/${categoryId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch category');
+            }
+            
+            const category = await response.json();
+            
+            // Create edit modal
+            const editModal = document.createElement('div');
+            editModal.className = 'category-edit-modal-overlay';
+            editModal.innerHTML = `
+                <div class="category-edit-modal">
+                    <div class="category-edit-header">
+                        <h3>Edit Category</h3>
+                        <button class="category-edit-close-btn">&times;</button>
+                    </div>
+                    <div class="category-edit-content">
+                        <div class="category-edit-form">
+                            <label>Name:</label>
+                            <input type="text" id="edit-category-name" value="${category.name}">
+                            
+                            <label>Description:</label>
+                            <input type="text" id="edit-category-description" value="${category.description || ''}">
+                            
+                            <label>Color:</label>
+                            <input type="color" id="edit-category-color" value="${category.color}">
+                            
+                            <div class="category-edit-actions">
+                                <button id="save-category-btn">Save Changes</button>
+                                <button id="cancel-edit-btn">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(editModal);
+            
+            // Event listeners
+            editModal.querySelector('.category-edit-close-btn').addEventListener('click', () => {
+                document.body.removeChild(editModal);
+            });
+            
+            editModal.querySelector('#cancel-edit-btn').addEventListener('click', () => {
+                document.body.removeChild(editModal);
+            });
+            
+            editModal.querySelector('#save-category-btn').addEventListener('click', async () => {
+                const name = document.getElementById('edit-category-name').value.trim();
+                const description = document.getElementById('edit-category-description').value.trim();
+                const color = document.getElementById('edit-category-color').value;
+                
+                if (!name) {
+                    alert('Category name is required');
+                    return;
+                }
+                
+                try {
+                    const updateResponse = await fetch(`/api/tasks/categories/${categoryId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name, description, color })
+                    });
+                    
+                    if (updateResponse.ok) {
+                        document.body.removeChild(editModal);
+                        await loadCategories();
+                        await loadCategoriesForManagement();
+                        alert('Category updated successfully!');
+                    } else {
+                        const error = await updateResponse.json();
+                        alert(`Error updating category: ${error.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error updating category:', error);
+                    alert('Error updating category. Please try again.');
+                }
+            });
+            
+            // Click outside to close
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    document.body.removeChild(editModal);
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error editing category:', error);
+            alert('Error loading category data. Please try again.');
+        }
+    }
+    
+    /**
+     * Delete a category
+     */
+    async function deleteCategory(categoryId) {
+        if (!confirm('Are you sure you want to delete this category? This will remove the category assignment from all tasks.')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/tasks/categories/${categoryId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                await loadCategories();
+                await loadCategoriesForManagement();
+                alert('Category deleted successfully!');
+            } else {
+                const error = await response.json();
+                alert(`Error deleting category: ${error.error}`);
+            }
+        } catch (error) {
+            console.error('Error deleting category:', error);
+            alert('Error deleting category. Please try again.');
+        }
+    }
+    
     // Public API
     return {
         initialize,
@@ -590,7 +717,9 @@ const TaskStatisticsManager = (function() {
         close,
         refreshStatistics,
         loadCategoriesForManagement,
-        createCategory
+        createCategory,
+        editCategory,
+        deleteCategory
     };
 })();
 

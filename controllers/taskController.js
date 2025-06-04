@@ -548,3 +548,122 @@ exports.getTaskCategory = async (req, res) => {
     res.status(500).json({ error: 'Failed to get task category' });
   }
 };
+
+/**
+ * Get a single task category
+ * GET /api/tasks/categories/:categoryId
+ */
+exports.getTaskCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const db = req.db;
+    
+    const category = await db.get(`
+      SELECT * FROM task_categories WHERE id = ?
+    `, [categoryId]);
+    
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    res.json(category);
+  } catch (error) {
+    console.error('Error getting task category:', error);
+    res.status(500).json({ error: 'Failed to get task category' });
+  }
+};
+
+/**
+ * Update a task category
+ * PUT /api/tasks/categories/:categoryId
+ */
+exports.updateTaskCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, description, color } = req.body;
+    const db = req.db;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Category name is required' });
+    }
+    
+    const now = Date.now();
+    
+    await db.run(`
+      UPDATE task_categories 
+      SET name = ?, description = ?, color = ?, updated_at = ?
+      WHERE id = ?
+    `, [name, description, color, now, categoryId]);
+    
+    const updatedCategory = await db.get('SELECT * FROM task_categories WHERE id = ?', categoryId);
+    
+    if (!updatedCategory) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    res.json(updatedCategory);
+  } catch (error) {
+    console.error('Error updating task category:', error);
+    res.status(500).json({ error: 'Failed to update task category' });
+  }
+};
+
+/**
+ * Delete a task category
+ * DELETE /api/tasks/categories/:categoryId
+ */
+exports.deleteTaskCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const db = req.db;
+    
+    // Check if category exists
+    const category = await db.get('SELECT * FROM task_categories WHERE id = ?', categoryId);
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    // Remove all task assignments for this category
+    await db.run('DELETE FROM task_category_assignments WHERE category_id = ?', categoryId);
+    
+    // Delete the category
+    await db.run('DELETE FROM task_categories WHERE id = ?', categoryId);
+    
+    res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task category:', error);
+    res.status(500).json({ error: 'Failed to delete task category' });
+  }
+};
+
+/**
+ * Get a single task category by ID
+ * GET /api/tasks/categories/:categoryId
+ */
+exports.getTaskCategoryById = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const db = req.db;
+    
+    const category = await db.get(`
+      SELECT 
+        tc.*,
+        COUNT(tca.task_id) as task_count,
+        SUM(t.total_duration) as total_time
+      FROM task_categories tc
+      LEFT JOIN task_category_assignments tca ON tc.id = tca.category_id
+      LEFT JOIN tasks t ON tca.task_id = t.id
+      WHERE tc.id = ?
+      GROUP BY tc.id
+    `, [categoryId]);
+    
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    
+    res.json(category);
+  } catch (error) {
+    console.error('Error getting task category:', error);
+    res.status(500).json({ error: 'Failed to get task category' });
+  }
+};
