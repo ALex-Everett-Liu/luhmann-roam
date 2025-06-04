@@ -295,9 +295,26 @@ const TaskStatisticsManager = (function() {
     async function loadCategories() {
         try {
             const response = await fetch('/api/tasks/categories');
+            
+            if (!response.ok) {
+                console.error('Failed to load categories:', response.status, response.statusText);
+                return;
+            }
+            
             const categories = await response.json();
             
+            // Ensure categories is an array
+            if (!Array.isArray(categories)) {
+                console.error('Categories response is not an array:', categories);
+                return;
+            }
+            
             const categorySelect = document.getElementById('task-stats-category');
+            if (!categorySelect) {
+                console.error('Category select element not found');
+                return;
+            }
+            
             categorySelect.innerHTML = '<option value="">All categories</option>';
             
             categories.forEach(category => {
@@ -324,12 +341,26 @@ const TaskStatisticsManager = (function() {
             if (currentFilters.endDate) params.append('endDate', currentFilters.endDate);
             
             const response = await fetch(`/api/tasks/statistics?${params}`);
+            
+            if (!response.ok) {
+                console.error('Failed to load statistics:', response.status, response.statusText);
+                return;
+            }
+            
             const data = await response.json();
             
-            updateOverviewStats(data.overallStats);
-            updateTaskGroups(data.taskGroups);
-            updateCategoriesChart(data.categoryStats);
-            updateDailyChart(data.dailyStats);
+            // Ensure data structure is correct
+            const safeData = {
+                overallStats: data.overallStats || {},
+                taskGroups: Array.isArray(data.taskGroups) ? data.taskGroups : [],
+                categoryStats: Array.isArray(data.categoryStats) ? data.categoryStats : [],
+                dailyStats: Array.isArray(data.dailyStats) ? data.dailyStats : []
+            };
+            
+            updateOverviewStats(safeData.overallStats);
+            updateTaskGroups(safeData.taskGroups);
+            updateCategoriesChart(safeData.categoryStats);
+            updateDailyChart(safeData.dailyStats);
             
         } catch (error) {
             console.error('Error refreshing statistics:', error);

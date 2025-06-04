@@ -247,4 +247,77 @@
   font-family: monospace;
 }
 
+.task-category {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.task-category-btn {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  color: #5f6368;
+  font-size: 12px;
+}
+
+.task-category-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.category-dropdown {
+  position: absolute;
+  z-index: 1000;
+}
+
+.category-dropdown-content {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.category-option:hover {
+  background-color: #f0f0f0;
+}
+
+.category-option.manage-categories {
+  border-top: 1px solid #e0e0e0;
+  color: #666;
+  font-style: italic;
+}
+
+.category-color {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.category-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+
 

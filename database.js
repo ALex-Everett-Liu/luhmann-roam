@@ -109,7 +109,6 @@ async function initializeDatabase(vaultName) {
       category_id TEXT NOT NULL,
       created_at INTEGER,
       updated_at INTEGER,
-      sequence_id INTEGER,
       FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
       FOREIGN KEY (category_id) REFERENCES task_categories (id) ON DELETE CASCADE,
       UNIQUE(task_id, category_id)

@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
  */
 exports.getTasksByDate = async (req, res) => {
   try {
-    const { date } = req.params; // The function extracts the date parameter from the request's URL parameters using req.params. This is the date for which tasks are being requested.
+    const { date } = req.params;
     const db = req.db;
     
     // Validate date format (YYYY-MM-DD)
@@ -16,11 +16,17 @@ exports.getTasksByDate = async (req, res) => {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
     }
     
-    // Get all tasks for the specified date
+    // Get all tasks for the specified date with category information
     const tasks = await db.all(`
-      SELECT * FROM tasks 
-      WHERE date = ? 
-      ORDER BY created_at
+      SELECT 
+        t.*,
+        tc.name as category_name,
+        tc.color as category_color
+      FROM tasks t
+      LEFT JOIN task_category_assignments tca ON t.id = tca.task_id
+      LEFT JOIN task_categories tc ON tca.category_id = tc.id
+      WHERE t.date = ? 
+      ORDER BY t.created_at
     `, date);
     
     res.json(tasks);
@@ -390,10 +396,10 @@ exports.getTaskStatistics = async (req, res) => {
     `, [...dateParams, ...categoryParams]);
     
     res.json({
-      overallStats,
-      taskGroups,
-      categoryStats,
-      dailyStats,
+      overallStats: overallStats || {},
+      taskGroups: taskGroups || [],
+      categoryStats: categoryStats || [],
+      dailyStats: dailyStats || [],
       filters: {
         days: days,
         category: category,
@@ -428,7 +434,7 @@ exports.getTaskCategories = async (req, res) => {
       ORDER BY tc.name
     `);
     
-    res.json(categories);
+    res.json(categories || []);
   } catch (error) {
     console.error('Error getting task categories:', error);
     res.status(500).json({ error: 'Failed to get task categories' });
@@ -517,5 +523,28 @@ exports.removeTaskFromCategory = async (req, res) => {
   } catch (error) {
     console.error('Error removing task from category:', error);
     res.status(500).json({ error: 'Failed to remove task from category' });
+  }
+};
+
+/**
+ * Get task category
+ * GET /api/tasks/:taskId/category
+ */
+exports.getTaskCategory = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const db = req.db;
+    
+    const result = await db.get(`
+      SELECT tc.* 
+      FROM task_categories tc
+      JOIN task_category_assignments tca ON tc.id = tca.category_id
+      WHERE tca.task_id = ?
+    `, [taskId]);
+    
+    res.json(result || null);
+  } catch (error) {
+    console.error('Error getting task category:', error);
+    res.status(500).json({ error: 'Failed to get task category' });
   }
 };

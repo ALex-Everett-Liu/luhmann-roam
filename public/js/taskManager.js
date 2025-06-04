@@ -9,16 +9,24 @@ const TaskManager = (function() {
   let activeTaskTimer = null;
   let sortOrder = 'created'; // Default sort order, options: created, durationAsc, durationDesc
   let currentLanguage = 'en'; // Default language
+  let availableCategories = [];
+  let isInitialized = false;
   
   /**
    * Initializes the Task Manager
    */
-  function initialize() {
+  async function initialize() {
+    if (isInitialized) return;
+    
     createTaskInterface();
-    loadTasksForCurrentDate();
+    await loadCategories();
+    await loadTasksForCurrentDate();
     
     // Set up intervals for updating the timer
     setInterval(updateActiveTaskTimer, 1000);
+    
+    isInitialized = true;
+    console.log('TaskManager initialized');
   }
   
   /**
@@ -113,6 +121,151 @@ const TaskManager = (function() {
   }
   
   /**
+   * Load available categories
+   */
+  async function loadCategories() {
+    try {
+      const response = await fetch('/api/tasks/categories');
+      if (response.ok) {
+        availableCategories = await response.json();
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      availableCategories = [];
+    }
+  }
+  
+  /**
+   * Get task category information
+   */
+  async function getTaskCategory(taskId) {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/category`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Error getting task category:', error);
+    }
+    return null;
+  }
+  
+  /**
+   * Show category selector for a task
+   */
+  function showCategorySelector(taskId, buttonElement) {
+    // Remove any existing dropdown
+    const existingDropdown = document.querySelector('.category-dropdown');
+    if (existingDropdown) {
+      existingDropdown.remove();
+    }
+
+    // Create dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'category-dropdown';
+    dropdown.innerHTML = `
+      <div class="category-dropdown-content">
+        <div class="category-option" data-category="">
+          <span class="category-color" style="background-color: #999;"></span>
+          <span>No Category</span>
+        </div>
+        ${availableCategories.map(category => `
+          <div class="category-option" data-category="${category.id}">
+            <span class="category-color" style="background-color: ${category.color};"></span>
+            <span>${category.name}</span>
+          </div>
+        `).join('')}
+        <div class="category-divider"></div>
+        <div class="category-option manage-categories" data-action="manage">
+          <span>⚙️ Manage Categories</span>
+        </div>
+      </div>
+    `;
+
+    // Position dropdown
+    const rect = buttonElement.getBoundingClientRect();
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    dropdown.style.zIndex = '1000';
+
+    document.body.appendChild(dropdown);
+
+    // Add event listeners
+    dropdown.querySelectorAll('.category-option').forEach(option => {
+      option.addEventListener('click', async (e) => {
+        const action = option.dataset.action;
+        const categoryId = option.dataset.category;
+
+        if (action === 'manage') {
+          // Open task statistics manager to manage categories
+          if (window.TaskStatisticsManager) {
+            await window.TaskStatisticsManager.open();
+            // Switch to manage tab
+            const manageTab = document.querySelector('[data-tab="manage"]');
+            if (manageTab) {
+              manageTab.click();
+            }
+          }
+        } else {
+          // Assign category to task
+          await assignTaskToCategory(taskId, categoryId);
+        }
+
+        dropdown.remove();
+      });
+    });
+
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== buttonElement) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+  
+  /**
+   * Assign task to category
+   */
+  async function assignTaskToCategory(taskId, categoryId) {
+    try {
+      if (categoryId) {
+        // Assign to category
+        const response = await fetch(`/api/tasks/${taskId}/category`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ categoryId })
+        });
+
+        if (response.ok) {
+          console.log('Task assigned to category successfully');
+        }
+      } else {
+        // Remove from category
+        const response = await fetch(`/api/tasks/${taskId}/category`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          console.log('Task removed from category successfully');
+        }
+      }
+
+      // Refresh the task display
+      await loadTasksForCurrentDate();
+      renderTasks();
+
+    } catch (error) {
+      console.error('Error assigning task to category:', error);
+    }
+  }
+  
+  /**
    * Sorts the tasks based on the selected order
    * @param {string} order - The sort order (created, durationAsc, durationDesc)
    */
@@ -174,13 +327,20 @@ const TaskManager = (function() {
       taskElement.classList.add('active');
     }
     
+    // Get category info for display
+    const categoryInfo = task.category_name ? 
+      `<span class="task-category" style="background-color: ${task.category_color || '#999'};" title="${task.category_name}"></span>` : 
+      '';
+    
     taskElement.innerHTML = `
       <div class="task-content">
         <input type="checkbox" class="task-checkbox" ${task.is_completed ? 'checked' : ''}>
+        ${categoryInfo}
         <span class="task-name">${task.name}</span>
         <span class="task-duration">${formatDuration(task.total_duration || 0)}</span>
       </div>
       <div class="task-actions">
+        <button class="task-category-btn" title="Set Category">🏷️</button>
         ${!task.is_completed ? 
           `<button class="task-timer-btn ${task.is_active ? 'pause' : 'start'}">${task.is_active ? '⏸' : '▶'}</button>` : 
           ''
@@ -192,6 +352,12 @@ const TaskManager = (function() {
     // Add event listeners
     const checkbox = taskElement.querySelector('.task-checkbox');
     checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
+    
+    const categoryBtn = taskElement.querySelector('.task-category-btn');
+    categoryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCategorySelector(task.id, categoryBtn);
+    });
     
     const timerBtn = taskElement.querySelector('.task-timer-btn');
     if (timerBtn) {
