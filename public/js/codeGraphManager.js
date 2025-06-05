@@ -27,6 +27,16 @@ const CodeGraphManager = (function() {
       pagination: null
     };
     
+    // Add state tracking for current expression analysis session
+    let currentExpressionSession = {
+      entityId: null,
+      lineNumber: null,
+      codeText: null,
+      variables: [],
+      methodCalls: [],
+      dataFlow: []
+    };
+    
     function initialize() {
       createContainer();
       setupEventHandlers();
@@ -441,7 +451,7 @@ const CodeGraphManager = (function() {
       `;
       document.body.appendChild(projectModal);
 
-      // Expression Analysis Modal
+      // Expression Analysis Modal with updated method calls form
       const expressionModal = document.createElement('div');
       expressionModal.id = 'expression-modal';
       expressionModal.className = 'code-graph-modal';
@@ -483,7 +493,7 @@ const CodeGraphManager = (function() {
             </div>
             
             <div class="add-variable-section">
-              <h4>Add/Edit Variable</h4>
+              <h4 id="variable-form-title">Add Variable</h4>
               <form id="variable-form">
                 <div class="form-row">
                   <div class="form-group">
@@ -561,7 +571,8 @@ const CodeGraphManager = (function() {
                   <label><input type="checkbox" id="variable-is-exported"> Exported</label>
                 </div>
                 
-                <button type="submit" class="primary-btn">Add Variable</button>
+                <button type="submit" id="variable-submit-btn" class="primary-btn">Add Variable</button>
+                <button type="button" id="variable-cancel-edit-btn" class="secondary-btn" style="display: none;">Cancel Edit</button>
               </form>
             </div>
           </div>
@@ -574,7 +585,7 @@ const CodeGraphManager = (function() {
             </div>
             
             <div class="add-method-call-section">
-              <h4>Add/Edit Method Call</h4>
+              <h4 id="method-call-form-title">Add Method Call</h4>
               <form id="method-call-form">
                 <div class="form-row">
                   <div class="form-group">
@@ -593,6 +604,16 @@ const CodeGraphManager = (function() {
                 
                 <div class="form-row">
                   <div class="form-group">
+                    <label>Expression Type:</label>
+                    <select id="method-expression-type">
+                      <option value="call">call</option>
+                      <option value="assignment">assignment</option>
+                      <option value="parameter">parameter</option>
+                      <option value="return">return</option>
+                      <option value="conditional">conditional</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
                     <label>Module Source:</label>
                     <select id="method-module-source">
                       <option value="built-in">built-in</option>
@@ -601,6 +622,9 @@ const CodeGraphManager = (function() {
                       <option value="third-party">third-party</option>
                     </select>
                   </div>
+                </div>
+                
+                <div class="form-row">
                   <div class="form-group">
                     <label>Chain Position:</label>
                     <select id="method-chain-position">
@@ -610,16 +634,31 @@ const CodeGraphManager = (function() {
                       <option value="last">last</option>
                     </select>
                   </div>
-                </div>
-                
-                <div class="form-row">
                   <div class="form-group">
                     <label>Arguments Count:</label>
                     <input type="number" id="method-arguments-count" min="0" value="0">
                   </div>
+                </div>
+                
+                <div class="form-row">
                   <div class="form-group">
                     <label>Return Type:</label>
                     <input type="text" id="method-return-type" placeholder="string, number, void, etc.">
+                  </div>
+                  <div class="form-group">
+                    <label>Parameters Used:</label>
+                    <textarea id="method-parameters-used" rows="2" placeholder="Comma-separated list of parameters used"></textarea>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>External Dependencies:</label>
+                    <textarea id="method-external-dependencies" rows="2" placeholder="External modules or libraries used"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>Built-in Dependencies:</label>
+                    <textarea id="method-builtin-dependencies" rows="2" placeholder="Built-in methods or functions used"></textarea>
                   </div>
                 </div>
                 
@@ -638,7 +677,8 @@ const CodeGraphManager = (function() {
                   <label><input type="checkbox" id="method-is-async"> Async</label>
                 </div>
                 
-                <button type="submit" class="primary-btn">Add Method Call</button>
+                <button type="submit" id="method-call-submit-btn" class="primary-btn">Add Method Call</button>
+                <button type="button" id="method-call-cancel-edit-btn" class="secondary-btn" style="display: none;">Cancel Edit</button>
               </form>
             </div>
           </div>
@@ -651,7 +691,7 @@ const CodeGraphManager = (function() {
             </div>
             
             <div class="add-data-flow-section">
-              <h4>Add Data Flow Relationship</h4>
+              <h4 id="data-flow-form-title">Add Data Flow Relationship</h4>
               <form id="data-flow-form">
                 <div class="form-row">
                   <div class="form-group">
@@ -704,7 +744,8 @@ const CodeGraphManager = (function() {
                   </div>
                 </div>
                 
-                <button type="submit" class="primary-btn">Add Data Flow</button>
+                <button type="submit" id="data-flow-submit-btn" class="primary-btn">Add Data Flow</button>
+                <button type="button" id="data-flow-cancel-edit-btn" class="secondary-btn" style="display: none;">Cancel Edit</button>
               </form>
             </div>
           </div>
@@ -1645,7 +1686,11 @@ const CodeGraphManager = (function() {
     // Expression analysis functions
     function openExpressionModal(entityId, lineNumber, codeText) {
       const modal = document.getElementById('expression-modal');
-      const title = document.getElementById('expression-modal-title');
+      
+      // Set current session
+      currentExpressionSession.entityId = entityId;
+      currentExpressionSession.lineNumber = lineNumber;
+      currentExpressionSession.codeText = codeText;
       
       // Set context
       document.getElementById('expression-code-line').value = codeText;
@@ -1654,179 +1699,20 @@ const CodeGraphManager = (function() {
       // Load parent function info
       loadParentFunctionInfo(entityId);
       
-      // Auto-analyze the expression
-      autoAnalyzeExpression(codeText, entityId, lineNumber);
+      // Load existing data from database
+      loadExpressionVariables();
+      loadExpressionMethodCalls();
+      loadExpressionDataFlow();
       
       modal.classList.add('show');
       modal.style.display = 'flex';
     }
 
-    function autoAnalyzeExpression(codeText, entityId, lineNumber) {
-      // Parse the code line to detect variables, method calls, etc.
-      const analysis = parseCodeLine(codeText);
-      
-      // Populate detected variables
-      populateDetectedVariables(analysis.variables, entityId, lineNumber);
-      
-      // Populate detected method calls
-      populateDetectedMethodCalls(analysis.methodCalls, entityId, lineNumber);
-      
-      // Analyze data flow
-      analyzeDataFlow(analysis, entityId, lineNumber);
-      
-      // Analyze dependencies
-      analyzeDependencies(analysis);
-    }
-
-    function parseCodeLine(codeText) {
-      const analysis = {
-        variables: [],
-        methodCalls: [],
-        dataFlow: [],
-        dependencies: {
-          external: [],
-          builtin: [],
-          internal: []
-        }
-      };
-      
-      // Example parsing for: const fileExtension = path.extname(inputPath).toLowerCase();
-      
-      // Detect variable declarations
-      const varMatch = codeText.match(/(?:const|let|var)\s+(\w+)\s*=/);
-      if (varMatch) {
-        analysis.variables.push({
-          name: varMatch[1],
-          declarationType: codeText.includes('const') ? 'const' : 
-                         codeText.includes('let') ? 'let' : 'var',
-          dataType: 'string', // Could be inferred
-          mutability: codeText.includes('const') ? 'immutable' : 'mutable',
-          initialValueType: 'expression'
-        });
-      }
-      
-      // Detect method calls
-      const methodMatches = codeText.matchAll(/(\w+(?:\.\w+)*)\(/g);
-      for (const match of methodMatches) {
-        const fullMethod = match[1];
-        const parts = fullMethod.split('.');
-        
-        analysis.methodCalls.push({
-          name: parts[parts.length - 1],
-          fullPath: fullMethod,
-          callType: parts.length > 1 ? 'chained' : 'direct',
-          moduleSource: detectModuleSource(parts[0]),
-          chainPosition: detectChainPosition(codeText, match.index)
-        });
-      }
-      
-      // Detect parameters used
-      const paramMatches = codeText.matchAll(/\b(\w+)\b/g);
-      for (const match of paramMatches) {
-        if (!['const', 'let', 'var', 'path', 'extname', 'toLowerCase'].includes(match[1])) {
-          analysis.dependencies.internal.push(match[1]);
-        }
-      }
-      
-      return analysis;
-    }
-
-    function detectModuleSource(identifier) {
-      const builtinModules = ['path', 'fs', 'crypto', 'util'];
-      const builtinMethods = ['toString', 'toLowerCase', 'toUpperCase', 'parseInt'];
-      
-      if (builtinModules.includes(identifier)) return 'external';
-      if (builtinMethods.includes(identifier)) return 'built-in';
-      return 'local';
-    }
-
-    function detectChainPosition(codeText, position) {
-      const beforeDot = codeText.substring(0, position).lastIndexOf('.');
-      const afterParen = codeText.substring(position).indexOf(')');
-      const nextDot = codeText.substring(position + afterParen).indexOf('.');
-      
-      if (beforeDot === -1 && nextDot === -1) return 'standalone';
-      if (beforeDot === -1) return 'first';
-      if (nextDot === -1) return 'last';
-      return 'intermediate';
-    }
-
-    function populateDetectedVariables(variables, entityId, lineNumber) {
-      const container = document.getElementById('detected-variables-list');
-      
-      container.innerHTML = variables.map(variable => `
-        <div class="detected-item" data-variable="${variable.name}">
-          <div class="detected-item-info">
-            <div class="detected-item-name">${variable.name}</div>
-            <div class="detected-item-meta">
-              ${variable.declarationType} | ${variable.dataType} | ${variable.mutability}
-            </div>
-          </div>
-          <div class="detected-item-actions">
-            <button class="edit-detected-btn" onclick="editDetectedVariable('${variable.name}')">Edit</button>
-            <button class="delete-detected-btn" onclick="deleteDetectedVariable('${variable.name}')">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function populateDetectedMethodCalls(methodCalls, entityId, lineNumber) {
-      const container = document.getElementById('detected-method-calls-list');
-      
-      container.innerHTML = methodCalls.map((call, index) => `
-        <div class="detected-item" data-method="${call.name}-${index}">
-          <div class="detected-item-info">
-            <div class="detected-item-name">${call.fullPath}</div>
-            <div class="detected-item-meta">
-              ${call.callType} | ${call.moduleSource} | ${call.chainPosition}
-            </div>
-          </div>
-          <div class="detected-item-actions">
-            <button class="edit-detected-btn" onclick="editDetectedMethodCall('${call.name}-${index}')">Edit</button>
-            <button class="delete-detected-btn" onclick="deleteDetectedMethodCall('${call.name}-${index}')">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Add event handlers for expression modal
-    function setupExpressionModalHandlers() {
-      // Tab switching
-      document.querySelectorAll('.expression-tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const targetTab = e.target.dataset.tab;
-          
-          // Update tab buttons
-          document.querySelectorAll('.expression-tab-btn').forEach(b => b.classList.remove('active'));
-          e.target.classList.add('active');
-          
-          // Update tab content
-          document.querySelectorAll('.expression-tab-content').forEach(content => content.classList.remove('active'));
-          document.getElementById(`${targetTab}-expression-tab`).classList.add('active');
-        });
-      });
-      
-      // Form submissions
-      document.getElementById('variable-form').addEventListener('submit', saveVariable);
-      document.getElementById('method-call-form').addEventListener('submit', saveMethodCall);
-      document.getElementById('data-flow-form').addEventListener('submit', saveDataFlow);
-      
-      // Modal actions
-      document.getElementById('analyze-expression-btn').addEventListener('click', () => {
-        const codeText = document.getElementById('expression-code-line').value;
-        const entityId = document.getElementById('expression-parent-function').dataset.entityId;
-        const lineNumber = document.getElementById('expression-line-number').value;
-        autoAnalyzeExpression(codeText, entityId, lineNumber);
-      });
-      
-      document.getElementById('cancel-expression').addEventListener('click', closeExpressionModal);
-    }
-
-    function closeExpressionModal() {
-      const modal = document.getElementById('expression-modal');
-      modal.classList.remove('show');
-      setTimeout(() => modal.style.display = 'none', 200);
-    }
+    // Make functions available globally
+    window.editDetectedVariable = editDetectedVariable;
+    window.editDetectedMethodCall = editDetectedMethodCall;
+    window.deleteDetectedVariable = deleteDetectedVariable;
+    window.deleteDetectedMethodCall = deleteDetectedMethodCall;
 
     // Add missing functions after the existing expression analysis functions
 
@@ -1888,142 +1774,398 @@ const CodeGraphManager = (function() {
     }
 
     // Add missing form save functions
-    function saveVariable(e) {
+    async function saveVariable(e) {
       e.preventDefault();
       
       const variableData = {
         name: document.getElementById('variable-name').value,
-        declarationType: document.getElementById('variable-declaration-type').value,
-        dataType: document.getElementById('variable-data-type').value,
-        scopeType: document.getElementById('variable-scope-type').value,
-        initialValueType: document.getElementById('variable-initial-value-type').value,
+        declaration_type: document.getElementById('variable-declaration-type').value,
+        data_type: document.getElementById('variable-data-type').value,
+        scope_type: document.getElementById('variable-scope-type').value,
+        initial_value_type: document.getElementById('variable-initial-value-type').value,
         mutability: document.getElementById('variable-mutability').value,
-        columnStart: parseInt(document.getElementById('variable-column-start').value) || 0,
-        columnEnd: parseInt(document.getElementById('variable-column-end').value) || 0,
-        isExported: document.getElementById('variable-is-exported').checked
+        column_start: parseInt(document.getElementById('variable-column-start').value) || 0,
+        column_end: parseInt(document.getElementById('variable-column-end').value) || 0,
+        is_exported: document.getElementById('variable-is-exported').checked,
+        parent_entity_id: currentExpressionSession.entityId,
+        line_number: currentExpressionSession.lineNumber
       };
       
-      console.log('Saving variable:', variableData);
-      
-      // Add to detected variables list
-      const container = document.getElementById('detected-variables-list');
-      const newItem = document.createElement('div');
-      newItem.className = 'detected-item';
-      newItem.innerHTML = `
-        <div class="detected-item-info">
-          <div class="detected-item-name">${variableData.name}</div>
-          <div class="detected-item-meta">
-            ${variableData.declarationType} | ${variableData.dataType} | ${variableData.mutability}
-          </div>
-        </div>
-        <div class="detected-item-actions">
-          <button class="edit-detected-btn" onclick="editDetectedVariable('${variableData.name}')">Edit</button>
-          <button class="delete-detected-btn" onclick="deleteDetectedVariable('${variableData.name}')">Delete</button>
-        </div>
-      `;
-      
-      container.appendChild(newItem);
-      
-      // Clear form
-      document.getElementById('variable-form').reset();
-      
+      try {
+        let response;
+        if (editingState.variable) {
+          // Update existing variable
+          response = await fetch(`/api/code-graph/variables/${editingState.variable}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(variableData)
+          });
+        } else {
+          // Create new variable
+          response = await fetch('/api/code-graph/variables', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(variableData)
+          });
+        }
+        
+        if (!response.ok) {
+          throw new Error('Failed to save variable');
+        }
+        
+        const savedVariable = await response.json();
+        
+        // Update local session data
+        if (editingState.variable) {
+          const index = currentExpressionSession.variables.findIndex(v => v.id === editingState.variable);
+          if (index !== -1) {
+            currentExpressionSession.variables[index] = savedVariable;
+          }
+          showNotification('Variable updated successfully!', 'success');
+        } else {
+          currentExpressionSession.variables.push(savedVariable);
       showNotification('Variable added successfully!', 'success');
     }
 
-    function saveMethodCall(e) {
+        // Refresh the variables list
+        await loadExpressionVariables();
+        
+        // Reset form and editing state
+        document.getElementById('variable-form').reset();
+        resetVariableForm();
+      } catch (error) {
+        console.error('Error saving variable:', error);
+        showNotification('Error saving variable', 'error');
+      }
+    }
+
+    async function saveMethodCall(e) {
       e.preventDefault();
       
       const methodCallData = {
-        name: document.getElementById('method-call-name').value,
-        callType: document.getElementById('method-call-type').value,
-        moduleSource: document.getElementById('method-module-source').value,
-        chainPosition: document.getElementById('method-chain-position').value,
-        argumentsCount: parseInt(document.getElementById('method-arguments-count').value) || 0,
-        returnType: document.getElementById('method-return-type').value,
-        columnStart: parseInt(document.getElementById('method-column-start').value) || 0,
-        columnEnd: parseInt(document.getElementById('method-column-end').value) || 0,
-        isAsync: document.getElementById('method-is-async').checked
+        method_name: document.getElementById('method-call-name').value,
+        call_type: document.getElementById('method-call-type').value,
+        expression_type: document.getElementById('method-expression-type').value,
+        module_source: document.getElementById('method-module-source').value,
+        chain_position: document.getElementById('method-chain-position').value,
+        arguments_count: parseInt(document.getElementById('method-arguments-count').value) || 0,
+        return_type: document.getElementById('method-return-type').value,
+        parameters_used: document.getElementById('method-parameters-used').value,
+        external_dependencies: document.getElementById('method-external-dependencies').value,
+        builtin_dependencies: document.getElementById('method-builtin-dependencies').value,
+        column_start: parseInt(document.getElementById('method-column-start').value) || 0,
+        column_end: parseInt(document.getElementById('method-column-end').value) || 0,
+        is_async: document.getElementById('method-is-async').checked,
+        parent_entity_id: currentExpressionSession.entityId,
+        line_number: currentExpressionSession.lineNumber
       };
       
-      console.log('Saving method call:', methodCallData);
-      
-      // Add to detected method calls list
-      const container = document.getElementById('detected-method-calls-list');
-      const newItem = document.createElement('div');
-      newItem.className = 'detected-item';
-      newItem.innerHTML = `
-        <div class="detected-item-info">
-          <div class="detected-item-name">${methodCallData.name}</div>
-          <div class="detected-item-meta">
-            ${methodCallData.callType} | ${methodCallData.moduleSource} | ${methodCallData.chainPosition}
-          </div>
-        </div>
-        <div class="detected-item-actions">
-          <button class="edit-detected-btn" onclick="editDetectedMethodCall('${methodCallData.name}')">Edit</button>
-          <button class="delete-detected-btn" onclick="deleteDetectedMethodCall('${methodCallData.name}')">Delete</button>
-        </div>
-      `;
-      
-      container.appendChild(newItem);
-      
-      // Clear form
-      document.getElementById('method-call-form').reset();
-      
-      showNotification('Method call added successfully!', 'success');
+      try {
+        let response;
+        if (editingState.methodCall) {
+          // Update existing method call
+          response = await fetch(`/api/code-graph/method-calls/${editingState.methodCall}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(methodCallData)
+          });
+        } else {
+          // Create new method call
+          response = await fetch('/api/code-graph/method-calls', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(methodCallData)
+          });
+        }
+        
+        if (!response.ok) {
+          throw new Error('Failed to save method call');
+        }
+        
+        const savedMethodCall = await response.json();
+        
+        // Update local session data
+        if (editingState.methodCall) {
+          const index = currentExpressionSession.methodCalls.findIndex(m => m.id === editingState.methodCall);
+          if (index !== -1) {
+            currentExpressionSession.methodCalls[index] = savedMethodCall;
+          }
+          showNotification('Method call updated successfully!', 'success');
+        } else {
+          currentExpressionSession.methodCalls.push(savedMethodCall);
+          showNotification('Method call added successfully!', 'success');
+        }
+        
+        // Refresh the method calls list
+        await loadExpressionMethodCalls();
+        
+        // Reset form and editing state
+        document.getElementById('method-call-form').reset();
+        resetMethodCallForm();
+      } catch (error) {
+        console.error('Error saving method call:', error);
+        showNotification('Error saving method call', 'error');
+      }
     }
 
-    function saveDataFlow(e) {
+    async function saveDataFlow(e) {
       e.preventDefault();
       
       const dataFlowData = {
-        sourceType: document.getElementById('data-flow-source-type').value,
-        sourceId: document.getElementById('data-flow-source-id').value,
-        targetType: document.getElementById('data-flow-target-type').value,
-        targetId: document.getElementById('data-flow-target-id').value,
-        flowType: document.getElementById('data-flow-type').value,
-        transformation: document.getElementById('data-flow-transformation').value
+        source_type: document.getElementById('data-flow-source-type').value,
+        source_id: document.getElementById('data-flow-source-id').value,
+        target_type: document.getElementById('data-flow-target-type').value,
+        target_id: document.getElementById('data-flow-target-id').value,
+        flow_type: document.getElementById('data-flow-type').value,
+        transformation_applied: document.getElementById('data-flow-transformation').value,
+        parent_entity_id: currentExpressionSession.entityId,
+        line_number: currentExpressionSession.lineNumber
       };
       
-      console.log('Saving data flow:', dataFlowData);
-      
-      // Clear form
-      document.getElementById('data-flow-form').reset();
-      
-      showNotification('Data flow relationship added successfully!', 'success');
+      try {
+        let response;
+        if (editingState.dataFlow) {
+          // Update existing data flow
+          response = await fetch(`/api/code-graph/data-flow/${editingState.dataFlow}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataFlowData)
+          });
+        } else {
+          // Create new data flow
+          response = await fetch('/api/code-graph/data-flow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataFlowData)
+          });
+        }
+        
+        if (!response.ok) {
+          throw new Error('Failed to save data flow');
+        }
+        
+        const savedDataFlow = await response.json();
+        
+        // Update local session data
+        if (editingState.dataFlow) {
+          const index = currentExpressionSession.dataFlow.findIndex(d => d.id === editingState.dataFlow);
+          if (index !== -1) {
+            currentExpressionSession.dataFlow[index] = savedDataFlow;
+          }
+          showNotification('Data flow updated successfully!', 'success');
+        } else {
+          currentExpressionSession.dataFlow.push(savedDataFlow);
+          showNotification('Data flow added successfully!', 'success');
+        }
+        
+        // Refresh the data flow visualization
+        await loadExpressionDataFlow();
+        
+        // Reset form and editing state
+        document.getElementById('data-flow-form').reset();
+        resetDataFlowForm();
+      } catch (error) {
+        console.error('Error saving data flow:', error);
+        showNotification('Error saving data flow', 'error');
+      }
     }
 
-    // Add missing edit/delete functions for detected items
-    function editDetectedVariable(variableName) {
-      console.log('Editing variable:', variableName);
-      // Populate the variable form with existing data
-      document.getElementById('variable-name').value = variableName;
-      showNotification('Variable loaded for editing', 'info');
+    // Load variables for current expression from database
+    async function loadExpressionVariables() {
+      try {
+        const response = await fetch(`/api/code-graph/variables?parent_entity_id=${currentExpressionSession.entityId}&line_number=${currentExpressionSession.lineNumber}`);
+        const variables = await response.json();
+        
+        currentExpressionSession.variables = variables;
+        
+        const container = document.getElementById('detected-variables-list');
+        container.innerHTML = variables.map(variable => `
+          <div class="detected-item" data-variable-id="${variable.id}">
+            <div class="detected-item-info">
+              <div class="detected-item-name">${variable.name}</div>
+              <div class="detected-item-meta">
+                ${variable.declaration_type} | ${variable.data_type} | ${variable.mutability}
+              </div>
+            </div>
+            <div class="detected-item-actions">
+              <button class="edit-detected-btn" onclick="editDetectedVariable('${variable.id}')">Edit</button>
+              <button class="delete-detected-btn" onclick="deleteDetectedVariable('${variable.id}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading variables:', error);
+        showNotification('Error loading variables', 'error');
+      }
     }
 
-    function deleteDetectedVariable(variableName) {
-      if (confirm(`Delete variable "${variableName}"?`)) {
-        const item = document.querySelector(`[data-variable="${variableName}"]`);
-        if (item) {
-          item.remove();
-          showNotification('Variable deleted', 'success');
+    // Load method calls for current expression from database
+    async function loadExpressionMethodCalls() {
+      try {
+        const response = await fetch(`/api/code-graph/method-calls?parent_entity_id=${currentExpressionSession.entityId}&line_number=${currentExpressionSession.lineNumber}`);
+        const methodCalls = await response.json();
+        
+        currentExpressionSession.methodCalls = methodCalls;
+        
+      const container = document.getElementById('detected-method-calls-list');
+        container.innerHTML = methodCalls.map(methodCall => `
+          <div class="detected-item" data-method-id="${methodCall.id}">
+        <div class="detected-item-info">
+              <div class="detected-item-name">${methodCall.method_name}</div>
+          <div class="detected-item-meta">
+                ${methodCall.call_type} | ${methodCall.expression_type} | ${methodCall.module_source} | ${methodCall.chain_position}
+          </div>
+        </div>
+        <div class="detected-item-actions">
+              <button class="edit-detected-btn" onclick="editDetectedMethodCall('${methodCall.id}')">Edit</button>
+              <button class="delete-detected-btn" onclick="deleteDetectedMethodCall('${methodCall.id}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading method calls:', error);
+        showNotification('Error loading method calls', 'error');
+      }
+    }
+
+    // Load data flow for current expression from database
+    async function loadExpressionDataFlow() {
+      try {
+        const response = await fetch(`/api/code-graph/data-flow?parent_entity_id=${currentExpressionSession.entityId}&line_number=${currentExpressionSession.lineNumber}`);
+        const dataFlow = await response.json();
+        
+        currentExpressionSession.dataFlow = dataFlow;
+        
+        // Update data flow diagram
+        const diagram = document.getElementById('data-flow-diagram');
+        if (diagram) {
+          diagram.innerHTML = `
+            <div style="text-align: center; color: #666;">
+              <p>Data Flow Analysis</p>
+              <p>Variables: ${currentExpressionSession.variables.length}</p>
+              <p>Method Calls: ${currentExpressionSession.methodCalls.length}</p>
+              <p>Data Flow Relationships: ${dataFlow.length}</p>
+        </div>
+      `;
+        }
+      } catch (error) {
+        console.error('Error loading data flow:', error);
+        showNotification('Error loading data flow', 'error');
+      }
+    }
+
+    // Updated edit functions to load from database
+    async function editDetectedVariable(variableId) {
+      try {
+        const response = await fetch(`/api/code-graph/variables/${variableId}`);
+        const variable = await response.json();
+        
+        editingState.variable = variableId;
+        
+        // Populate all form fields from database
+        document.getElementById('variable-name').value = variable.name || '';
+        document.getElementById('variable-declaration-type').value = variable.declaration_type || 'const';
+        document.getElementById('variable-data-type').value = variable.data_type || 'string';
+        document.getElementById('variable-scope-type').value = variable.scope_type || 'local';
+        document.getElementById('variable-initial-value-type').value = variable.initial_value_type || 'literal';
+        document.getElementById('variable-mutability').value = variable.mutability || 'immutable';
+        document.getElementById('variable-column-start').value = variable.column_start || 0;
+        document.getElementById('variable-column-end').value = variable.column_end || 0;
+        document.getElementById('variable-is-exported').checked = variable.is_exported || false;
+        
+        // Update form UI
+        document.getElementById('variable-form-title').textContent = 'Edit Variable';
+        document.getElementById('variable-submit-btn').textContent = 'Update Variable';
+        document.getElementById('variable-cancel-edit-btn').style.display = 'inline-block';
+        
+        showNotification('Variable loaded for editing', 'info');
+      } catch (error) {
+        console.error('Error loading variable for editing:', error);
+        showNotification('Error loading variable data', 'error');
+      }
+    }
+
+    async function editDetectedMethodCall(methodCallId) {
+      try {
+        const response = await fetch(`/api/code-graph/method-calls/${methodCallId}`);
+        const methodCall = await response.json();
+        
+        editingState.methodCall = methodCallId;
+        
+        // Populate all form fields from database
+        document.getElementById('method-call-name').value = methodCall.method_name || '';
+        document.getElementById('method-call-type').value = methodCall.call_type || 'direct';
+        document.getElementById('method-expression-type').value = methodCall.expression_type || 'call';
+        document.getElementById('method-module-source').value = methodCall.module_source || 'local';
+        document.getElementById('method-chain-position').value = methodCall.chain_position || 'standalone';
+        document.getElementById('method-arguments-count').value = methodCall.arguments_count || 0;
+        document.getElementById('method-return-type').value = methodCall.return_type || '';
+        document.getElementById('method-parameters-used').value = methodCall.parameters_used || '';
+        document.getElementById('method-external-dependencies').value = methodCall.external_dependencies || '';
+        document.getElementById('method-builtin-dependencies').value = methodCall.builtin_dependencies || '';
+        document.getElementById('method-column-start').value = methodCall.column_start || 0;
+        document.getElementById('method-column-end').value = methodCall.column_end || 0;
+        document.getElementById('method-is-async').checked = methodCall.is_async || false;
+        
+        // Update form UI
+        document.getElementById('method-call-form-title').textContent = 'Edit Method Call';
+        document.getElementById('method-call-submit-btn').textContent = 'Update Method Call';
+        document.getElementById('method-call-cancel-edit-btn').style.display = 'inline-block';
+        
+        showNotification('Method call loaded for editing', 'info');
+      } catch (error) {
+        console.error('Error loading method call for editing:', error);
+        showNotification('Error loading method call data', 'error');
+      }
+    }
+
+    // Updated delete functions to delete from database
+    async function deleteDetectedVariable(variableId) {
+      if (confirm('Delete this variable?')) {
+        try {
+          const response = await fetch(`/api/code-graph/variables/${variableId}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to delete variable');
+          }
+          
+          // Remove from local session data
+          currentExpressionSession.variables = currentExpressionSession.variables.filter(v => v.id !== variableId);
+          
+          // Refresh the variables list
+          await loadExpressionVariables();
+          
+          showNotification('Variable deleted successfully', 'success');
+        } catch (error) {
+          console.error('Error deleting variable:', error);
+          showNotification('Error deleting variable', 'error');
         }
       }
     }
 
-    function editDetectedMethodCall(methodCallId) {
-      console.log('Editing method call:', methodCallId);
-      // Extract method name from ID
-      const methodName = methodCallId.split('-')[0];
-      document.getElementById('method-call-name').value = methodName;
-      showNotification('Method call loaded for editing', 'info');
-    }
-
-    function deleteDetectedMethodCall(methodCallId) {
-      if (confirm(`Delete method call "${methodCallId}"?`)) {
-        const item = document.querySelector(`[data-method="${methodCallId}"]`);
-        if (item) {
-          item.remove();
-          showNotification('Method call deleted', 'success');
+    async function deleteDetectedMethodCall(methodCallId) {
+      if (confirm('Delete this method call?')) {
+        try {
+          const response = await fetch(`/api/code-graph/method-calls/${methodCallId}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to delete method call');
+          }
+          
+          // Remove from local session data
+          currentExpressionSession.methodCalls = currentExpressionSession.methodCalls.filter(m => m.id !== methodCallId);
+          
+          // Refresh the method calls list
+          await loadExpressionMethodCalls();
+          
+          showNotification('Method call deleted successfully', 'success');
+        } catch (error) {
+          console.error('Error deleting method call:', error);
+          showNotification('Error deleting method call', 'error');
         }
       }
     }
@@ -2171,9 +2313,21 @@ window.changeRelationshipsPage = (page) => CodeGraphManager.changeRelationshipsP
 
 // Make sure these functions are available globally for the expression modal
 window.editDetectedVariable = function(variableName) {
-  console.log('Editing variable:', variableName);
+  editingState.variable = variableName;
+  
+  // Get the existing data from the item
+  const item = document.querySelector(`[data-variable="${variableName}"]`);
+  if (item) {
+    // For now, just populate the name - in a real implementation you'd store and retrieve all data
   document.getElementById('variable-name').value = variableName;
+    
+    // Update form UI
+    document.getElementById('variable-form-title').textContent = 'Edit Variable';
+    document.getElementById('variable-submit-btn').textContent = 'Update Variable';
+    document.getElementById('variable-cancel-edit-btn').style.display = 'inline-block';
+    
   showNotification('Variable loaded for editing', 'info');
+  }
 };
 
 window.deleteDetectedVariable = function(variableName) {
@@ -2187,10 +2341,51 @@ window.deleteDetectedVariable = function(variableName) {
 };
 
 window.editDetectedMethodCall = function(methodCallId) {
-  console.log('Editing method call:', methodCallId);
+  editingState.methodCall = methodCallId;
+  
+  // Get the existing data from the item
+  const item = document.querySelector(`[data-method="${methodCallId}"]`);
+  if (item && item.dataset.methodData) {
+    try {
+      const methodData = JSON.parse(item.dataset.methodData);
+      
+      // Populate all form fields
+      document.getElementById('method-call-name').value = methodData.name || '';
+      document.getElementById('method-call-type').value = methodData.callType || 'direct';
+      document.getElementById('method-expression-type').value = methodData.expressionType || 'call';
+      document.getElementById('method-module-source').value = methodData.moduleSource || 'local';
+      document.getElementById('method-chain-position').value = methodData.chainPosition || 'standalone';
+      document.getElementById('method-arguments-count').value = methodData.argumentsCount || 0;
+      document.getElementById('method-return-type').value = methodData.returnType || '';
+      document.getElementById('method-parameters-used').value = methodData.parametersUsed || '';
+      document.getElementById('method-external-dependencies').value = methodData.externalDependencies || '';
+      document.getElementById('method-builtin-dependencies').value = methodData.builtinDependencies || '';
+      document.getElementById('method-column-start').value = methodData.columnStart || 0;
+      document.getElementById('method-column-end').value = methodData.columnEnd || 0;
+      document.getElementById('method-is-async').checked = methodData.isAsync || false;
+      
+      // Update form UI
+      document.getElementById('method-call-form-title').textContent = 'Edit Method Call';
+      document.getElementById('method-call-submit-btn').textContent = 'Update Method Call';
+      document.getElementById('method-call-cancel-edit-btn').style.display = 'inline-block';
+      
+      showNotification('Method call loaded for editing', 'info');
+    } catch (error) {
+      console.error('Error parsing method data:', error);
+      showNotification('Error loading method call data', 'error');
+    }
+  } else {
+    // Fallback for items without stored data
   const methodName = methodCallId.split('-')[0];
   document.getElementById('method-call-name').value = methodName;
-  showNotification('Method call loaded for editing', 'info');
+    
+    // Update form UI
+    document.getElementById('method-call-form-title').textContent = 'Edit Method Call';
+    document.getElementById('method-call-submit-btn').textContent = 'Update Method Call';
+    document.getElementById('method-call-cancel-edit-btn').style.display = 'inline-block';
+    
+    showNotification('Method call loaded for editing (limited data)', 'info');
+  }
 };
 
 window.deleteDetectedMethodCall = function(methodCallId) {

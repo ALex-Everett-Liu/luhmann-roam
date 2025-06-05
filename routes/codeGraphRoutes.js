@@ -34,4 +34,22 @@ router.get('/visualization/flow/:entityId', codeGraphController.getDataFlow);
 // Import utilities
 router.post('/import/from-files', codeGraphController.importFromFiles);
 
+// Variables routes
+router.get('/variables', codeGraphController.getVariables);
+router.get('/variables/:id', codeGraphController.getVariable);
+router.post('/variables', codeGraphController.createVariable);
+router.put('/variables/:id', codeGraphController.updateVariable);
+router.delete('/variables/:id', codeGraphController.deleteVariable);
+
+// Method calls routes
+router.get('/method-calls', codeGraphController.getMethodCalls);
+router.get('/method-calls/:id', codeGraphController.getMethodCall);
+router.post('/method-calls', codeGraphController.createMethodCall);
+router.put('/method-calls/:id', codeGraphController.updateMethodCall);
+router.delete('/method-calls/:id', codeGraphController.deleteMethodCall);
+
+// Data flow routes
+router.get('/data-flow', codeGraphController.getDataFlow);
+router.post('/data-flow', codeGraphController.createDataFlow);
+
 module.exports = router;

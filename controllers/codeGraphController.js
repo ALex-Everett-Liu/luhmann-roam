@@ -1033,3 +1033,365 @@ exports.saveExpressionAnalysis = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Variables endpoints
+exports.getVariables = async (req, res) => {
+  try {
+    const db = req.db;
+    const { parent_entity_id, line_number } = req.query;
+    
+    let query = 'SELECT * FROM code_variables WHERE 1=1';
+    const params = [];
+    
+    if (parent_entity_id) {
+      query += ' AND parent_entity_id = ?';
+      params.push(parent_entity_id);
+    }
+    
+    if (line_number) {
+      query += ' AND line_number = ?';
+      params.push(line_number);
+    }
+    
+    query += ' ORDER BY sequence_id ASC, created_at DESC';
+    
+    const variables = await db.all(query, params);
+    res.json(variables);
+  } catch (error) {
+    console.error('Error fetching variables:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getVariable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const variable = await db.get('SELECT * FROM code_variables WHERE id = ?', id);
+    
+    if (!variable) {
+      return res.status(404).json({ error: 'Variable not found' });
+    }
+    
+    res.json(variable);
+  } catch (error) {
+    console.error('Error fetching variable:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createVariable = async (req, res) => {
+  try {
+    const {
+      name, declaration_type, data_type, scope_type, parent_entity_id,
+      line_number, column_start, column_end, initial_value_type,
+      mutability, is_exported
+    } = req.body;
+    
+    if (!name || !parent_entity_id) {
+      return res.status(400).json({ error: 'Name and parent_entity_id are required' });
+    }
+    
+    const db = req.db;
+    const id = uuidv4();
+    const now = Date.now();
+    
+    await db.run(`
+      INSERT INTO code_variables 
+      (id, name, declaration_type, data_type, scope_type, parent_entity_id,
+       line_number, column_start, column_end, initial_value_type, mutability,
+       is_exported, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, name, declaration_type, data_type, scope_type, parent_entity_id,
+      line_number, column_start, column_end, initial_value_type, mutability,
+      is_exported || false, now, now
+    ]);
+    
+    const variable = await db.get('SELECT * FROM code_variables WHERE id = ?', id);
+    res.status(201).json(variable);
+  } catch (error) {
+    console.error('Error creating variable:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateVariable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const db = req.db;
+    const now = Date.now();
+    
+    const fields = Object.keys(updateData).filter(key => 
+      !['id', 'created_at', 'sequence_id'].includes(key)
+    );
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = fields.map(field => updateData[field]);
+    values.push(now, id);
+    
+    await db.run(`
+      UPDATE code_variables 
+      SET ${setClause}, updated_at = ?
+      WHERE id = ?
+    `, values);
+    
+    const variable = await db.get('SELECT * FROM code_variables WHERE id = ?', id);
+    if (!variable) {
+      return res.status(404).json({ error: 'Variable not found' });
+    }
+    
+    res.json(variable);
+  } catch (error) {
+    console.error('Error updating variable:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteVariable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const result = await db.run('DELETE FROM code_variables WHERE id = ?', id);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Variable not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting variable:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Method calls endpoints
+exports.getMethodCalls = async (req, res) => {
+  try {
+    const db = req.db;
+    const { parent_entity_id, line_number } = req.query;
+    
+    let query = 'SELECT * FROM code_method_calls WHERE 1=1';
+    const params = [];
+    
+    if (parent_entity_id) {
+      query += ' AND parent_entity_id = ?';
+      params.push(parent_entity_id);
+    }
+    
+    if (line_number) {
+      query += ' AND line_number = ?';
+      params.push(line_number);
+    }
+    
+    query += ' ORDER BY sequence_id ASC, created_at DESC';
+    
+    const methodCalls = await db.all(query, params);
+    res.json(methodCalls);
+  } catch (error) {
+    console.error('Error fetching method calls:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getMethodCall = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
+    
+    if (!methodCall) {
+      return res.status(404).json({ error: 'Method call not found' });
+    }
+    
+    res.json(methodCall);
+  } catch (error) {
+    console.error('Error fetching method call:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createMethodCall = async (req, res) => {
+  try {
+    const {
+      method_name, call_type, expression_type, module_source, chain_position,
+      arguments_count, parent_entity_id, line_number, column_start, column_end,
+      return_type, parameters_used, external_dependencies, builtin_dependencies,
+      is_async
+    } = req.body;
+    
+    if (!method_name || !parent_entity_id) {
+      return res.status(400).json({ error: 'Method name and parent_entity_id are required' });
+    }
+    
+    const db = req.db;
+    const id = uuidv4();
+    const now = Date.now();
+    
+    await db.run(`
+      INSERT INTO code_method_calls 
+      (id, method_name, call_type, module_source, chain_position, arguments_count,
+       parent_entity_id, line_number, column_start, column_end, return_type,
+       is_async, created_at, updated_at, properties)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, method_name, call_type, module_source, chain_position, arguments_count,
+      parent_entity_id, line_number, column_start, column_end, return_type,
+      is_async || false, now, now,
+      JSON.stringify({
+        expression_type,
+        parameters_used,
+        external_dependencies,
+        builtin_dependencies
+      })
+    ]);
+    
+    const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
+    res.status(201).json(methodCall);
+  } catch (error) {
+    console.error('Error creating method call:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateMethodCall = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const db = req.db;
+    const now = Date.now();
+    
+    // Handle properties field for additional data
+    if (updateData.expression_type || updateData.parameters_used || 
+        updateData.external_dependencies || updateData.builtin_dependencies) {
+      updateData.properties = JSON.stringify({
+        expression_type: updateData.expression_type,
+        parameters_used: updateData.parameters_used,
+        external_dependencies: updateData.external_dependencies,
+        builtin_dependencies: updateData.builtin_dependencies
+      });
+      
+      // Remove individual fields that are now in properties
+      delete updateData.expression_type;
+      delete updateData.parameters_used;
+      delete updateData.external_dependencies;
+      delete updateData.builtin_dependencies;
+    }
+    
+    const fields = Object.keys(updateData).filter(key => 
+      !['id', 'created_at', 'sequence_id'].includes(key)
+    );
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = fields.map(field => updateData[field]);
+    values.push(now, id);
+    
+    await db.run(`
+      UPDATE code_method_calls 
+      SET ${setClause}, updated_at = ?
+      WHERE id = ?
+    `, values);
+    
+    const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
+    if (!methodCall) {
+      return res.status(404).json({ error: 'Method call not found' });
+    }
+    
+    res.json(methodCall);
+  } catch (error) {
+    console.error('Error updating method call:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteMethodCall = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const result = await db.run('DELETE FROM code_method_calls WHERE id = ?', id);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Method call not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting method call:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Data flow endpoints
+exports.getDataFlow = async (req, res) => {
+  try {
+    const db = req.db;
+    const { parent_entity_id, line_number } = req.query;
+    
+    let query = 'SELECT * FROM code_data_flow WHERE 1=1';
+    const params = [];
+    
+    if (parent_entity_id) {
+      query += ' AND parent_entity_id = ?';
+      params.push(parent_entity_id);
+    }
+    
+    if (line_number) {
+      query += ' AND line_number = ?';
+      params.push(line_number);
+    }
+    
+    query += ' ORDER BY sequence_id ASC, created_at DESC';
+    
+    const dataFlow = await db.all(query, params);
+    res.json(dataFlow);
+  } catch (error) {
+    console.error('Error fetching data flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createDataFlow = async (req, res) => {
+  try {
+    const {
+      source_type, source_id, target_type, target_id, flow_type,
+      transformation_applied, parent_entity_id, line_number
+    } = req.body;
+    
+    if (!source_type || !target_type || !flow_type || !parent_entity_id) {
+      return res.status(400).json({ error: 'Source type, target type, flow type, and parent_entity_id are required' });
+    }
+    
+    const db = req.db;
+    const id = uuidv4();
+    const now = Date.now();
+    
+    await db.run(`
+      INSERT INTO code_data_flow 
+      (id, source_type, source_id, target_type, target_id, flow_type,
+       transformation_applied, parent_entity_id, line_number, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, source_type, source_id, target_type, target_id, flow_type,
+      transformation_applied, parent_entity_id, line_number, now, now
+    ]);
+    
+    const dataFlow = await db.get('SELECT * FROM code_data_flow WHERE id = ?', id);
+    res.status(201).json(dataFlow);
+  } catch (error) {
+    console.error('Error creating data flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
