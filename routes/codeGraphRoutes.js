@@ -1,0 +1,37 @@
+const express = require('express');
+const router = express.Router();
+const codeGraphController = require('../controllers/codeGraphController');
+
+// Entity routes
+router.get('/entities', codeGraphController.getAllEntities);
+router.post('/entities', codeGraphController.createEntity);
+router.put('/entities/:id', codeGraphController.updateEntity);
+router.delete('/entities/:id', codeGraphController.deleteEntity);
+router.get('/entities/:id', codeGraphController.getEntity);
+
+// Relationship routes
+router.get('/relationships', codeGraphController.getAllRelationships);
+router.post('/relationships', codeGraphController.createRelationship);
+router.put('/relationships/:id', codeGraphController.updateRelationship);
+router.delete('/relationships/:id', codeGraphController.deleteRelationship);
+
+// Project routes
+router.get('/projects', codeGraphController.getAllProjects);
+router.post('/projects', codeGraphController.createProject);
+router.put('/projects/:id', codeGraphController.updateProject);
+router.delete('/projects/:id', codeGraphController.deleteProject);
+
+// Analysis routes
+router.get('/analysis/metrics', codeGraphController.getAnalysisMetrics);
+router.post('/analysis/complexity', codeGraphController.analyzeComplexity);
+router.post('/analysis/dependencies', codeGraphController.analyzeDependencies);
+router.post('/analysis/coupling', codeGraphController.analyzeCoupling);
+
+// Visualization routes
+router.get('/visualization/graph', codeGraphController.getGraphVisualization);
+router.get('/visualization/flow/:entityId', codeGraphController.getDataFlow);
+
+// Import utilities
+router.post('/import/from-files', codeGraphController.importFromFiles);
+
+module.exports = router;

@@ -1,0 +1,1017 @@
+/**
+ * Code Graph Management UI
+ * Manual interface for creating and managing code entities and relationships
+ */
+const CodeGraphManager = (function() {
+    let container;
+    let entitiesData = [];
+    let relationshipsData = [];
+    let projectsData = [];
+    
+    // State management
+    let entitiesState = {
+      currentPage: 1,
+      itemsPerPage: 20,
+      searchTerm: '',
+      typeFilter: '',
+      projectFilter: '',
+      filteredData: []
+    };
+    
+    let relationshipsState = {
+      currentPage: 1,
+      itemsPerPage: 20,
+      searchTerm: '',
+      typeFilter: '',
+      filteredData: []
+    };
+    
+    function initialize() {
+      createContainer();
+      setupEventHandlers();
+    }
+    
+    function createContainer() {
+      container = document.createElement('div');
+      container.id = 'code-graph-container';
+      container.className = 'code-graph-container';
+      container.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #f8f9fa;
+        z-index: 1000;
+        display: none;
+      `;
+      
+      container.innerHTML = `
+        <div class="code-graph-header">
+          <h2>Code Graph Analysis</h2>
+          <button id="close-code-graph" class="close-btn">×</button>
+        </div>
+        
+        <div class="code-graph-content">
+          <div class="management-section">
+            <div class="section-tabs">
+              <button class="tab-btn active" data-tab="entities">Code Entities</button>
+              <button class="tab-btn" data-tab="relationships">Relationships</button>
+              <button class="tab-btn" data-tab="projects">Projects</button>
+              <button class="tab-btn" data-tab="analysis">Analysis</button>
+              <button class="tab-btn" data-tab="visualization">Visualization</button>
+            </div>
+            
+            <!-- Entities Tab -->
+            <div id="entities-tab" class="tab-content active">
+              <div class="action-bar">
+                <button id="add-entity-btn" class="primary-btn">Add Entity</button>
+                <button id="refresh-entities-btn" class="secondary-btn">Refresh</button>
+                <button id="import-entities-btn" class="secondary-btn">Import from Files</button>
+              </div>
+              
+              <div class="search-filter-bar">
+                <div class="search-container">
+                  <input type="text" id="entities-search" placeholder="Search entities by name, file, or documentation..." class="search-input">
+                  <button id="clear-entities-search" class="clear-search-btn">×</button>
+                </div>
+                <div class="filter-container">
+                  <select id="entities-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="function">Function</option>
+                    <option value="class">Class</option>
+                    <option value="method">Method</option>
+                    <option value="variable">Variable</option>
+                    <option value="property">Property</option>
+                    <option value="module">Module</option>
+                  </select>
+                  <select id="entities-project-filter" class="filter-select">
+                    <option value="">All Projects</option>
+                  </select>
+                  <select id="entities-per-page" class="filter-select">
+                    <option value="10">10 per page</option>
+                    <option value="20" selected>20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div id="entities-results-info" class="results-info"></div>
+              <div id="entities-list" class="data-list"></div>
+              <div id="entities-pagination" class="pagination-container"></div>
+            </div>
+            
+            <!-- Relationships Tab -->
+            <div id="relationships-tab" class="tab-content">
+              <div class="action-bar">
+                <button id="add-relationship-btn" class="primary-btn">Add Relationship</button>
+                <button id="refresh-relationships-btn" class="secondary-btn">Refresh</button>
+              </div>
+              
+              <div class="search-filter-bar">
+                <div class="search-container">
+                  <input type="text" id="relationships-search" placeholder="Search relationships..." class="search-input">
+                  <button id="clear-relationships-search" class="clear-search-btn">×</button>
+                </div>
+                <div class="filter-container">
+                  <select id="relationships-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="calls">Calls</option>
+                    <option value="inherits">Inherits</option>
+                    <option value="implements">Implements</option>
+                    <option value="imports">Imports</option>
+                    <option value="uses">Uses</option>
+                    <option value="defines">Defines</option>
+                    <option value="modifies">Modifies</option>
+                  </select>
+                  <select id="relationships-per-page" class="filter-select">
+                    <option value="10">10 per page</option>
+                    <option value="20" selected>20 per page</option>
+                    <option value="50">50 per page</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div id="relationships-results-info" class="results-info"></div>
+              <div id="relationships-list" class="data-list"></div>
+              <div id="relationships-pagination" class="pagination-container"></div>
+            </div>
+            
+            <!-- Projects Tab -->
+            <div id="projects-tab" class="tab-content">
+              <div class="action-bar">
+                <button id="add-project-btn" class="primary-btn">Add Project</button>
+                <button id="refresh-projects-btn" class="secondary-btn">Refresh</button>
+              </div>
+              <div id="projects-list" class="data-list"></div>
+            </div>
+            
+            <!-- Analysis Tab -->
+            <div id="analysis-tab" class="tab-content">
+              <div class="analysis-controls">
+                <h3>Code Analysis Tools</h3>
+                <div class="analysis-buttons">
+                  <button id="analyze-complexity-btn" class="analysis-btn">Analyze Complexity</button>
+                  <button id="analyze-dependencies-btn" class="analysis-btn">Analyze Dependencies</button>
+                  <button id="analyze-coupling-btn" class="analysis-btn">Analyze Coupling</button>
+                </div>
+                <select id="analysis-project-filter" class="filter-select">
+                  <option value="">All Projects</option>
+                </select>
+              </div>
+              <div id="analysis-results" class="analysis-results"></div>
+            </div>
+            
+            <!-- Visualization Tab -->
+            <div id="visualization-tab" class="tab-content">
+              <div class="visualization-controls">
+                <h3>Code Graph Visualization</h3>
+                <div class="viz-controls">
+                  <select id="viz-project-filter" class="filter-select">
+                    <option value="">All Projects</option>
+                  </select>
+                  <select id="viz-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="function">Functions Only</option>
+                    <option value="class">Classes Only</option>
+                  </select>
+                  <select id="viz-relationship-filter" class="filter-select">
+                    <option value="">All Relationships</option>
+                    <option value="calls">Calls Only</option>
+                    <option value="inherits">Inheritance Only</option>
+                  </select>
+                  <button id="load-visualization-btn" class="primary-btn">Load Graph</button>
+                </div>
+              </div>
+              <div id="code-graph-visualization" class="graph-visualization"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      createModals();
+    }
+    
+    function createModals() {
+      // Entity Modal
+      const entityModal = document.createElement('div');
+      entityModal.id = 'entity-modal';
+      entityModal.className = 'code-graph-modal';
+      entityModal.innerHTML = `
+        <div class="code-graph-modal-content">
+          <h3 id="entity-modal-title">Add Code Entity</h3>
+          <form id="entity-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name*:</label>
+                <input type="text" id="entity-name" required>
+              </div>
+              <div class="form-group">
+                <label>Type*:</label>
+                <select id="entity-type" required>
+                  <option value="function">Function</option>
+                  <option value="class">Class</option>
+                  <option value="method">Method</option>
+                  <option value="variable">Variable</option>
+                  <option value="property">Property</option>
+                  <option value="module">Module</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>File Path*:</label>
+                <input type="text" id="entity-file-path" required placeholder="/path/to/file.js">
+              </div>
+              <div class="form-group">
+                <label>Line Number:</label>
+                <input type="number" id="entity-line-number" min="1">
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Scope:</label>
+                <select id="entity-scope">
+                  <option value="global">Global</option>
+                  <option value="local">Local</option>
+                  <option value="class">Class</option>
+                  <option value="module">Module</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Language:</label>
+                <select id="entity-language">
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="csharp">C#</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Signature:</label>
+              <input type="text" id="entity-signature" placeholder="function(param1, param2) => returnType">
+            </div>
+            
+            <div class="form-group">
+              <label>Documentation:</label>
+              <textarea id="entity-documentation" rows="3" placeholder="Description or JSDoc comments..."></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Access Modifier:</label>
+                <select id="entity-access-modifier">
+                  <option value="">None</option>
+                  <option value="public">Public</option>
+                  <option value="private">Private</option>
+                  <option value="protected">Protected</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Return Type:</label>
+                <input type="text" id="entity-return-type" placeholder="string, number, void, etc.">
+              </div>
+            </div>
+            
+            <div class="form-row checkbox-row">
+              <label><input type="checkbox" id="entity-is-async"> Async</label>
+              <label><input type="checkbox" id="entity-is-static"> Static</label>
+              <label><input type="checkbox" id="entity-is-exported"> Exported</label>
+            </div>
+            
+            <div class="modal-actions">
+              <button type="submit" class="primary-btn">Save</button>
+              <button type="button" id="cancel-entity" class="secondary-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(entityModal);
+      
+      // Relationship Modal
+      const relationshipModal = document.createElement('div');
+      relationshipModal.id = 'relationship-modal';
+      relationshipModal.className = 'code-graph-modal';
+      relationshipModal.innerHTML = `
+        <div class="code-graph-modal-content">
+          <h3 id="relationship-modal-title">Add Relationship</h3>
+          <form id="relationship-form">
+            <div class="form-group">
+              <label>Source Entity*:</label>
+              <select id="relationship-source" required>
+                <option value="">Select source entity...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Target Entity*:</label>
+              <select id="relationship-target" required>
+                <option value="">Select target entity...</option>
+              </select>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Relationship Type*:</label>
+                <select id="relationship-type" required>
+                  <option value="calls">Calls</option>
+                  <option value="inherits">Inherits</option>
+                  <option value="implements">Implements</option>
+                  <option value="imports">Imports</option>
+                  <option value="uses">Uses</option>
+                  <option value="defines">Defines</option>
+                  <option value="modifies">Modifies</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Strength (1-10):</label>
+                <input type="number" id="relationship-strength" min="1" max="10" value="5">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Context:</label>
+              <textarea id="relationship-context" rows="2" placeholder="Additional context about this relationship..."></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>File Path:</label>
+                <input type="text" id="relationship-file-path" placeholder="Where this relationship occurs">
+              </div>
+              <div class="form-group">
+                <label>Line Number:</label>
+                <input type="number" id="relationship-line-number" min="1">
+              </div>
+            </div>
+            
+            <div class="modal-actions">
+              <button type="submit" class="primary-btn">Save</button>
+              <button type="button" id="cancel-relationship" class="secondary-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(relationshipModal);
+      
+      // Project Modal
+      const projectModal = document.createElement('div');
+      projectModal.id = 'project-modal';
+      projectModal.className = 'code-graph-modal';
+      projectModal.innerHTML = `
+        <div class="code-graph-modal-content">
+          <h3 id="project-modal-title">Add Project</h3>
+          <form id="project-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Name*:</label>
+                <input type="text" id="project-name" required>
+              </div>
+              <div class="form-group">
+                <label>Language:</label>
+                <select id="project-language">
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="csharp">C#</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Base Path*:</label>
+              <input type="text" id="project-base-path" required placeholder="/path/to/project">
+            </div>
+            
+            <div class="form-group">
+              <label>Description:</label>
+              <textarea id="project-description" rows="2" placeholder="Project description..."></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Framework:</label>
+                <input type="text" id="project-framework" placeholder="React, Vue, Express, etc.">
+              </div>
+              <div class="form-group">
+                <label>Version:</label>
+                <input type="text" id="project-version" placeholder="1.0.0">
+              </div>
+            </div>
+            
+            <div class="modal-actions">
+              <button type="submit" class="primary-btn">Save</button>
+              <button type="button" id="cancel-project" class="secondary-btn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(projectModal);
+    }
+    
+    function setupEventHandlers() {
+      // Close button
+      document.getElementById('close-code-graph').addEventListener('click', hide);
+      
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', switchTab);
+      });
+      
+      // Action buttons
+      document.getElementById('add-entity-btn').addEventListener('click', () => openEntityModal());
+      document.getElementById('add-relationship-btn').addEventListener('click', () => openRelationshipModal());
+      document.getElementById('add-project-btn').addEventListener('click', () => openProjectModal());
+      
+      document.getElementById('refresh-entities-btn').addEventListener('click', loadEntities);
+      document.getElementById('refresh-relationships-btn').addEventListener('click', loadRelationships);
+      document.getElementById('refresh-projects-btn').addEventListener('click', loadProjects);
+      
+      // Search and filter handlers
+      document.getElementById('entities-search').addEventListener('input', handleEntitiesSearch);
+      document.getElementById('clear-entities-search').addEventListener('click', clearEntitiesSearch);
+      document.getElementById('entities-type-filter').addEventListener('change', handleEntitiesFilter);
+      document.getElementById('entities-project-filter').addEventListener('change', handleEntitiesFilter);
+      document.getElementById('entities-per-page').addEventListener('change', handleEntitiesPerPageChange);
+      
+      document.getElementById('relationships-search').addEventListener('input', handleRelationshipsSearch);
+      document.getElementById('clear-relationships-search').addEventListener('click', clearRelationshipsSearch);
+      document.getElementById('relationships-type-filter').addEventListener('change', handleRelationshipsFilter);
+      document.getElementById('relationships-per-page').addEventListener('change', handleRelationshipsPerPageChange);
+      
+      // Modal handling
+      document.getElementById('entity-form').addEventListener('submit', saveEntity);
+      document.getElementById('relationship-form').addEventListener('submit', saveRelationship);
+      document.getElementById('project-form').addEventListener('submit', saveProject);
+      
+      document.getElementById('cancel-entity').addEventListener('click', closeEntityModal);
+      document.getElementById('cancel-relationship').addEventListener('click', closeRelationshipModal);
+      document.getElementById('cancel-project').addEventListener('click', closeProjectModal);
+      
+      // Analysis buttons
+      document.getElementById('analyze-complexity-btn').addEventListener('click', analyzeComplexity);
+      document.getElementById('analyze-dependencies-btn').addEventListener('click', analyzeDependencies);
+      document.getElementById('analyze-coupling-btn').addEventListener('click', analyzeCoupling);
+      
+      // Visualization
+      document.getElementById('load-visualization-btn').addEventListener('click', loadVisualization);
+      
+      // Import
+      document.getElementById('import-entities-btn').addEventListener('click', importFromFiles);
+    }
+    
+    function switchTab(e) {
+      const targetTab = e.target.dataset.tab;
+      
+      // Update tab buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(`${targetTab}-tab`).classList.add('active');
+      
+      // Load data if needed
+      if (targetTab === 'entities') {
+        loadEntities();
+      } else if (targetTab === 'relationships') {
+        loadRelationships();
+      } else if (targetTab === 'projects') {
+        loadProjects();
+      }
+    }
+    
+    // Entity management functions
+    async function loadEntities() {
+      try {
+        const params = new URLSearchParams({
+          page: entitiesState.currentPage,
+          limit: entitiesState.itemsPerPage
+        });
+        
+        if (entitiesState.searchTerm) params.append('search', entitiesState.searchTerm);
+        if (entitiesState.typeFilter) params.append('type', entitiesState.typeFilter);
+        if (entitiesState.projectFilter) params.append('project_id', entitiesState.projectFilter);
+        
+        const response = await fetch(`/api/code-graph/entities?${params}`);
+        const data = await response.json();
+        
+        entitiesData = data.entities || [];
+        entitiesState.filteredData = entitiesData;
+        
+        renderEntitiesList();
+        renderEntitiesPagination(data.pagination);
+        updateEntitiesResultsInfo(data.pagination);
+        
+        // Update project filter options
+        await updateProjectFilters();
+      } catch (error) {
+        console.error('Error loading entities:', error);
+        showNotification('Error loading entities', 'error');
+      }
+    }
+    
+    function renderEntitiesList() {
+      const listContainer = document.getElementById('entities-list');
+      
+      if (entitiesData.length === 0) {
+        listContainer.innerHTML = '<p class="empty-message">No code entities found. Add some entities to get started.</p>';
+        return;
+      }
+      
+      listContainer.innerHTML = entitiesData.map(entity => `
+        <div class="data-item code-entity-item" data-id="${entity.id}">
+          <div class="item-info">
+            <div class="item-title">
+              <span class="entity-name">${entity.name}</span>
+              <span class="entity-type-badge ${entity.type}">${entity.type}</span>
+            </div>
+            <div class="item-meta">
+              <span class="file-path">${entity.file_path}</span>
+              ${entity.line_number ? `<span class="line-number">Line ${entity.line_number}</span>` : ''}
+              ${entity.project_name ? `<span class="project-name">Project: ${entity.project_name}</span>` : ''}
+            </div>
+            ${entity.signature ? `<div class="entity-signature">${entity.signature}</div>` : ''}
+            ${entity.documentation ? `<div class="entity-docs">${entity.documentation.substring(0, 100)}${entity.documentation.length > 100 ? '...' : ''}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button onclick="CodeGraphManager.viewDataFlow('${entity.id}')" class="view-btn">Data Flow</button>
+            <button onclick="CodeGraphManager.editEntity('${entity.id}')" class="edit-btn">Edit</button>
+            <button onclick="CodeGraphManager.deleteEntity('${entity.id}')" class="delete-btn">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function handleEntitiesSearch(e) {
+      entitiesState.searchTerm = e.target.value.toLowerCase();
+      entitiesState.currentPage = 1;
+      loadEntities();
+    }
+    
+    function clearEntitiesSearch() {
+      document.getElementById('entities-search').value = '';
+      entitiesState.searchTerm = '';
+      entitiesState.currentPage = 1;
+      loadEntities();
+    }
+    
+    function handleEntitiesFilter() {
+      entitiesState.typeFilter = document.getElementById('entities-type-filter').value;
+      entitiesState.projectFilter = document.getElementById('entities-project-filter').value;
+      entitiesState.currentPage = 1;
+      loadEntities();
+    }
+    
+    function handleEntitiesPerPageChange(e) {
+      entitiesState.itemsPerPage = parseInt(e.target.value);
+      entitiesState.currentPage = 1;
+      loadEntities();
+    }
+    
+    // Relationship management functions
+    async function loadRelationships() {
+      try {
+        const params = new URLSearchParams({
+          page: relationshipsState.currentPage,
+          limit: relationshipsState.itemsPerPage
+        });
+        
+        if (relationshipsState.searchTerm) params.append('search', relationshipsState.searchTerm);
+        if (relationshipsState.typeFilter) params.append('type', relationshipsState.typeFilter);
+        
+        const response = await fetch(`/api/code-graph/relationships?${params}`);
+        relationshipsData = await response.json();
+        
+        renderRelationshipsList();
+        renderRelationshipsPagination();
+        updateRelationshipsResultsInfo();
+      } catch (error) {
+        console.error('Error loading relationships:', error);
+        showNotification('Error loading relationships', 'error');
+      }
+    }
+    
+    function renderRelationshipsList() {
+      const listContainer = document.getElementById('relationships-list');
+      
+      if (relationshipsData.length === 0) {
+        listContainer.innerHTML = '<p class="empty-message">No relationships found. Add some relationships to connect your code entities.</p>';
+        return;
+      }
+      
+      listContainer.innerHTML = relationshipsData.map(rel => `
+        <div class="data-item relationship-item" data-id="${rel.id}">
+          <div class="item-info">
+            <div class="item-title">
+              <span class="source-entity">${rel.source_name}</span>
+              <span class="relationship-arrow">→</span>
+              <span class="target-entity">${rel.target_name}</span>
+            </div>
+            <div class="item-meta">
+              <span class="relationship-type-badge ${rel.relationship_type}">${rel.relationship_type}</span>
+              <span class="relationship-strength">Strength: ${rel.relationship_strength}</span>
+              ${rel.call_count > 1 ? `<span class="call-count">Calls: ${rel.call_count}</span>` : ''}
+              ${rel.file_path ? `<span class="file-path">${rel.file_path}</span>` : ''}
+            </div>
+            ${rel.context ? `<div class="relationship-context">${rel.context}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button onclick="CodeGraphManager.editRelationship('${rel.id}')" class="edit-btn">Edit</button>
+            <button onclick="CodeGraphManager.deleteRelationship('${rel.id}')" class="delete-btn">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Project management functions
+    async function loadProjects() {
+      try {
+        const response = await fetch('/api/code-graph/projects');
+        projectsData = await response.json();
+        renderProjectsList();
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        showNotification('Error loading projects', 'error');
+      }
+    }
+    
+    function renderProjectsList() {
+      const listContainer = document.getElementById('projects-list');
+      
+      if (projectsData.length === 0) {
+        listContainer.innerHTML = '<p class="empty-message">No projects found. Create a project to organize your code entities.</p>';
+        return;
+      }
+      
+      listContainer.innerHTML = projectsData.map(project => `
+        <div class="data-item project-item" data-id="${project.id}">
+          <div class="item-info">
+            <div class="item-title">${project.name}</div>
+            <div class="item-meta">
+              <span class="language">${project.language}</span>
+              ${project.framework ? `<span class="framework">${project.framework}</span>` : ''}
+              ${project.version ? `<span class="version">v${project.version}</span>` : ''}
+              <span class="entity-count">${project.entity_count} entities</span>
+            </div>
+            <div class="project-path">${project.base_path}</div>
+            ${project.description ? `<div class="project-description">${project.description}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button onclick="CodeGraphManager.viewProject('${project.id}')" class="view-btn">View</button>
+            <button onclick="CodeGraphManager.editProject('${project.id}')" class="edit-btn">Edit</button>
+            <button onclick="CodeGraphManager.deleteProject('${project.id}')" class="delete-btn">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Modal functions
+    function openEntityModal(entityId = null) {
+      const modal = document.getElementById('entity-modal');
+      const title = document.getElementById('entity-modal-title');
+      const form = document.getElementById('entity-form');
+      
+      if (entityId) {
+        const entity = entitiesData.find(e => e.id === entityId);
+        title.textContent = 'Edit Code Entity';
+        
+        // Populate form fields
+        document.getElementById('entity-name').value = entity.name;
+        document.getElementById('entity-type').value = entity.type;
+        document.getElementById('entity-file-path').value = entity.file_path;
+        document.getElementById('entity-line-number').value = entity.line_number || '';
+        document.getElementById('entity-scope').value = entity.scope || 'global';
+        document.getElementById('entity-language').value = entity.language || 'javascript';
+        document.getElementById('entity-signature').value = entity.signature || '';
+        document.getElementById('entity-documentation').value = entity.documentation || '';
+        document.getElementById('entity-access-modifier').value = entity.access_modifier || '';
+        document.getElementById('entity-return-type').value = entity.return_type || '';
+        document.getElementById('entity-is-async').checked = entity.is_async || false;
+        document.getElementById('entity-is-static').checked = entity.is_static || false;
+        document.getElementById('entity-is-exported').checked = entity.is_exported || false;
+        
+        form.dataset.entityId = entityId;
+      } else {
+        title.textContent = 'Add Code Entity';
+        form.reset();
+        delete form.dataset.entityId;
+      }
+      
+      modal.classList.add('show');
+      modal.style.display = 'flex';
+    }
+    
+    function closeEntityModal() {
+      const modal = document.getElementById('entity-modal');
+      modal.classList.remove('show');
+      setTimeout(() => modal.style.display = 'none', 200);
+    }
+    
+    async function saveEntity(e) {
+      e.preventDefault();
+      
+      const form = e.target;
+      const isEdit = !!form.dataset.entityId;
+      
+      const data = {
+        name: document.getElementById('entity-name').value,
+        type: document.getElementById('entity-type').value,
+        file_path: document.getElementById('entity-file-path').value,
+        line_number: parseInt(document.getElementById('entity-line-number').value) || null,
+        scope: document.getElementById('entity-scope').value,
+        language: document.getElementById('entity-language').value,
+        signature: document.getElementById('entity-signature').value,
+        documentation: document.getElementById('entity-documentation').value,
+        access_modifier: document.getElementById('entity-access-modifier').value,
+        return_type: document.getElementById('entity-return-type').value,
+        is_async: document.getElementById('entity-is-async').checked,
+        is_static: document.getElementById('entity-is-static').checked,
+        is_exported: document.getElementById('entity-is-exported').checked
+      };
+      
+      try {
+        const url = isEdit 
+          ? `/api/code-graph/entities/${form.dataset.entityId}`
+          : '/api/code-graph/entities';
+        
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save entity');
+        }
+        
+        closeEntityModal();
+        loadEntities();
+        showNotification(isEdit ? 'Entity updated successfully!' : 'Entity created successfully!', 'success');
+      } catch (error) {
+        console.error('Error saving entity:', error);
+        showNotification('Error saving entity', 'error');
+      }
+    }
+    
+    // Analysis functions
+    async function analyzeComplexity() {
+      try {
+        const projectId = document.getElementById('analysis-project-filter').value;
+        const response = await fetch('/api/code-graph/analysis/complexity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: projectId || null })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          renderAnalysisResults('Complexity Analysis', result.results);
+          showNotification('Complexity analysis completed!', 'success');
+        }
+      } catch (error) {
+        console.error('Error analyzing complexity:', error);
+        showNotification('Error analyzing complexity', 'error');
+      }
+    }
+    
+    function renderAnalysisResults(title, results) {
+      const container = document.getElementById('analysis-results');
+      
+      let html = `<h4>${title}</h4>`;
+      
+      if (results.length === 0) {
+        html += '<p>No results found.</p>';
+      } else {
+        html += `
+          <table class="analysis-table">
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th>Complexity</th>
+                <th>Fan In</th>
+                <th>Fan Out</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${results.map(result => `
+                <tr>
+                  <td>${result.entity_name}</td>
+                  <td>${result.complexity.toFixed(2)}</td>
+                  <td>${result.fan_in}</td>
+                  <td>${result.fan_out}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    // Visualization functions
+    async function loadVisualization() {
+      try {
+        const projectId = document.getElementById('viz-project-filter').value;
+        const typeFilter = document.getElementById('viz-type-filter').value;
+        const relationshipFilter = document.getElementById('viz-relationship-filter').value;
+        
+        const params = new URLSearchParams();
+        if (projectId) params.append('project_id', projectId);
+        if (typeFilter) params.append('type_filter', typeFilter);
+        if (relationshipFilter) params.append('relationship_filter', relationshipFilter);
+        
+        const response = await fetch(`/api/code-graph/visualization/graph?${params}`);
+        const data = await response.json();
+        
+        renderGraphVisualization(data);
+      } catch (error) {
+        console.error('Error loading visualization:', error);
+        showNotification('Error loading visualization', 'error');
+      }
+    }
+    
+    function renderGraphVisualization(data) {
+      const container = document.getElementById('code-graph-visualization');
+      
+      // Simple visualization using basic HTML/CSS
+      // In a production environment, you'd use D3.js, vis.js, or similar
+      let html = `
+        <div class="graph-summary">
+          <p><strong>Nodes:</strong> ${data.nodes.length} | <strong>Edges:</strong> ${data.edges.length}</p>
+        </div>
+        <div class="simple-graph">
+      `;
+      
+      // Create a simple node list with connections
+      data.nodes.forEach(node => {
+        const connections = data.edges.filter(edge => 
+          edge.source === node.id || edge.target === node.id
+        );
+        
+        html += `
+          <div class="graph-node ${node.type}" data-id="${node.id}">
+            <div class="node-label">${node.label}</div>
+            <div class="node-type">${node.type}</div>
+            <div class="node-connections">${connections.length} connections</div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      
+      // Add connections list
+      html += `
+        <div class="connections-list">
+          <h4>Relationships</h4>
+          ${data.edges.map(edge => {
+            const sourceNode = data.nodes.find(n => n.id === edge.source);
+            const targetNode = data.nodes.find(n => n.id === edge.target);
+            return `
+              <div class="connection-item">
+                <span class="source">${sourceNode?.label}</span>
+                <span class="relationship">${edge.type}</span>
+                <span class="target">${targetNode?.label}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // Utility functions
+    async function updateProjectFilters() {
+      const selectors = [
+        'entities-project-filter',
+        'analysis-project-filter', 
+        'viz-project-filter'
+      ];
+      
+      selectors.forEach(selectorId => {
+        const selector = document.getElementById(selectorId);
+        if (selector) {
+          const currentValue = selector.value;
+          selector.innerHTML = '<option value="">All Projects</option>';
+          
+          projectsData.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = project.name;
+            selector.appendChild(option);
+          });
+          
+          if (currentValue) selector.value = currentValue;
+        }
+      });
+    }
+    
+    function show() {
+      container.style.display = 'block';
+      loadEntities();
+      loadProjects();
+    }
+    
+    function hide() {
+      container.style.display = 'none';
+    }
+    
+    function isVisible() {
+      return container && container.style.display !== 'none';
+    }
+    
+    // Public API
+    return {
+      initialize,
+      show,
+      hide,
+      isVisible,
+      editEntity: (id) => openEntityModal(id),
+      deleteEntity: async (id) => {
+        if (confirm('Are you sure you want to delete this entity? This will also delete all related relationships.')) {
+          try {
+            const response = await fetch(`/api/code-graph/entities/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+              loadEntities();
+              showNotification('Entity deleted successfully!', 'success');
+            }
+          } catch (error) {
+            console.error('Error deleting entity:', error);
+            showNotification('Error deleting entity', 'error');
+          }
+        }
+      },
+      viewDataFlow: async (id) => {
+        try {
+          const response = await fetch(`/api/code-graph/visualization/flow/${id}`);
+          const data = await response.json();
+          
+          // Open a modal or new tab to show data flow
+          console.log('Data flow for entity:', data);
+          showNotification('Data flow loaded (check console)', 'info');
+        } catch (error) {
+          console.error('Error loading data flow:', error);
+          showNotification('Error loading data flow', 'error');
+        }
+      }
+    };
+  })();
+  
+  // Notification function
+  function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = 'code-graph-notification';
+    notification.textContent = message;
+    
+    const baseStyles = {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      padding: '12px 20px',
+      borderRadius: '4px',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+      zIndex: '10001',
+      fontSize: '14px',
+      fontWeight: 'bold',
+      maxWidth: '300px',
+      wordWrap: 'break-word'
+    };
+    
+    const typeStyles = {
+      success: { backgroundColor: '#4CAF50', color: 'white' },
+      error: { backgroundColor: '#f44336', color: 'white' },
+      warning: { backgroundColor: '#ff9800', color: 'white' },
+      info: { backgroundColor: '#2196F3', color: 'white' }
+    };
+    
+    Object.assign(notification.style, baseStyles, typeStyles[type] || typeStyles.info);
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 300);
+      }
+    }, 3000);
+  }
+  
+  window.CodeGraphManager = CodeGraphManager;

@@ -30,6 +30,7 @@ const wordFrequencyRoutes = require('./routes/wordFrequencyRoutes');
 const wordGroupRoutes = require('./routes/wordGroupRoutes');
 const graphRoutes = require('./routes/graphRoutes');
 const graphManagementRoutes = require('./routes/graphManagementRoutes');
+const codeGraphRoutes = require('./routes/codeGraphRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -758,6 +759,7 @@ app.use('/api/dcim', dcimRoutes);
 
 // Use the dev test routes
 app.use('/api/dev-test', devTestRoutes);
+app.use('/api/code-graph', codeGraphRoutes);
 
 // Use the database export/import routes
 app.use('/api/database', databaseExportImportRoutes);

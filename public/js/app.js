@@ -1731,5 +1731,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add to sidebar using helper function
   addButtonToSidebar(toggleSizeHighlightButton);
+
+  // Initialize Code Graph Manager
+  CodeGraphManager.initialize();
+  
+  // Add Code Graph button to sidebar
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    const codeGraphButton = document.createElement('button');
+    codeGraphButton.textContent = 'Code Graph';
+    codeGraphButton.className = 'sidebar-button';
+    codeGraphButton.addEventListener('click', () => {
+      CodeGraphManager.show();
+    });
+    sidebar.appendChild(codeGraphButton);
+  }
 });
 
