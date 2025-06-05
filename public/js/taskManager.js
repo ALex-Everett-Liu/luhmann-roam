@@ -584,8 +584,8 @@ const TaskManager = (function() {
           `<button class="task-timer-btn ${task.is_active ? 'pause' : 'start'}" title="${task.is_active ? 'Pause task' : 'Start task'}">${task.is_active ? '⏸' : '▶'}</button>` : 
           ''
         }
-        <button class="task-menu-btn" title="Task options">⋮</button>
-        <button class="task-delete-btn" title="Delete task">🗑️</button>
+        <button class="task-category-btn" title="Set Category">🏷️</button>
+        <button class="task-menu-btn" title="More options">⋮</button>
       </div>
     `;
     
@@ -604,14 +604,17 @@ const TaskManager = (function() {
       });
     }
     
+    const categoryBtn = taskElement.querySelector('.task-category-btn');
+    categoryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCategorySelector(task.id, categoryBtn);
+    });
+    
     const menuBtn = taskElement.querySelector('.task-menu-btn');
     menuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       showTaskMenu(task.id, menuBtn);
     });
-    
-    const deleteBtn = taskElement.querySelector('.task-delete-btn');
-    deleteBtn.addEventListener('click', () => deleteTask(task.id));
     
     return taskElement;
   }
@@ -637,9 +640,9 @@ const TaskManager = (function() {
           <span class="menu-icon">🕒</span>
           <span>View Timestamps</span>
         </div>
-        <div class="task-menu-option" data-action="category">
-          <span class="menu-icon">🏷️</span>
-          <span>Set Category</span>
+        <div class="task-menu-option task-menu-delete" data-action="delete">
+          <span class="menu-icon">🗑️</span>
+          <span>Delete Task</span>
         </div>
       </div>
     `;
@@ -660,13 +663,11 @@ const TaskManager = (function() {
 
         if (action === 'timestamp') {
           openTaskTimestampModal(taskId);
-        } else if (action === 'category') {
+        } else if (action === 'delete') {
           // Close the menu first
           dropdown.remove();
-          // Small delay to prevent conflicts
-          setTimeout(() => {
-            showCategorySelector(taskId, buttonElement);
-          }, 100);
+          // Call delete function
+          deleteTask(taskId);
           return; // Don't remove dropdown here as we're doing it above
         }
 
