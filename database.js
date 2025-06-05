@@ -799,36 +799,6 @@ try {
     CREATE INDEX IF NOT EXISTS idx_code_analysis_type ON code_analysis_results(analysis_type);
   `);
 
-  // Update the trigger creation section to include code graph tables
-  const codeGraphTables = [
-    'code_entities',
-    'code_relationships',
-    'code_projects',
-    'code_project_entities',
-    'code_analysis_results'
-  ];
-
-  for (const table of codeGraphTables) {
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
-      AFTER INSERT ON ${table}
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE ${table} 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
-        WHERE id = NEW.id;
-      END;
-    `);
-    console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
-  }
-
-  // Update the sequence_id index creation section
-  for (const table of codeGraphTables) {
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
-    console.log(`Created sequence_id index for ${table} table`);
-  }
-
   // Create code_expressions table - stores individual expressions within code
   await db.exec(`
     CREATE TABLE IF NOT EXISTS code_expressions (
@@ -889,7 +859,7 @@ try {
       column_end INTEGER,
       return_type TEXT,
       is_async BOOLEAN DEFAULT 0,
-      properties TEXT, -- JSON string for additional metadata
+      properties TEXT, -- JSON string for additional metadata (expression_type, parameters_used, external_dependencies, builtin_dependencies)
       created_at INTEGER,
       updated_at INTEGER,
       sequence_id INTEGER,
@@ -929,6 +899,41 @@ try {
     CREATE INDEX IF NOT EXISTS idx_code_data_flow_source ON code_data_flow(source_type, source_id);
     CREATE INDEX IF NOT EXISTS idx_code_data_flow_target ON code_data_flow(target_type, target_id);
   `);
+
+  // NOW create triggers and indices for ALL code graph tables (including the ones we just created)
+  const codeGraphTables = [
+    'code_entities',
+    'code_relationships',
+    'code_projects',
+    'code_project_entities',
+    'code_analysis_results',
+    'code_expressions',
+    'code_variables',
+    'code_method_calls',
+    'code_data_flow'
+  ];
+
+  // Create triggers for auto-assigning sequence IDs
+  for (const table of codeGraphTables) {
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
+      AFTER INSERT ON ${table}
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE ${table} 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
+        WHERE id = NEW.id;
+      END;
+    `);
+    console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
+  }
+
+  // Create sequence_id indices for all code graph tables
+  for (const table of codeGraphTables) {
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+    console.log(`Created sequence_id index for ${table} table`);
+  }
 
   return db;
 }

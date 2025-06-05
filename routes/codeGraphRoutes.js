@@ -51,5 +51,11 @@ router.delete('/method-calls/:id', codeGraphController.deleteMethodCall);
 // Data flow routes
 router.get('/data-flow', codeGraphController.getDataFlow);
 router.post('/data-flow', codeGraphController.createDataFlow);
+router.put('/data-flow/:id', codeGraphController.updateDataFlow);
+router.delete('/data-flow/:id', codeGraphController.deleteDataFlow);
+
+// Expression analysis routes
+router.post('/expressions/save-analysis', codeGraphController.saveExpressionAnalysis);
+router.post('/expressions/auto-analyze', codeGraphController.analyzeExpression);
 
 module.exports = router;

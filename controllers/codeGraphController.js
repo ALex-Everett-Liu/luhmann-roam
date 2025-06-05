@@ -1037,8 +1037,11 @@ exports.saveExpressionAnalysis = async (req, res) => {
 // Variables endpoints
 exports.getVariables = async (req, res) => {
   try {
+    console.log('🔍 [SERVER] getVariables called with query:', req.query);
     const db = req.db;
     const { parent_entity_id, line_number } = req.query;
+    
+    console.log('🔍 [SERVER] Database object:', !!db);
     
     let query = 'SELECT * FROM code_variables WHERE 1=1';
     const params = [];
@@ -1046,19 +1049,29 @@ exports.getVariables = async (req, res) => {
     if (parent_entity_id) {
       query += ' AND parent_entity_id = ?';
       params.push(parent_entity_id);
+      console.log('🔍 [SERVER] Added parent_entity_id filter:', parent_entity_id);
     }
     
     if (line_number) {
       query += ' AND line_number = ?';
       params.push(line_number);
+      console.log('🔍 [SERVER] Added line_number filter:', line_number);
     }
     
     query += ' ORDER BY sequence_id ASC, created_at DESC';
     
+    console.log('🔍 [SERVER] Final query:', query);
+    console.log('🔍 [SERVER] Query params:', params);
+    
     const variables = await db.all(query, params);
+    console.log('🔍 [SERVER] Query result:', variables);
+    console.log('🔍 [SERVER] Result type:', typeof variables, 'isArray:', Array.isArray(variables));
+    console.log('🔍 [SERVER] Result length:', variables?.length);
+    
     res.json(variables);
   } catch (error) {
-    console.error('Error fetching variables:', error);
+    console.error('💥 [SERVER] Error fetching variables:', error);
+    console.error('💥 [SERVER] Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1175,8 +1188,11 @@ exports.deleteVariable = async (req, res) => {
 // Method calls endpoints
 exports.getMethodCalls = async (req, res) => {
   try {
+    console.log('🔍 [SERVER] getMethodCalls called with query:', req.query);
     const db = req.db;
     const { parent_entity_id, line_number } = req.query;
+    
+    console.log('🔍 [SERVER] Database object:', !!db);
     
     let query = 'SELECT * FROM code_method_calls WHERE 1=1';
     const params = [];
@@ -1184,19 +1200,29 @@ exports.getMethodCalls = async (req, res) => {
     if (parent_entity_id) {
       query += ' AND parent_entity_id = ?';
       params.push(parent_entity_id);
+      console.log('🔍 [SERVER] Added parent_entity_id filter:', parent_entity_id);
     }
     
     if (line_number) {
       query += ' AND line_number = ?';
       params.push(line_number);
+      console.log('🔍 [SERVER] Added line_number filter:', line_number);
     }
     
     query += ' ORDER BY sequence_id ASC, created_at DESC';
     
+    console.log('🔍 [SERVER] Final query:', query);
+    console.log('🔍 [SERVER] Query params:', params);
+    
     const methodCalls = await db.all(query, params);
+    console.log('🔍 [SERVER] Query result:', methodCalls);
+    console.log('🔍 [SERVER] Result type:', typeof methodCalls, 'isArray:', Array.isArray(methodCalls));
+    console.log('🔍 [SERVER] Result length:', methodCalls?.length);
+    
     res.json(methodCalls);
   } catch (error) {
-    console.error('Error fetching method calls:', error);
+    console.error('💥 [SERVER] Error fetching method calls:', error);
+    console.error('💥 [SERVER] Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1337,8 +1363,11 @@ exports.deleteMethodCall = async (req, res) => {
 // Data flow endpoints
 exports.getDataFlow = async (req, res) => {
   try {
+    console.log('🔍 [SERVER] getDataFlow called with query:', req.query);
     const db = req.db;
     const { parent_entity_id, line_number } = req.query;
+    
+    console.log('🔍 [SERVER] Database object:', !!db);
     
     let query = 'SELECT * FROM code_data_flow WHERE 1=1';
     const params = [];
@@ -1346,19 +1375,29 @@ exports.getDataFlow = async (req, res) => {
     if (parent_entity_id) {
       query += ' AND parent_entity_id = ?';
       params.push(parent_entity_id);
+      console.log('🔍 [SERVER] Added parent_entity_id filter:', parent_entity_id);
     }
     
     if (line_number) {
       query += ' AND line_number = ?';
       params.push(line_number);
+      console.log('🔍 [SERVER] Added line_number filter:', line_number);
     }
     
     query += ' ORDER BY sequence_id ASC, created_at DESC';
     
+    console.log('🔍 [SERVER] Final query:', query);
+    console.log('🔍 [SERVER] Query params:', params);
+    
     const dataFlow = await db.all(query, params);
+    console.log('🔍 [SERVER] Query result:', dataFlow);
+    console.log('🔍 [SERVER] Result type:', typeof dataFlow, 'isArray:', Array.isArray(dataFlow));
+    console.log('🔍 [SERVER] Result length:', dataFlow?.length);
+    
     res.json(dataFlow);
   } catch (error) {
-    console.error('Error fetching data flow:', error);
+    console.error('💥 [SERVER] Error fetching data flow:', error);
+    console.error('💥 [SERVER] Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1392,6 +1431,63 @@ exports.createDataFlow = async (req, res) => {
     res.status(201).json(dataFlow);
   } catch (error) {
     console.error('Error creating data flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Add missing data flow update endpoint
+exports.updateDataFlow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const db = req.db;
+    const now = Date.now();
+    
+    const fields = Object.keys(updateData).filter(key => 
+      !['id', 'created_at', 'sequence_id'].includes(key)
+    );
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = fields.map(field => updateData[field]);
+    values.push(now, id);
+    
+    await db.run(`
+      UPDATE code_data_flow 
+      SET ${setClause}, updated_at = ?
+      WHERE id = ?
+    `, values);
+    
+    const dataFlow = await db.get('SELECT * FROM code_data_flow WHERE id = ?', id);
+    if (!dataFlow) {
+      return res.status(404).json({ error: 'Data flow not found' });
+    }
+    
+    res.json(dataFlow);
+  } catch (error) {
+    console.error('Error updating data flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Add missing delete data flow endpoint
+exports.deleteDataFlow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const result = await db.run('DELETE FROM code_data_flow WHERE id = ?', id);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Data flow not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting data flow:', error);
     res.status(500).json({ error: error.message });
   }
 };
