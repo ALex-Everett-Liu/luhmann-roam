@@ -831,8 +831,8 @@ const CodeGraphManager = (function() {
       // Import
       document.getElementById('import-entities-btn').addEventListener('click', importFromFiles);
 
-      // Add expression modal handlers
-      setupExpressionModalHandlers();
+      // REMOVE THIS LINE - Don't call setupExpressionModalHandlers here
+      // setupExpressionModalHandlers();
     }
     
     function switchTab(e) {
@@ -1692,52 +1692,41 @@ const CodeGraphManager = (function() {
 
     // Expression analysis functions
     function openExpressionModal(entityId, lineNumber, codeText) {
-      console.log('🚀 Opening expression modal with:', { entityId, lineNumber, codeText });
+      // Set up the current session
+      currentExpressionSession = {
+        entityId: entityId,
+        lineNumber: lineNumber,
+        codeText: codeText,
+        variables: [],
+        methodCalls: [],
+        dataFlow: []
+      };
       
+      // Create and show the modal
       const modal = document.getElementById('expression-modal');
       if (!modal) {
-        console.error('❌ Expression modal not found!');
+        console.error('Expression modal not found!');
         return;
-      }
-      
-      // Set current session with proper initialization
-      currentExpressionSession.entityId = entityId;
-      currentExpressionSession.lineNumber = lineNumber;
-      currentExpressionSession.codeText = codeText;
-      currentExpressionSession.variables = [];
-      currentExpressionSession.methodCalls = [];
-      currentExpressionSession.dataFlow = [];
-      
-      console.log('📝 Session initialized:', currentExpressionSession);
-      
-      // Set context
-      const codeLineElement = document.getElementById('expression-code-line');
-      const lineNumberElement = document.getElementById('expression-line-number');
-      
-      if (codeLineElement) {
-        codeLineElement.value = codeText;
-      } else {
-        console.error('❌ Code line element not found!');
-      }
-      
-      if (lineNumberElement) {
-        lineNumberElement.value = lineNumber;
-      } else {
-        console.error('❌ Line number element not found!');
       }
       
       // Load parent function info
       loadParentFunctionInfo(entityId);
       
+      // Set the code text
+      document.getElementById('expression-code-text').textContent = codeText;
+      document.getElementById('expression-line-number').textContent = lineNumber;
+      
       // Load existing data from database
-      console.log('📡 Starting to load expression data...');
       loadExpressionVariables();
       loadExpressionMethodCalls();
       loadExpressionDataFlow();
       
-      modal.classList.add('show');
-      modal.style.display = 'flex';
-      console.log('✅ Expression modal opened');
+      // Show the modal
+      modal.style.display = 'block';
+      setTimeout(() => modal.classList.add('show'), 10);
+      
+      // MOVE THE EVENT HANDLER SETUP HERE - after the modal is shown
+      setupExpressionModalHandlers();
     }
 
     function loadParentFunctionInfo(entityId) {
@@ -2506,25 +2495,72 @@ window.deleteDetectedMethodCall = function(methodCallId) {
 
 // Add missing expression modal handlers
 function setupExpressionModalHandlers() {
+  console.log('🔧 Setting up expression modal handlers...');
+  
   // Expression tab switching
-  document.querySelectorAll('.expression-tab-btn').forEach(btn => {
+  const tabButtons = document.querySelectorAll('.expression-tab-btn');
+  console.log('📋 Found tab buttons:', tabButtons.length);
+  tabButtons.forEach(btn => {
     btn.addEventListener('click', switchExpressionTab);
   });
   
-  // Form handlers
-  document.getElementById('variable-form').addEventListener('submit', saveVariable);
-  document.getElementById('method-call-form').addEventListener('submit', saveMethodCall);
-  document.getElementById('data-flow-form').addEventListener('submit', saveDataFlow);
+  // Form handlers - add null checks
+  const variableForm = document.getElementById('variable-form');
+  const methodCallForm = document.getElementById('method-call-form');
+  const dataFlowForm = document.getElementById('data-flow-form');
   
-  // Cancel edit handlers
-  document.getElementById('variable-cancel-edit-btn').addEventListener('click', resetVariableForm);
-  document.getElementById('method-call-cancel-edit-btn').addEventListener('click', resetMethodCallForm);
-  document.getElementById('data-flow-cancel-edit-btn').addEventListener('click', resetDataFlowForm);
+  if (variableForm) {
+    variableForm.addEventListener('submit', saveVariable);
+    console.log('✅ Variable form handler attached');
+  } else {
+    console.error('❌ Variable form not found!');
+  }
   
-  // Modal close handlers
-  document.getElementById('cancel-expression').addEventListener('click', closeExpressionModal);
-  document.getElementById('save-expression-analysis').addEventListener('click', saveCompleteExpressionAnalysis);
-  document.getElementById('analyze-expression-btn').addEventListener('click', autoAnalyzeExpression);
+  if (methodCallForm) {
+    methodCallForm.addEventListener('submit', saveMethodCall);
+    console.log('✅ Method call form handler attached');
+  } else {
+    console.error('❌ Method call form not found!');
+  }
+  
+  if (dataFlowForm) {
+    dataFlowForm.addEventListener('submit', saveDataFlow);
+    console.log('✅ Data flow form handler attached');
+  } else {
+    console.error('❌ Data flow form not found!');
+  }
+  
+  // Cancel edit handlers - add null checks
+  const variableCancelBtn = document.getElementById('variable-cancel-edit-btn');
+  const methodCallCancelBtn = document.getElementById('method-call-cancel-edit-btn');
+  const dataFlowCancelBtn = document.getElementById('data-flow-cancel-edit-btn');
+  
+  if (variableCancelBtn) {
+    variableCancelBtn.addEventListener('click', resetVariableForm);
+  }
+  if (methodCallCancelBtn) {
+    methodCallCancelBtn.addEventListener('click', resetMethodCallForm);
+  }
+  if (dataFlowCancelBtn) {
+    dataFlowCancelBtn.addEventListener('click', resetDataFlowForm);
+  }
+  
+  // Modal close handlers - add null checks
+  const cancelBtn = document.getElementById('cancel-expression');
+  const saveBtn = document.getElementById('save-expression-analysis');
+  const analyzeBtn = document.getElementById('analyze-expression-btn');
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeExpressionModal);
+  }
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveCompleteExpressionAnalysis);
+  }
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', autoAnalyzeExpression);
+  }
+  
+  console.log('🎉 Expression modal handlers setup complete');
 }
 
 function switchExpressionTab(e) {
