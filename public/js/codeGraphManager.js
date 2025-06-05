@@ -2080,57 +2080,89 @@ const CodeGraphManager = (function() {
       analyzeExpressionAtLine: (entityId, lineNumber, codeText) => openExpressionModal(entityId, lineNumber, codeText),
       quickAnalyzeFile: quickAnalyzeFile
     };
-  })();
+})();
 
-  // Notification function
-  function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = 'code-graph-notification';
-    notification.textContent = message;
-    
-    const baseStyles = {
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      padding: '12px 20px',
-      borderRadius: '4px',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-      zIndex: '10001',
-      fontSize: '14px',
-      fontWeight: 'bold',
-      maxWidth: '300px',
-      wordWrap: 'break-word'
-    };
-    
-    const typeStyles = {
-      success: { backgroundColor: '#4CAF50', color: 'white' },
-      error: { backgroundColor: '#f44336', color: 'white' },
-      warning: { backgroundColor: '#ff9800', color: 'white' },
-      info: { backgroundColor: '#2196F3', color: 'white' }
-    };
-    
-    Object.assign(notification.style, baseStyles, typeStyles[type] || typeStyles.info);
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => {
-          if (document.body.contains(notification)) {
-            document.body.removeChild(notification);
-          }
-        }, 300);
-      }
-    }, 3000);
+// IMPORTANT: Assign to window object immediately after definition
+window.CodeGraphManager = CodeGraphManager;
+
+// Notification function
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.className = 'code-graph-notification';
+  notification.textContent = message;
+  
+  const baseStyles = {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    zIndex: '10001',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    maxWidth: '300px',
+    wordWrap: 'break-word'
+  };
+  
+  const typeStyles = {
+    success: { backgroundColor: '#4CAF50', color: 'white' },
+    error: { backgroundColor: '#f44336', color: 'white' },
+    warning: { backgroundColor: '#ff9800', color: 'white' },
+    info: { backgroundColor: '#2196F3', color: 'white' }
+  };
+  
+  Object.assign(notification.style, baseStyles, typeStyles[type] || typeStyles.info);
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    if (document.body.contains(notification)) {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }
+  }, 3000);
+}
+
+// Make functions available globally for onclick handlers
+window.changeEntitiesPage = (page) => CodeGraphManager.changeEntitiesPage(page);
+window.changeRelationshipsPage = (page) => CodeGraphManager.changeRelationshipsPage(page);
+
+// Make sure these functions are available globally for the expression modal
+window.editDetectedVariable = function(variableName) {
+  console.log('Editing variable:', variableName);
+  document.getElementById('variable-name').value = variableName;
+  showNotification('Variable loaded for editing', 'info');
+};
+
+window.deleteDetectedVariable = function(variableName) {
+  if (confirm(`Delete variable "${variableName}"?`)) {
+    const item = document.querySelector(`[data-variable="${variableName}"]`);
+    if (item) {
+      item.remove();
+      showNotification('Variable deleted', 'success');
+    }
   }
+};
 
-  // Make functions available globally for onclick handlers
-  window.changeEntitiesPage = (page) => CodeGraphManager.changeEntitiesPage(page);
-  window.changeRelationshipsPage = (page) => CodeGraphManager.changeRelationshipsPage(page);
-  window.editDetectedVariable = editDetectedVariable;
-  window.deleteDetectedVariable = deleteDetectedVariable;
-  window.editDetectedMethodCall = editDetectedMethodCall;
-  window.deleteDetectedMethodCall = deleteDetectedMethodCall;
-  window.CodeGraphManager = CodeGraphManager;
+window.editDetectedMethodCall = function(methodCallId) {
+  console.log('Editing method call:', methodCallId);
+  const methodName = methodCallId.split('-')[0];
+  document.getElementById('method-call-name').value = methodName;
+  showNotification('Method call loaded for editing', 'info');
+};
+
+window.deleteDetectedMethodCall = function(methodCallId) {
+  if (confirm(`Delete method call "${methodCallId}"?`)) {
+    const item = document.querySelector(`[data-method="${methodCallId}"]`);
+    if (item) {
+      item.remove();
+      showNotification('Method call deleted', 'success');
+    }
+  }
+};
