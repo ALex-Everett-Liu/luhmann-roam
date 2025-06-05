@@ -1015,3 +1015,372 @@ const CodeGraphManager = (function() {
   }
   
   window.CodeGraphManager = CodeGraphManager;
+
+  // Add these missing functions after the existing functions
+
+  // Missing pagination and search functions for entities
+  function renderEntitiesPagination(pagination) {
+    const paginationContainer = document.getElementById('entities-pagination');
+    
+    if (!pagination || pagination.pages <= 1) {
+      paginationContainer.innerHTML = '';
+      return;
+    }
+    
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    if (pagination.page > 1) {
+      html += `<button onclick="changeEntitiesPage(${pagination.page - 1})" class="pagination-btn">Previous</button>`;
+    }
+    
+    // Page numbers
+    for (let i = 1; i <= pagination.pages; i++) {
+      if (i === pagination.page) {
+        html += `<span class="pagination-current">${i}</span>`;
+      } else {
+        html += `<button onclick="changeEntitiesPage(${i})" class="pagination-btn">${i}</button>`;
+      }
+    }
+    
+    // Next button
+    if (pagination.page < pagination.pages) {
+      html += `<button onclick="changeEntitiesPage(${pagination.page + 1})" class="pagination-btn">Next</button>`;
+    }
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
+  }
+
+  function updateEntitiesResultsInfo(pagination) {
+    const infoContainer = document.getElementById('entities-results-info');
+    if (pagination) {
+      const start = (pagination.page - 1) * pagination.limit + 1;
+      const end = Math.min(pagination.page * pagination.limit, pagination.total);
+      infoContainer.textContent = `Showing ${start}-${end} of ${pagination.total} entities`;
+    } else {
+      infoContainer.textContent = `Showing ${entitiesData.length} entities`;
+    }
+  }
+
+  function changeEntitiesPage(page) {
+    entitiesState.currentPage = page;
+    loadEntities();
+  }
+
+  // Missing relationship functions
+  function handleRelationshipsSearch(e) {
+    relationshipsState.searchTerm = e.target.value.toLowerCase();
+    relationshipsState.currentPage = 1;
+    loadRelationships();
+  }
+
+  function clearRelationshipsSearch() {
+    document.getElementById('relationships-search').value = '';
+    relationshipsState.searchTerm = '';
+    relationshipsState.currentPage = 1;
+    loadRelationships();
+  }
+
+  function handleRelationshipsFilter() {
+    relationshipsState.typeFilter = document.getElementById('relationships-type-filter').value;
+    relationshipsState.currentPage = 1;
+    loadRelationships();
+  }
+
+  function handleRelationshipsPerPageChange(e) {
+    relationshipsState.itemsPerPage = parseInt(e.target.value);
+    relationshipsState.currentPage = 1;
+    loadRelationships();
+  }
+
+  function renderRelationshipsPagination() {
+    const paginationContainer = document.getElementById('relationships-pagination');
+    
+    if (!relationshipsData.pagination || relationshipsData.pagination.pages <= 1) {
+      paginationContainer.innerHTML = '';
+      return;
+    }
+    
+    const pagination = relationshipsData.pagination;
+    let html = '<div class="pagination">';
+    
+    // Previous button
+    if (pagination.page > 1) {
+      html += `<button onclick="changeRelationshipsPage(${pagination.page - 1})" class="pagination-btn">Previous</button>`;
+    }
+    
+    // Page numbers
+    for (let i = 1; i <= pagination.pages; i++) {
+      if (i === pagination.page) {
+        html += `<span class="pagination-current">${i}</span>`;
+      } else {
+        html += `<button onclick="changeRelationshipsPage(${i})" class="pagination-btn">${i}</button>`;
+      }
+    }
+    
+    // Next button
+    if (pagination.page < pagination.pages) {
+      html += `<button onclick="changeRelationshipsPage(${pagination.page + 1})" class="pagination-btn">Next</button>`;
+    }
+    
+    html += '</div>';
+    paginationContainer.innerHTML = html;
+  }
+
+  function updateRelationshipsResultsInfo() {
+    const infoContainer = document.getElementById('relationships-results-info');
+    if (relationshipsData.pagination) {
+      const pagination = relationshipsData.pagination;
+      const start = (pagination.page - 1) * pagination.limit + 1;
+      const end = Math.min(pagination.page * pagination.limit, pagination.total);
+      infoContainer.textContent = `Showing ${start}-${end} of ${pagination.total} relationships`;
+    } else {
+      infoContainer.textContent = `Showing ${relationshipsData.length} relationships`;
+    }
+  }
+
+  function changeRelationshipsPage(page) {
+    relationshipsState.currentPage = page;
+    loadRelationships();
+  }
+
+  // Missing modal functions
+  function openRelationshipModal(relationshipId = null) {
+    const modal = document.getElementById('relationship-modal');
+    const title = document.getElementById('relationship-modal-title');
+    const form = document.getElementById('relationship-form');
+    
+    // Load entities for dropdowns
+    loadEntitiesForDropdowns();
+    
+    if (relationshipId) {
+      const relationship = relationshipsData.find(r => r.id === relationshipId);
+      title.textContent = 'Edit Relationship';
+      
+      // Populate form fields
+      document.getElementById('relationship-source').value = relationship.source_entity_id;
+      document.getElementById('relationship-target').value = relationship.target_entity_id;
+      document.getElementById('relationship-type').value = relationship.relationship_type;
+      document.getElementById('relationship-strength').value = relationship.relationship_strength || 5;
+      document.getElementById('relationship-context').value = relationship.context || '';
+      document.getElementById('relationship-file-path').value = relationship.file_path || '';
+      document.getElementById('relationship-line-number').value = relationship.line_number || '';
+      
+      form.dataset.relationshipId = relationshipId;
+    } else {
+      title.textContent = 'Add Relationship';
+      form.reset();
+      delete form.dataset.relationshipId;
+    }
+    
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+  }
+
+  function closeRelationshipModal() {
+    const modal = document.getElementById('relationship-modal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.style.display = 'none', 200);
+  }
+
+  function openProjectModal(projectId = null) {
+    const modal = document.getElementById('project-modal');
+    const title = document.getElementById('project-modal-title');
+    const form = document.getElementById('project-form');
+    
+    if (projectId) {
+      const project = projectsData.find(p => p.id === projectId);
+      title.textContent = 'Edit Project';
+      
+      // Populate form fields
+      document.getElementById('project-name').value = project.name;
+      document.getElementById('project-language').value = project.language || 'javascript';
+      document.getElementById('project-base-path').value = project.base_path;
+      document.getElementById('project-description').value = project.description || '';
+      document.getElementById('project-framework').value = project.framework || '';
+      document.getElementById('project-version').value = project.version || '';
+      
+      form.dataset.projectId = projectId;
+    } else {
+      title.textContent = 'Add Project';
+      form.reset();
+      delete form.dataset.projectId;
+    }
+    
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+  }
+
+  function closeProjectModal() {
+    const modal = document.getElementById('project-modal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.style.display = 'none', 200);
+  }
+
+  // Missing save functions
+  async function saveRelationship(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const isEdit = !!form.dataset.relationshipId;
+    
+    const data = {
+      source_entity_id: document.getElementById('relationship-source').value,
+      target_entity_id: document.getElementById('relationship-target').value,
+      relationship_type: document.getElementById('relationship-type').value,
+      relationship_strength: parseFloat(document.getElementById('relationship-strength').value) || 5,
+      context: document.getElementById('relationship-context').value,
+      file_path: document.getElementById('relationship-file-path').value,
+      line_number: parseInt(document.getElementById('relationship-line-number').value) || null
+    };
+    
+    try {
+      const url = isEdit 
+        ? `/api/code-graph/relationships/${form.dataset.relationshipId}`
+        : '/api/code-graph/relationships';
+      
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save relationship');
+      }
+      
+      closeRelationshipModal();
+      loadRelationships();
+      showNotification(isEdit ? 'Relationship updated successfully!' : 'Relationship created successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving relationship:', error);
+      showNotification('Error saving relationship', 'error');
+    }
+  }
+
+  async function saveProject(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const isEdit = !!form.dataset.projectId;
+    
+    const data = {
+      name: document.getElementById('project-name').value,
+      language: document.getElementById('project-language').value,
+      base_path: document.getElementById('project-base-path').value,
+      description: document.getElementById('project-description').value,
+      framework: document.getElementById('project-framework').value,
+      version: document.getElementById('project-version').value
+    };
+    
+    try {
+      const url = isEdit 
+        ? `/api/code-graph/projects/${form.dataset.projectId}`
+        : '/api/code-graph/projects';
+      
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save project');
+      }
+      
+      closeProjectModal();
+      loadProjects();
+      showNotification(isEdit ? 'Project updated successfully!' : 'Project created successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving project:', error);
+      showNotification('Error saving project', 'error');
+    }
+  }
+
+  // Missing analysis functions
+  async function analyzeDependencies() {
+    try {
+      const projectId = document.getElementById('analysis-project-filter').value;
+      const response = await fetch('/api/code-graph/analysis/dependencies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId || null })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        renderAnalysisResults('Dependency Analysis', result.dependency_details || []);
+        showNotification('Dependency analysis completed!', 'success');
+      }
+    } catch (error) {
+      console.error('Error analyzing dependencies:', error);
+      showNotification('Error analyzing dependencies', 'error');
+    }
+  }
+
+  async function analyzeCoupling() {
+    try {
+      const projectId = document.getElementById('analysis-project-filter').value;
+      const response = await fetch('/api/code-graph/analysis/coupling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId || null })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        renderAnalysisResults('Coupling Analysis', result.results);
+        showNotification('Coupling analysis completed!', 'success');
+      }
+    } catch (error) {
+      console.error('Error analyzing coupling:', error);
+      showNotification('Error analyzing coupling', 'error');
+    }
+  }
+
+  // Missing utility functions
+  async function loadEntitiesForDropdowns() {
+    try {
+      const response = await fetch('/api/code-graph/entities?limit=1000');
+      const data = await response.json();
+      const entities = data.entities || data;
+      
+      const sourceSelect = document.getElementById('relationship-source');
+      const targetSelect = document.getElementById('relationship-target');
+      
+      // Clear existing options
+      sourceSelect.innerHTML = '<option value="">Select source entity...</option>';
+      targetSelect.innerHTML = '<option value="">Select target entity...</option>';
+      
+      // Add entity options
+      entities.forEach(entity => {
+        const option1 = document.createElement('option');
+        option1.value = entity.id;
+        option1.textContent = `${entity.name} (${entity.type}) - ${entity.file_path}`;
+        sourceSelect.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = entity.id;
+        option2.textContent = `${entity.name} (${entity.type}) - ${entity.file_path}`;
+        targetSelect.appendChild(option2);
+      });
+    } catch (error) {
+      console.error('Error loading entities for dropdowns:', error);
+    }
+  }
+
+  async function importFromFiles() {
+    // Placeholder for file import functionality
+    showNotification('File import functionality not yet implemented', 'info');
+  }
+
+  // Make functions available globally for onclick handlers
+  window.changeEntitiesPage = changeEntitiesPage;
+  window.changeRelationshipsPage = changeRelationshipsPage;

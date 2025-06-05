@@ -582,6 +582,9 @@ const CommandPaletteManager = (function() {
         
         // Register other module commands
         registerModuleCommands();
+        
+        // Register Code Graph commands
+        registerCodeGraphCommands();
     }
     
     /**
@@ -2092,6 +2095,341 @@ const CommandPaletteManager = (function() {
                 },
                 category: 'Graph Analysis',
                 keywords: ['graph', 'statistics', 'stats', 'metrics', 'density', 'vertices', 'edges']
+            });
+        }
+    }
+    
+    /**
+     * Register Code Graph commands
+     */
+    function registerCodeGraphCommands() {
+        // Check if CodeGraphManager exists
+        if (window.CodeGraphManager) {
+            registerCommand({
+                name: 'Open Code Graph Manager',
+                action: () => {
+                    window.CodeGraphManager.show();
+                },
+                category: 'Code Analysis',
+                shortcut: 'Alt+C',
+                keywords: ['code', 'graph', 'entities', 'functions', 'classes', 'relationships', 'analysis']
+            });
+            
+            registerCommand({
+                name: 'Toggle Code Graph Manager',
+                action: () => {
+                    if (window.CodeGraphManager.isVisible()) {
+                        window.CodeGraphManager.hide();
+                    } else {
+                        window.CodeGraphManager.show();
+                    }
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'graph', 'toggle', 'show', 'hide']
+            });
+            
+            registerCommand({
+                name: 'Code Graph - Entities Tab',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to entities tab after modal opens
+                    setTimeout(() => {
+                        const entitiesTab = document.querySelector('.tab-btn[data-tab="entities"]');
+                        if (entitiesTab) {
+                            entitiesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'entities', 'functions', 'classes', 'variables', 'methods']
+            });
+            
+            registerCommand({
+                name: 'Code Graph - Relationships Tab',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to relationships tab after modal opens
+                    setTimeout(() => {
+                        const relationshipsTab = document.querySelector('.tab-btn[data-tab="relationships"]');
+                        if (relationshipsTab) {
+                            relationshipsTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'relationships', 'connections', 'dependencies', 'calls', 'inheritance']
+            });
+            
+            registerCommand({
+                name: 'Code Graph - Projects Tab',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to projects tab after modal opens
+                    setTimeout(() => {
+                        const projectsTab = document.querySelector('.tab-btn[data-tab="projects"]');
+                        if (projectsTab) {
+                            projectsTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'projects', 'manage', 'organize']
+            });
+            
+            registerCommand({
+                name: 'Code Graph - Analysis Tab',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to analysis tab after modal opens
+                    setTimeout(() => {
+                        const analysisTab = document.querySelector('.tab-btn[data-tab="analysis"]');
+                        if (analysisTab) {
+                            analysisTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'analysis', 'complexity', 'dependencies', 'coupling', 'metrics']
+            });
+            
+            registerCommand({
+                name: 'Code Graph - Visualization Tab',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to visualization tab after modal opens
+                    setTimeout(() => {
+                        const visualizationTab = document.querySelector('.tab-btn[data-tab="visualization"]');
+                        if (visualizationTab) {
+                            visualizationTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'visualization', 'graph', 'network', 'diagram']
+            });
+            
+            registerCommand({
+                name: 'Add New Code Entity',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Open add entity modal after manager opens
+                    setTimeout(() => {
+                        const addEntityBtn = document.getElementById('add-entity-btn');
+                        if (addEntityBtn) {
+                            addEntityBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'entity', 'function', 'class', 'variable', 'add', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Add New Code Relationship',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to relationships tab and open add relationship modal
+                    setTimeout(() => {
+                        const relationshipsTab = document.querySelector('.tab-btn[data-tab="relationships"]');
+                        if (relationshipsTab) {
+                            relationshipsTab.click();
+                            
+                            setTimeout(() => {
+                                const addRelationshipBtn = document.getElementById('add-relationship-btn');
+                                if (addRelationshipBtn) {
+                                    addRelationshipBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'relationship', 'connection', 'dependency', 'add', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Add New Code Project',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to projects tab and open add project modal
+                    setTimeout(() => {
+                        const projectsTab = document.querySelector('.tab-btn[data-tab="projects"]');
+                        if (projectsTab) {
+                            projectsTab.click();
+                            
+                            setTimeout(() => {
+                                const addProjectBtn = document.getElementById('add-project-btn');
+                                if (addProjectBtn) {
+                                    addProjectBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'project', 'add', 'create', 'new', 'organize']
+            });
+            
+            registerCommand({
+                name: 'Refresh Code Entities',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Refresh entities
+                    setTimeout(() => {
+                        const refreshEntitiesBtn = document.getElementById('refresh-entities-btn');
+                        if (refreshEntitiesBtn) {
+                            refreshEntitiesBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'entities', 'refresh', 'reload', 'update']
+            });
+            
+            registerCommand({
+                name: 'Refresh Code Relationships',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to relationships tab and refresh
+                    setTimeout(() => {
+                        const relationshipsTab = document.querySelector('.tab-btn[data-tab="relationships"]');
+                        if (relationshipsTab) {
+                            relationshipsTab.click();
+                            
+                            setTimeout(() => {
+                                const refreshRelationshipsBtn = document.getElementById('refresh-relationships-btn');
+                                if (refreshRelationshipsBtn) {
+                                    refreshRelationshipsBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'relationships', 'refresh', 'reload', 'update']
+            });
+            
+            registerCommand({
+                name: 'Import Code Entities from Files',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Open import entities modal
+                    setTimeout(() => {
+                        const importEntitiesBtn = document.getElementById('import-entities-btn');
+                        if (importEntitiesBtn) {
+                            importEntitiesBtn.click();
+                        }
+                    }, 500);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'import', 'entities', 'files', 'parse', 'extract']
+            });
+            
+            registerCommand({
+                name: 'Analyze Code Complexity',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to analysis tab and run complexity analysis
+                    setTimeout(() => {
+                        const analysisTab = document.querySelector('.tab-btn[data-tab="analysis"]');
+                        if (analysisTab) {
+                            analysisTab.click();
+                            
+                            setTimeout(() => {
+                                const analyzeComplexityBtn = document.getElementById('analyze-complexity-btn');
+                                if (analyzeComplexityBtn) {
+                                    analyzeComplexityBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'complexity', 'analysis', 'metrics', 'cyclomatic']
+            });
+            
+            registerCommand({
+                name: 'Analyze Code Dependencies',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to analysis tab and run dependency analysis
+                    setTimeout(() => {
+                        const analysisTab = document.querySelector('.tab-btn[data-tab="analysis"]');
+                        if (analysisTab) {
+                            analysisTab.click();
+                            
+                            setTimeout(() => {
+                                const analyzeDependenciesBtn = document.getElementById('analyze-dependencies-btn');
+                                if (analyzeDependenciesBtn) {
+                                    analyzeDependenciesBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'dependencies', 'analysis', 'imports', 'requires']
+            });
+            
+            registerCommand({
+                name: 'Analyze Code Coupling',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to analysis tab and run coupling analysis
+                    setTimeout(() => {
+                        const analysisTab = document.querySelector('.tab-btn[data-tab="analysis"]');
+                        if (analysisTab) {
+                            analysisTab.click();
+                            
+                            setTimeout(() => {
+                                const analyzeCouplingBtn = document.getElementById('analyze-coupling-btn');
+                                if (analyzeCouplingBtn) {
+                                    analyzeCouplingBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'coupling', 'analysis', 'cohesion', 'relationships']
+            });
+            
+            registerCommand({
+                name: 'Load Code Graph Visualization',
+                action: () => {
+                    window.CodeGraphManager.show();
+                    
+                    // Switch to visualization tab and load graph
+                    setTimeout(() => {
+                        const visualizationTab = document.querySelector('.tab-btn[data-tab="visualization"]');
+                        if (visualizationTab) {
+                            visualizationTab.click();
+                            
+                            setTimeout(() => {
+                                const loadVisualizationBtn = document.getElementById('load-visualization-btn');
+                                if (loadVisualizationBtn) {
+                                    loadVisualizationBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['code', 'visualization', 'graph', 'network', 'load', 'display']
             });
         }
     }

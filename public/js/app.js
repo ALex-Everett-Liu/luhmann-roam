@@ -1685,10 +1685,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
   addButtonToSidebar(toggleGraphManagementButton);
 
-  // Initialize the NodeSizeHighlightManager
+  // Initialize Code Graph Manager
+  if (window.CodeGraphManager) {
+    console.log('Setting up CodeGraphManager initialization from app.js');
+    CodeGraphManager.initialize();
+  } else {
+    console.error('CodeGraphManager not found on window object');
+  }
+  
+  // Add code graph button
+  const toggleCodeGraphButton = document.createElement('button');
+  toggleCodeGraphButton.id = 'toggle-code-graph';
+  toggleCodeGraphButton.className = 'feature-toggle';
+  toggleCodeGraphButton.textContent = 'Code Graph';
+  toggleCodeGraphButton.title = 'Manage code entities and relationships';
+
+  toggleCodeGraphButton.addEventListener('click', function() {
+    console.log('Code Graph button clicked');
+    if (window.CodeGraphManager) {
+      if (CodeGraphManager.isVisible()) {
+        CodeGraphManager.hide();
+      } else {
+        CodeGraphManager.show();
+      }
+    } else {
+      console.error('CodeGraphManager not available');
+    }
+  });
+
+  console.log('About to add Code Graph button to sidebar');
+  addButtonToSidebar(toggleCodeGraphButton);
+  console.log('Code Graph button added to sidebar');
+
+  // Initialize the NodeSizeHighlightManager (remove duplicate initialization)
+  // The manager initializes itself, so we don't need to do it here
+  // Just check if it exists
   if (window.NodeSizeHighlightManager) {
-    console.log('Setting up NodeSizeHighlightManager initialization from app.js');
-    NodeSizeHighlightManager.initialize();
+    console.log('NodeSizeHighlightManager is available');
+  } else {
+    console.error('NodeSizeHighlightManager not found on window object');
   }
 
   // Add a toggle button for the node size highlight feature
@@ -1700,51 +1735,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   toggleSizeHighlightButton.addEventListener('click', function() {
     console.log('Size Highlight button clicked');
-    console.log('NodeSizeHighlightManager exists:', !!window.NodeSizeHighlightManager);
-    
     if (window.NodeSizeHighlightManager) {
-        console.log('Current state before toggle:', NodeSizeHighlightManager.getEnabled());
-        NodeSizeHighlightManager.toggle();
-        console.log('Current state after toggle:', NodeSizeHighlightManager.getEnabled());
-        
-        // Show notification
-        const isEnabled = NodeSizeHighlightManager.getEnabled();
-        const notification = document.createElement('div');
-        notification.className = 'size-highlight-notification';
-        notification.textContent = isEnabled ? 
-            'Size highlights enabled! Check console for debug info.' :
-            'Size highlights disabled.';
-        
-        document.body.appendChild(notification);
-        
-        // Remove notification after 3 seconds
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 3000);
+      NodeSizeHighlightManager.toggle();
+      
+      // Update button text
+      const isEnabled = NodeSizeHighlightManager.getEnabled();
+      toggleSizeHighlightButton.textContent = isEnabled ? 'Disable Size Highlights' : 'Enable Size Highlights';
+      
+      // Show notification
+      const notification = document.createElement('div');
+      notification.className = 'size-highlight-notification';
+      notification.textContent = isEnabled ? 
+          'Size highlights enabled!' :
+          'Size highlights disabled.';
+      
+      document.body.appendChild(notification);
+      
+      // Remove notification after 3 seconds
+      setTimeout(() => {
+          if (document.body.contains(notification)) {
+              document.body.removeChild(notification);
+          }
+      }, 3000);
     } else {
-        console.error('NodeSizeHighlightManager is not available');
-        alert('Node Size Highlight module not loaded. Please refresh the page.');
+      console.error('NodeSizeHighlightManager not available');
     }
   });
 
-  // Add to sidebar using helper function
+  console.log('About to add Size Highlight button to sidebar');
   addButtonToSidebar(toggleSizeHighlightButton);
+  console.log('Size Highlight button added to sidebar');
 
-  // Initialize Code Graph Manager
-  CodeGraphManager.initialize();
-  
-  // Add Code Graph button to sidebar
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar) {
-    const codeGraphButton = document.createElement('button');
-    codeGraphButton.textContent = 'Code Graph';
-    codeGraphButton.className = 'sidebar-button';
-    codeGraphButton.addEventListener('click', () => {
-      CodeGraphManager.show();
-    });
-    sidebar.appendChild(codeGraphButton);
-  }
 });
+
+
 
