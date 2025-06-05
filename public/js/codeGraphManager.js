@@ -23,7 +23,8 @@ const CodeGraphManager = (function() {
       itemsPerPage: 20,
       searchTerm: '',
       typeFilter: '',
-      filteredData: []
+      filteredData: [],
+      pagination: null
     };
     
     function initialize() {
@@ -589,7 +590,18 @@ const CodeGraphManager = (function() {
         if (relationshipsState.typeFilter) params.append('type', relationshipsState.typeFilter);
         
         const response = await fetch(`/api/code-graph/relationships?${params}`);
-        relationshipsData = await response.json();
+        const data = await response.json();
+        
+        if (data.relationships) {
+          relationshipsData = data.relationships;
+          relationshipsState.pagination = data.pagination;
+        } else if (Array.isArray(data)) {
+          relationshipsData = data;
+          relationshipsState.pagination = null;
+        } else {
+          relationshipsData = [];
+          relationshipsState.pagination = null;
+        }
         
         renderRelationshipsList();
         renderRelationshipsPagination();
@@ -1097,12 +1109,12 @@ const CodeGraphManager = (function() {
   function renderRelationshipsPagination() {
     const paginationContainer = document.getElementById('relationships-pagination');
     
-    if (!relationshipsData.pagination || relationshipsData.pagination.pages <= 1) {
+    if (!relationshipsState.pagination || relationshipsState.pagination.pages <= 1) {
       paginationContainer.innerHTML = '';
       return;
     }
     
-    const pagination = relationshipsData.pagination;
+    const pagination = relationshipsState.pagination;
     let html = '<div class="pagination">';
     
     // Previous button
@@ -1130,8 +1142,8 @@ const CodeGraphManager = (function() {
 
   function updateRelationshipsResultsInfo() {
     const infoContainer = document.getElementById('relationships-results-info');
-    if (relationshipsData.pagination) {
-      const pagination = relationshipsData.pagination;
+    if (relationshipsState.pagination) {
+      const pagination = relationshipsState.pagination;
       const start = (pagination.page - 1) * pagination.limit + 1;
       const end = Math.min(pagination.page * pagination.limit, pagination.total);
       infoContainer.textContent = `Showing ${start}-${end} of ${pagination.total} relationships`;
