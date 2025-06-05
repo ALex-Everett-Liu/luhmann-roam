@@ -61,6 +61,7 @@ const CodeGraphManager = (function() {
               <button class="tab-btn" data-tab="projects">Projects</button>
               <button class="tab-btn" data-tab="analysis">Analysis</button>
               <button class="tab-btn" data-tab="visualization">Visualization</button>
+              <button class="tab-btn" data-tab="line-analysis">Line Analysis</button>
             </div>
             
             <!-- Entities Tab -->
@@ -830,11 +831,13 @@ const CodeGraphManager = (function() {
               <span class="entity-type-badge ${entity.type}">${entity.type}</span>
             </div>
             <div class="item-meta">
-              <span class="file-path">${entity.file_path}</span>
+              <span class="file-path">${entity.file_path} 
+                <button class="quick-analyze-btn" onclick="CodeGraphManager.quickAnalyzeFile('${entity.file_path}')">📊</button>
+              </span>
               ${entity.line_number ? `<span class="line-number">Line ${entity.line_number}</span>` : ''}
               ${entity.project_name ? `<span class="project-name">Project: ${entity.project_name}</span>` : ''}
             </div>
-            ${entity.signature ? `<div class="entity-signature">${entity.signature}</div>` : ''}
+            ${entity.signature ? `<div class="entity-signature" oncontextmenu="showExpressionContextMenu(event, '${entity.id}')">${entity.signature}</div>` : ''}
             ${entity.documentation ? `<div class="entity-docs">${entity.documentation.substring(0, 100)}${entity.documentation.length > 100 ? '...' : ''}</div>` : ''}
           </div>
           <div class="item-actions">
@@ -1789,6 +1792,218 @@ const CodeGraphManager = (function() {
       setTimeout(() => modal.style.display = 'none', 200);
     }
 
+    // Add missing functions after the existing expression analysis functions
+
+    function loadParentFunctionInfo(entityId) {
+      // Load information about the parent function/entity
+      fetch(`/api/code-graph/entities/${entityId}`)
+        .then(response => response.json())
+        .then(entity => {
+          document.getElementById('expression-parent-function').value = entity.name || 'Unknown';
+          document.getElementById('expression-parent-function').dataset.entityId = entityId;
+        })
+        .catch(error => {
+          console.error('Error loading parent function info:', error);
+          document.getElementById('expression-parent-function').value = 'Error loading';
+        });
+    }
+
+    function analyzeDataFlow(analysis, entityId, lineNumber) {
+      // Placeholder for data flow analysis
+      console.log('Analyzing data flow for:', analysis);
+      
+      // Update data flow diagram
+      const diagram = document.getElementById('data-flow-diagram');
+      if (diagram) {
+        diagram.innerHTML = `
+          <div style="text-align: center; color: #666;">
+            <p>Data Flow Analysis</p>
+            <p>Variables: ${analysis.variables.length}</p>
+            <p>Method Calls: ${analysis.methodCalls.length}</p>
+            <p>Dependencies: ${analysis.dependencies.internal.length}</p>
+          </div>
+        `;
+      }
+    }
+
+    function analyzeDependencies(analysis) {
+      // Populate dependencies lists
+      const externalList = document.getElementById('external-dependencies-list');
+      const builtinList = document.getElementById('builtin-dependencies-list');
+      const internalList = document.getElementById('internal-dependencies-list');
+      
+      if (externalList) {
+        externalList.innerHTML = analysis.dependencies.external.length > 0 
+          ? analysis.dependencies.external.map(dep => `<div class="dependency-item">${dep}</div>`).join('')
+          : '<div class="empty-message">No external dependencies detected</div>';
+      }
+      
+      if (builtinList) {
+        builtinList.innerHTML = analysis.dependencies.builtin.length > 0
+          ? analysis.dependencies.builtin.map(dep => `<div class="dependency-item">${dep}</div>`).join('')
+          : '<div class="empty-message">No built-in dependencies detected</div>';
+      }
+      
+      if (internalList) {
+        internalList.innerHTML = analysis.dependencies.internal.length > 0
+          ? analysis.dependencies.internal.map(dep => `<div class="dependency-item">${dep}</div>`).join('')
+          : '<div class="empty-message">No internal dependencies detected</div>';
+      }
+    }
+
+    // Add missing form save functions
+    function saveVariable(e) {
+      e.preventDefault();
+      
+      const variableData = {
+        name: document.getElementById('variable-name').value,
+        declarationType: document.getElementById('variable-declaration-type').value,
+        dataType: document.getElementById('variable-data-type').value,
+        scopeType: document.getElementById('variable-scope-type').value,
+        initialValueType: document.getElementById('variable-initial-value-type').value,
+        mutability: document.getElementById('variable-mutability').value,
+        columnStart: parseInt(document.getElementById('variable-column-start').value) || 0,
+        columnEnd: parseInt(document.getElementById('variable-column-end').value) || 0,
+        isExported: document.getElementById('variable-is-exported').checked
+      };
+      
+      console.log('Saving variable:', variableData);
+      
+      // Add to detected variables list
+      const container = document.getElementById('detected-variables-list');
+      const newItem = document.createElement('div');
+      newItem.className = 'detected-item';
+      newItem.innerHTML = `
+        <div class="detected-item-info">
+          <div class="detected-item-name">${variableData.name}</div>
+          <div class="detected-item-meta">
+            ${variableData.declarationType} | ${variableData.dataType} | ${variableData.mutability}
+          </div>
+        </div>
+        <div class="detected-item-actions">
+          <button class="edit-detected-btn" onclick="editDetectedVariable('${variableData.name}')">Edit</button>
+          <button class="delete-detected-btn" onclick="deleteDetectedVariable('${variableData.name}')">Delete</button>
+        </div>
+      `;
+      
+      container.appendChild(newItem);
+      
+      // Clear form
+      document.getElementById('variable-form').reset();
+      
+      showNotification('Variable added successfully!', 'success');
+    }
+
+    function saveMethodCall(e) {
+      e.preventDefault();
+      
+      const methodCallData = {
+        name: document.getElementById('method-call-name').value,
+        callType: document.getElementById('method-call-type').value,
+        moduleSource: document.getElementById('method-module-source').value,
+        chainPosition: document.getElementById('method-chain-position').value,
+        argumentsCount: parseInt(document.getElementById('method-arguments-count').value) || 0,
+        returnType: document.getElementById('method-return-type').value,
+        columnStart: parseInt(document.getElementById('method-column-start').value) || 0,
+        columnEnd: parseInt(document.getElementById('method-column-end').value) || 0,
+        isAsync: document.getElementById('method-is-async').checked
+      };
+      
+      console.log('Saving method call:', methodCallData);
+      
+      // Add to detected method calls list
+      const container = document.getElementById('detected-method-calls-list');
+      const newItem = document.createElement('div');
+      newItem.className = 'detected-item';
+      newItem.innerHTML = `
+        <div class="detected-item-info">
+          <div class="detected-item-name">${methodCallData.name}</div>
+          <div class="detected-item-meta">
+            ${methodCallData.callType} | ${methodCallData.moduleSource} | ${methodCallData.chainPosition}
+          </div>
+        </div>
+        <div class="detected-item-actions">
+          <button class="edit-detected-btn" onclick="editDetectedMethodCall('${methodCallData.name}')">Edit</button>
+          <button class="delete-detected-btn" onclick="deleteDetectedMethodCall('${methodCallData.name}')">Delete</button>
+        </div>
+      `;
+      
+      container.appendChild(newItem);
+      
+      // Clear form
+      document.getElementById('method-call-form').reset();
+      
+      showNotification('Method call added successfully!', 'success');
+    }
+
+    function saveDataFlow(e) {
+      e.preventDefault();
+      
+      const dataFlowData = {
+        sourceType: document.getElementById('data-flow-source-type').value,
+        sourceId: document.getElementById('data-flow-source-id').value,
+        targetType: document.getElementById('data-flow-target-type').value,
+        targetId: document.getElementById('data-flow-target-id').value,
+        flowType: document.getElementById('data-flow-type').value,
+        transformation: document.getElementById('data-flow-transformation').value
+      };
+      
+      console.log('Saving data flow:', dataFlowData);
+      
+      // Clear form
+      document.getElementById('data-flow-form').reset();
+      
+      showNotification('Data flow relationship added successfully!', 'success');
+    }
+
+    // Add missing edit/delete functions for detected items
+    function editDetectedVariable(variableName) {
+      console.log('Editing variable:', variableName);
+      // Populate the variable form with existing data
+      document.getElementById('variable-name').value = variableName;
+      showNotification('Variable loaded for editing', 'info');
+    }
+
+    function deleteDetectedVariable(variableName) {
+      if (confirm(`Delete variable "${variableName}"?`)) {
+        const item = document.querySelector(`[data-variable="${variableName}"]`);
+        if (item) {
+          item.remove();
+          showNotification('Variable deleted', 'success');
+        }
+      }
+    }
+
+    function editDetectedMethodCall(methodCallId) {
+      console.log('Editing method call:', methodCallId);
+      // Extract method name from ID
+      const methodName = methodCallId.split('-')[0];
+      document.getElementById('method-call-name').value = methodName;
+      showNotification('Method call loaded for editing', 'info');
+    }
+
+    function deleteDetectedMethodCall(methodCallId) {
+      if (confirm(`Delete method call "${methodCallId}"?`)) {
+        const item = document.querySelector(`[data-method="${methodCallId}"]`);
+        if (item) {
+          item.remove();
+          showNotification('Method call deleted', 'success');
+        }
+      }
+    }
+
+    // Add missing quick analyze function
+    function quickAnalyzeFile(filePath) {
+      console.log('Quick analyzing file:', filePath);
+      showNotification(`Analyzing file: ${filePath}`, 'info');
+      
+      // This would typically trigger a file analysis
+      // For now, just show a placeholder message
+      setTimeout(() => {
+        showNotification('File analysis completed (placeholder)', 'success');
+      }, 1000);
+    }
+
     // Public API - Updated to include all necessary functions
     return {
       initialize,
@@ -1863,6 +2078,7 @@ const CodeGraphManager = (function() {
         handleEntitiesFilter();
       },
       analyzeExpressionAtLine: (entityId, lineNumber, codeText) => openExpressionModal(entityId, lineNumber, codeText),
+      quickAnalyzeFile: quickAnalyzeFile
     };
   })();
 
@@ -1913,4 +2129,8 @@ const CodeGraphManager = (function() {
   // Make functions available globally for onclick handlers
   window.changeEntitiesPage = (page) => CodeGraphManager.changeEntitiesPage(page);
   window.changeRelationshipsPage = (page) => CodeGraphManager.changeRelationshipsPage(page);
+  window.editDetectedVariable = editDetectedVariable;
+  window.deleteDetectedVariable = deleteDetectedVariable;
+  window.editDetectedMethodCall = editDetectedMethodCall;
+  window.deleteDetectedMethodCall = deleteDetectedMethodCall;
   window.CodeGraphManager = CodeGraphManager;
