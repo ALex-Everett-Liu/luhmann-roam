@@ -188,6 +188,29 @@ const CodeGraphManager = (function() {
               </div>
               <div id="code-graph-visualization" class="graph-visualization"></div>
             </div>
+            
+            <!-- Line Analysis Tab -->
+            <div id="line-analysis-tab" class="tab-content">
+              <div class="line-analysis-controls">
+                <h3>Line-by-Line Code Analysis</h3>
+                <div class="analysis-instructions">
+                  <p>Use the "Analyze Line" button on any entity to perform detailed expression analysis.</p>
+                  <p>This feature allows you to:</p>
+                  <ul>
+                    <li>Analyze variables and their types</li>
+                    <li>Track method calls and dependencies</li>
+                    <li>Visualize data flow within expressions</li>
+                    <li>Identify external and internal dependencies</li>
+                  </ul>
+                </div>
+                <div class="recent-analyses">
+                  <h4>Recent Line Analyses</h4>
+                  <div id="recent-analyses-list" class="analysis-list">
+                    <p class="empty-message">No recent analyses. Click "Analyze Line" on any entity to get started.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -767,13 +790,26 @@ const CodeGraphManager = (function() {
     function switchTab(e) {
       const targetTab = e.target.dataset.tab;
       
+      // Validate that we have a target tab
+      if (!targetTab) {
+        console.error('No target tab specified');
+        return;
+      }
+      
       // Update tab buttons
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       e.target.classList.add('active');
       
-      // Update tab content
+      // Update tab content - add null check
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      document.getElementById(`${targetTab}-tab`).classList.add('active');
+      
+      const targetTabElement = document.getElementById(`${targetTab}-tab`);
+      if (targetTabElement) {
+        targetTabElement.classList.add('active');
+      } else {
+        console.error(`Tab element not found: ${targetTab}-tab`);
+        return;
+      }
       
       // Load data if needed
       if (targetTab === 'entities') {
