@@ -944,3 +944,92 @@ exports.importFromFiles = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Expression analysis endpoints
+exports.analyzeExpression = async (req, res) => {
+  try {
+    const { entityId, lineNumber, codeText } = req.body;
+    const db = req.db;
+    
+    // Parse the expression and extract components
+    const analysis = await parseExpressionComponents(codeText, entityId, lineNumber);
+    
+    res.json({
+      success: true,
+      analysis: analysis
+    });
+  } catch (error) {
+    console.error('Error analyzing expression:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.saveExpressionAnalysis = async (req, res) => {
+  try {
+    const { entityId, lineNumber, variables, methodCalls, dataFlow } = req.body;
+    const db = req.db;
+    const now = Date.now();
+    
+    // Start transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    try {
+      // Save variables
+      for (const variable of variables) {
+        const id = uuidv4();
+        await db.run(`
+          INSERT INTO code_variables 
+          (id, name, declaration_type, data_type, scope_type, parent_entity_id, 
+           line_number, column_start, column_end, initial_value_type, mutability, 
+           is_exported, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id, variable.name, variable.declarationType, variable.dataType,
+          variable.scopeType, entityId, lineNumber, variable.columnStart,
+          variable.columnEnd, variable.initialValueType, variable.mutability,
+          variable.isExported, now, now
+        ]);
+      }
+      
+      // Save method calls
+      for (const methodCall of methodCalls) {
+        const id = uuidv4();
+        await db.run(`
+          INSERT INTO code_method_calls 
+          (id, method_name, call_type, module_source, chain_position, 
+           arguments_count, parent_entity_id, line_number, column_start, 
+           column_end, return_type, is_async, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id, methodCall.name, methodCall.callType, methodCall.moduleSource,
+          methodCall.chainPosition, methodCall.argumentsCount, entityId,
+          lineNumber, methodCall.columnStart, methodCall.columnEnd,
+          methodCall.returnType, methodCall.isAsync, now, now
+        ]);
+      }
+      
+      // Save data flow relationships
+      for (const flow of dataFlow) {
+        const id = uuidv4();
+        await db.run(`
+          INSERT INTO code_data_flow 
+          (id, source_type, source_id, target_type, target_id, flow_type, 
+           transformation_applied, line_number, parent_entity_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id, flow.sourceType, flow.sourceId, flow.targetType, flow.targetId,
+          flow.flowType, flow.transformationApplied, lineNumber, entityId, now, now
+        ]);
+      }
+      
+      await db.run('COMMIT');
+      res.json({ success: true });
+    } catch (error) {
+      await db.run('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error saving expression analysis:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

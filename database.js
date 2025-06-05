@@ -829,6 +829,107 @@ try {
     console.log(`Created sequence_id index for ${table} table`);
   }
 
+  // Create code_expressions table - stores individual expressions within code
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS code_expressions (
+      id TEXT PRIMARY KEY,
+      parent_entity_id TEXT NOT NULL, -- Links to the function/method containing this expression
+      expression_text TEXT NOT NULL, -- The actual code expression
+      expression_type TEXT NOT NULL, -- 'assignment', 'method_call', 'binary_operation', 'unary_operation', 'literal'
+      line_number INTEGER NOT NULL,
+      column_start INTEGER,
+      column_end INTEGER,
+      complexity_level TEXT DEFAULT 'simple', -- 'simple', 'medium', 'complex'
+      side_effects TEXT DEFAULT 'none', -- 'none', 'local', 'external'
+      data_type TEXT, -- 'string', 'number', 'boolean', 'object', 'array', 'function'
+      properties TEXT, -- JSON string for additional metadata
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create code_variables table - stores variable declarations and references
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS code_variables (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      declaration_type TEXT, -- 'const', 'let', 'var', 'parameter', 'property'
+      data_type TEXT, -- 'string', 'number', 'boolean', 'object', 'array', 'function'
+      scope_type TEXT, -- 'global', 'local', 'parameter', 'closure'
+      parent_entity_id TEXT NOT NULL,
+      line_number INTEGER,
+      column_start INTEGER,
+      column_end INTEGER,
+      initial_value_type TEXT, -- 'literal', 'function_call', 'expression', 'parameter'
+      mutability TEXT DEFAULT 'mutable', -- 'immutable', 'mutable'
+      is_exported BOOLEAN DEFAULT 0,
+      properties TEXT, -- JSON string for additional metadata
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create code_method_calls table - stores method/function calls
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS code_method_calls (
+      id TEXT PRIMARY KEY,
+      method_name TEXT NOT NULL,
+      call_type TEXT, -- 'direct', 'chained', 'nested'
+      module_source TEXT, -- 'built-in', 'external', 'local', 'third-party'
+      chain_position TEXT, -- 'first', 'intermediate', 'last', 'standalone'
+      arguments_count INTEGER DEFAULT 0,
+      parent_expression_id TEXT,
+      parent_entity_id TEXT NOT NULL,
+      line_number INTEGER,
+      column_start INTEGER,
+      column_end INTEGER,
+      return_type TEXT,
+      is_async BOOLEAN DEFAULT 0,
+      properties TEXT, -- JSON string for additional metadata
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (parent_expression_id) REFERENCES code_expressions (id) ON DELETE CASCADE,
+      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create code_data_flow table - tracks data flow between variables and expressions
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS code_data_flow (
+      id TEXT PRIMARY KEY,
+      source_type TEXT NOT NULL, -- 'variable', 'method_call', 'expression', 'parameter'
+      source_id TEXT NOT NULL, -- ID of the source (variable, method call, etc.)
+      target_type TEXT NOT NULL, -- 'variable', 'method_call', 'expression'
+      target_id TEXT NOT NULL, -- ID of the target
+      flow_type TEXT NOT NULL, -- 'assignment', 'parameter_passing', 'return_value', 'transformation'
+      transformation_applied TEXT, -- Description of any transformation (e.g., 'toLowerCase', 'parseInt')
+      line_number INTEGER,
+      parent_entity_id TEXT NOT NULL,
+      properties TEXT, -- JSON string for additional metadata
+      created_at INTEGER,
+      updated_at INTEGER,
+      sequence_id INTEGER,
+      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Add indices for expression analysis tables
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_code_expressions_parent ON code_expressions(parent_entity_id);
+    CREATE INDEX IF NOT EXISTS idx_code_expressions_line ON code_expressions(line_number);
+    CREATE INDEX IF NOT EXISTS idx_code_variables_parent ON code_variables(parent_entity_id);
+    CREATE INDEX IF NOT EXISTS idx_code_variables_name ON code_variables(name);
+    CREATE INDEX IF NOT EXISTS idx_code_method_calls_parent ON code_method_calls(parent_entity_id);
+    CREATE INDEX IF NOT EXISTS idx_code_method_calls_method ON code_method_calls(method_name);
+    CREATE INDEX IF NOT EXISTS idx_code_data_flow_source ON code_data_flow(source_type, source_id);
+    CREATE INDEX IF NOT EXISTS idx_code_data_flow_target ON code_data_flow(target_type, target_id);
+  `);
+
   return db;
 }
 

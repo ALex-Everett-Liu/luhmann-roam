@@ -416,6 +416,297 @@ const CodeGraphManager = (function() {
         </div>
       `;
       document.body.appendChild(projectModal);
+
+      // Expression Analysis Modal
+      const expressionModal = document.createElement('div');
+      expressionModal.id = 'expression-modal';
+      expressionModal.className = 'code-graph-modal';
+      expressionModal.innerHTML = `
+        <div class="code-graph-modal-content expression-modal-content">
+          <h3 id="expression-modal-title">Analyze Code Expression</h3>
+          
+          <!-- Expression Context -->
+          <div class="expression-context">
+            <div class="form-group">
+              <label>Code Line:</label>
+              <textarea id="expression-code-line" rows="2" readonly class="code-display"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Parent Function:</label>
+                <input type="text" id="expression-parent-function" readonly>
+              </div>
+              <div class="form-group">
+                <label>Line Number:</label>
+                <input type="number" id="expression-line-number" readonly>
+              </div>
+            </div>
+          </div>
+
+          <!-- Expression Analysis Tabs -->
+          <div class="expression-tabs">
+            <button class="expression-tab-btn active" data-tab="variables">Variables</button>
+            <button class="expression-tab-btn" data-tab="method-calls">Method Calls</button>
+            <button class="expression-tab-btn" data-tab="data-flow">Data Flow</button>
+            <button class="expression-tab-btn" data-tab="dependencies">Dependencies</button>
+          </div>
+
+          <!-- Variables Tab -->
+          <div id="variables-expression-tab" class="expression-tab-content active">
+            <div class="detected-items">
+              <h4>Detected Variables</h4>
+              <div id="detected-variables-list"></div>
+            </div>
+            
+            <div class="add-variable-section">
+              <h4>Add/Edit Variable</h4>
+              <form id="variable-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Variable Name*:</label>
+                    <input type="text" id="variable-name" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Declaration Type:</label>
+                    <select id="variable-declaration-type">
+                      <option value="const">const</option>
+                      <option value="let">let</option>
+                      <option value="var">var</option>
+                      <option value="parameter">parameter</option>
+                      <option value="property">property</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Data Type:</label>
+                    <select id="variable-data-type">
+                      <option value="string">string</option>
+                      <option value="number">number</option>
+                      <option value="boolean">boolean</option>
+                      <option value="object">object</option>
+                      <option value="array">array</option>
+                      <option value="function">function</option>
+                      <option value="undefined">undefined</option>
+                      <option value="null">null</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Scope Type:</label>
+                    <select id="variable-scope-type">
+                      <option value="local">local</option>
+                      <option value="parameter">parameter</option>
+                      <option value="closure">closure</option>
+                      <option value="global">global</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Initial Value Type:</label>
+                    <select id="variable-initial-value-type">
+                      <option value="literal">literal</option>
+                      <option value="function_call">function_call</option>
+                      <option value="expression">expression</option>
+                      <option value="parameter">parameter</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Mutability:</label>
+                    <select id="variable-mutability">
+                      <option value="immutable">immutable</option>
+                      <option value="mutable">mutable</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Column Start:</label>
+                    <input type="number" id="variable-column-start" min="0">
+                  </div>
+                  <div class="form-group">
+                    <label>Column End:</label>
+                    <input type="number" id="variable-column-end" min="0">
+                  </div>
+                </div>
+                
+                <div class="checkbox-row">
+                  <label><input type="checkbox" id="variable-is-exported"> Exported</label>
+                </div>
+                
+                <button type="submit" class="primary-btn">Add Variable</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Method Calls Tab -->
+          <div id="method-calls-expression-tab" class="expression-tab-content">
+            <div class="detected-items">
+              <h4>Detected Method Calls</h4>
+              <div id="detected-method-calls-list"></div>
+            </div>
+            
+            <div class="add-method-call-section">
+              <h4>Add/Edit Method Call</h4>
+              <form id="method-call-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Method Name*:</label>
+                    <input type="text" id="method-call-name" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Call Type:</label>
+                    <select id="method-call-type">
+                      <option value="direct">direct</option>
+                      <option value="chained">chained</option>
+                      <option value="nested">nested</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Module Source:</label>
+                    <select id="method-module-source">
+                      <option value="built-in">built-in</option>
+                      <option value="external">external</option>
+                      <option value="local">local</option>
+                      <option value="third-party">third-party</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Chain Position:</label>
+                    <select id="method-chain-position">
+                      <option value="standalone">standalone</option>
+                      <option value="first">first</option>
+                      <option value="intermediate">intermediate</option>
+                      <option value="last">last</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Arguments Count:</label>
+                    <input type="number" id="method-arguments-count" min="0" value="0">
+                  </div>
+                  <div class="form-group">
+                    <label>Return Type:</label>
+                    <input type="text" id="method-return-type" placeholder="string, number, void, etc.">
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Column Start:</label>
+                    <input type="number" id="method-column-start" min="0">
+                  </div>
+                  <div class="form-group">
+                    <label>Column End:</label>
+                    <input type="number" id="method-column-end" min="0">
+                  </div>
+                </div>
+                
+                <div class="checkbox-row">
+                  <label><input type="checkbox" id="method-is-async"> Async</label>
+                </div>
+                
+                <button type="submit" class="primary-btn">Add Method Call</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Data Flow Tab -->
+          <div id="data-flow-expression-tab" class="expression-tab-content">
+            <div class="data-flow-visualization">
+              <h4>Data Flow Analysis</h4>
+              <div id="data-flow-diagram"></div>
+            </div>
+            
+            <div class="add-data-flow-section">
+              <h4>Add Data Flow Relationship</h4>
+              <form id="data-flow-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Source Type:</label>
+                    <select id="data-flow-source-type">
+                      <option value="variable">variable</option>
+                      <option value="method_call">method_call</option>
+                      <option value="expression">expression</option>
+                      <option value="parameter">parameter</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Source:</label>
+                    <select id="data-flow-source-id">
+                      <option value="">Select source...</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Target Type:</label>
+                    <select id="data-flow-target-type">
+                      <option value="variable">variable</option>
+                      <option value="method_call">method_call</option>
+                      <option value="expression">expression</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Target:</label>
+                    <select id="data-flow-target-id">
+                      <option value="">Select target...</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Flow Type:</label>
+                    <select id="data-flow-type">
+                      <option value="assignment">assignment</option>
+                      <option value="parameter_passing">parameter_passing</option>
+                      <option value="return_value">return_value</option>
+                      <option value="transformation">transformation</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Transformation Applied:</label>
+                    <input type="text" id="data-flow-transformation" placeholder="e.g., toLowerCase, parseInt">
+                  </div>
+                </div>
+                
+                <button type="submit" class="primary-btn">Add Data Flow</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Dependencies Tab -->
+          <div id="dependencies-expression-tab" class="expression-tab-content">
+            <div class="dependencies-analysis">
+              <h4>External Dependencies</h4>
+              <div id="external-dependencies-list"></div>
+              
+              <h4>Built-in Dependencies</h4>
+              <div id="builtin-dependencies-list"></div>
+              
+              <h4>Internal Dependencies</h4>
+              <div id="internal-dependencies-list"></div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="analyze-expression-btn" class="primary-btn">Auto-Analyze</button>
+            <button type="button" id="save-expression-analysis" class="primary-btn">Save Analysis</button>
+            <button type="button" id="cancel-expression" class="secondary-btn">Cancel</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(expressionModal);
     }
     
     function setupEventHandlers() {
@@ -467,6 +758,9 @@ const CodeGraphManager = (function() {
       
       // Import
       document.getElementById('import-entities-btn').addEventListener('click', importFromFiles);
+
+      // Add expression modal handlers
+      setupExpressionModalHandlers();
     }
     
     function switchTab(e) {
@@ -547,6 +841,7 @@ const CodeGraphManager = (function() {
             <button onclick="CodeGraphManager.viewDataFlow('${entity.id}')" class="view-btn">Data Flow</button>
             <button onclick="CodeGraphManager.editEntity('${entity.id}')" class="edit-btn">Edit</button>
             <button onclick="CodeGraphManager.deleteEntity('${entity.id}')" class="delete-btn">Delete</button>
+            <button onclick="CodeGraphManager.analyzeExpressionAtLine('${entity.id}', 70, 'const fileExtension = path.extname(inputPath).toLowerCase();')" class="analyze-btn">Analyze Line</button>
           </div>
         </div>
       `).join('');
@@ -1308,6 +1603,192 @@ const CodeGraphManager = (function() {
       showNotification('File import functionality not yet implemented', 'info');
     }
 
+    // Expression analysis functions
+    function openExpressionModal(entityId, lineNumber, codeText) {
+      const modal = document.getElementById('expression-modal');
+      const title = document.getElementById('expression-modal-title');
+      
+      // Set context
+      document.getElementById('expression-code-line').value = codeText;
+      document.getElementById('expression-line-number').value = lineNumber;
+      
+      // Load parent function info
+      loadParentFunctionInfo(entityId);
+      
+      // Auto-analyze the expression
+      autoAnalyzeExpression(codeText, entityId, lineNumber);
+      
+      modal.classList.add('show');
+      modal.style.display = 'flex';
+    }
+
+    function autoAnalyzeExpression(codeText, entityId, lineNumber) {
+      // Parse the code line to detect variables, method calls, etc.
+      const analysis = parseCodeLine(codeText);
+      
+      // Populate detected variables
+      populateDetectedVariables(analysis.variables, entityId, lineNumber);
+      
+      // Populate detected method calls
+      populateDetectedMethodCalls(analysis.methodCalls, entityId, lineNumber);
+      
+      // Analyze data flow
+      analyzeDataFlow(analysis, entityId, lineNumber);
+      
+      // Analyze dependencies
+      analyzeDependencies(analysis);
+    }
+
+    function parseCodeLine(codeText) {
+      const analysis = {
+        variables: [],
+        methodCalls: [],
+        dataFlow: [],
+        dependencies: {
+          external: [],
+          builtin: [],
+          internal: []
+        }
+      };
+      
+      // Example parsing for: const fileExtension = path.extname(inputPath).toLowerCase();
+      
+      // Detect variable declarations
+      const varMatch = codeText.match(/(?:const|let|var)\s+(\w+)\s*=/);
+      if (varMatch) {
+        analysis.variables.push({
+          name: varMatch[1],
+          declarationType: codeText.includes('const') ? 'const' : 
+                         codeText.includes('let') ? 'let' : 'var',
+          dataType: 'string', // Could be inferred
+          mutability: codeText.includes('const') ? 'immutable' : 'mutable',
+          initialValueType: 'expression'
+        });
+      }
+      
+      // Detect method calls
+      const methodMatches = codeText.matchAll(/(\w+(?:\.\w+)*)\(/g);
+      for (const match of methodMatches) {
+        const fullMethod = match[1];
+        const parts = fullMethod.split('.');
+        
+        analysis.methodCalls.push({
+          name: parts[parts.length - 1],
+          fullPath: fullMethod,
+          callType: parts.length > 1 ? 'chained' : 'direct',
+          moduleSource: detectModuleSource(parts[0]),
+          chainPosition: detectChainPosition(codeText, match.index)
+        });
+      }
+      
+      // Detect parameters used
+      const paramMatches = codeText.matchAll(/\b(\w+)\b/g);
+      for (const match of paramMatches) {
+        if (!['const', 'let', 'var', 'path', 'extname', 'toLowerCase'].includes(match[1])) {
+          analysis.dependencies.internal.push(match[1]);
+        }
+      }
+      
+      return analysis;
+    }
+
+    function detectModuleSource(identifier) {
+      const builtinModules = ['path', 'fs', 'crypto', 'util'];
+      const builtinMethods = ['toString', 'toLowerCase', 'toUpperCase', 'parseInt'];
+      
+      if (builtinModules.includes(identifier)) return 'external';
+      if (builtinMethods.includes(identifier)) return 'built-in';
+      return 'local';
+    }
+
+    function detectChainPosition(codeText, position) {
+      const beforeDot = codeText.substring(0, position).lastIndexOf('.');
+      const afterParen = codeText.substring(position).indexOf(')');
+      const nextDot = codeText.substring(position + afterParen).indexOf('.');
+      
+      if (beforeDot === -1 && nextDot === -1) return 'standalone';
+      if (beforeDot === -1) return 'first';
+      if (nextDot === -1) return 'last';
+      return 'intermediate';
+    }
+
+    function populateDetectedVariables(variables, entityId, lineNumber) {
+      const container = document.getElementById('detected-variables-list');
+      
+      container.innerHTML = variables.map(variable => `
+        <div class="detected-item" data-variable="${variable.name}">
+          <div class="detected-item-info">
+            <div class="detected-item-name">${variable.name}</div>
+            <div class="detected-item-meta">
+              ${variable.declarationType} | ${variable.dataType} | ${variable.mutability}
+            </div>
+          </div>
+          <div class="detected-item-actions">
+            <button class="edit-detected-btn" onclick="editDetectedVariable('${variable.name}')">Edit</button>
+            <button class="delete-detected-btn" onclick="deleteDetectedVariable('${variable.name}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function populateDetectedMethodCalls(methodCalls, entityId, lineNumber) {
+      const container = document.getElementById('detected-method-calls-list');
+      
+      container.innerHTML = methodCalls.map((call, index) => `
+        <div class="detected-item" data-method="${call.name}-${index}">
+          <div class="detected-item-info">
+            <div class="detected-item-name">${call.fullPath}</div>
+            <div class="detected-item-meta">
+              ${call.callType} | ${call.moduleSource} | ${call.chainPosition}
+            </div>
+          </div>
+          <div class="detected-item-actions">
+            <button class="edit-detected-btn" onclick="editDetectedMethodCall('${call.name}-${index}')">Edit</button>
+            <button class="delete-detected-btn" onclick="deleteDetectedMethodCall('${call.name}-${index}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Add event handlers for expression modal
+    function setupExpressionModalHandlers() {
+      // Tab switching
+      document.querySelectorAll('.expression-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetTab = e.target.dataset.tab;
+          
+          // Update tab buttons
+          document.querySelectorAll('.expression-tab-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          
+          // Update tab content
+          document.querySelectorAll('.expression-tab-content').forEach(content => content.classList.remove('active'));
+          document.getElementById(`${targetTab}-expression-tab`).classList.add('active');
+        });
+      });
+      
+      // Form submissions
+      document.getElementById('variable-form').addEventListener('submit', saveVariable);
+      document.getElementById('method-call-form').addEventListener('submit', saveMethodCall);
+      document.getElementById('data-flow-form').addEventListener('submit', saveDataFlow);
+      
+      // Modal actions
+      document.getElementById('analyze-expression-btn').addEventListener('click', () => {
+        const codeText = document.getElementById('expression-code-line').value;
+        const entityId = document.getElementById('expression-parent-function').dataset.entityId;
+        const lineNumber = document.getElementById('expression-line-number').value;
+        autoAnalyzeExpression(codeText, entityId, lineNumber);
+      });
+      
+      document.getElementById('cancel-expression').addEventListener('click', closeExpressionModal);
+    }
+
+    function closeExpressionModal() {
+      const modal = document.getElementById('expression-modal');
+      modal.classList.remove('show');
+      setTimeout(() => modal.style.display = 'none', 200);
+    }
+
     // Public API - Updated to include all necessary functions
     return {
       initialize,
@@ -1380,7 +1861,8 @@ const CodeGraphManager = (function() {
         document.querySelector('[data-tab="entities"]').click();
         document.getElementById('entities-project-filter').value = id;
         handleEntitiesFilter();
-      }
+      },
+      analyzeExpressionAtLine: (entityId, lineNumber, codeText) => openExpressionModal(entityId, lineNumber, codeText),
     };
   })();
 
