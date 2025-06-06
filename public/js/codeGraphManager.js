@@ -43,6 +43,20 @@ const CodeGraphManager = (function() {
       methodCall: null,
       dataFlow: null
     };
+
+    // ADD THE CONSTANTS HERE - INSIDE THE MODULE SCOPE
+    const EXPRESSION_RELATIONSHIP_TYPES = {
+        'assigned_from': 'Assigned From',
+        'calls_with': 'Calls With', 
+        'called_on': 'Called On',
+        'used_by': 'Used By',
+        'defines': 'Defines',
+        'returns_to': 'Returns To',
+        'flows_to': 'Flows To',
+        'transforms_via': 'Transforms Via',
+        'depends_on': 'Depends On',
+        'produces': 'Produces'
+      };
     
     function initialize() {
       createContainer();
@@ -2624,6 +2638,9 @@ const CodeGraphManager = (function() {
       }
       
       console.log('🎉 Expression modal handlers setup complete');
+      
+      // ADD THIS LINE to setup the enhanced data flow tab
+      enhanceDataFlowTab();
     }
 
     // Move these helper functions INSIDE the module scope too
@@ -2946,6 +2963,493 @@ const CodeGraphManager = (function() {
       }
     }
 
+    // Enhanced relationship form for expressions
+  function createExpressionRelationshipForm() {
+    // Generate the relationship type options from the constants
+    const relationshipTypeOptions = Object.entries(EXPRESSION_RELATIONSHIP_TYPES)
+      .map(([value, label]) => `<option value="${value}">${label}</option>`)
+      .join('');
+
+    return `
+      <div class="expression-relationship-form">
+        <div class="quick-relationship-templates">
+          <h5>Quick Templates</h5>
+          <div class="template-buttons">
+            <button type="button" class="template-btn" onclick="CodeGraphManager.applyRelationshipTemplate('assignment')">
+              Variable Assignment
+            </button>
+            <button type="button" class="template-btn" onclick="CodeGraphManager.applyRelationshipTemplate('method_call')">
+              Method Call
+            </button>
+            <button type="button" class="template-btn" onclick="CodeGraphManager.applyRelationshipTemplate('method_chain')">
+              Method Chain
+            </button>
+            <button type="button" class="template-btn" onclick="CodeGraphManager.applyRelationshipTemplate('parameter_usage')">
+              Parameter Usage
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="create-example-btn" onclick="CodeGraphManager.createFileExtensionExample()">
+          Create fileExtension Example Relationships
+        </button>
+
+        <form id="expression-relationship-form">
+          <div class="relationship-element-section">
+            <h5>Source Element</h5>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="expression-source-type">Source Type</label>
+                <select id="expression-source-type" required>
+                  <option value="">Select type...</option>
+                  <option value="variable">Variable</option>
+                  <option value="method_call">Method Call</option>
+                  <option value="function">Function</option>
+                  <option value="parameter">Parameter</option>
+                  <option value="expression">Expression</option>
+                  <option value="result">Intermediate Result</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expression-source-name">Source Name</label>
+                <input type="text" id="expression-source-name" required placeholder="e.g., fileExtension, path.extname">
+              </div>
+            </div>
+          </div>
+
+          <div class="relationship-element-section">
+            <h5>Target Element</h5>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="expression-target-type">Target Type</label>
+                <select id="expression-target-type" required>
+                  <option value="">Select type...</option>
+                  <option value="variable">Variable</option>
+                  <option value="method_call">Method Call</option>
+                  <option value="function">Function</option>
+                  <option value="parameter">Parameter</option>
+                  <option value="expression">Expression</option>
+                  <option value="result">Intermediate Result</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expression-target-name">Target Name</label>
+                <input type="text" id="expression-target-name" required placeholder="e.g., inputPath, toLowerCase">
+              </div>
+            </div>
+          </div>
+
+          <div class="relationship-details-section">
+            <h5>Relationship Details</h5>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="expression-relationship-type">Relationship Type</label>
+                <select id="expression-relationship-type" required>
+                  <option value="">Select relationship...</option>
+                  ${relationshipTypeOptions}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expression-order-sequence">Order Sequence</label>
+                <input type="number" id="expression-order-sequence" min="1" placeholder="1">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="expression-description">Description</label>
+              <textarea id="expression-description" placeholder="Describe this relationship..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="expression-transformation">Transformation Details (optional)</label>
+              <input type="text" id="expression-transformation" placeholder="e.g., converts to lowercase, extracts file extension">
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">Add Relationship</button>
+            <button type="button" class="secondary-btn" onclick="CodeGraphManager.resetExpressionRelationshipForm()">Reset</button>
+          </div>
+        </form>
+
+        <div class="existing-relationships">
+          <h5>Current Expression Relationships</h5>
+          <div id="expression-relationships-list">
+            <!-- Relationships will be loaded here -->
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Setup handlers for expression relationship form
+  function setupExpressionRelationshipHandlers() {
+    const form = document.getElementById('expression-relationship-form');
+    if (form) {
+      form.addEventListener('submit', saveExpressionRelationship);
+    }
+    
+    // Setup auto-suggestions
+    setupAutoSuggestions();
+  }
+
+  // Save expression relationship
+  async function saveExpressionRelationship(e) {
+    e.preventDefault();
+    
+    const formData = {
+      source_type: document.getElementById('expression-source-type').value,
+      source_name: document.getElementById('expression-source-name').value,
+      target_type: document.getElementById('expression-target-type').value,
+      target_name: document.getElementById('expression-target-name').value,
+      relationship_type: document.getElementById('expression-relationship-type').value,
+      description: document.getElementById('expression-description').value,
+      transformation: document.getElementById('expression-transformation').value,
+      order_sequence: parseInt(document.getElementById('expression-order-sequence').value) || 1,
+      entity_id: currentExpressionSession.entityId,
+      line_number: currentExpressionSession.lineNumber,
+      project_id: currentExpressionSession.projectId
+    };
+
+    try {
+      const response = await fetch('/api/code-graph/expression-relationships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        showNotification('Expression relationship saved successfully', 'success');
+        resetExpressionRelationshipForm();
+        loadExpressionRelationships();
+      } else {
+        const error = await response.json();
+        showNotification(`Error: ${error.message}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error saving expression relationship:', error);
+      showNotification('Error saving expression relationship', 'error');
+    }
+  }
+
+  // Load expression relationships
+  async function loadExpressionRelationships() {
+    if (!currentExpressionSession.entityId) return;
+
+    try {
+      const response = await fetch(`/api/code-graph/expression-relationships?entity_id=${currentExpressionSession.entityId}&line_number=${currentExpressionSession.lineNumber}`);
+      const relationships = await response.json();
+      
+      const container = document.getElementById('expression-relationships-list');
+      if (!container) return;
+
+      if (relationships.length === 0) {
+        container.innerHTML = '<div class="empty-message">No relationships defined yet</div>';
+        return;
+      }
+
+      container.innerHTML = relationships.map(rel => {
+        // Use the constant to get the human-readable name
+        const relationshipLabel = EXPRESSION_RELATIONSHIP_TYPES[rel.relationship_type] || rel.relationship_type.toUpperCase();
+        
+        return `
+          <div class="relationship-item">
+            <div class="relationship-info">
+              <div class="relationship-summary">
+                <span class="source-element">${rel.source_name}</span>
+                <span class="relationship-type-badge">${relationshipLabel}</span>
+                <span class="target-element">${rel.target_name}</span>
+              </div>
+              <div class="relationship-description">${rel.description}</div>
+              ${rel.transformation ? `<div class="relationship-transformation">Transformation: ${rel.transformation}</div>` : ''}
+            </div>
+            <div class="relationship-actions">
+              <button class="edit-btn" onclick="CodeGraphManager.editExpressionRelationship(${rel.id})">Edit</button>
+              <button class="delete-btn" onclick="CodeGraphManager.deleteExpressionRelationship(${rel.id})">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading expression relationships:', error);
+    }
+  }
+
+  // Apply relationship template
+  function applyRelationshipTemplate(templateType) {
+    const templates = {
+      assignment: {
+        source_type: 'variable',
+        target_type: 'expression',
+        relationship_type: 'assigned_from',
+        description: EXPRESSION_RELATIONSHIP_TYPES['assigned_from'] + ' - Variable is assigned the result of expression'
+      },
+      method_call: {
+        source_type: 'method_call',
+        target_type: 'parameter',
+        relationship_type: 'calls_with',
+        description: EXPRESSION_RELATIONSHIP_TYPES['calls_with'] + ' - Method is called with parameter'
+      },
+      method_chain: {
+        source_type: 'method_call',
+        target_type: 'result',
+        relationship_type: 'called_on',
+        description: EXPRESSION_RELATIONSHIP_TYPES['called_on'] + ' - Method is called on the result of previous operation'
+      },
+      parameter_usage: {
+        source_type: 'parameter',
+        target_type: 'method_call',
+        relationship_type: 'used_by',
+        description: EXPRESSION_RELATIONSHIP_TYPES['used_by'] + ' - Parameter is used by method'
+      }
+    };
+
+    const template = templates[templateType];
+    if (!template) return;
+
+    // Populate form fields with template values
+    Object.entries(template).forEach(([key, value]) => {
+      const element = document.getElementById(`expression-${key.replace('_', '-')}`);
+      if (element) {
+        element.value = value;
+      }
+    });
+
+    showNotification(`Applied ${templateType} template`, 'info');
+  }
+
+  // Setup auto-suggestions for source and target names
+  function setupAutoSuggestions() {
+    const sourceNameInput = document.getElementById('expression-source-name');
+    const targetNameInput = document.getElementById('expression-target-name');
+    
+    if (!sourceNameInput || !targetNameInput) return;
+    
+    // Create suggestion lists
+    const suggestions = [];
+    
+    // Add variables
+    if (currentExpressionSession.variables) {
+      currentExpressionSession.variables.forEach(variable => {
+        suggestions.push({
+          name: variable.name,
+          type: 'variable',
+          details: `${variable.declaration_type} ${variable.data_type}`
+        });
+      });
+    }
+    
+    // Add method calls
+    if (currentExpressionSession.methodCalls) {
+      currentExpressionSession.methodCalls.forEach(methodCall => {
+        suggestions.push({
+          name: methodCall.method_name,
+          type: 'method_call',
+          details: `${methodCall.call_type} ${methodCall.module_source}`
+        });
+      });
+    }
+    
+    // Add common expressions for your example
+    suggestions.push(
+      { name: 'path.extname(inputPath).toLowerCase()', type: 'expression', details: 'Method chain expression' },
+      { name: 'result of path.extname', type: 'result', details: 'Intermediate result' },
+      { name: 'inputPath', type: 'parameter', details: 'Function parameter' },
+      { name: 'generateThumbnail', type: 'function', details: 'Parent function' }
+    );
+    
+    // Setup autocomplete for both inputs
+    setupAutocomplete(sourceNameInput, suggestions);
+    setupAutocomplete(targetNameInput, suggestions);
+  }
+
+  // Simple autocomplete implementation
+  function setupAutocomplete(input, suggestions) {
+    const container = input.parentNode;
+    const suggestionsList = document.createElement('div');
+    suggestionsList.className = 'autocomplete-suggestions';
+    suggestionsList.style.display = 'none';
+    container.appendChild(suggestionsList);
+    
+    input.addEventListener('input', (e) => {
+      const value = e.target.value.toLowerCase();
+      
+      if (value.length < 2) {
+        suggestionsList.style.display = 'none';
+        return;
+      }
+      
+      const filtered = suggestions.filter(s => 
+        s.name.toLowerCase().includes(value)
+      );
+      
+      if (filtered.length === 0) {
+        suggestionsList.style.display = 'none';
+        return;
+      }
+      
+      suggestionsList.innerHTML = filtered.map(suggestion => `
+        <div class="autocomplete-item" data-name="${suggestion.name}" data-type="${suggestion.type}">
+          <div class="suggestion-name">${suggestion.name}</div>
+          <div class="suggestion-details">${suggestion.details}</div>
+        </div>
+      `).join('');
+      
+      suggestionsList.style.display = 'block';
+      
+      // Add click handlers
+      suggestionsList.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+          input.value = item.dataset.name;
+          
+          // Auto-set the type dropdown if it exists
+          const typeSelect = input.id.includes('source') ? 
+            document.getElementById('expression-source-type') :
+            document.getElementById('expression-target-type');
+          
+          if (typeSelect && item.dataset.type) {
+            typeSelect.value = item.dataset.type;
+          }
+          
+          suggestionsList.style.display = 'none';
+        });
+      });
+    });
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target)) {
+        suggestionsList.style.display = 'none';
+      }
+    });
+  }
+
+  // Quick action to create all relationships for your example
+  function createFileExtensionExample() {
+    const relationships = [
+      {
+        relationship_type: 'assigned_from',
+        source_type: 'variable',
+        source_name: 'fileExtension',
+        target_type: 'expression',
+        target_name: 'path.extname(inputPath).toLowerCase()',
+        description: 'fileExtension is assigned the result of path.extname(inputPath).toLowerCase()',
+        order_sequence: 1
+      },
+      {
+        relationship_type: 'calls_with',
+        source_type: 'method_call',
+        source_name: 'path.extname',
+        target_type: 'parameter',
+        target_name: 'inputPath',
+        description: 'path.extname is called with inputPath as parameter',
+        order_sequence: 2
+      },
+      {
+        relationship_type: 'called_on',
+        source_type: 'method_call',
+        source_name: 'toLowerCase',
+        target_type: 'result',
+        target_name: 'result of path.extname',
+        description: 'toLowerCase is called on the result of path.extname',
+        order_sequence: 3
+      },
+      {
+        relationship_type: 'used_by',
+        source_type: 'parameter',
+        source_name: 'inputPath',
+        target_type: 'method_call',
+        target_name: 'path.extname',
+        description: 'inputPath is used by path.extname',
+        order_sequence: 4
+      },
+      {
+        relationship_type: 'defines',
+        source_type: 'function',
+        source_name: 'generateThumbnail',
+        target_type: 'variable',
+        target_name: 'fileExtension',
+        description: 'generateThumbnail function defines the fileExtension variable',
+        order_sequence: 5
+      }
+    ];
+    
+    // Save all relationships
+    relationships.forEach(async (rel, index) => {
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/code-graph/expression-relationships', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...rel,
+              entity_id: currentExpressionSession.entityId,
+              line_number: currentExpressionSession.lineNumber,
+              project_id: currentExpressionSession.projectId
+            })
+          });
+          
+          if (response.ok && index === relationships.length - 1) {
+            showNotification('All example relationships created successfully', 'success');
+            loadExpressionRelationships();
+          }
+        } catch (error) {
+          console.error('Error creating relationship:', error);
+        }
+      }, index * 100); // Stagger the requests
+    });
+  }
+
+  // Reset expression relationship form
+  function resetExpressionRelationshipForm() {
+    const form = document.getElementById('expression-relationship-form');
+    if (form) {
+      form.reset();
+    }
+  }
+
+  // Edit expression relationship
+  async function editExpressionRelationship(id) {
+    console.log('Editing relationship:', id);
+    // Implementation for editing relationships
+  }
+
+  // Delete expression relationship
+  async function deleteExpressionRelationship(id) {
+    if (confirm('Delete this relationship?')) {
+      try {
+        const response = await fetch(`/api/code-graph/expression-relationships/${id}`, {
+          method: 'DELETE'
+        });
+        if (response.ok) {
+          loadExpressionRelationships();
+          showNotification('Relationship deleted successfully', 'success');
+        }
+      } catch (error) {
+        console.error('Error deleting relationship:', error);
+        showNotification('Error deleting relationship', 'error');
+      }
+    }
+  }
+
+  // Enhanced data flow tab with relationship management
+  function enhanceDataFlowTab() {
+    const dataFlowTab = document.getElementById('data-flow-expression-tab');
+    if (!dataFlowTab) return;
+    
+    // Add the enhanced relationship form to the data flow tab
+    const enhancedForm = document.createElement('div');
+    enhancedForm.className = 'data-flow-form-enhanced';
+    enhancedForm.innerHTML = createExpressionRelationshipForm();
+    
+    // Insert after the existing data flow form
+    const existingForm = dataFlowTab.querySelector('.add-data-flow-section');
+    if (existingForm) {
+      existingForm.parentNode.insertBefore(enhancedForm, existingForm.nextSibling);
+    }
+    
+    // Setup handlers for the new form
+    setupExpressionRelationshipHandlers();
+  }
+
     // Public API - Updated to include all necessary functions
     return {
       initialize,
@@ -3029,7 +3533,15 @@ const CodeGraphManager = (function() {
       // Add new functions to public API
       updateDataFlowDropdowns: updateDataFlowDropdowns,
       createQuickRelationshipsForExample: createQuickRelationshipsForExample,
-      enhanceRelationshipModal: enhanceRelationshipModal
+      enhanceRelationshipModal: enhanceRelationshipModal,
+      applyRelationshipTemplate,
+      createFileExtensionExample,
+      editExpressionRelationship,
+      deleteExpressionRelationship,
+      resetExpressionRelationshipForm,
+      enhanceDataFlowTab,
+      setupExpressionRelationshipHandlers,
+      loadExpressionRelationships
     };
 })();
 
@@ -3089,3 +3601,4 @@ window.editDetectedVariable = (variableId) => CodeGraphManager.editDetectedVaria
 window.editDetectedMethodCall = (methodCallId) => CodeGraphManager.editDetectedMethodCall(methodCallId);
 window.deleteDetectedVariable = (variableId) => CodeGraphManager.deleteDetectedVariable(variableId);
 window.deleteDetectedMethodCall = (methodCallId) => CodeGraphManager.deleteDetectedMethodCall(methodCallId);
+

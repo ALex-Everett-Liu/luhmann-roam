@@ -1509,3 +1509,71 @@ exports.deleteDataFlow = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get expression relationships
+exports.getExpressionRelationships = async (req, res) => {
+  try {
+    const { entity_id, line_number } = req.query;
+    
+    const query = `
+      SELECT * FROM expression_relationships 
+      WHERE entity_id = ? AND line_number = ?
+      ORDER BY order_sequence ASC
+    `;
+    
+    const relationships = await db.all(query, [entity_id, line_number]);
+    res.json(relationships);
+  } catch (error) {
+    console.error('Error fetching expression relationships:', error);
+    res.status(500).json({ error: 'Failed to fetch expression relationships' });
+  }
+};
+
+// Create expression relationship
+exports.createExpressionRelationship = async (req, res) => {
+  try {
+    const {
+      source_type, source_name, target_type, target_name,
+      relationship_type, description, transformation,
+      order_sequence, entity_id, line_number, project_id
+    } = req.body;
+    
+    const query = `
+      INSERT INTO expression_relationships (
+        source_type, source_name, target_type, target_name,
+        relationship_type, description, transformation,
+        order_sequence, entity_id, line_number, project_id,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `;
+    
+    const result = await db.run(query, [
+      source_type, source_name, target_type, target_name,
+      relationship_type, description, transformation,
+      order_sequence, entity_id, line_number, project_id
+    ]);
+    
+    const newRelationship = await db.get(
+      'SELECT * FROM expression_relationships WHERE id = ?',
+      [result.lastID]
+    );
+    
+    res.json(newRelationship);
+  } catch (error) {
+    console.error('Error creating expression relationship:', error);
+    res.status(500).json({ error: 'Failed to create expression relationship' });
+  }
+};
+
+// Delete expression relationship
+exports.deleteExpressionRelationship = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await db.run('DELETE FROM expression_relationships WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting expression relationship:', error);
+    res.status(500).json({ error: 'Failed to delete expression relationship' });
+  }
+};

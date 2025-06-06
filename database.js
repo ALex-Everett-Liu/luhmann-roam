@@ -892,6 +892,28 @@ try {
     )
   `);
 
+  // ADD THE NEW TABLE HERE - RIGHT AFTER code_data_flow
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS expression_relationships (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_type TEXT NOT NULL,
+      source_name TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_name TEXT NOT NULL,
+      relationship_type TEXT NOT NULL,
+      description TEXT,
+      transformation TEXT,
+      order_sequence INTEGER DEFAULT 1,
+      entity_id INTEGER,
+      line_number INTEGER,
+      project_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      sequence_id INTEGER,
+      FOREIGN KEY (entity_id) REFERENCES code_entities(id) ON DELETE CASCADE,
+      FOREIGN KEY (project_id) REFERENCES code_projects(id) ON DELETE CASCADE
+    )
+  `);
+
   // Add indices for expression analysis tables
   await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_code_expressions_parent ON code_expressions(parent_entity_id);
