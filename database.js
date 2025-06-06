@@ -339,167 +339,6 @@ try {
     console.log('sequence_id column or index already exists or other error:', error.message);
   }
   
-  // Create triggers for auto-assigning sequence IDs in all tables
-  try {
-    const tables = [
-      'nodes',
-      'links', 
-      'node_attributes',
-      'tasks',
-      'bookmarks',
-      'blog_pages',
-      'dcim_images'
-    ];
-    
-    for (const table of tables) {
-      await db.exec(`
-        CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
-        AFTER INSERT ON ${table}
-        FOR EACH ROW
-        WHEN NEW.sequence_id IS NULL
-        BEGIN
-          UPDATE ${table} 
-          SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
-          WHERE id = NEW.id;
-        END;
-      `);
-      console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
-    }
-  } catch (error) {
-    console.log('Some triggers might already exist:', error.message);
-  }
-  
-  // Create compound indices for common query patterns
-  try {
-    // Index for fast retrieval of children ordered by position
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_nodes_parent_position 
-      ON nodes(parent_id, position);
-    `);
-    
-    // Index for timestamp-based queries with sequence ID
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_nodes_created_sequence 
-      ON nodes(created_at, sequence_id);
-    `);
-    
-    console.log('Created compound indices for improved performance');
-  } catch (error) {
-    console.log('Some indices may already exist:', error.message);
-  }
-  
-  // Add sequence_id columns to all tables
-  try {
-    // Tables that need sequence_id columns
-    const tables = [
-      'links',
-      'node_attributes',
-      'tasks',
-      'bookmarks',
-      'blog_pages',
-      'dcim_images'
-    ];
-    
-    for (const table of tables) {
-      await db.exec(`ALTER TABLE ${table} ADD COLUMN sequence_id INTEGER;`);
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
-      console.log(`Added sequence_id column and index to ${table} table`);
-    }
-  } catch (error) {
-    console.log('Some sequence_id columns might already exist:', error.message);
-  }
-  
-  // Add compound indices for better performance on each table
-  try {
-    // Nodes table (you already have these)
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_nodes_parent_position 
-      ON nodes(parent_id, position);
-    `);
-    
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_nodes_created_sequence 
-      ON nodes(created_at, sequence_id);
-      'dcim_images'
-    `);
-    
-    // Links table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_links_from_to 
-      ON links(from_node_id, to_node_id);
-    `);
-    
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_links_created_sequence 
-      ON links(created_at, sequence_id);
-    `);
-    
-    // Node attributes table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_node_attributes_node_key 
-      ON node_attributes(node_id, key);
-    `);
-    
-    // Tasks table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_tasks_date_completed 
-      ON tasks(date, is_completed);
-    `);
-    
-    // Bookmarks table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_bookmarks_added_sequence 
-      ON bookmarks(added_at, sequence_id);
-    `);
-    
-    // Blog pages table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_blog_pages_node 
-      ON blog_pages(node_id);
-    `);
-    
-    // DCIM images table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_dcim_images_creation_sequence 
-      ON dcim_images(creation_time, sequence_id);
-    `);
-    
-    console.log('Created compound indices for improved performance on all tables');
-  } catch (error) {
-    console.log('Some indices may already exist:', error.message);
-  }
-
-  // Add variable-specific columns to dev_test_entries table
-  try {
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS dev_test_entries (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        status TEXT DEFAULT 'pending',
-        test_data TEXT,
-        test_result TEXT,
-        
-        /* Variable-specific fields */
-        variable_value TEXT,
-        variable_method TEXT,
-        variable_params TEXT,
-        variable_source_file TEXT,
-        variable_line_number INTEGER,
-        
-        created_at INTEGER,
-        updated_at INTEGER,
-        sequence_id INTEGER
-      )
-    `);
-    console.log('Added variable-specific columns to dev_test_entries table');
-  } catch (error) {
-    // Columns likely already exist, which is fine
-    console.log('Variable-specific columns may already exist or other error:', error.message);
-  }
-  
   // Create word_groups table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS word_groups (
@@ -964,6 +803,150 @@ try {
   // Run migration for existing databases
   await migrateCodeMethodCallsTable(vaultName);
 
+  // Create simple code graph tables for the new clean system
+  console.log('Creating simple code graph tables...');
+  
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS simple_projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        description TEXT,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER
+      )
+    `);
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS simple_functions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        line_number INTEGER,
+        parameters TEXT, -- JSON string of parameters
+        return_type TEXT,
+        is_async BOOLEAN DEFAULT 0,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES simple_projects(id)
+      )
+    `);
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS simple_variables (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        function_id TEXT,
+        name TEXT NOT NULL,
+        type TEXT,
+        value TEXT,
+        file_path TEXT NOT NULL,
+        line_number INTEGER,
+        scope TEXT, -- 'local', 'parameter', 'global'
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES simple_projects(id),
+        FOREIGN KEY (function_id) REFERENCES simple_functions(id)
+      )
+    `);
+
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS simple_dependencies (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        source_type TEXT NOT NULL, -- 'function', 'variable'
+        source_id TEXT NOT NULL,
+        target_type TEXT NOT NULL, -- 'function', 'variable', 'module'
+        target_id TEXT NOT NULL,
+        relationship_type TEXT NOT NULL, -- 'calls', 'uses', 'assigns', 'returns'
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES simple_projects(id)
+      )
+    `);
+
+    console.log('Simple code graph tables created successfully');
+  } catch (error) {
+    console.log('Simple code graph tables may already exist:', error.message);
+  }
+
+  // Add indices for simple code graph tables
+  try {
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_simple_functions_project ON simple_functions(project_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_variables_project ON simple_variables(project_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_variables_function ON simple_variables(function_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_dependencies_project ON simple_dependencies(project_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_dependencies_source ON simple_dependencies(source_type, source_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_dependencies_target ON simple_dependencies(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_projects_sequence_id ON simple_projects(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_functions_sequence_id ON simple_functions(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_variables_sequence_id ON simple_variables(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_simple_dependencies_sequence_id ON simple_dependencies(sequence_id);
+    `);
+    console.log('Simple code graph indices created successfully');
+  } catch (error) {
+    console.log('Simple code graph indices may already exist:', error.message);
+  }
+
+  // Add triggers for simple code graph tables
+  try {
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_simple_projects
+      AFTER INSERT ON simple_projects
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE simple_projects 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_projects)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_simple_functions
+      AFTER INSERT ON simple_functions
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE simple_functions 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_functions)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_simple_variables
+      AFTER INSERT ON simple_variables
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE simple_variables 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_variables)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_simple_dependencies
+      AFTER INSERT ON simple_dependencies
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE simple_dependencies 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_dependencies)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    console.log('Simple code graph triggers created successfully');
+  } catch (error) {
+    console.log('Simple code graph triggers may already exist:', error.message);
+  }
+
   return db;
 }
 
@@ -1085,7 +1068,11 @@ async function populateSequenceIds() {
       'graph_analysis_results',
       'graph_communities',
       'word_groups',
-      'word_group_items'
+      'word_group_items',
+      'simple_projects',
+      'simple_functions',
+      'simple_variables',
+      'simple_dependencies'
     ];
     
     // Process each table

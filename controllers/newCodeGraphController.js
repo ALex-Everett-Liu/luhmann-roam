@@ -24,6 +24,15 @@ class NewCodeGraphController {
       )
     `);
 
+    // Add sequence_id column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE simple_projects ADD COLUMN sequence_id INTEGER`);
+      console.log('Added sequence_id column to simple_projects');
+    } catch (error) {
+      // Column likely already exists
+      console.log('sequence_id column already exists in simple_projects:', error.message);
+    }
+
     // Functions table - to track functions/methods
     await db.run(`
       CREATE TABLE IF NOT EXISTS simple_functions (
@@ -39,6 +48,14 @@ class NewCodeGraphController {
         FOREIGN KEY (project_id) REFERENCES simple_projects(id)
       )
     `);
+
+    // Add sequence_id column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE simple_functions ADD COLUMN sequence_id INTEGER`);
+      console.log('Added sequence_id column to simple_functions');
+    } catch (error) {
+      console.log('sequence_id column already exists in simple_functions:', error.message);
+    }
 
     // Variables table - to track variables
     await db.run(`
@@ -58,6 +75,14 @@ class NewCodeGraphController {
       )
     `);
 
+    // Add sequence_id column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE simple_variables ADD COLUMN sequence_id INTEGER`);
+      console.log('Added sequence_id column to simple_variables');
+    } catch (error) {
+      console.log('sequence_id column already exists in simple_variables:', error.message);
+    }
+
     // Dependencies table - to track relationships
     await db.run(`
       CREATE TABLE IF NOT EXISTS simple_dependencies (
@@ -72,6 +97,14 @@ class NewCodeGraphController {
         FOREIGN KEY (project_id) REFERENCES simple_projects(id)
       )
     `);
+
+    // Add sequence_id column if it doesn't exist
+    try {
+      await db.run(`ALTER TABLE simple_dependencies ADD COLUMN sequence_id INTEGER`);
+      console.log('Added sequence_id column to simple_dependencies');
+    } catch (error) {
+      console.log('sequence_id column already exists in simple_dependencies:', error.message);
+    }
 
     console.log('Simple code graph tables initialized');
   }
