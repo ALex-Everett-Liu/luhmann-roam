@@ -1112,14 +1112,14 @@ exports.createVariable = async (req, res) => {
     
     await db.run(`
       INSERT INTO code_variables 
-      (id, name, declaration_type, data_type, scope_type, parent_entity_id,
-       line_number, column_start, column_end, initial_value_type, mutability,
-       is_exported, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, name, declaration_type, data_type, scope_type, parent_expression_id,
+       parent_entity_id, line_number, column_start, column_end, initial_value_type, 
+       mutability, is_exported, properties, created_at, updated_at, sequence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, name, declaration_type, data_type, scope_type, parent_entity_id,
+      id, name, declaration_type, data_type, scope_type, null, parent_entity_id,
       line_number, column_start, column_end, initial_value_type, mutability,
-      is_exported || false, now, now
+      is_exported || false, null, now, now, null
     ]);
     
     const variable = await db.get('SELECT * FROM code_variables WHERE id = ?', id);
@@ -1265,15 +1265,15 @@ exports.createMethodCall = async (req, res) => {
     await db.run(`
       INSERT INTO code_method_calls 
       (id, method_name, call_type, expression_type, module_source, chain_position, 
-       arguments_count, parent_entity_id, line_number, column_start, column_end, 
-       return_type, parameters_used, external_dependencies, builtin_dependencies, 
-       is_async, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       arguments_count, parent_expression_id, parent_entity_id, line_number, 
+       column_start, column_end, return_type, is_async, parameters_used, 
+       external_dependencies, builtin_dependencies, properties, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, method_name, call_type, expression_type, module_source, chain_position,
-      arguments_count, parent_entity_id, line_number, column_start, column_end,
-      return_type, parameters_used, external_dependencies, builtin_dependencies,
-      is_async || false, now, now
+      arguments_count, null, parent_entity_id, line_number, column_start, column_end,
+      return_type, is_async || false, parameters_used, external_dependencies, 
+      builtin_dependencies, null, now, now
     ]);
     
     const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
@@ -1399,11 +1399,12 @@ exports.createDataFlow = async (req, res) => {
     await db.run(`
       INSERT INTO code_data_flow 
       (id, source_type, source_id, target_type, target_id, flow_type,
-       transformation_applied, parent_entity_id, line_number, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       transformation_applied, line_number, parent_entity_id, properties, 
+       created_at, updated_at, sequence_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id, source_type, source_id, target_type, target_id, flow_type,
-      transformation_applied, parent_entity_id, line_number, now, now
+      transformation_applied, line_number, parent_entity_id, null, now, now, null
     ]);
     
     const dataFlow = await db.get('SELECT * FROM code_data_flow WHERE id = ?', id);
