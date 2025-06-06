@@ -1843,6 +1843,14 @@ const CodeGraphManager = (function() {
         line_number: currentExpressionSession.lineNumber
       };
       
+      // ADD THIS DEBUGGING
+      console.log('🚀 Sending method call data:', methodCallData);
+      console.log('🚀 Data types:', {
+        method_name: typeof methodCallData.method_name,
+        parent_entity_id: typeof methodCallData.parent_entity_id,
+        line_number: typeof methodCallData.line_number
+      });
+      
       try {
         let response;
         if (editingState.methodCall) {

@@ -996,15 +996,17 @@ exports.saveExpressionAnalysis = async (req, res) => {
         const id = uuidv4();
         await db.run(`
           INSERT INTO code_method_calls 
-          (id, method_name, call_type, module_source, chain_position, 
-           arguments_count, parent_entity_id, line_number, column_start, 
-           column_end, return_type, is_async, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, method_name, call_type, expression_type, module_source, chain_position, 
+           arguments_count, parent_expression_id, parent_entity_id, line_number, 
+           column_start, column_end, return_type, is_async, parameters_used, 
+           external_dependencies, builtin_dependencies, properties, created_at, updated_at, sequence_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-          id, methodCall.name, methodCall.callType, methodCall.moduleSource,
-          methodCall.chainPosition, methodCall.argumentsCount, entityId,
-          lineNumber, methodCall.columnStart, methodCall.columnEnd,
-          methodCall.returnType, methodCall.isAsync, now, now
+          id, methodCall.name, methodCall.callType, methodCall.expressionType || 'call',
+          methodCall.moduleSource, methodCall.chainPosition, methodCall.argumentsCount, 
+          null, entityId, lineNumber, methodCall.columnStart, methodCall.columnEnd,
+          methodCall.returnType, methodCall.isAsync || false, methodCall.parametersUsed,
+          methodCall.externalDependencies, methodCall.builtinDependencies, null, now, now, null
         ]);
       }
       
@@ -1247,6 +1249,8 @@ exports.getMethodCall = async (req, res) => {
 
 exports.createMethodCall = async (req, res) => {
   try {
+    console.log('🔍 [SERVER] createMethodCall called with body:', req.body);
+    
     const {
       method_name, call_type, expression_type, module_source, chain_position,
       arguments_count, parent_entity_id, line_number, column_start, column_end,
@@ -1262,24 +1266,58 @@ exports.createMethodCall = async (req, res) => {
     const id = uuidv4();
     const now = Date.now();
     
+    // Check what columns actually exist in the table
+    const tableInfo = await db.all("PRAGMA table_info(code_method_calls)");
+    const existingColumns = tableInfo.map(col => col.name);
+    console.log('🔍 [SERVER] Existing columns in code_method_calls:', existingColumns);
+    
+    // Build INSERT statement based on existing columns
+    const baseColumns = ['id', 'method_name', 'call_type', 'module_source', 'chain_position', 
+                         'arguments_count', 'parent_entity_id', 'line_number', 'column_start', 
+                         'column_end', 'return_type', 'is_async', 'created_at', 'updated_at'];
+    
+    const optionalColumns = ['expression_type', 'parameters_used', 'external_dependencies', 
+                            'builtin_dependencies', 'parent_expression_id', 'properties', 'sequence_id'];
+    
+    const columnsToInsert = baseColumns.filter(col => existingColumns.includes(col));
+    const optionalColumnsToInsert = optionalColumns.filter(col => existingColumns.includes(col));
+    
+    const allColumns = [...columnsToInsert, ...optionalColumnsToInsert];
+    
+    // Build values array to match columns
+    const baseValues = [id, method_name, call_type, module_source, chain_position,
+                       arguments_count, parent_entity_id, line_number, column_start,
+                       column_end, return_type, is_async || false, now, now];
+    
+    const optionalValues = [];
+    if (existingColumns.includes('expression_type')) optionalValues.push(expression_type);
+    if (existingColumns.includes('parameters_used')) optionalValues.push(parameters_used);
+    if (existingColumns.includes('external_dependencies')) optionalValues.push(external_dependencies);
+    if (existingColumns.includes('builtin_dependencies')) optionalValues.push(builtin_dependencies);
+    if (existingColumns.includes('parent_expression_id')) optionalValues.push(null);
+    if (existingColumns.includes('properties')) optionalValues.push(null);
+    if (existingColumns.includes('sequence_id')) optionalValues.push(null);
+    
+    const allValues = [...baseValues, ...optionalValues];
+    
+    console.log('🔍 [SERVER] Columns to insert:', allColumns);
+    console.log('🔍 [SERVER] Values to insert:', allValues);
+    console.log('🔍 [SERVER] Column count:', allColumns.length, 'Value count:', allValues.length);
+    
+    const placeholders = allColumns.map(() => '?').join(', ');
+    const columnsList = allColumns.join(', ');
+    
     await db.run(`
-      INSERT INTO code_method_calls 
-      (id, method_name, call_type, expression_type, module_source, chain_position, 
-       arguments_count, parent_expression_id, parent_entity_id, line_number, 
-       column_start, column_end, return_type, is_async, parameters_used, 
-       external_dependencies, builtin_dependencies, properties, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id, method_name, call_type, expression_type, module_source, chain_position,
-      arguments_count, null, parent_entity_id, line_number, column_start, column_end,
-      return_type, is_async || false, parameters_used, external_dependencies, 
-      builtin_dependencies, null, now, now
-    ]);
+      INSERT INTO code_method_calls (${columnsList})
+      VALUES (${placeholders})
+    `, allValues);
     
     const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
+    console.log('✅ [SERVER] Method call created:', methodCall);
     res.status(201).json(methodCall);
   } catch (error) {
-    console.error('Error creating method call:', error);
+    console.error('💥 [SERVER] Error creating method call:', error);
+    console.error('💥 [SERVER] Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 };

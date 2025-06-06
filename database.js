@@ -1113,4 +1113,42 @@ async function populateSequenceIds() {
   }
 }
 
-module.exports = { getDb, initializeDatabase, populateSequenceIds, addMissingSequenceIdColumns, populateGraphAndWordGroupSequenceIds }; 
+// Add this function after the existing functions in database.js
+async function migrateCodeMethodCallsTable() {
+  const databases = new Map();
+  
+  // Get all vault databases and migrate them
+  for (const [vaultName, db] of databases.entries()) {
+    try {
+      console.log(`Migrating code_method_calls table for vault: ${vaultName}`);
+      
+      // Check if expression_type column exists
+      const tableInfo = await db.all("PRAGMA table_info(code_method_calls)");
+      const columnNames = tableInfo.map(col => col.name);
+      
+      console.log('Existing columns:', columnNames);
+      
+      // Add missing columns if they don't exist
+      const columnsToAdd = [
+        { name: 'expression_type', definition: 'TEXT' },
+        { name: 'parameters_used', definition: 'TEXT' },
+        { name: 'external_dependencies', definition: 'TEXT' },
+        { name: 'builtin_dependencies', definition: 'TEXT' },
+        { name: 'sequence_id', definition: 'INTEGER' }
+      ];
+      
+      for (const column of columnsToAdd) {
+        if (!columnNames.includes(column.name)) {
+          console.log(`Adding missing column: ${column.name}`);
+          await db.exec(`ALTER TABLE code_method_calls ADD COLUMN ${column.name} ${column.definition}`);
+        }
+      }
+      
+      console.log(`Migration completed for vault: ${vaultName}`);
+    } catch (error) {
+      console.error(`Error migrating vault ${vaultName}:`, error);
+    }
+  }
+}
+
+module.exports = { getDb, initializeDatabase, populateSequenceIds, addMissingSequenceIdColumns, populateGraphAndWordGroupSequenceIds, migrateCodeMethodCallsTable }; 
