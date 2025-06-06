@@ -1965,6 +1965,9 @@ const CodeGraphManager = (function() {
         }
         showNotification(`Error loading variables: ${error.message}`, 'error');
       }
+      
+      // After loading variables, update the data flow dropdowns
+      setTimeout(updateDataFlowDropdowns, 100);
     }
 
     // Load method calls for current expression from database
@@ -2033,6 +2036,9 @@ const CodeGraphManager = (function() {
         }
         showNotification(`Error loading method calls: ${error.message}`, 'error');
       }
+      
+      // After loading method calls, update the data flow dropdowns
+      setTimeout(updateDataFlowDropdowns, 100);
     }
 
     // Load data flow for current expression from database
@@ -2297,6 +2303,17 @@ const CodeGraphManager = (function() {
       tabButtons.forEach(btn => {
         btn.addEventListener('click', switchExpressionTab);
       });
+      
+      // Setup data flow dropdown handlers
+      setupDataFlowDropdownHandlers();
+      
+      // Update dropdowns when tab is switched to data flow
+      const dataFlowTab = document.querySelector('.expression-tab-btn[data-tab="data-flow"]');
+      if (dataFlowTab) {
+        dataFlowTab.addEventListener('click', () => {
+          setTimeout(updateDataFlowDropdowns, 100); // Small delay to ensure tab is active
+        });
+      }
       
       // Form handlers - add null checks
       const variableForm = document.getElementById('variable-form');
@@ -2602,3 +2619,280 @@ window.editDetectedVariable = (variableId) => CodeGraphManager.editDetectedVaria
 window.editDetectedMethodCall = (methodCallId) => CodeGraphManager.editDetectedMethodCall(methodCallId);
 window.deleteDetectedVariable = (variableId) => CodeGraphManager.deleteDetectedVariable(variableId);
 window.deleteDetectedMethodCall = (methodCallId) => CodeGraphManager.deleteDetectedMethodCall(methodCallId);
+
+// Add these new functions to populate the data flow dropdowns and improve the forms
+
+// Update the data flow form dropdowns with current session data
+function updateDataFlowDropdowns() {
+  const sourceSelect = document.getElementById('data-flow-source-id');
+  const targetSelect = document.getElementById('data-flow-target-id');
+  
+  if (!sourceSelect || !targetSelect) return;
+  
+  // Clear existing options
+  sourceSelect.innerHTML = '<option value="">Select source...</option>';
+  targetSelect.innerHTML = '<option value="">Select target...</option>';
+  
+  // Add variables
+  if (currentExpressionSession.variables && Array.isArray(currentExpressionSession.variables)) {
+    currentExpressionSession.variables.forEach(variable => {
+      const sourceOption = document.createElement('option');
+      sourceOption.value = `variable:${variable.id}`;
+      sourceOption.textContent = `${variable.name} (variable)`;
+      sourceSelect.appendChild(sourceOption);
+      
+      const targetOption = document.createElement('option');
+      targetOption.value = `variable:${variable.id}`;
+      targetOption.textContent = `${variable.name} (variable)`;
+      targetSelect.appendChild(targetOption);
+    });
+  }
+  
+  // Add method calls
+  if (currentExpressionSession.methodCalls && Array.isArray(currentExpressionSession.methodCalls)) {
+    currentExpressionSession.methodCalls.forEach(methodCall => {
+      const sourceOption = document.createElement('option');
+      sourceOption.value = `method_call:${methodCall.id}`;
+      sourceOption.textContent = `${methodCall.method_name} (method call)`;
+      sourceSelect.appendChild(sourceOption);
+      
+      const targetOption = document.createElement('option');
+      targetOption.value = `method_call:${methodCall.id}`;
+      targetOption.textContent = `${methodCall.method_name} (method call)`;
+      targetSelect.appendChild(targetOption);
+    });
+  }
+}
+
+// Add event listeners for source/target type changes
+function setupDataFlowDropdownHandlers() {
+  const sourceTypeSelect = document.getElementById('data-flow-source-type');
+  const targetTypeSelect = document.getElementById('data-flow-target-type');
+  
+  if (sourceTypeSelect) {
+    sourceTypeSelect.addEventListener('change', updateDataFlowDropdowns);
+  }
+  
+  if (targetTypeSelect) {
+    targetTypeSelect.addEventListener('change', updateDataFlowDropdowns);
+  }
+}
+
+// Enhanced relationship modal for expression-level relationships
+function createExpressionRelationshipModal() {
+  const modal = document.createElement('div');
+  modal.id = 'expression-relationship-modal';
+  modal.className = 'code-graph-modal';
+  modal.innerHTML = `
+    <div class="code-graph-modal-content">
+      <h3>Add Expression Relationship</h3>
+      <form id="expression-relationship-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Relationship Type*:</label>
+            <select id="expression-relationship-type" required>
+              <option value="assigned_from">Assigned From</option>
+              <option value="calls_with">Calls With</option>
+              <option value="called_on">Called On</option>
+              <option value="uses_parameter">Uses Parameter</option>
+              <option value="returns_to">Returns To</option>
+              <option value="transforms_to">Transforms To</option>
+              <option value="flows_to">Flows To</option>
+              <option value="depends_on">Depends On</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Description:</label>
+            <input type="text" id="expression-relationship-description" 
+                   placeholder="Brief description of the relationship">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Source Element:</label>
+            <select id="expression-source-element" required>
+              <option value="">Select source...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target Element:</label>
+            <select id="expression-target-element" required>
+              <option value="">Select target...</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Transformation:</label>
+            <input type="text" id="expression-transformation" 
+                   placeholder="e.g., toLowerCase, path.extname">
+          </div>
+          <div class="form-group">
+            <label>Order:</label>
+            <input type="number" id="expression-order" min="1" value="1">
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="submit" class="primary-btn">Add Relationship</button>
+          <button type="button" id="cancel-expression-relationship" class="secondary-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Enhanced dependencies tab with interactive forms
+function createInteractiveDependenciesTab() {
+  const dependenciesTab = document.getElementById('dependencies-expression-tab');
+  if (!dependenciesTab) return;
+  
+  dependenciesTab.innerHTML = `
+    <div class="dependencies-analysis">
+      <div class="dependencies-section">
+        <h4>External Dependencies</h4>
+        <div class="dependency-form">
+          <form id="external-dependency-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Module Name:</label>
+                <input type="text" id="external-module-name" placeholder="e.g., path, fs, lodash">
+              </div>
+              <div class="form-group">
+                <label>Import Type:</label>
+                <select id="external-import-type">
+                  <option value="require">require()</option>
+                  <option value="import">import</option>
+                  <option value="global">global</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Used Methods:</label>
+                <input type="text" id="external-used-methods" placeholder="e.g., extname, dirname">
+              </div>
+              <button type="submit" class="primary-btn">Add External Dependency</button>
+            </div>
+          </form>
+        </div>
+        <div id="external-dependencies-list" class="dependencies-list"></div>
+      </div>
+      
+      <div class="dependencies-section">
+        <h4>Built-in Dependencies</h4>
+        <div class="dependency-form">
+          <form id="builtin-dependency-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Built-in Method:</label>
+                <input type="text" id="builtin-method-name" placeholder="e.g., toLowerCase, parseInt">
+              </div>
+              <div class="form-group">
+                <label>Object Type:</label>
+                <select id="builtin-object-type">
+                  <option value="String">String</option>
+                  <option value="Array">Array</option>
+                  <option value="Object">Object</option>
+                  <option value="Number">Number</option>
+                  <option value="Date">Date</option>
+                  <option value="Math">Math</option>
+                  <option value="JSON">JSON</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="primary-btn">Add Built-in Dependency</button>
+          </form>
+        </div>
+        <div id="builtin-dependencies-list" class="dependencies-list"></div>
+      </div>
+      
+      <div class="dependencies-section">
+        <h4>Internal Dependencies</h4>
+        <div class="dependency-form">
+          <form id="internal-dependency-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Parameter/Variable:</label>
+                <select id="internal-dependency-source">
+                  <option value="">Select parameter or variable...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Usage Type:</label>
+                <select id="internal-usage-type">
+                  <option value="parameter">Parameter</option>
+                  <option value="local_variable">Local Variable</option>
+                  <option value="closure_variable">Closure Variable</option>
+                  <option value="global_variable">Global Variable</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="primary-btn">Add Internal Dependency</button>
+          </form>
+        </div>
+        <div id="internal-dependencies-list" class="dependencies-list"></div>
+      </div>
+    </div>
+  `;
+}
+
+// Update the general relationship modal to support expression-level relationships
+function enhanceRelationshipModal() {
+  const relationshipTypeSelect = document.getElementById('relationship-type');
+  if (!relationshipTypeSelect) return;
+  
+  // Add expression-level relationship types
+  const expressionTypes = [
+    { value: 'assigned_from', text: 'Assigned From' },
+    { value: 'calls_with', text: 'Calls With' },
+    { value: 'called_on', text: 'Called On' },
+    { value: 'uses_parameter', text: 'Uses Parameter' },
+    { value: 'returns_to', text: 'Returns To' },
+    { value: 'transforms_to', text: 'Transforms To' },
+    { value: 'flows_to', text: 'Flows To' },
+    { value: 'depends_on', text: 'Depends On' }
+  ];
+  
+  expressionTypes.forEach(type => {
+    const option = document.createElement('option');
+    option.value = type.value;
+    option.textContent = type.text;
+    relationshipTypeSelect.appendChild(option);
+  });
+}
+
+// Quick relationship creation helper for your example
+function createQuickRelationshipsForExample() {
+  const relationships = [
+    {
+      source: 'fileExtension',
+      target: 'path.extname(inputPath).toLowerCase()',
+      type: 'assigned_from',
+      description: 'fileExtension is assigned the result of path.extname(inputPath).toLowerCase()'
+    },
+    {
+      source: 'path.extname',
+      target: 'inputPath',
+      type: 'calls_with',
+      description: 'path.extname is called with inputPath as parameter'
+    },
+    {
+      source: 'toLowerCase',
+      target: 'path.extname result',
+      type: 'called_on',
+      description: 'toLowerCase is called on the result of path.extname'
+    },
+    {
+      source: 'generateThumbnail',
+      target: 'fileExtension',
+      type: 'defines',
+      description: 'generateThumbnail function defines the fileExtension variable'
+    }
+  ];
+  
+  return relationships;
+}

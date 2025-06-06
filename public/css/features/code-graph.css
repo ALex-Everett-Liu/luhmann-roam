@@ -992,3 +992,112 @@
   .analyze-btn:hover {
     background: #e67e22;
   }
+  
+  /* Enhanced dependency forms */
+  .dependencies-section {
+    margin-bottom: 30px;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 20px;
+  }
+  
+  .dependencies-section h4 {
+    margin-bottom: 15px;
+    color: #24292e;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 8px;
+  }
+  
+  .dependency-form {
+    background: #f6f8fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+  }
+  
+  .dependencies-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .dependency-item {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+  
+  .dependency-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .dependency-info {
+    flex: 1;
+  }
+  
+  .dependency-name {
+    font-weight: 600;
+    color: #24292e;
+  }
+  
+  .dependency-meta {
+    font-size: 12px;
+    color: #586069;
+  }
+  
+  .dependency-actions {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .quick-relationship-btn {
+    background: #f0f8ff;
+    color: #0366d6;
+    border: 1px solid #0366d6;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  
+  .quick-relationship-btn:hover {
+    background: #e1ecf4;
+  }
+  
+  /* Enhanced data flow visualization */
+  .data-flow-relationship-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  
+  .flow-source, .flow-target {
+    background: #f6f8fa;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 13px;
+  }
+  
+  .flow-arrow {
+    margin: 0 10px;
+    color: #0366d6;
+    font-weight: bold;
+  }
+  
+  .flow-type {
+    background: #fff5b4;
+    color: #735c0f;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+  }
