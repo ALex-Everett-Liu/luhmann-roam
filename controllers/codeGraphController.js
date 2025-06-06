@@ -1264,20 +1264,16 @@ exports.createMethodCall = async (req, res) => {
     
     await db.run(`
       INSERT INTO code_method_calls 
-      (id, method_name, call_type, module_source, chain_position, arguments_count,
-       parent_entity_id, line_number, column_start, column_end, return_type,
-       is_async, created_at, updated_at, properties)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, method_name, call_type, expression_type, module_source, chain_position, 
+       arguments_count, parent_entity_id, line_number, column_start, column_end, 
+       return_type, parameters_used, external_dependencies, builtin_dependencies, 
+       is_async, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id, method_name, call_type, module_source, chain_position, arguments_count,
-      parent_entity_id, line_number, column_start, column_end, return_type,
-      is_async || false, now, now,
-      JSON.stringify({
-        expression_type,
-        parameters_used,
-        external_dependencies,
-        builtin_dependencies
-      })
+      id, method_name, call_type, expression_type, module_source, chain_position,
+      arguments_count, parent_entity_id, line_number, column_start, column_end,
+      return_type, parameters_used, external_dependencies, builtin_dependencies,
+      is_async || false, now, now
     ]);
     
     const methodCall = await db.get('SELECT * FROM code_method_calls WHERE id = ?', id);
@@ -1294,23 +1290,6 @@ exports.updateMethodCall = async (req, res) => {
     const updateData = req.body;
     const db = req.db;
     const now = Date.now();
-    
-    // Handle properties field for additional data
-    if (updateData.expression_type || updateData.parameters_used || 
-        updateData.external_dependencies || updateData.builtin_dependencies) {
-      updateData.properties = JSON.stringify({
-        expression_type: updateData.expression_type,
-        parameters_used: updateData.parameters_used,
-        external_dependencies: updateData.external_dependencies,
-        builtin_dependencies: updateData.builtin_dependencies
-      });
-      
-      // Remove individual fields that are now in properties
-      delete updateData.expression_type;
-      delete updateData.parameters_used;
-      delete updateData.external_dependencies;
-      delete updateData.builtin_dependencies;
-    }
     
     const fields = Object.keys(updateData).filter(key => 
       !['id', 'created_at', 'sequence_id'].includes(key)

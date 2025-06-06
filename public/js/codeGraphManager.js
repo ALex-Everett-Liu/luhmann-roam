@@ -1712,9 +1712,21 @@ const CodeGraphManager = (function() {
       // Load parent function info
       loadParentFunctionInfo(entityId);
       
-      // Set the code text
-      document.getElementById('expression-code-text').textContent = codeText;
-      document.getElementById('expression-line-number').textContent = lineNumber;
+      // Fix: Add null checks for these elements
+      const codeTextElement = document.getElementById('expression-code-text');
+      const lineNumberElement = document.getElementById('expression-line-number');
+      
+      if (codeTextElement) {
+        codeTextElement.textContent = codeText;
+      } else {
+        console.warn('expression-code-text element not found');
+      }
+      
+      if (lineNumberElement) {
+        lineNumberElement.textContent = lineNumber;
+      } else {
+        console.warn('expression-line-number element not found');
+      }
       
       // Load existing data from database
       loadExpressionVariables();
@@ -1725,7 +1737,7 @@ const CodeGraphManager = (function() {
       modal.style.display = 'block';
       setTimeout(() => modal.classList.add('show'), 10);
       
-      // MOVE THE EVENT HANDLER SETUP HERE - after the modal is shown
+      // Setup event handlers after modal is shown
       setupExpressionModalHandlers();
     }
 
@@ -2277,6 +2289,182 @@ const CodeGraphManager = (function() {
       }
     }
 
+    // Move setupExpressionModalHandlers INSIDE the module scope
+    function setupExpressionModalHandlers() {
+      console.log('🔧 Setting up expression modal handlers...');
+      
+      // Expression tab switching
+      const tabButtons = document.querySelectorAll('.expression-tab-btn');
+      console.log('📋 Found tab buttons:', tabButtons.length);
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', switchExpressionTab);
+      });
+      
+      // Form handlers - add null checks
+      const variableForm = document.getElementById('variable-form');
+      const methodCallForm = document.getElementById('method-call-form');
+      const dataFlowForm = document.getElementById('data-flow-form');
+      
+      if (variableForm) {
+        variableForm.addEventListener('submit', saveVariable); // Now this will work!
+        console.log('✅ Variable form handler attached');
+      } else {
+        console.error('❌ Variable form not found!');
+      }
+      
+      if (methodCallForm) {
+        methodCallForm.addEventListener('submit', saveMethodCall); // Now this will work!
+        console.log('✅ Method call form handler attached');
+      } else {
+        console.error('❌ Method call form not found!');
+      }
+      
+      if (dataFlowForm) {
+        dataFlowForm.addEventListener('submit', saveDataFlow); // Now this will work!
+        console.log('✅ Data flow form handler attached');
+      } else {
+        console.error('❌ Data flow form not found!');
+      }
+      
+      // Cancel edit handlers - add null checks
+      const variableCancelBtn = document.getElementById('variable-cancel-edit-btn');
+      const methodCallCancelBtn = document.getElementById('method-call-cancel-edit-btn');
+      const dataFlowCancelBtn = document.getElementById('data-flow-cancel-edit-btn');
+      
+      if (variableCancelBtn) {
+        variableCancelBtn.addEventListener('click', resetVariableForm);
+      }
+      if (methodCallCancelBtn) {
+        methodCallCancelBtn.addEventListener('click', resetMethodCallForm);
+      }
+      if (dataFlowCancelBtn) {
+        dataFlowCancelBtn.addEventListener('click', resetDataFlowForm);
+      }
+      
+      // Modal close handlers - add null checks
+      const cancelBtn = document.getElementById('cancel-expression');
+      const saveBtn = document.getElementById('save-expression-analysis');
+      const analyzeBtn = document.getElementById('analyze-expression-btn');
+      
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeExpressionModal);
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener('click', saveCompleteExpressionAnalysis);
+      }
+      if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', autoAnalyzeExpression);
+      }
+      
+      console.log('🎉 Expression modal handlers setup complete');
+    }
+
+    // Move these helper functions INSIDE the module scope too
+    function switchExpressionTab(e) {
+      const targetTab = e.target.dataset.tab;
+      
+      // Update tab buttons
+      document.querySelectorAll('.expression-tab-btn').forEach(btn => btn.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.expression-tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById(`${targetTab}-expression-tab`).classList.add('active');
+    }
+
+    function resetVariableForm() {
+      editingState.variable = null;
+      document.getElementById('variable-form').reset();
+      document.getElementById('variable-form-title').textContent = 'Add Variable';
+      document.getElementById('variable-submit-btn').textContent = 'Add Variable';
+      document.getElementById('variable-cancel-edit-btn').style.display = 'none';
+    }
+
+    function resetMethodCallForm() {
+      editingState.methodCall = null;
+      document.getElementById('method-call-form').reset();
+      document.getElementById('method-call-form-title').textContent = 'Add Method Call';
+      document.getElementById('method-call-submit-btn').textContent = 'Add Method Call';
+      document.getElementById('method-call-cancel-edit-btn').style.display = 'none';
+    }
+
+    function resetDataFlowForm() {
+      editingState.dataFlow = null;
+      document.getElementById('data-flow-form').reset();
+      document.getElementById('data-flow-form-title').textContent = 'Add Data Flow Relationship';
+      document.getElementById('data-flow-submit-btn').textContent = 'Add Data Flow';
+      document.getElementById('data-flow-cancel-edit-btn').style.display = 'none';
+    }
+
+    function closeExpressionModal() {
+      const modal = document.getElementById('expression-modal');
+      modal.classList.remove('show');
+      setTimeout(() => modal.style.display = 'none', 200);
+    }
+
+    async function saveCompleteExpressionAnalysis() {
+      try {
+        const analysisData = {
+          entityId: currentExpressionSession.entityId,
+          lineNumber: currentExpressionSession.lineNumber,
+          variables: currentExpressionSession.variables,
+          methodCalls: currentExpressionSession.methodCalls,
+          dataFlow: currentExpressionSession.dataFlow
+        };
+        
+        const response = await fetch('/api/code-graph/expressions/save-analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(analysisData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save expression analysis');
+        }
+        
+        showNotification('Expression analysis saved successfully!', 'success');
+        closeExpressionModal();
+      } catch (error) {
+        console.error('Error saving expression analysis:', error);
+        showNotification('Error saving expression analysis', 'error');
+      }
+    }
+
+    async function autoAnalyzeExpression() {
+      try {
+        const response = await fetch('/api/code-graph/expressions/auto-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityId: currentExpressionSession.entityId,
+            lineNumber: currentExpressionSession.lineNumber,
+            codeText: currentExpressionSession.codeText
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to auto-analyze expression');
+        }
+        
+        const analysis = await response.json();
+        
+        // Update the session with auto-detected data
+        currentExpressionSession.variables = analysis.variables || [];
+        currentExpressionSession.methodCalls = analysis.methodCalls || [];
+        currentExpressionSession.dataFlow = analysis.dataFlow || [];
+        
+        // Refresh the displays
+        await loadExpressionVariables();
+        await loadExpressionMethodCalls();
+        await loadExpressionDataFlow();
+        
+        showNotification('Auto-analysis completed!', 'success');
+      } catch (error) {
+        console.error('Error auto-analyzing expression:', error);
+        showNotification('Error during auto-analysis', 'error');
+      }
+    }
+
     // Public API - Updated to include all necessary functions
     return {
       initialize,
@@ -2493,182 +2681,7 @@ window.deleteDetectedMethodCall = function(methodCallId) {
   }
 };
 
-// Add missing expression modal handlers
-function setupExpressionModalHandlers() {
-  console.log('🔧 Setting up expression modal handlers...');
-  
-  // Expression tab switching
-  const tabButtons = document.querySelectorAll('.expression-tab-btn');
-  console.log('📋 Found tab buttons:', tabButtons.length);
-  tabButtons.forEach(btn => {
-    btn.addEventListener('click', switchExpressionTab);
-  });
-  
-  // Form handlers - add null checks
-  const variableForm = document.getElementById('variable-form');
-  const methodCallForm = document.getElementById('method-call-form');
-  const dataFlowForm = document.getElementById('data-flow-form');
-  
-  if (variableForm) {
-    variableForm.addEventListener('submit', saveVariable);
-    console.log('✅ Variable form handler attached');
-  } else {
-    console.error('❌ Variable form not found!');
-  }
-  
-  if (methodCallForm) {
-    methodCallForm.addEventListener('submit', saveMethodCall);
-    console.log('✅ Method call form handler attached');
-  } else {
-    console.error('❌ Method call form not found!');
-  }
-  
-  if (dataFlowForm) {
-    dataFlowForm.addEventListener('submit', saveDataFlow);
-    console.log('✅ Data flow form handler attached');
-  } else {
-    console.error('❌ Data flow form not found!');
-  }
-  
-  // Cancel edit handlers - add null checks
-  const variableCancelBtn = document.getElementById('variable-cancel-edit-btn');
-  const methodCallCancelBtn = document.getElementById('method-call-cancel-edit-btn');
-  const dataFlowCancelBtn = document.getElementById('data-flow-cancel-edit-btn');
-  
-  if (variableCancelBtn) {
-    variableCancelBtn.addEventListener('click', resetVariableForm);
-  }
-  if (methodCallCancelBtn) {
-    methodCallCancelBtn.addEventListener('click', resetMethodCallForm);
-  }
-  if (dataFlowCancelBtn) {
-    dataFlowCancelBtn.addEventListener('click', resetDataFlowForm);
-  }
-  
-  // Modal close handlers - add null checks
-  const cancelBtn = document.getElementById('cancel-expression');
-  const saveBtn = document.getElementById('save-expression-analysis');
-  const analyzeBtn = document.getElementById('analyze-expression-btn');
-  
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', closeExpressionModal);
-  }
-  if (saveBtn) {
-    saveBtn.addEventListener('click', saveCompleteExpressionAnalysis);
-  }
-  if (analyzeBtn) {
-    analyzeBtn.addEventListener('click', autoAnalyzeExpression);
-  }
-  
-  console.log('🎉 Expression modal handlers setup complete');
-}
-
-function switchExpressionTab(e) {
-  const targetTab = e.target.dataset.tab;
-  
-  // Update tab buttons
-  document.querySelectorAll('.expression-tab-btn').forEach(btn => btn.classList.remove('active'));
-  e.target.classList.add('active');
-  
-  // Update tab content
-  document.querySelectorAll('.expression-tab-content').forEach(content => content.classList.remove('active'));
-  document.getElementById(`${targetTab}-expression-tab`).classList.add('active');
-}
-
-function resetVariableForm() {
-  editingState.variable = null;
-  document.getElementById('variable-form').reset();
-  document.getElementById('variable-form-title').textContent = 'Add Variable';
-  document.getElementById('variable-submit-btn').textContent = 'Add Variable';
-  document.getElementById('variable-cancel-edit-btn').style.display = 'none';
-}
-
-function resetMethodCallForm() {
-  editingState.methodCall = null;
-  document.getElementById('method-call-form').reset();
-  document.getElementById('method-call-form-title').textContent = 'Add Method Call';
-  document.getElementById('method-call-submit-btn').textContent = 'Add Method Call';
-  document.getElementById('method-call-cancel-edit-btn').style.display = 'none';
-}
-
-function resetDataFlowForm() {
-  editingState.dataFlow = null;
-  document.getElementById('data-flow-form').reset();
-  document.getElementById('data-flow-form-title').textContent = 'Add Data Flow Relationship';
-  document.getElementById('data-flow-submit-btn').textContent = 'Add Data Flow';
-  document.getElementById('data-flow-cancel-edit-btn').style.display = 'none';
-}
-
-function closeExpressionModal() {
-  const modal = document.getElementById('expression-modal');
-  modal.classList.remove('show');
-  setTimeout(() => modal.style.display = 'none', 200);
-}
-
-async function saveCompleteExpressionAnalysis() {
-  try {
-    const analysisData = {
-      entityId: currentExpressionSession.entityId,
-      lineNumber: currentExpressionSession.lineNumber,
-      variables: currentExpressionSession.variables,
-      methodCalls: currentExpressionSession.methodCalls,
-      dataFlow: currentExpressionSession.dataFlow
-    };
-    
-    const response = await fetch('/api/code-graph/expressions/save-analysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(analysisData)
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to save expression analysis');
-    }
-    
-    showNotification('Expression analysis saved successfully!', 'success');
-    closeExpressionModal();
-  } catch (error) {
-    console.error('Error saving expression analysis:', error);
-    showNotification('Error saving expression analysis', 'error');
-  }
-}
-
-async function autoAnalyzeExpression() {
-  try {
-    const response = await fetch('/api/code-graph/expressions/auto-analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entityId: currentExpressionSession.entityId,
-        lineNumber: currentExpressionSession.lineNumber,
-        codeText: currentExpressionSession.codeText
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to auto-analyze expression');
-    }
-    
-    const analysis = await response.json();
-    
-    // Update the session with auto-detected data
-    currentExpressionSession.variables = analysis.variables || [];
-    currentExpressionSession.methodCalls = analysis.methodCalls || [];
-    currentExpressionSession.dataFlow = analysis.dataFlow || [];
-    
-    // Refresh the displays
-    await loadExpressionVariables();
-    await loadExpressionMethodCalls();
-    await loadExpressionDataFlow();
-    
-    showNotification('Auto-analysis completed!', 'success');
-  } catch (error) {
-    console.error('Error auto-analyzing expression:', error);
-    showNotification('Error during auto-analysis', 'error');
-  }
-}
-
-// Update the global function assignments at the end of the file
+// Keep only these global assignments at the end:
 window.editDetectedVariable = editDetectedVariable;
 window.editDetectedMethodCall = editDetectedMethodCall;
 window.deleteDetectedVariable = deleteDetectedVariable;

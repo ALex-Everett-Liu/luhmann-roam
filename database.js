@@ -849,6 +849,7 @@ try {
       id TEXT PRIMARY KEY,
       method_name TEXT NOT NULL,
       call_type TEXT, -- 'direct', 'chained', 'nested'
+      expression_type TEXT, -- Move this OUT of properties - it's important!
       module_source TEXT, -- 'built-in', 'external', 'local', 'third-party'
       chain_position TEXT, -- 'first', 'intermediate', 'last', 'standalone'
       arguments_count INTEGER DEFAULT 0,
@@ -859,7 +860,10 @@ try {
       column_end INTEGER,
       return_type TEXT,
       is_async BOOLEAN DEFAULT 0,
-      properties TEXT, -- JSON string for additional metadata (expression_type, parameters_used, external_dependencies, builtin_dependencies)
+      parameters_used TEXT, -- Move this OUT of properties
+      external_dependencies TEXT, -- Move this OUT of properties  
+      builtin_dependencies TEXT, -- Move this OUT of properties
+      properties TEXT, -- JSON string for truly optional metadata only
       created_at INTEGER,
       updated_at INTEGER,
       sequence_id INTEGER,
