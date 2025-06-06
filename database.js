@@ -895,7 +895,7 @@ try {
   // ADD THE NEW TABLE HERE - RIGHT AFTER code_data_flow
   await db.exec(`
     CREATE TABLE IF NOT EXISTS expression_relationships (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
       source_type TEXT NOT NULL,
       source_name TEXT NOT NULL,
       target_type TEXT NOT NULL,
@@ -904,9 +904,9 @@ try {
       description TEXT,
       transformation TEXT,
       order_sequence INTEGER DEFAULT 1,
-      entity_id INTEGER,
+      entity_id TEXT,
       line_number INTEGER,
-      project_id INTEGER,
+      project_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       sequence_id INTEGER,
       FOREIGN KEY (entity_id) REFERENCES code_entities(id) ON DELETE CASCADE,

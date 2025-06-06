@@ -1420,18 +1420,15 @@
   .relationship-summary {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
     flex-wrap: wrap;
   }
   
   .source-element, .target-element {
-    background: #f6f8fa;
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 13px;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
   }
   
   .relationship-type-badge {
@@ -1526,4 +1523,17 @@
   
   .create-example-btn:hover {
     background: #218838;
+  }
+  
+  /* ID reference styles */
+  .id-reference {
+    color: #28a745;
+    font-weight: 500;
+    margin-left: 4px;
+  }
+  
+  .no-reference {
+    color: #dc3545;
+    font-style: italic;
+    margin-left: 4px;
   }

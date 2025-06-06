@@ -58,4 +58,9 @@ router.delete('/data-flow/:id', codeGraphController.deleteDataFlow);
 router.post('/expressions/save-analysis', codeGraphController.saveExpressionAnalysis);
 router.post('/expressions/auto-analyze', codeGraphController.analyzeExpression);
 
+// Expression relationships routes
+router.get('/expression-relationships', codeGraphController.getExpressionRelationships);
+router.post('/expression-relationships', codeGraphController.createExpressionRelationship);
+router.delete('/expression-relationships/:id', codeGraphController.deleteExpressionRelationship);
+
 module.exports = router;

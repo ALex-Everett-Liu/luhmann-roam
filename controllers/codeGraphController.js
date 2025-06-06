@@ -8,6 +8,44 @@ const path = require('path');
  * Manual management of code entities and their relationships
  */
 
+// Add this function at the top of the controller file, after the imports
+
+async function ensureExpressionRelationshipsTable(db) {
+  try {
+    // Check if the table exists
+    const tableExists = await db.get(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='expression_relationships'
+    `);
+    
+    if (!tableExists) {
+      console.log('Creating expression_relationships table (one-time migration)...');
+      await db.exec(`
+        CREATE TABLE expression_relationships (
+          id TEXT PRIMARY KEY,
+          source_type TEXT NOT NULL,
+          source_name TEXT NOT NULL,
+          target_type TEXT NOT NULL,
+          target_name TEXT NOT NULL,
+          relationship_type TEXT NOT NULL,
+          description TEXT,
+          transformation TEXT,
+          order_sequence INTEGER DEFAULT 1,
+          entity_id TEXT,
+          line_number INTEGER,
+          project_id TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          sequence_id INTEGER
+        )
+      `);
+      console.log('✅ expression_relationships table created successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error ensuring expression_relationships table:', error);
+    throw error;
+  }
+}
+
 // Get all entities with filtering and pagination
 exports.getAllEntities = async (req, res) => {
   try {
@@ -1514,6 +1552,10 @@ exports.deleteDataFlow = async (req, res) => {
 exports.getExpressionRelationships = async (req, res) => {
   try {
     const { entity_id, line_number } = req.query;
+    const db = req.db;
+    
+    // Ensure the table exists
+    await ensureExpressionRelationshipsTable(db);
     
     const query = `
       SELECT * FROM expression_relationships 
@@ -1532,36 +1574,74 @@ exports.getExpressionRelationships = async (req, res) => {
 // Create expression relationship
 exports.createExpressionRelationship = async (req, res) => {
   try {
+    console.log('🔍 [SERVER] createExpressionRelationship called with body:', req.body);
+    
     const {
-      source_type, source_name, target_type, target_name,
+      source_type, source_name, source_id, target_type, target_name, target_id,
       relationship_type, description, transformation,
       order_sequence, entity_id, line_number, project_id
     } = req.body;
     
-    const query = `
-      INSERT INTO expression_relationships (
-        source_type, source_name, target_type, target_name,
-        relationship_type, description, transformation,
-        order_sequence, entity_id, line_number, project_id,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `;
+    const db = req.db;
     
-    const result = await db.run(query, [
-      source_type, source_name, target_type, target_name,
-      relationship_type, description, transformation,
-      order_sequence, entity_id, line_number, project_id
-    ]);
+    // Ensure the table exists
+    await ensureExpressionRelationshipsTable(db);
     
-    const newRelationship = await db.get(
-      'SELECT * FROM expression_relationships WHERE id = ?',
-      [result.lastID]
-    );
+    // Check the actual table structure
+    const tableInfo = await db.all("PRAGMA table_info(expression_relationships)");
+    const existingColumns = tableInfo.map(col => col.name);
+    console.log('🔍 [SERVER] Existing columns in expression_relationships:', existingColumns);
+    
+    // Generate a unique ID
+    const id = uuidv4();
+    
+    // Build the INSERT query based on existing columns
+    const baseColumns = ['id', 'source_type', 'target_type', 'relationship_type', 'entity_id', 'line_number', 'created_at'];
+    const optionalColumns = ['source_name', 'source_id', 'target_name', 'target_id', 'description', 'transformation', 'order_sequence', 'project_id', 'sequence_id'];
+    
+    const columnsToInsert = baseColumns.filter(col => existingColumns.includes(col));
+    const optionalColumnsToInsert = optionalColumns.filter(col => existingColumns.includes(col));
+    const allColumns = [...columnsToInsert, ...optionalColumnsToInsert];
+    
+    // Build values array
+    const baseValues = [id, source_type, target_type, relationship_type, entity_id, line_number, new Date().toISOString()];
+    const optionalValues = [];
+    
+    if (existingColumns.includes('source_name')) optionalValues.push(source_name);
+    if (existingColumns.includes('source_id')) optionalValues.push(source_id);
+    if (existingColumns.includes('target_name')) optionalValues.push(target_name);
+    if (existingColumns.includes('target_id')) optionalValues.push(target_id);
+    if (existingColumns.includes('description')) optionalValues.push(description);
+    if (existingColumns.includes('transformation')) optionalValues.push(transformation);
+    if (existingColumns.includes('order_sequence')) optionalValues.push(order_sequence || 1);
+    if (existingColumns.includes('project_id')) optionalValues.push(project_id);
+    if (existingColumns.includes('sequence_id')) optionalValues.push(null);
+    
+    const allValues = [...baseValues, ...optionalValues];
+    
+    console.log('🔍 [SERVER] Columns to insert:', allColumns);
+    console.log('🔍 [SERVER] Values to insert:', allValues);
+    
+    const placeholders = allColumns.map(() => '?').join(', ');
+    const columnsList = allColumns.join(', ');
+    
+    const query = `INSERT INTO expression_relationships (${columnsList}) VALUES (${placeholders})`;
+    console.log('🔍 [SERVER] Final query:', query);
+    
+    await db.run(query, allValues);
+    
+    const newRelationship = await db.get('SELECT * FROM expression_relationships WHERE id = ?', [id]);
+    console.log('✅ [SERVER] Expression relationship created:', newRelationship);
     
     res.json(newRelationship);
   } catch (error) {
-    console.error('Error creating expression relationship:', error);
-    res.status(500).json({ error: 'Failed to create expression relationship' });
+    console.error('💥 [SERVER] Error creating expression relationship:', error);
+    console.error('💥 [SERVER] Error details:', error.message);
+    console.error('💥 [SERVER] Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to create expression relationship',
+      details: error.message 
+    });
   }
 };
 
@@ -1569,6 +1649,7 @@ exports.createExpressionRelationship = async (req, res) => {
 exports.deleteExpressionRelationship = async (req, res) => {
   try {
     const { id } = req.params;
+    const db = req.db;
     
     await db.run('DELETE FROM expression_relationships WHERE id = ?', [id]);
     res.json({ success: true });

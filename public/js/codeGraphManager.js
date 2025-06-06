@@ -43,7 +43,7 @@ const CodeGraphManager = (function() {
       methodCall: null,
       dataFlow: null
     };
-
+    
     // ADD THE CONSTANTS HERE - INSIDE THE MODULE SCOPE
     const EXPRESSION_RELATIONSHIP_TYPES = {
         'assigned_from': 'Assigned From',
@@ -3095,81 +3095,145 @@ const CodeGraphManager = (function() {
   async function saveExpressionRelationship(e) {
     e.preventDefault();
     
-    const formData = {
-      source_type: document.getElementById('expression-source-type').value,
-      source_name: document.getElementById('expression-source-name').value,
-      target_type: document.getElementById('expression-target-type').value,
-      target_name: document.getElementById('expression-target-name').value,
-      relationship_type: document.getElementById('expression-relationship-type').value,
-      description: document.getElementById('expression-description').value,
-      transformation: document.getElementById('expression-transformation').value,
-      order_sequence: parseInt(document.getElementById('expression-order-sequence').value) || 1,
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    // Get the source and target information
+    const sourceType = formData.get('source_type');
+    const targetType = formData.get('target_type');
+    const relationshipType = formData.get('relationship_type');
+    
+    // Try to find existing IDs for source and target
+    let sourceId = null;
+    let targetId = null;
+    const sourceName = formData.get('source_name');
+    const targetName = formData.get('target_name');
+    
+    // Look up existing variables and method calls
+    if (sourceType === 'variable' && currentExpressionSession.variables) {
+      const existingVar = currentExpressionSession.variables.find(v => v.name === sourceName);
+      if (existingVar) {
+        sourceId = existingVar.id;
+        console.log('🔗 Found existing variable for source:', existingVar);
+      }
+    } else if (sourceType === 'method_call' && currentExpressionSession.methodCalls) {
+      const existingMethod = currentExpressionSession.methodCalls.find(m => m.method_name === sourceName);
+      if (existingMethod) {
+        sourceId = existingMethod.id;
+        console.log('🔗 Found existing method call for source:', existingMethod);
+      }
+    }
+    
+    if (targetType === 'variable' && currentExpressionSession.variables) {
+      const existingVar = currentExpressionSession.variables.find(v => v.name === targetName);
+      if (existingVar) {
+        targetId = existingVar.id;
+        console.log('🔗 Found existing variable for target:', existingVar);
+      }
+    } else if (targetType === 'method_call' && currentExpressionSession.methodCalls) {
+      const existingMethod = currentExpressionSession.methodCalls.find(m => m.method_name === targetName);
+      if (existingMethod) {
+        targetId = existingMethod.id;
+        console.log('🔗 Found existing method call for target:', existingMethod);
+      }
+    }
+    
+    const relationshipData = {
+      source_type: sourceType,
+      source_name: sourceName,
+      source_id: sourceId, // Reference to existing entry
+      target_type: targetType,
+      target_name: targetName,
+      target_id: targetId, // Reference to existing entry
+      relationship_type: relationshipType,
+      description: formData.get('description'),
+      transformation: formData.get('transformation'),
+      order_sequence: parseInt(formData.get('order_sequence')) || 1,
       entity_id: currentExpressionSession.entityId,
       line_number: currentExpressionSession.lineNumber,
       project_id: currentExpressionSession.projectId
     };
-
+    
+    console.log('💾 Saving expression relationship:', relationshipData);
+    
     try {
       const response = await fetch('/api/code-graph/expression-relationships', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(relationshipData)
       });
-
-      if (response.ok) {
-        showNotification('Expression relationship saved successfully', 'success');
-        resetExpressionRelationshipForm();
-        loadExpressionRelationships();
-      } else {
-        const error = await response.json();
-        showNotification(`Error: ${error.message}`, 'error');
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Server response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+      
+      const result = await response.json();
+      console.log('✅ Expression relationship saved:', result);
+      
+      // Refresh the relationships list
+      await loadExpressionRelationships();
+      
+      // Reset the form
+      resetExpressionRelationshipForm();
+      
+      showNotification('Expression relationship saved successfully!');
     } catch (error) {
-      console.error('Error saving expression relationship:', error);
-      showNotification('Error saving expression relationship', 'error');
+      console.error('❌ Error saving expression relationship:', error);
+      showNotification('Error saving expression relationship: ' + error.message, 'error');
     }
   }
 
   // Load expression relationships
   async function loadExpressionRelationships() {
     if (!currentExpressionSession.entityId) return;
-
+    
     try {
       const response = await fetch(`/api/code-graph/expression-relationships?entity_id=${currentExpressionSession.entityId}&line_number=${currentExpressionSession.lineNumber}`);
-      const relationships = await response.json();
       
-      const container = document.getElementById('expression-relationships-list');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const relationships = await response.json();
+      console.log('📋 Loaded expression relationships:', relationships);
+      
+      const container = document.querySelector('.existing-relationships .relationships-list');
       if (!container) return;
-
+      
       if (relationships.length === 0) {
         container.innerHTML = '<div class="empty-message">No relationships defined yet</div>';
         return;
       }
-
-      container.innerHTML = relationships.map(rel => {
-        // Use the constant to get the human-readable name
-        const relationshipLabel = EXPRESSION_RELATIONSHIP_TYPES[rel.relationship_type] || rel.relationship_type.toUpperCase();
-        
-        return `
-          <div class="relationship-item">
-            <div class="relationship-info">
-              <div class="relationship-summary">
-                <span class="source-element">${rel.source_name}</span>
-                <span class="relationship-type-badge">${relationshipLabel}</span>
-                <span class="target-element">${rel.target_name}</span>
-              </div>
-              <div class="relationship-description">${rel.description}</div>
-              ${rel.transformation ? `<div class="relationship-transformation">Transformation: ${rel.transformation}</div>` : ''}
+      
+      container.innerHTML = relationships.map(rel => `
+        <div class="relationship-item" data-id="${rel.id}">
+          <div class="relationship-info">
+            <div class="relationship-summary">
+              <span class="source-element">
+                ${rel.source_name}
+                ${rel.source_id ? `<small class="id-reference">(ID: ${rel.source_id.substring(0, 8)}...)</small>` : '<small class="no-reference">(no ID reference)</small>'}
+              </span>
+              <span class="relationship-type-badge">${rel.relationship_type.replace('_', ' ').toUpperCase()}</span>
+              <span class="target-element">
+                ${rel.target_name}
+                ${rel.target_id ? `<small class="id-reference">(ID: ${rel.target_id.substring(0, 8)}...)</small>` : '<small class="no-reference">(no ID reference)</small>'}
+              </span>
             </div>
-            <div class="relationship-actions">
-              <button class="edit-btn" onclick="CodeGraphManager.editExpressionRelationship(${rel.id})">Edit</button>
-              <button class="delete-btn" onclick="CodeGraphManager.deleteExpressionRelationship(${rel.id})">Delete</button>
-            </div>
+            ${rel.description ? `<div class="relationship-description">${rel.description}</div>` : ''}
+            ${rel.transformation ? `<div class="relationship-transformation">Transform: ${rel.transformation}</div>` : ''}
           </div>
-        `;
-      }).join('');
+          <div class="relationship-actions">
+            <button class="edit-btn" onclick="editExpressionRelationship('${rel.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteExpressionRelationship('${rel.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
     } catch (error) {
-      console.error('Error loading expression relationships:', error);
+      console.error('❌ Error loading expression relationships:', error);
     }
   }
 
@@ -3448,7 +3512,7 @@ const CodeGraphManager = (function() {
     
     // Setup handlers for the new form
     setupExpressionRelationshipHandlers();
-  }
+    }
 
     // Public API - Updated to include all necessary functions
     return {
