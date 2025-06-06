@@ -8,6 +8,9 @@ const NewCodeGraphManager = (function() {
     let isInitialized = false;
     let currentVisualizationData = null;
     let container = null;
+    let currentView = 'cards'; // 'cards' or 'graph'
+    let svg = null;
+    let simulation = null;
 
     /**
      * Initialize the New Code Graph Manager
@@ -17,6 +20,7 @@ const NewCodeGraphManager = (function() {
         
         console.log('Initializing NewCodeGraphManager...');
         createContainer();
+        initializeGraphVisualization();
         isInitialized = true;
         console.log('NewCodeGraphManager initialized successfully');
     }
@@ -45,16 +49,42 @@ const NewCodeGraphManager = (function() {
                 
                 <div class="new-code-graph-status" id="ncg-status"></div>
                 
+                <div class="view-toggles">
+                    <button class="view-toggle-btn active" data-view="cards" onclick="NewCodeGraphManager.switchView('cards')">Card View</button>
+                    <button class="view-toggle-btn" data-view="graph" onclick="NewCodeGraphManager.switchView('graph')">Graph View</button>
+                </div>
+                
                 <div class="new-code-graph-main">
-                    <div class="new-code-graph-visualization">
-                        <h3>Code Graph Visualization</h3>
-                        <div class="graph-container" id="ncg-graph-container">
-                            <p class="placeholder-text">Click "Analyze DCIM Example" to see the code graph visualization</p>
+                    <!-- Card View -->
+                    <div class="view-container" id="ncg-cards-view">
+                        <div class="new-code-graph-visualization">
+                            <h3>Code Elements</h3>
+                            <div class="graph-container" id="ncg-graph-container">
+                                <p class="placeholder-text">Click "Analyze DCIM Example" to see the code graph visualization</p>
+                            </div>
+                            
+                            <div class="dependencies-container" id="ncg-dependencies-container" style="display: none;">
+                                <h4>Dependencies & Data Flow</h4>
+                                <div class="dependencies-list" id="ncg-dependencies-list"></div>
+                            </div>
                         </div>
-                        
-                        <div class="dependencies-container" id="ncg-dependencies-container" style="display: none;">
-                            <h4>Dependencies & Data Flow</h4>
-                            <div class="dependencies-list" id="ncg-dependencies-list"></div>
+                    </div>
+                    
+                    <!-- Graph View -->
+                    <div class="view-container" id="ncg-graph-view" style="display: none;">
+                        <div class="graph-visualization">
+                            <h3>Interactive Graph</h3>
+                            <div class="graph-controls">
+                                <button class="btn btn-sm" onclick="NewCodeGraphManager.resetGraphLayout()">Reset Layout</button>
+                                <button class="btn btn-sm" onclick="NewCodeGraphManager.fitGraphToView()">Fit to View</button>
+                                <label>
+                                    <input type="range" id="zoom-slider" min="0.1" max="3" step="0.1" value="1" onchange="NewCodeGraphManager.handleZoom(this.value)">
+                                    Zoom
+                                </label>
+                            </div>
+                            <div class="graph-svg-container" id="ncg-graph-svg-container">
+                                <p class="placeholder-text">Switch to graph view to see the interactive visualization</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -67,6 +97,265 @@ const NewCodeGraphManager = (function() {
         `;
         
         document.body.appendChild(container);
+    }
+
+    /**
+     * Initialize D3.js graph visualization
+     */
+    function initializeGraphVisualization() {
+        // We'll initialize this when switching to graph view to avoid D3 loading issues
+    }
+
+    /**
+     * Switch between card and graph views
+     */
+    function switchView(viewType) {
+        currentView = viewType;
+        
+        // Update toggle buttons
+        document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-view="${viewType}"]`).classList.add('active');
+        
+        // Show/hide views
+        document.getElementById('ncg-cards-view').style.display = viewType === 'cards' ? 'block' : 'none';
+        document.getElementById('ncg-graph-view').style.display = viewType === 'graph' ? 'block' : 'none';
+        
+        // If switching to graph view and we have data, render the graph
+        if (viewType === 'graph' && currentVisualizationData) {
+            setTimeout(() => renderGraph(currentVisualizationData), 100);
+        }
+        
+        console.log(`Switched to ${viewType} view`);
+    }
+
+    /**
+     * Render the D3.js graph visualization
+     */
+    function renderGraph(data) {
+        const container = document.getElementById('ncg-graph-svg-container');
+        if (!container) return;
+        
+        // Clear previous graph
+        container.innerHTML = '';
+        
+        if (!data.nodes || data.nodes.length === 0) {
+            container.innerHTML = '<p class="placeholder-text">No data to visualize</p>';
+            return;
+        }
+        
+        const width = container.clientWidth || 800;
+        const height = 600;
+        
+        // Create SVG
+        svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .style('border', '1px solid #e1e5e9')
+            .style('border-radius', '8px');
+        
+        // Create zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 3])
+            .on('zoom', function(event) {
+                g.attr('transform', event.transform);
+                // Update zoom slider
+                document.getElementById('zoom-slider').value = event.transform.k;
+            });
+        
+        svg.call(zoom);
+        
+        // Create main group for zooming/panning
+        const g = svg.append('g');
+        
+        // Create arrow markers for edges
+        svg.append('defs').selectAll('marker')
+            .data(['arrow'])
+            .enter().append('marker')
+            .attr('id', 'arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 20)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#666');
+        
+        // Prepare data for D3
+        const nodes = data.nodes.map(d => ({
+            ...d,
+            id: d.id,
+            name: d.label,
+            group: d.type === 'function' ? 1 : 2
+        }));
+        
+        const links = data.edges.map(d => ({
+            source: d.source,
+            target: d.target,
+            relationship: d.relationship,
+            sourceType: d.sourceType,
+            targetType: d.targetType
+        }));
+        
+        // Create force simulation
+        simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(30));
+        
+        // Create links (edges)
+        const link = g.append('g')
+            .attr('class', 'links')
+            .selectAll('line')
+            .data(links)
+            .enter().append('line')
+            .attr('stroke', '#999')
+            .attr('stroke-opacity', 0.8)
+            .attr('stroke-width', 2)
+            .attr('marker-end', 'url(#arrow)');
+        
+        // Create link labels
+        const linkLabel = g.append('g')
+            .attr('class', 'link-labels')
+            .selectAll('text')
+            .data(links)
+            .enter().append('text')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#666')
+            .text(d => d.relationship);
+        
+        // Create nodes (vertices)
+        const node = g.append('g')
+            .attr('class', 'nodes')
+            .selectAll('g')
+            .data(nodes)
+            .enter().append('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+        
+        // Add circles for nodes
+        node.append('circle')
+            .attr('r', d => d.type === 'function' ? 20 : 15)
+            .attr('fill', d => d.type === 'function' ? '#1976d2' : '#7b1fa2')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+        
+        // Add labels for nodes
+        node.append('text')
+            .attr('dy', -25)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '12px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#24292e')
+            .text(d => d.name);
+        
+        // Add type labels
+        node.append('text')
+            .attr('dy', 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#666')
+            .text(d => d.type);
+        
+        // Add tooltips
+        node.append('title')
+            .text(d => `${d.name}\nType: ${d.type}\nFile: ${d.file}:${d.line}`);
+        
+        // Update positions on tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            linkLabel
+                .attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2);
+            
+            node
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Store references for manipulation
+        window.currentGraphElements = { svg, simulation, g, zoom };
+    }
+
+    /**
+     * Reset graph layout
+     */
+    function resetGraphLayout() {
+        if (simulation) {
+            simulation.alpha(1).restart();
+        }
+    }
+
+    /**
+     * Fit graph to view
+     */
+    function fitGraphToView() {
+        if (!svg || !window.currentGraphElements) return;
+        
+        const { g, zoom } = window.currentGraphElements;
+        const bounds = g.node().getBBox();
+        const container = document.getElementById('ncg-graph-svg-container');
+        const width = container.clientWidth || 800;
+        const height = 600;
+        
+        const scale = Math.min(width / bounds.width, height / bounds.height) * 0.8;
+        const translate = [
+            width / 2 - scale * (bounds.x + bounds.width / 2),
+            height / 2 - scale * (bounds.y + bounds.height / 2)
+        ];
+        
+        svg.transition().duration(750).call(
+            zoom.transform,
+            d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+        );
+    }
+
+    /**
+     * Handle zoom slider
+     */
+    function handleZoom(scale) {
+        if (!svg || !window.currentGraphElements) return;
+        
+        const { zoom } = window.currentGraphElements;
+        const container = document.getElementById('ncg-graph-svg-container');
+        const width = container.clientWidth || 800;
+        const height = 600;
+        
+        svg.transition().duration(300).call(
+            zoom.transform,
+            d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-width / 2, -height / 2)
+        );
     }
 
     /**
@@ -146,6 +435,12 @@ const NewCodeGraphManager = (function() {
             if (result.success) {
                 currentVisualizationData = result.visualization;
                 renderVisualization(result.visualization);
+                
+                // If currently on graph view, render the graph
+                if (currentView === 'graph') {
+                    setTimeout(() => renderGraph(result.visualization), 100);
+                }
+                
                 showStatus('DCIM example analyzed successfully! Check the visualization below.');
             } else {
                 showStatus('Error analyzing DCIM example: ' + result.error, 'error');
@@ -198,7 +493,7 @@ const NewCodeGraphManager = (function() {
     }
 
     /**
-     * Render the visualization
+     * Render the card visualization (existing functionality)
      */
     function renderVisualization(data) {
         const graphContainer = document.getElementById('ncg-graph-container');
@@ -269,6 +564,7 @@ const NewCodeGraphManager = (function() {
         const graphContainer = document.getElementById('ncg-graph-container');
         const depsContainer = document.getElementById('ncg-dependencies-container');
         const projectsContainer = document.getElementById('ncg-projects-container');
+        const graphSvgContainer = document.getElementById('ncg-graph-svg-container');
         
         if (graphContainer) {
             graphContainer.innerHTML = '<p class="placeholder-text">Click "Analyze DCIM Example" to see the code graph visualization</p>';
@@ -279,8 +575,13 @@ const NewCodeGraphManager = (function() {
         if (projectsContainer) {
             projectsContainer.style.display = 'none';
         }
+        if (graphSvgContainer) {
+            graphSvgContainer.innerHTML = '<p class="placeholder-text">Switch to graph view to see the interactive visualization</p>';
+        }
         
         currentVisualizationData = null;
+        simulation = null;
+        svg = null;
         showStatus('Visualization cleared');
     }
 
@@ -293,7 +594,11 @@ const NewCodeGraphManager = (function() {
         initializeDatabase,
         analyzeDcimExample,
         loadProjects,
-        clearVisualization
+        clearVisualization,
+        switchView,
+        resetGraphLayout,
+        fitGraphToView,
+        handleZoom
     };
 })();
 

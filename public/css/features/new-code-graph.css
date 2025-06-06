@@ -73,6 +73,11 @@
     transition: background-color 0.2s;
 }
 
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
 .btn-primary {
     background: #007bff;
     color: white;
@@ -129,22 +134,104 @@
     border: 1px solid #bee5eb;
 }
 
+/* View Toggle Buttons */
+.view-toggles {
+    display: flex;
+    padding: 0 20px;
+    background: #fff;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.view-toggle-btn {
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    color: #586069;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+    color: #24292e;
+    background: #f6f8fa;
+}
+
+.view-toggle-btn.active {
+    color: #0366d6;
+    border-bottom-color: #0366d6;
+    background: #f6f8fa;
+}
+
 .new-code-graph-main {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
 }
 
+.view-container {
+    height: 100%;
+}
+
 .new-code-graph-visualization {
     margin-bottom: 30px;
 }
 
-.new-code-graph-visualization h3 {
+.new-code-graph-visualization h3,
+.graph-visualization h3 {
     margin: 0 0 15px 0;
     color: #24292e;
     font-size: 1.2rem;
 }
 
+/* Graph Visualization Styles */
+.graph-visualization {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.graph-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e1e5e9;
+}
+
+.graph-controls label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #24292e;
+}
+
+.graph-controls input[type="range"] {
+    width: 100px;
+}
+
+.graph-svg-container {
+    flex: 1;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    background: #fafbfc;
+    position: relative;
+    overflow: hidden;
+    min-height: 500px;
+}
+
+.graph-svg-container svg {
+    display: block;
+    background: white;
+}
+
+/* Card View Styles (existing) */
 .graph-container {
     border: 2px solid #e1e5e9;
     border-radius: 8px;
@@ -318,6 +405,33 @@
     margin: 0;
 }
 
+/* D3.js Graph Specific Styles */
+.node {
+    cursor: pointer;
+}
+
+.node circle {
+    stroke: #fff;
+    stroke-width: 2px;
+}
+
+.node text {
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.links line {
+    stroke: #999;
+    stroke-opacity: 0.8;
+}
+
+.link-labels text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 10px;
+    fill: #666;
+    pointer-events: none;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .new-code-graph-content {
@@ -327,6 +441,19 @@
     
     .new-code-graph-controls {
         flex-direction: column;
+    }
+    
+    .view-toggles {
+        flex-direction: row;
+    }
+    
+    .graph-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .graph-controls input[type="range"] {
+        width: 150px;
     }
     
     .graph-container {
