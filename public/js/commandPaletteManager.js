@@ -2432,6 +2432,42 @@ const CommandPaletteManager = (function() {
                 keywords: ['code', 'visualization', 'graph', 'network', 'load', 'display']
             });
         }
+        // Add New Code Graph commands
+        if (window.NewCodeGraphManager) {
+            registerCommand({
+                name: 'Open New Code Graph (Simple)',
+                action: () => {
+                    window.NewCodeGraphManager.show();
+                },
+                category: 'Code Analysis',
+                shortcut: 'Alt+N',
+                keywords: ['new', 'code', 'graph', 'simple', 'clean', 'analysis']
+            });
+            
+            registerCommand({
+                name: 'New Code Graph - Analyze DCIM Example',
+                action: () => {
+                    window.NewCodeGraphManager.show();
+                    setTimeout(() => {
+                        window.NewCodeGraphManager.analyzeDcimExample();
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['new', 'code', 'dcim', 'example', 'analyze', 'simple']
+            });
+            
+            registerCommand({
+                name: 'New Code Graph - Initialize Database',
+                action: () => {
+                    window.NewCodeGraphManager.show();
+                    setTimeout(() => {
+                        window.NewCodeGraphManager.initializeDatabase();
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['new', 'code', 'database', 'initialize', 'setup']
+            });
+        }
     }
     
     /**
