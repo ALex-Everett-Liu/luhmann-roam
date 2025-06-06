@@ -1717,6 +1717,38 @@ document.addEventListener('DOMContentLoaded', () => {
   addButtonToSidebar(toggleCodeGraphButton);
   console.log('Code Graph button added to sidebar');
 
+  // Initialize New Code Graph Manager
+  if (window.NewCodeGraphManager) {
+    console.log('Setting up NewCodeGraphManager initialization from app.js');
+    NewCodeGraphManager.initialize();
+  } else {
+    console.error('NewCodeGraphManager not found on window object');
+  }
+
+  // Add new code graph button
+  const toggleNewCodeGraphButton = document.createElement('button');
+  toggleNewCodeGraphButton.id = 'toggle-new-code-graph';
+  toggleNewCodeGraphButton.className = 'feature-toggle';
+  toggleNewCodeGraphButton.textContent = 'New Code Graph';
+  toggleNewCodeGraphButton.title = 'Simple, clean code analysis and visualization';
+
+  toggleNewCodeGraphButton.addEventListener('click', function() {
+    console.log('New Code Graph button clicked');
+    if (window.NewCodeGraphManager) {
+      if (NewCodeGraphManager.isVisible()) {
+        NewCodeGraphManager.hide();
+      } else {
+        NewCodeGraphManager.show();
+      }
+    } else {
+      console.error('NewCodeGraphManager not available');
+    }
+  });
+
+  console.log('About to add New Code Graph button to sidebar');
+  addButtonToSidebar(toggleNewCodeGraphButton);
+  console.log('New Code Graph button added to sidebar');
+
   // Initialize the NodeSizeHighlightManager (remove duplicate initialization)
   // The manager initializes itself, so we don't need to do it here
   // Just check if it exists

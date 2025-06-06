@@ -22,6 +22,7 @@
 @import './features/attribute-manager.css';
 @import './features/code-analyzer.css';
 @import './features/code-graph.css';
+@import './features/new-code-graph.css';
 @import './features/node.css';
 @import './features/timestamp.css';
 @import './features/command-palette.css';
