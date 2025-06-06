@@ -295,7 +295,27 @@ class NewCodeGraphController {
 
   // Build graph edges for visualization
   buildGraphEdges(dependencies, functions, variables) {
-    return dependencies.map(dep => ({
+    // Create a set of all valid node IDs
+    const validNodeIds = new Set();
+    functions.forEach(func => validNodeIds.add(func.id));
+    variables.forEach(vari => validNodeIds.add(vari.id));
+    
+    // Filter dependencies to only include those with valid source and target nodes
+    const validDependencies = dependencies.filter(dep => {
+      const hasValidSource = validNodeIds.has(dep.source_id);
+      const hasValidTarget = validNodeIds.has(dep.target_id);
+      
+      if (!hasValidSource) {
+        console.log(`Skipping dependency with invalid source: ${dep.source_id}`);
+      }
+      if (!hasValidTarget) {
+        console.log(`Skipping dependency with invalid target: ${dep.target_id}`);
+      }
+      
+      return hasValidSource && hasValidTarget;
+    });
+    
+    return validDependencies.map(dep => ({
       id: dep.id,
       source: dep.source_id,
       target: dep.target_id,
@@ -375,12 +395,40 @@ exports.analyzeDcimExample = async (req, res) => {
       'local'
     );
 
-    // Record dependencies
+    // Create external function nodes for dependencies
+    const pathExtnameId = await newCodeGraphController.analyzeFunction(
+      projectId,
+      'path.extname',
+      'path (Node.js module)',
+      0,
+      'function extname(path)'
+    );
+
+    // Create parameter nodes
+    const inputPathVarId = await newCodeGraphController.analyzeVariable(
+      projectId,
+      functionId,
+      'inputPath',
+      'string',
+      'function parameter',
+      'controllers/dcimController.js',
+      68,
+      'parameter'
+    );
+
+    // Record dependencies with proper node IDs
     // fileExtension depends on path.extname and inputPath
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', fileExtensionVarId,
-      'function', 'path.extname',
+      'function', pathExtnameId,  // Now points to actual node
+      'uses'
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', fileExtensionVarId,
+      'variable', inputPathVarId,  // Now points to actual node
       'uses'
     );
 
@@ -400,7 +448,7 @@ exports.analyzeDcimExample = async (req, res) => {
       message: 'DCIM controller example analyzed successfully',
       projectId,
       functionId,
-      variables: { fileExtensionVarId, isVideoVarId },
+      variables: { fileExtensionVarId, isVideoVarId, inputPathVarId },
       visualization: visualizationData
     });
 
