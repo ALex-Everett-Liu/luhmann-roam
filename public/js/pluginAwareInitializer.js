@@ -161,18 +161,48 @@ const PluginAwareInitializer = (function() {
      * Initialize Node Grid Visualizer only if plugin is enabled
      */
     function initializeNodeGridVisualizer() {
-        if (window.NodeGridVisualizer && !window.NodeGridVisualizer.isInitialized) {
-            NodeGridVisualizer.initialize();
+        if (!window.NodeGridVisualizer) {
+            console.log('❌ NodeGridVisualizer not available');
+            return false;
         }
+        
+        console.log('✅ Initializing NodeGridVisualizer');
+        NodeGridVisualizer.initialize();
+        
+        // Hide the grid by default
+        const container = document.getElementById('node-grid-container');
+        if (container) {
+            container.style.display = 'none';
+        }
+        
+        // Add the button
+        addNodeGridVisualizerButton();
+        
+        return true;
     }
     
     /**
      * Initialize Cosmic Node Visualizer only if plugin is enabled
      */
     function initializeCosmicNodeVisualizer() {
-        if (window.CosmicNodeVisualizer && !window.CosmicNodeVisualizer.isInitialized) {
-            CosmicNodeVisualizer.initialize();
+        if (!window.CosmicNodeVisualizer) {
+            console.log('❌ CosmicNodeVisualizer not available');
+            return false;
         }
+        
+        console.log('✅ Initializing CosmicNodeVisualizer');
+        CosmicNodeVisualizer.initialize();
+        
+        // Also initialize 2D version if available
+        if (window.CosmicNodeVisualizer2D) {
+            console.log('✅ Initializing CosmicNodeVisualizer2D');
+            CosmicNodeVisualizer2D.initialize();
+        }
+        
+        // Add the buttons
+        addCosmicVisualizerButtons();
+        
+        return true;
     }
     
     /**
@@ -333,6 +363,104 @@ const PluginAwareInitializer = (function() {
         window.addButtonToSidebar(toggleDragDropButton);
     }
     
+    function addNodeGridVisualizerButton() {
+        // Add a toggle button for the grid visualizer
+        const toggleGridButton = document.createElement('button');
+        toggleGridButton.id = 'toggle-grid-view';
+        toggleGridButton.className = 'feature-toggle';
+        toggleGridButton.textContent = 'Grid View';
+        toggleGridButton.title = 'View nodes in a grid layout';
+
+        toggleGridButton.addEventListener('click', function() {
+            if (window.PluginManager && !PluginManager.isPluginEnabled('nodeGridVisualizerManager')) {
+                alert('Node Grid Visualizer plugin is disabled. Please enable it in Settings > Plugins.');
+                return;
+            }
+            
+            if (window.NodeGridVisualizer) {
+                NodeGridVisualizer.toggleVisibility();
+            }
+        });
+
+        window.addButtonToSidebar(toggleGridButton);
+    }
+
+    function addCosmicVisualizerButtons() {
+        // Add a toggle button for the cosmic visualizer
+        const toggleCosmicButton = document.createElement('button');
+        toggleCosmicButton.id = 'toggle-cosmic-view';
+        toggleCosmicButton.className = 'feature-toggle';
+        toggleCosmicButton.textContent = 'Cosmic View';
+        toggleCosmicButton.title = 'View nodes as a cosmic solar system';
+
+        toggleCosmicButton.addEventListener('click', function() {
+            if (window.PluginManager && !PluginManager.isPluginEnabled('cosmicNodeVisualizerManager')) {
+                alert('Cosmic Node Visualizer plugin is disabled. Please enable it in Settings > Plugins.');
+                return;
+            }
+            
+            if (window.CosmicNodeVisualizer) {
+                if (CosmicNodeVisualizer.isVisible()) {
+                    CosmicNodeVisualizer.hide();
+                } else {
+                    let nodeToShow = window.lastFocusedNodeId;
+                    
+                    if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
+                        nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
+                    }
+                    
+                    if (!nodeToShow && window.nodes && window.nodes.length > 0) {
+                        nodeToShow = window.nodes[0].id;
+                    }
+                    
+                    CosmicNodeVisualizer.show(nodeToShow);
+                }
+            }
+        });
+
+        window.addButtonToSidebar(toggleCosmicButton);
+
+        // Add a toggle button for the 2D cosmic visualizer
+        const toggle2DCosmicButton = document.createElement('button');
+        toggle2DCosmicButton.id = 'toggle-cosmic-2d-view';
+        toggle2DCosmicButton.className = 'feature-toggle';
+        toggle2DCosmicButton.textContent = '2D Cosmic View';
+        toggle2DCosmicButton.title = 'View nodes as a 2D cosmic solar system (better performance)';
+
+        toggle2DCosmicButton.addEventListener('click', function() {
+            if (window.PluginManager && !PluginManager.isPluginEnabled('cosmicNodeVisualizerManager')) {
+                alert('Cosmic Node Visualizer plugin is disabled. Please enable it in Settings > Plugins.');
+                return;
+            }
+            
+            if (window.CosmicNodeVisualizer2D) {
+                const isCurrentlyVisible = CosmicNodeVisualizer2D.isVisible();
+                
+                if (isCurrentlyVisible) {
+                    CosmicNodeVisualizer2D.hide();
+                } else {
+                    let nodeToShow = window.lastFocusedNodeId;
+                    
+                    if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
+                        nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
+                    }
+                    
+                    if (!nodeToShow && window.nodes && window.nodes.length > 0) {
+                        nodeToShow = window.nodes[0].id;
+                    }
+                    
+                    if (nodeToShow) {
+                        CosmicNodeVisualizer2D.show(nodeToShow);
+                    } else {
+                        alert('Please select a node first');
+                    }
+                }
+            }
+        });
+
+        window.addButtonToSidebar(toggle2DCosmicButton);
+    }
+    
     /**
      * Handle plugin state changes (when user enables/disables plugins)
      */
@@ -345,17 +473,17 @@ const PluginAwareInitializer = (function() {
                 case 'dragDropManager':
                     initializeDragDropManager();
                     break;
-                case 'newCodeGraphManager':
-                    initializeNewCodeGraphManager();
-                    break;
-                case 'codeGraphManager':
-                    initializeCodeGraphManager();
-                    break;
                 case 'nodeGridVisualizerManager':
                     initializeNodeGridVisualizer();
                     break;
                 case 'cosmicNodeVisualizerManager':
                     initializeCosmicNodeVisualizer();
+                    break;
+                case 'newCodeGraphManager':
+                    initializeNewCodeGraphManager();
+                    break;
+                case 'codeGraphManager':
+                    initializeCodeGraphManager();
                     break;
                 case 'graphManagementUI':
                     initializeGraphManagementUI();
@@ -363,34 +491,49 @@ const PluginAwareInitializer = (function() {
                 case 'graphAnalysisVisualizer':
                     initializeGraphAnalysisVisualizer();
                     break;
+                default:
+                    console.log(`No specific initialization handler for plugin: ${pluginId}`);
             }
         } else {
-            // Clean up the module
+            // Handle plugin disable
             switch (pluginId) {
                 case 'dragDropManager':
-                    if (window.DragDropManager && window.DragDropManager.cleanup) {
-                        DragDropManager.cleanup();
+                    if (window.DragDropManager) {
+                        DragDropManager.disable();
                     }
-                    // Remove sidebar button
-                    const dragDropBtn = document.getElementById('toggle-drag-drop');
-                    if (dragDropBtn) dragDropBtn.remove();
+                    break;
+                case 'nodeGridVisualizerManager':
+                    if (window.NodeGridVisualizer) {
+                        // Hide the grid if it's visible
+                        const container = document.getElementById('node-grid-container');
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                    }
+                    break;
+                case 'cosmicNodeVisualizerManager':
+                    if (window.CosmicNodeVisualizer) {
+                        CosmicNodeVisualizer.hide();
+                    }
+                    if (window.CosmicNodeVisualizer2D) {
+                        CosmicNodeVisualizer2D.hide();
+                    }
                     break;
                 case 'newCodeGraphManager':
-                    if (window.NewCodeGraphManager && window.NewCodeGraphManager.globalCleanup) {
+                    if (window.NewCodeGraphManager) {
+                        NewCodeGraphManager.hide();
                         NewCodeGraphManager.globalCleanup();
                     }
-                    // Remove sidebar button
-                    const newCodeGraphBtn = document.getElementById('toggle-new-code-graph');
-                    if (newCodeGraphBtn) newCodeGraphBtn.remove();
                     break;
                 case 'codeGraphManager':
-                    if (window.CodeGraphManager && window.CodeGraphManager.hide) {
+                    if (window.CodeGraphManager) {
                         CodeGraphManager.hide();
+                        // Clean up global listeners that cause cursor issues
+                        console.log('🧹 Cleaning up CodeGraphManager global listeners');
                     }
-                    // Remove sidebar button
-                    const codeGraphBtn = document.getElementById('toggle-code-graph');
-                    if (codeGraphBtn) codeGraphBtn.remove();
                     break;
+                default:
+                    console.log(`No specific cleanup handler for plugin: ${pluginId}`);
             }
         }
     }

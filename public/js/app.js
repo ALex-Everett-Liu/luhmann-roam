@@ -1173,62 +1173,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
 
-  // Initialize the NodeGridVisualizer
-  if (window.NodeGridVisualizer) {
-    NodeGridVisualizer.initialize();
-    
-    // Hide the grid by default
-    const container = document.getElementById('node-grid-container');
-    if (container) {
-      container.style.display = 'none';
-    }
-    
-    // Add toggle button functionality
-    const toggleGridButton = document.getElementById('toggle-grid-view');
-    if (toggleGridButton) {
-      toggleGridButton.addEventListener('click', function() {
-        NodeGridVisualizer.toggleVisibility();
-      });
-    }
-  }
-
-  // Add a toggle button for the cosmic visualizer
-  const toggleCosmicButton = document.createElement('button');
-  toggleCosmicButton.id = 'toggle-cosmic-view';
-  toggleCosmicButton.className = 'feature-toggle';
-  toggleCosmicButton.textContent = 'Cosmic View';
-  toggleCosmicButton.title = 'View nodes as a cosmic solar system';
-
-  toggleCosmicButton.addEventListener('click', function() {
-    if (window.CosmicNodeVisualizer) {
-      if (CosmicNodeVisualizer.isVisible()) {
-        CosmicNodeVisualizer.hide();
-      } else {
-        // Add debug logging
-        console.log('Opening Cosmic View with node ID:', lastFocusedNodeId);
-        
-        // If lastFocusedNodeId is not available, try to get it from BreadcrumbManager
-        let nodeToShow = lastFocusedNodeId;
-        
-        if (!nodeToShow && window.BreadcrumbManager && BreadcrumbManager.getCurrentFocusedNodeId) {
-          nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
-          console.log('Got nodeId from BreadcrumbManager:', nodeToShow);
-        }
-        
-        // If still no node ID, get the first visible node
-        if (!nodeToShow && nodes.length > 0) {
-          nodeToShow = nodes[0].id;
-          console.log('Falling back to first visible node:', nodeToShow);
-        }
-        
-        // Show visualization with the determined node ID
-        CosmicNodeVisualizer.show(nodeToShow);
-      }
-    }
-  });
-
-  // Add to sidebar using helper function
-  addButtonToSidebar(toggleCosmicButton);
 
   // Add a toggle button for the 2D cosmic visualizer
   const toggle2DCosmicButton = document.createElement('button');
@@ -1362,11 +1306,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize the Font Manager
   if (window.FontManager) {
     FontManager.initialize();
-  }
-
-  // Initialize the CosmicNodeVisualizer
-  if (window.CosmicNodeVisualizer) {
-    CosmicNodeVisualizer.initialize();
   }
 
   // Initialize the CosmicNodeVisualizer2D
@@ -1667,29 +1606,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   
-  // REMOVED: Conflicting direct initialization - let PluginAwareInitializer handle it
-  // Use plugin-aware initialization ONLY
-  if (window.PluginAwareInitializer) {
-    // Delay initialization slightly to ensure all modules are loaded
-    setTimeout(() => {
-      PluginAwareInitializer.initializeEnabledModules();
-    }, 100);
-  } else {
-    console.error('PluginAwareInitializer not available, falling back to direct initialization');
-    
-    // Fallback: Direct initialization if PluginAwareInitializer is not available
-    // Initialize Code Graph Manager
-    if (window.CodeGraphManager) {
-      console.log('Setting up CodeGraphManager initialization from app.js (fallback)');
-      CodeGraphManager.initialize();
-    }
-    
-    // Initialize New Code Graph Manager
-    if (window.NewCodeGraphManager) {
-      console.log('Setting up NewCodeGraphManager initialization from app.js (fallback)');
-      NewCodeGraphManager.initialize();
-    }
-  }
 
 });
 
