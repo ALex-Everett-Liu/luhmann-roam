@@ -66,61 +66,41 @@
         // Register DragDropManager
         this.registerPlugin('dragDropManager', {
           name: 'Drag & Drop',
-          description: 'Allows nodes to be rearranged via drag and drop',
-          defaultEnabled: false,
-          requiresReload: false,
-          category: 'interface',
-          initialize: function() {
-            if (window.DragDropManager) {
-              console.log('Initializing DragDropManager plugin');
-              DragDropManager.initialize();
-              return true;
-            }
-            return false;
-          },
-          cleanup: function() {
-            if (window.DragDropManager) {
-              console.log('Cleaning up DragDropManager plugin');
-              DragDropManager.removeAllEventListeners();
-              return true;
-            }
-            return false;
-          },
-          toggle: function(enabled) {
-            if (window.DragDropManager) {
-              if (enabled) {
-                DragDropManager.setupDragAndDrop();
-              } else {
-                DragDropManager.removeAllEventListeners();
-              }
-              return true;
-            }
-            return false;
-          }
+          description: 'Allows dragging and dropping nodes to reorganize them',
+          defaultEnabled: true,
+          category: 'interaction'
         });
         
         // Register NodeGridVisualizer
-        this.registerPlugin('nodeGridVisualizer', {
-          name: 'Grid View',
-          description: 'Allows visualizing nodes in a grid layout',
+        this.registerPlugin('nodeGridVisualizerManager', {
+          name: 'Node Grid Visualizer',
+          description: 'Grid-based visualization of node hierarchy',
           defaultEnabled: false,
           category: 'visualization'
         });
         
         // Register CosmicNodeVisualizer
-        this.registerPlugin('cosmicNodeVisualizer', {
-          name: 'Cosmic View',
-          description: 'Visualizes nodes as a cosmic solar system',
+        this.registerPlugin('cosmicNodeVisualizerManager', {
+          name: 'Cosmic Node Visualizer',
+          description: '3D solar system visualization of nodes',
           defaultEnabled: false,
           category: 'visualization'
         });
         
-        // Register CosmicNodeVisualizer2D
-        this.registerPlugin('cosmicNodeVisualizer2D', {
-          name: '2D Cosmic View',
-          description: 'Visualizes nodes as a 2D cosmic solar system (better performance)',
-          defaultEnabled: false,
-          category: 'visualization'
+        // Register GraphManagementUI
+        this.registerPlugin('graphManagementUI', {
+          name: 'Graph Management',
+          description: 'Manage graph vertices and edges',
+          defaultEnabled: true,
+          category: 'analysis'
+        });
+        
+        // Register GraphAnalysisVisualizer
+        this.registerPlugin('graphAnalysisVisualizer', {
+          name: 'Graph Analysis Visualizer',
+          description: 'Advanced graph analysis and visualization',
+          defaultEnabled: true,
+          category: 'analysis'
         });
         
         // Register StyleSettingsManager
@@ -141,7 +121,7 @@
         
         // Register BookmarkManager
         this.registerPlugin('bookmarkManager', {
-          name: 'Bookmarks',
+          name: 'Bookmark Manager',
           description: 'Allows bookmarking favorite nodes',
           defaultEnabled: true,
           category: 'utility'
@@ -149,7 +129,7 @@
         
         // Register AttributeManager
         this.registerPlugin('attributeManager', {
-          name: 'Attributes',
+          name: 'Attribute Manager',
           description: 'Allows adding custom attributes to nodes',
           defaultEnabled: true,
           category: 'data'
@@ -333,6 +313,11 @@
         
         // Update UI if it exists
         this.updatePluginUI(id);
+        
+        // ADDED: Call state change callback
+        if (this.onPluginStateChange && typeof this.onPluginStateChange === 'function') {
+          this.onPluginStateChange(id, newState);
+        }
         
         if (plugin.requiresReload) {
           alert(`The ${plugin.name} plugin requires a page reload to ${newState ? 'enable' : 'disable'} fully.`);

@@ -1508,13 +1508,16 @@ const CommandPaletteManager = (function() {
             for (const id in window.PluginManager.plugins) {
                 const plugin = window.PluginManager.plugins[id];
                 
+                // FIX: Check if plugin.name exists and provide fallback
+                const pluginName = plugin.name || id;
+                
                 registerCommand({
-                    name: `${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`,
+                    name: `${plugin.enabled ? 'Disable' : 'Enable'} ${pluginName}`,
                     action: () => {
                         window.PluginManager.togglePlugin(id);
                     },
                     category: 'Plugins',
-                    keywords: [plugin.name.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
+                    keywords: [pluginName.toLowerCase(), 'enable', 'disable', 'toggle', 'plugin']
                 });
             }
         }

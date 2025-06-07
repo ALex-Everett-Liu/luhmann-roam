@@ -1108,33 +1108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     TaskManager.initialize();
   }
 
-  // Initialize the DragDropManager - replace with plugin manager approach
-  if (window.DragDropManager && window.PluginManager && PluginManager.isPluginEnabled('dragDropManager')) {
-    console.log('DragDropManager initialized via PluginManager');
-    // The PluginManager will handle initialization
-  } else if (window.DragDropManager) {
-    console.log('DragDropManager initialized directly (PluginManager not available or plugin disabled)');
-    DragDropManager.initialize();
-    
-    // Keep toggle button for backward compatibility
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-      const dragDropToggle = document.createElement('button');
-      dragDropToggle.id = 'toggle-drag-drop';
-      dragDropToggle.className = 'feature-toggle';
-      dragDropToggle.textContent = DragDropManager.isEnabled() ? 'Disable Drag & Drop' : 'Enable Drag & Drop';
-      dragDropToggle.classList.toggle('active', DragDropManager.isEnabled());
-      dragDropToggle.title = 'Toggle drag and drop functionality (improves performance when disabled)';
-      
-      dragDropToggle.addEventListener('click', () => {
-        DragDropManager.toggle();
-      });
-      
-      // Add it after other buttons in the sidebar
-      sidebar.appendChild(dragDropToggle);
-    }
-  }
-
   // Initialize the StyleSettingsManager
   if (window.StyleSettingsManager) {
     console.log('Setting up StyleSettingsManager initialization from app.js');
@@ -1715,8 +1688,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         CodeGraphManager.show();
       }
-    } else {
-      console.error('CodeGraphManager not available');
     }
   });
 
@@ -1756,8 +1727,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         NewCodeGraphManager.show();
       }
-    } else {
-      console.error('NewCodeGraphManager not available');
     }
   });
 
@@ -1813,6 +1782,43 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('About to add Size Highlight button to sidebar');
   addButtonToSidebar(toggleSizeHighlightButton);
   console.log('Size Highlight button added to sidebar');
+
+  // Initialize PluginManager first
+  if (window.PluginManager) {
+    console.log('Initializing PluginManager...');
+    PluginManager.initialize();
+    
+    // Set up plugin state change listener
+    PluginManager.onPluginStateChange = function(pluginId, enabled) {
+      if (window.PluginAwareInitializer) {
+        PluginAwareInitializer.handlePluginStateChange(pluginId, enabled);
+      }
+    };
+  }
+  
+  // REMOVED: Conflicting direct initialization - let PluginAwareInitializer handle it
+  // Use plugin-aware initialization ONLY
+  if (window.PluginAwareInitializer) {
+    // Delay initialization slightly to ensure all modules are loaded
+    setTimeout(() => {
+      PluginAwareInitializer.initializeEnabledModules();
+    }, 100);
+  } else {
+    console.error('PluginAwareInitializer not available, falling back to direct initialization');
+    
+    // Fallback: Direct initialization if PluginAwareInitializer is not available
+    // Initialize Code Graph Manager
+    if (window.CodeGraphManager) {
+      console.log('Setting up CodeGraphManager initialization from app.js (fallback)');
+      CodeGraphManager.initialize();
+    }
+    
+    // Initialize New Code Graph Manager
+    if (window.NewCodeGraphManager) {
+      console.log('Setting up NewCodeGraphManager initialization from app.js (fallback)');
+      NewCodeGraphManager.initialize();
+    }
+  }
 
 });
 

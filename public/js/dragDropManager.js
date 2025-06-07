@@ -413,24 +413,32 @@
     // Get current enabled state
     isEnabled: function() {
       return this.enabled;
+    },
+    
+    cleanup: function() {
+      console.log('Cleaning up DragDropManager');
+      this.removeAllEventListeners();
+      this.isInitialized = false;
+      this.draggedNodeId = null;
+      localStorage.removeItem('dragDropEnabled');
+      
+      // Remove toggle button if it exists
+      const toggleButton = document.getElementById('toggle-drag-drop');
+      if (toggleButton) {
+        toggleButton.remove();
+      }
+      
+      return true;
     }
   };
   
   // Make it available globally
   window.DragDropManager = DragDropManager;
   
-  // Auto-initialize when the DOM is ready
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM ready, initializing DragDropManager');
-    DragDropManager.initialize();
-  });
+  // REMOVED: Auto-initialization code
+  // Instead, initialization will be handled by PluginAwareInitializer
   
-  // Also initialize immediately if the DOM is already loaded
-  if (document.readyState === 'interactive' || document.readyState === 'complete') {
-    console.log('DOM already ready, initializing DragDropManager immediately');
-    DragDropManager.initialize();
-  }
 })();
 
 // Add a console message to confirm the script loaded
-console.log('DragDropManager script loaded'); 
+console.log('DragDropManager script loaded (initialization deferred)'); 
