@@ -1251,6 +1251,42 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add to sidebar using helper function
   addButtonToSidebar(toggle2DCosmicButton);
 
+  // Initialize the EnhancedCodeGraphManager
+  if (window.EnhancedCodeGraphManager) {
+    console.log('Setting up EnhancedCodeGraphManager initialization from app.js');
+    EnhancedCodeGraphManager.initialize();
+  }
+
+  // Add a toggle button for the enhanced code graph manager
+  const toggleEnhancedCodeGraphButton = document.createElement('button');
+  toggleEnhancedCodeGraphButton.id = 'toggle-enhanced-code-graph';
+  toggleEnhancedCodeGraphButton.className = 'feature-toggle';
+  toggleEnhancedCodeGraphButton.textContent = 'Enhanced Code Graph';
+  toggleEnhancedCodeGraphButton.title = 'Manage persistent code graphs with full CRUD operations';
+
+  toggleEnhancedCodeGraphButton.addEventListener('click', function() {
+    console.log('Enhanced Code Graph button clicked');
+    
+    if (window.EnhancedCodeGraphManager) {
+      const isCurrentlyVisible = EnhancedCodeGraphManager.isVisible();
+      console.log('Is currently visible:', isCurrentlyVisible);
+      
+      if (isCurrentlyVisible) {
+        console.log('Hiding enhanced code graph manager');
+        EnhancedCodeGraphManager.hide();
+      } else {
+        console.log('Showing enhanced code graph manager');
+        EnhancedCodeGraphManager.show();
+      }
+    } else {
+      console.error('EnhancedCodeGraphManager is not available');
+      alert('Enhanced Code Graph Manager is not loaded. Please check the console for errors.');
+    }
+  });
+
+  // Add to sidebar using helper function
+  addButtonToSidebar(toggleEnhancedCodeGraphButton);
+
   // Initialize the BlogManager
   if (window.BlogManager) {
     console.log('Setting up BlogManager initialization from app.js');
