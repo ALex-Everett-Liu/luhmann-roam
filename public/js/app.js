@@ -1693,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('CodeGraphManager not found on window object');
   }
   
-  // Add code graph button
+  // Add code graph button - UPDATED to check plugin state
   const toggleCodeGraphButton = document.createElement('button');
   toggleCodeGraphButton.id = 'toggle-code-graph';
   toggleCodeGraphButton.className = 'feature-toggle';
@@ -1702,6 +1702,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   toggleCodeGraphButton.addEventListener('click', function() {
     console.log('Code Graph button clicked');
+    
+    // Check if plugin is enabled first
+    if (window.PluginManager && !PluginManager.isPluginEnabled('codeGraphManager')) {
+      alert('Code Graph (Legacy) plugin is disabled. Please enable it in Settings > Plugins.');
+      return;
+    }
+    
     if (window.CodeGraphManager) {
       if (CodeGraphManager.isVisible()) {
         CodeGraphManager.hide();
