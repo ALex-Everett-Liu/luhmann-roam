@@ -190,10 +190,21 @@ const NewCodeGraphManager = (function() {
             showStatus('Loading projects...', 'info');
             
             const response = await fetch('/api/new-code-graph/projects');
+            
+            // Better error handling for undefined responses
+            if (!response) {
+                throw new Error('No response received - server may be down');
+            }
+            
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Server error ${response.status}: ${errorText}`);
+            }
+            
             const data = await response.json();
             
             if (data.success) {
-                projects = data.projects;
+                projects = data.projects || [];
                 renderProjectsGrid(projects);
                 showStatus(`Loaded ${projects.length} projects`, 'success');
             } else {
@@ -201,8 +212,27 @@ const NewCodeGraphManager = (function() {
             }
         } catch (error) {
             console.error('Error loading projects:', error);
-            showStatus(`Error loading projects: ${error.message}`, 'error');
-            document.getElementById('ncg-projects-grid').innerHTML = '<div class="error">Failed to load projects</div>';
+            showStatus(`Error: ${error.message}`, 'error');
+            
+            // Show user-friendly error with retry button
+            const grid = document.getElementById('ncg-projects-grid');
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="error-state" style="padding: 20px; text-align: center; color: #ff6b6b;">
+                        <h4>❌ Failed to Load Projects</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please check:</p>
+                        <ul style="text-align: left; display: inline-block;">
+                            <li>Server is running on port 3003</li>
+                            <li>Database is properly initialized</li>
+                            <li>API routes are accessible</li>
+                        </ul>
+                        <button class="btn btn-primary" onclick="window.NewCodeGraphManager && window.NewCodeGraphManager.loadProjects()" style="margin-top: 10px;">
+                            🔄 Retry Loading Projects
+                        </button>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -256,7 +286,7 @@ const NewCodeGraphManager = (function() {
                 showProjectDetail(currentProject);
                 switchView('project-detail');
                 showStatus('Project loaded successfully', 'success');
-            } else {
+        } else {
                 throw new Error(data.error || 'Failed to load project');
             }
         } catch (error) {
@@ -575,15 +605,44 @@ const NewCodeGraphManager = (function() {
     // PUBLIC API
     // =================================================================
 
+    function globalCleanup() {
+        console.log('🧹 Cleaning up NewCodeGraphManager');
+        
+        // Hide the manager if it's visible
+        if (isVisible) {
+            hide();
+        }
+        
+        // Clear any timers or intervals
+        // Reset state
+        currentProject = null;
+        projects = [];
+        currentVisualizationData = null;
+        
+        // Remove container from DOM if it exists
+        if (container) {
+            const parent = container.parentNode;
+            if (parent) {
+                parent.removeChild(container);
+            }
+            container = null;
+        }
+        
+        // Reset initialization state
+        isInitialized = false;
+        isVisible = false;
+    }
+
     return {
         initialize,
         show,
         hide,
         getIsVisible: () => isVisible,
         isInitialized: () => isInitialized,
+        globalCleanup,
+        loadProjects,
         
         // Project Management
-        loadProjects,
         openProject,
         showCreateProjectForm,
         hideCreateProjectForm,
@@ -616,6 +675,4 @@ if (document.readyState === 'loading') {
 
 // Export to window object so it can be accessed by other modules
 window.NewCodeGraphManager = NewCodeGraphManager;
-
-// Also add console log to confirm it's loaded
-console.log('NewCodeGraphManager loaded and exported to window object');
+console.log('✅ NewCodeGraphManager loaded and exported to window');

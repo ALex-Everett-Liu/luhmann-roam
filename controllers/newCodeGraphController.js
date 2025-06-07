@@ -142,6 +142,7 @@ class NewCodeGraphController {
     const db = await getDb();
     
     try {
+      // Try to query the table first
       const projects = await db.all(`
         SELECT p.*, 
                COUNT(DISTINCT f.id) as function_count,
@@ -157,6 +158,28 @@ class NewCodeGraphController {
       
       return projects;
     } catch (error) {
+      // If table doesn't exist, initialize database first
+      if (error.message.includes('no such table')) {
+        console.log('Tables not found, initializing database...');
+        await this.initializeDatabase();
+        
+        // Try again after initialization
+        const projects = await db.all(`
+          SELECT p.*, 
+                 COUNT(DISTINCT f.id) as function_count,
+                 COUNT(DISTINCT v.id) as variable_count,
+                 COUNT(DISTINCT d.id) as dependency_count
+          FROM simple_projects p
+          LEFT JOIN simple_functions f ON p.id = f.project_id
+          LEFT JOIN simple_variables v ON p.id = v.project_id  
+          LEFT JOIN simple_dependencies d ON p.id = d.project_id
+          GROUP BY p.id
+          ORDER BY p.created_at DESC
+        `);
+        
+        return projects;
+      }
+      
       console.error('Error getting projects:', error);
       throw error;
     }
