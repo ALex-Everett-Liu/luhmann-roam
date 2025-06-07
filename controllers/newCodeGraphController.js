@@ -471,7 +471,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// Enhanced DCIM example analysis with finer granularity
+// Enhanced DCIM example analysis with proper chaining
 exports.analyzeDcimExample = async (req, res) => {
   try {
     // Initialize database first
@@ -493,13 +493,13 @@ exports.analyzeDcimExample = async (req, res) => {
       'async function generateThumbnail(inputPath, thumbPath, maxSize = 180, quality = 60)'
     );
 
-    // Create parameter nodes for generateThumbnail
+    // Create parameter nodes with enhanced properties
     const inputPathParamId = await newCodeGraphController.analyzeVariable(
       projectId,
       functionId,
       'inputPath',
       'string',
-      'function parameter',
+      'function parameter - file path input',
       'controllers/dcimController.js',
       68,
       'parameter'
@@ -510,7 +510,7 @@ exports.analyzeDcimExample = async (req, res) => {
       functionId,
       'thumbPath',
       'string',
-      'function parameter',
+      'function parameter - thumbnail output path',
       'controllers/dcimController.js',
       68,
       'parameter'
@@ -521,7 +521,7 @@ exports.analyzeDcimExample = async (req, res) => {
       functionId,
       'maxSize',
       'number',
-      'function parameter (default: 180)',
+      'function parameter with default value: 180',
       'controllers/dcimController.js',
       68,
       'parameter'
@@ -532,22 +532,22 @@ exports.analyzeDcimExample = async (req, res) => {
       functionId,
       'quality',
       'number',
-      'function parameter (default: 60)',
+      'function parameter with default value: 60',
       'controllers/dcimController.js',
       68,
       'parameter'
     );
 
-    // Create external function nodes for dependencies
+    // Create external function nodes
     const pathExtnameId = await newCodeGraphController.analyzeFunction(
       projectId,
       'path.extname',
       'path (Node.js module)',
       0,
-      'function extname(path)'
+      'function extname(path) - extracts file extension from path'
     );
 
-    // Create built-in method nodes
+    // Create built-in method nodes with enhanced properties
     const toLowerCaseId = await newCodeGraphController.analyzeBuiltinMethod(
       projectId,
       'toLowerCase',
@@ -564,7 +564,7 @@ exports.analyzeDcimExample = async (req, res) => {
       71
     );
 
-    // Create literal array node
+    // Create literal array node with detailed properties
     const videoExtensionsArrayId = await newCodeGraphController.analyzeLiteral(
       projectId,
       functionId,
@@ -575,33 +575,32 @@ exports.analyzeDcimExample = async (req, res) => {
       71
     );
 
-    // Analyze the fileExtension variable (line 70)
+    // Analyze the local variables
     const fileExtensionVarId = await newCodeGraphController.analyzeVariable(
       projectId,
       functionId,
       'fileExtension',
       'string',
-      'path.extname(inputPath).toLowerCase()',
+      'const fileExtension - result of path.extname(inputPath).toLowerCase()',
       'controllers/dcimController.js',
       70,
       'local'
     );
 
-    // Analyze the isVideo variable (line 71)
     const isVideoVarId = await newCodeGraphController.analyzeVariable(
       projectId,
       functionId,
       'isVideo',
       'boolean',
-      "['.mp4', '.mov', '.avi', '.mkv', '.webm'].includes(fileExtension)",
+      'const isVideo - result of checking if extension is in video array',
       'controllers/dcimController.js',
       71,
       'local'
     );
 
-    // Record enhanced dependency relationships
+    // Record PROPER CHAINING relationships
 
-    // Function contains its parameters
+    // Function contains its elements
     await newCodeGraphController.recordDependency(
       projectId,
       'function', functionId,
@@ -630,7 +629,6 @@ exports.analyzeDcimExample = async (req, res) => {
       'contains'
     );
 
-    // Function contains its local variables
     await newCodeGraphController.recordDependency(
       projectId,
       'function', functionId,
@@ -645,48 +643,48 @@ exports.analyzeDcimExample = async (req, res) => {
       'contains'
     );
 
-    // fileExtension dependency chain: inputPath -> path.extname -> toLowerCase
+    // CHAIN 1: inputPath → path.extname → toLowerCase → fileExtension
     await newCodeGraphController.recordDependency(
       projectId,
-      'variable', fileExtensionVarId,
       'variable', inputPathParamId,
-      'uses_parameter'  // uses the input parameter
-    );
-
-    await newCodeGraphController.recordDependency(
-      projectId,
-      'variable', fileExtensionVarId,
       'function', pathExtnameId,
-      'transforms_via'  // transforms via path.extname
+      'passes_to'  // inputPath is passed to path.extname
     );
 
     await newCodeGraphController.recordDependency(
       projectId,
-      'variable', fileExtensionVarId,
+      'function', pathExtnameId,
       'function', toLowerCaseId,
-      'chains_from'  // chains toLowerCase method
-    );
-
-    // isVideo dependency chain: videoExtensions array -> includes method -> fileExtension
-    await newCodeGraphController.recordDependency(
-      projectId,
-      'variable', isVideoVarId,
-      'variable', videoExtensionsArrayId,
-      'validates_against'  // validates against the array
+      'chains_to'  // path.extname result chains to toLowerCase
     );
 
     await newCodeGraphController.recordDependency(
       projectId,
-      'variable', isVideoVarId,
-      'function', includesMethodId,
-      'transforms_via'  // uses includes method
-    );
-
-    await newCodeGraphController.recordDependency(
-      projectId,
-      'variable', isVideoVarId,
+      'function', toLowerCaseId,
       'variable', fileExtensionVarId,
-      'includes_check'  // checks if fileExtension is included
+      'assigns_to'  // toLowerCase result assigns to fileExtension
+    );
+
+    // CHAIN 2: videoExtensions → includes (with fileExtension as parameter) → isVideo
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', videoExtensionsArrayId,
+      'function', includesMethodId,
+      'calls_method_on'  // includes method is called on the array
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', fileExtensionVarId,
+      'function', includesMethodId,
+      'passes_to'  // fileExtension is passed as parameter to includes
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'function', includesMethodId,
+      'variable', isVideoVarId,
+      'assigns_to'  // includes result assigns to isVideo
     );
 
     // Get visualization data
@@ -694,7 +692,7 @@ exports.analyzeDcimExample = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'DCIM controller example analyzed with detailed relationships',
+      message: 'DCIM controller example analyzed with proper execution chains',
       projectId,
       functionId,
       variables: { 

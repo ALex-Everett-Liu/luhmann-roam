@@ -619,6 +619,9 @@ const NewCodeGraphManager = (function() {
             nodeDiv.classList.add(`scope-${node.scope}`);
         }
         
+        // Create detailed properties for tooltip
+        const properties = getNodeProperties(node);
+        
         let nodeContent = `
             <div class="node-title">${node.label}</div>
             <div class="node-meta">Type: ${node.type}</div>
@@ -627,19 +630,59 @@ const NewCodeGraphManager = (function() {
         
         if (node.type === 'function') {
             if (node.isAsync) {
-                nodeContent += `<div class="node-meta">Async: true</div>`;
+                nodeContent += `<div class="node-meta">⚡ Async Function</div>`;
             }
             if (node.parameters && node.parameters.length > 0) {
                 nodeContent += `<div class="node-meta">Parameters: ${node.parameters.length}</div>`;
             }
+            if (node.file === 'built-in') {
+                nodeContent += `<div class="node-meta">🔧 Built-in Method</div>`;
+            } else if (node.file.includes('Node.js')) {
+                nodeContent += `<div class="node-meta">📦 Node.js Module</div>`;
+            }
         } else if (node.type === 'variable') {
             nodeContent += `<div class="node-meta">Scope: ${node.scope}</div>`;
+            
+            // Add scope-specific icons and info
+            if (node.scope === 'parameter') {
+                nodeContent += `<div class="node-meta">📥 Function Parameter</div>`;
+                if (node.value && node.value.includes('default')) {
+                    nodeContent += `<div class="node-meta">🎯 Has Default Value</div>`;
+                }
+            } else if (node.scope === 'local') {
+                nodeContent += `<div class="node-meta">🔐 Local Variable</div>`;
+                if (node.value && node.value.includes('const')) {
+                    nodeContent += `<div class="node-meta">🔒 Immutable (const)</div>`;
+                }
+            } else if (node.scope === 'literal') {
+                nodeContent += `<div class="node-meta">📝 Literal Value</div>`;
+                if (node.value && node.value.includes('[')) {
+                    nodeContent += `<div class="node-meta">📋 Array Literal</div>`;
+                }
+            }
+            
             if (node.value) {
-                nodeContent += `<div class="node-value">${node.value}</div>`;
+                nodeContent += `<div class="node-value">${truncateValue(node.value, 50)}</div>`;
             }
         }
         
+        // Add tooltip with detailed properties
+        nodeDiv.setAttribute('title', properties.join('\n'));
+        nodeDiv.setAttribute('data-tooltip', JSON.stringify({
+            title: node.label,
+            type: node.type,
+            scope: node.scope,
+            file: node.file,
+            line: node.line,
+            value: node.value,
+            properties: properties
+        }));
+        
         nodeDiv.innerHTML = nodeContent;
+        
+        // Add click handler for detailed tooltip
+        nodeDiv.addEventListener('click', () => showDetailedTooltip(node));
+        
         return nodeDiv;
     }
 
@@ -653,20 +696,169 @@ const NewCodeGraphManager = (function() {
             depDiv.setAttribute('data-relationship', edge.relationship);
             
             const relationshipText = getRelationshipDescription(edge.relationship);
+            const edgeProperties = getEdgeProperties(edge, sourceNode, targetNode);
             
             depDiv.innerHTML = `
                 <strong>${sourceNode.label}</strong>
-                <span class="dependency-arrow">${relationshipText}</span>
+                <span class="dependency-arrow" title="${edgeProperties.join('\n')}">${relationshipText}</span>
                 <strong>${targetNode.label}</strong>
             `;
+            
+            // Add click handler for detailed edge tooltip
+            depDiv.addEventListener('click', () => showDetailedEdgeTooltip(edge, sourceNode, targetNode));
+            
             return depDiv;
         }
         return document.createElement('div');
     }
 
-    /**
-     * Get human-readable description for relationship types
-     */
+    // Helper functions for enhanced tooltips
+    function getNodeProperties(node) {
+        const properties = [];
+        
+        properties.push(`Name: ${node.label}`);
+        properties.push(`Type: ${node.type}`);
+        properties.push(`Location: ${node.file}:${node.line}`);
+        
+        if (node.scope) {
+            properties.push(`Scope: ${node.scope}`);
+        }
+        
+        if (node.type === 'function') {
+            if (node.isAsync) {
+                properties.push('🔄 Asynchronous function');
+            }
+            if (node.parameters && node.parameters.length > 0) {
+                properties.push(`Parameters: ${node.parameters.map(p => p.name).join(', ')}`);
+            }
+            if (node.file === 'built-in') {
+                properties.push('🔧 JavaScript built-in method');
+            } else if (node.file.includes('Node.js')) {
+                properties.push('📦 Node.js standard library');
+            }
+        }
+        
+        if (node.type === 'variable') {
+            if (node.scope === 'parameter') {
+                properties.push('📥 Input parameter to function');
+                if (node.value && node.value.includes('default')) {
+                    const defaultMatch = node.value.match(/default[:\s]+(\d+)/);
+                    if (defaultMatch) {
+                        properties.push(`🎯 Default value: ${defaultMatch[1]}`);
+                    }
+                }
+            } else if (node.scope === 'local') {
+                properties.push('🔐 Local variable within function');
+                if (node.value && node.value.includes('const')) {
+                    properties.push('🔒 Immutable constant declaration');
+                }
+            } else if (node.scope === 'literal') {
+                properties.push('📝 Literal value in code');
+                if (node.value && node.value.includes('[')) {
+                    const arrayMatch = node.value.match(/\[(.*)\]/);
+                    if (arrayMatch) {
+                        const elements = arrayMatch[1].split(',').length;
+                        properties.push(`📋 Array with ${elements} elements`);
+                    }
+                }
+            }
+            
+            if (node.value) {
+                properties.push(`Value: ${node.value}`);
+            }
+        }
+        
+        return properties;
+    }
+
+    function getEdgeProperties(edge, sourceNode, targetNode) {
+        const properties = [];
+        
+        properties.push(`Relationship: ${getRelationshipDescription(edge.relationship)}`);
+        properties.push(`From: ${sourceNode.label} (${sourceNode.type})`);
+        properties.push(`To: ${targetNode.label} (${targetNode.type})`);
+        
+        // Add relationship-specific details
+        switch (edge.relationship) {
+            case 'passes_to':
+                properties.push('🔄 Data flows as input parameter');
+                break;
+            case 'chains_to':
+                properties.push('🔗 Method chaining - result becomes input');
+                break;
+            case 'assigns_to':
+                properties.push('💾 Final result stored in variable');
+                break;
+            case 'calls_method_on':
+                properties.push('📞 Method invoked on this object');
+                break;
+            case 'contains':
+                properties.push('📦 Scope containment relationship');
+                break;
+            case 'transforms_via':
+                properties.push('🔄 Data transformation through function');
+                break;
+            case 'validates_against':
+                properties.push('✅ Validation check performed');
+                break;
+        }
+        
+        return properties;
+    }
+
+    function showDetailedTooltip(node) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'detailed-tooltip';
+        tooltip.innerHTML = `
+            <div class="tooltip-header">
+                <h4>${node.label}</h4>
+                <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="tooltip-content">
+                ${getNodeProperties(node).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // Position tooltip
+        tooltip.style.position = 'fixed';
+        tooltip.style.top = '50%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+        tooltip.style.zIndex = '10001';
+    }
+
+    function showDetailedEdgeTooltip(edge, sourceNode, targetNode) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'detailed-tooltip';
+        tooltip.innerHTML = `
+            <div class="tooltip-header">
+                <h4>Relationship Details</h4>
+                <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="tooltip-content">
+                ${getEdgeProperties(edge, sourceNode, targetNode).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // Position tooltip
+        tooltip.style.position = 'fixed';
+        tooltip.style.top = '50%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+        tooltip.style.zIndex = '10001';
+    }
+
+    function truncateValue(value, maxLength) {
+        if (!value) return '';
+        if (value.length <= maxLength) return value;
+        return value.substring(0, maxLength) + '...';
+    }
+
+    // Update the relationship descriptions
     function getRelationshipDescription(relationshipType) {
         const descriptions = {
             'derives_from': 'derives from',
@@ -674,14 +866,16 @@ const NewCodeGraphManager = (function() {
             'transforms_via': 'transforms via',
             'computes_from': 'computes from',
             'assigns_from': 'assigns from',
-            'chains_from': 'chains method from',
+            'passes_to': 'passes to',
+            'chains_to': 'chains to',
+            'assigns_to': 'assigns to',
+            'calls_method_on': 'calls method on',
             'validates_against': 'validates against',
             'filters_by': 'filters by',
             'checks': 'checks',
             'compares_with': 'compares with',
             'includes_check': 'checks inclusion in',
             'calls': 'calls',
-            'passes_to': 'passes to',
             'returns_to': 'returns to',
             'invokes': 'invokes',
             'uses_parameter': 'uses parameter',
