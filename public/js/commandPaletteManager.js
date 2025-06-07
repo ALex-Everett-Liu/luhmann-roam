@@ -2120,10 +2120,21 @@ const CommandPaletteManager = (function() {
             registerCommand({
                 name: 'Open Code Graph Manager',
                 action: () => {
-                    if (isPluginEnabled('codeGraphManager')) {
-                    window.CodeGraphManager.show();
-                    } else {
+                    if (!isPluginEnabled('codeGraphManager')) {
                         alert('Code Graph (Legacy) plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    
+                    try {
+                        // Ensure it's initialized before showing
+                        if (!window.CodeGraphManager._isInitialized) {
+                            console.log('Initializing CodeGraphManager...');
+                            window.CodeGraphManager.initialize();
+                        }
+                        window.CodeGraphManager.show();
+                    } catch (error) {
+                        console.error('Error opening Code Graph Manager:', error);
+                        alert('Failed to open Code Graph Manager. Please check the console for details.');
                     }
                 },
                 category: 'Code Analysis',
@@ -2131,7 +2142,6 @@ const CommandPaletteManager = (function() {
                 keywords: ['code', 'graph', 'entities', 'functions', 'classes', 'relationships', 'analysis']
             });
             
-            // Register all other legacy code graph commands with the same plugin check
             registerCommand({
                 name: 'Toggle Code Graph Manager',
                 action: () => {
@@ -2139,20 +2149,28 @@ const CommandPaletteManager = (function() {
                         alert('Code Graph (Legacy) plugin is disabled. Please enable it in Settings > Plugins.');
                         return;
                     }
-                    if (window.CodeGraphManager.isVisible()) {
-                        window.CodeGraphManager.hide();
-                    } else {
-                        window.CodeGraphManager.show();
+                    
+                    try {
+                        // Ensure it's initialized before checking visibility
+                        if (!window.CodeGraphManager._isInitialized) {
+                            console.log('Initializing CodeGraphManager...');
+                            window.CodeGraphManager.initialize();
+                        }
+                        
+                        if (window.CodeGraphManager.isVisible()) {
+                            window.CodeGraphManager.hide();
+                        } else {
+                            window.CodeGraphManager.show();
+                        }
+                    } catch (error) {
+                        console.error('Error toggling Code Graph Manager:', error);
+                        alert('Failed to toggle Code Graph Manager. Please check the console for details.');
                     }
                 },
                 category: 'Code Analysis',
                 keywords: ['code', 'graph', 'toggle', 'show', 'hide']
             });
-            
-            // ... (add plugin checks to all other legacy commands)
-            
         } else if (window.CodeGraphManager && !isPluginEnabled('codeGraphManager')) {
-            // Don't register any commands if plugin is disabled
             console.log('Code Graph (Legacy) commands not registered - plugin is disabled');
         }
         
@@ -2162,18 +2180,35 @@ const CommandPaletteManager = (function() {
                 name: 'Open New Code Graph (Simple)',
                 action: () => {
                     if (isPluginEnabled('newCodeGraphManager')) {
-                    window.NewCodeGraphManager.show();
+                        window.NewCodeGraphManager.show();
                     } else {
                         alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
                     }
                 },
                 category: 'Code Analysis',
                 shortcut: 'Alt+N',
-                keywords: ['new', 'code', 'graph', 'simple', 'clean', 'analysis']
+                keywords: ['new', 'code', 'graph', 'simple', 'clean', 'analysis', 'crud', 'project']
             });
             
             registerCommand({
-                name: 'New Code Graph - Analyze DCIM Example',
+                name: 'Toggle New Code Graph',
+                action: () => {
+                    if (!isPluginEnabled('newCodeGraphManager')) {
+                        alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    if (window.NewCodeGraphManager.getIsVisible()) {
+                        window.NewCodeGraphManager.hide();
+                    } else {
+                        window.NewCodeGraphManager.show();
+                    }
+                },
+                category: 'Code Analysis',
+                keywords: ['new', 'code', 'graph', 'toggle', 'show', 'hide']
+            });
+            
+            registerCommand({
+                name: 'New Code Graph - Create DCIM Template',
                 action: () => {
                     if (!isPluginEnabled('newCodeGraphManager')) {
                         alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
@@ -2181,11 +2216,11 @@ const CommandPaletteManager = (function() {
                     }
                     window.NewCodeGraphManager.show();
                     setTimeout(() => {
-                        window.NewCodeGraphManager.analyzeDcimExample();
+                        window.NewCodeGraphManager.createSavedDcimExample();
                     }, 300);
                 },
                 category: 'Code Analysis',
-                keywords: ['new', 'code', 'dcim', 'example', 'analyze', 'simple']
+                keywords: ['new', 'code', 'dcim', 'template', 'example', 'create']
             });
             
             registerCommand({
@@ -2203,8 +2238,39 @@ const CommandPaletteManager = (function() {
                 category: 'Code Analysis',
                 keywords: ['new', 'code', 'database', 'initialize', 'setup']
             });
+            
+            registerCommand({
+                name: 'New Code Graph - Load Projects',
+                action: () => {
+                    if (!isPluginEnabled('newCodeGraphManager')) {
+                        alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.NewCodeGraphManager.show();
+                    setTimeout(() => {
+                        window.NewCodeGraphManager.loadProjects();
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['new', 'code', 'projects', 'load', 'refresh']
+            });
+            
+            registerCommand({
+                name: 'New Code Graph - Create Project',
+                action: () => {
+                    if (!isPluginEnabled('newCodeGraphManager')) {
+                        alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.NewCodeGraphManager.show();
+                    setTimeout(() => {
+                        window.NewCodeGraphManager.showCreateProjectForm();
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['new', 'code', 'project', 'create', 'add']
+            });
         } else if (window.NewCodeGraphManager && !isPluginEnabled('newCodeGraphManager')) {
-            // Don't register any commands if plugin is disabled
             console.log('New Code Graph commands not registered - plugin is disabled');
         }
     }

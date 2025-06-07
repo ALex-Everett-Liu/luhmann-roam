@@ -17,6 +17,13 @@ const PluginAwareInitializer = (function() {
             return;
         }
         
+        // Debug: Check what's available
+        console.log('Available modules:', {
+            NewCodeGraphManager: !!window.NewCodeGraphManager,
+            PluginManager: !!window.PluginManager,
+            addButtonToSidebar: !!window.addButtonToSidebar
+        });
+        
         // ADDED: Wait for PluginManager to be fully initialized
         if (!window.PluginManager.isInitialized) {
             console.warn('PluginManager not fully initialized, deferring initialization');
@@ -82,6 +89,8 @@ const PluginAwareInitializer = (function() {
             const isEnabled = config.enabled || 
                              (config.pluginId && PluginManager.isPluginEnabled(config.pluginId));
             
+            console.log(`Module: ${config.name}, Plugin ID: ${config.pluginId}, Enabled: ${isEnabled}`);
+            
             if (isEnabled) {
                 console.log(`✅ Initializing ${config.name}...`);
                 try {
@@ -139,10 +148,22 @@ const PluginAwareInitializer = (function() {
      * Initialize New Code Graph Manager only if plugin is enabled
      */
     function initializeNewCodeGraphManager() {
-        if (window.NewCodeGraphManager && !window.NewCodeGraphManager.isInitialized) {
-            NewCodeGraphManager.initialize();
-            // Add sidebar button
-            addNewCodeGraphButton();
+        if (window.NewCodeGraphManager) {
+            console.log('🔧 Found NewCodeGraphManager, attempting initialization...');
+            
+            try {
+                // Don't check isInitialized flag for now, just initialize
+                NewCodeGraphManager.initialize();
+                console.log('✅ NewCodeGraphManager.initialize() completed');
+                
+                // Add sidebar button
+                addNewCodeGraphButton();
+                console.log('✅ NewCodeGraphManager button added to sidebar');
+            } catch (error) {
+                console.error('❌ Failed to initialize NewCodeGraphManager:', error);
+            }
+        } else {
+            console.log('❌ NewCodeGraphManager not found on window object');
         }
     }
     
@@ -150,10 +171,17 @@ const PluginAwareInitializer = (function() {
      * Initialize Code Graph Manager (Legacy) only if plugin is enabled
      */
     function initializeCodeGraphManager() {
-        if (window.CodeGraphManager && !window.CodeGraphManager.isInitialized) {
-            CodeGraphManager.initialize();
-            // Add sidebar button
-            addCodeGraphButton();
+        if (window.CodeGraphManager) {
+            // The legacy CodeGraphManager doesn't have an isInitialized flag
+            // So we'll check if it has been initialized by checking if it has a container
+            try {
+                CodeGraphManager.initialize();
+                // Add sidebar button
+                addCodeGraphButton();
+                console.log('✅ CodeGraphManager initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize CodeGraphManager:', error);
+            }
         }
     }
     
@@ -262,6 +290,8 @@ const PluginAwareInitializer = (function() {
     }
     
     function addNewCodeGraphButton() {
+        console.log('🔧 Creating New Code Graph button...');
+        
         const toggleNewCodeGraphButton = document.createElement('button');
         toggleNewCodeGraphButton.id = 'toggle-new-code-graph';
         toggleNewCodeGraphButton.className = 'feature-toggle';
@@ -269,21 +299,50 @@ const PluginAwareInitializer = (function() {
         toggleNewCodeGraphButton.title = 'Simple, clean code analysis and visualization';
         
         toggleNewCodeGraphButton.addEventListener('click', function() {
-            if (window.PluginManager && !PluginManager.isPluginEnabled('newCodeGraphManager')) {
-                alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
-                return;
-            }
+            console.log('New Code Graph button clicked');
+            
+            // Remove plugin check for now to test
+            // if (window.PluginManager && !PluginManager.isPluginEnabled('newCodeGraphManager')) {
+            //     alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+            //     return;
+            // }
             
             if (window.NewCodeGraphManager) {
-                if (NewCodeGraphManager.isVisible()) {
-                    NewCodeGraphManager.hide();
-                } else {
-                    NewCodeGraphManager.show();
+                try {
+                    const isVisible = NewCodeGraphManager.getIsVisible();
+                    console.log('Current visibility:', isVisible);
+                    
+                    if (isVisible) {
+                        NewCodeGraphManager.hide();
+                        console.log('Hiding NewCodeGraphManager');
+                    } else {
+                        NewCodeGraphManager.show();
+                        console.log('Showing NewCodeGraphManager');
+                    }
+                } catch (error) {
+                    console.error('Error toggling NewCodeGraphManager:', error);
+                    alert('Error: ' + error.message);
                 }
+            } else {
+                console.error('NewCodeGraphManager not available');
+                alert('NewCodeGraphManager not available');
             }
         });
         
-        window.addButtonToSidebar(toggleNewCodeGraphButton);
+        // Check if addButtonToSidebar is available
+        if (window.addButtonToSidebar) {
+            window.addButtonToSidebar(toggleNewCodeGraphButton);
+            console.log('✅ New Code Graph button added to sidebar');
+        } else {
+            console.error('❌ addButtonToSidebar not available');
+            // Try again later
+            setTimeout(() => {
+                if (window.addButtonToSidebar) {
+                    window.addButtonToSidebar(toggleNewCodeGraphButton);
+                    console.log('✅ New Code Graph button added to sidebar (delayed)');
+                }
+            }, 1000);
+        }
     }
     
     function addGraphManagementButton() {

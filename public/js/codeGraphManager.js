@@ -58,9 +58,19 @@ const CodeGraphManager = (function() {
         'produces': 'Produces'
       };
     
+    // Add this at the top of the module, after the variable declarations
+    let _isInitialized = false;
+    
     function initialize() {
-      createContainer();
-      setupEventHandlers();
+        if (_isInitialized) {
+            console.log('CodeGraphManager already initialized');
+            return;
+        }
+        
+        createContainer();
+        setupEventHandlers();
+        _isInitialized = true;
+        console.log('CodeGraphManager initialized successfully');
     }
     
     function createContainer() {
@@ -3605,7 +3615,8 @@ const CodeGraphManager = (function() {
       resetExpressionRelationshipForm,
       enhanceDataFlowTab,
       setupExpressionRelationshipHandlers,
-      loadExpressionRelationships
+      loadExpressionRelationships,
+      _isInitialized: () => _isInitialized
     };
 })();
 
