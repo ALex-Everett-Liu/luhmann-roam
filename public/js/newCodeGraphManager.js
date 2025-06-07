@@ -207,7 +207,10 @@ const NewCodeGraphManager = (function() {
             .force('link', d3.forceLink(links).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(-300))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(30));
+            .force('collision', d3.forceCollide().radius(d => {
+                // Use consistent radius that matches visual appearance + padding
+                return d.type === 'function' ? 25 : 20;
+            }));
         
         // Create links (edges)
         const link = g.append('g')
@@ -250,7 +253,7 @@ const NewCodeGraphManager = (function() {
             .attr('pointer-events', 'none')
             .text(d => getRelationshipDescription(d.relationship));
         
-        // Create nodes (vertices)
+        // Create nodes (vertices) - FIXED HOVER BEHAVIOR
         const node = g.append('g')
             .attr('class', 'nodes')
             .selectAll('g')
@@ -267,14 +270,18 @@ const NewCodeGraphManager = (function() {
                 showDetailedTooltip(d);
             })
             .on('mouseover', function(event, d) {
+                // Only change visual properties that don't affect positioning
                 d3.select(this).select('circle')
                     .attr('stroke-width', 4)
-                    .attr('r', d => (d.type === 'function' ? 22 : 17));
+                    .attr('stroke', '#ff6b6b')  // Add highlight color instead of radius change
+                    .style('filter', 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.4))');
             })
             .on('mouseout', function(event, d) {
+                // Reset to original appearance
                 d3.select(this).select('circle')
                     .attr('stroke-width', 2)
-                    .attr('r', d => (d.type === 'function' ? 20 : 15));
+                    .attr('stroke', '#fff')  // Reset to white stroke
+                    .style('filter', null);
             });
         
         // Add circles for nodes
