@@ -180,8 +180,12 @@ const PluginAwareInitializer = (function() {
      */
     function initializeGraphManagementUI() {
         if (window.GraphManagementUI && !window.GraphManagementUI.isInitialized) {
-            GraphManagementUI.initialize();
-            addGraphManagementButton();
+            try {
+                GraphManagementUI.initialize();
+                addGraphManagementButton();
+            } catch (error) {
+                console.error('Failed to initialize GraphManagementUI:', error);
+            }
         }
     }
     
@@ -190,8 +194,12 @@ const PluginAwareInitializer = (function() {
      */
     function initializeGraphAnalysisVisualizer() {
         if (window.GraphAnalysisVisualizer && !window.GraphAnalysisVisualizer.isInitialized) {
-            GraphAnalysisVisualizer.initialize();
-            addGraphAnalysisButton();
+            try {
+                GraphAnalysisVisualizer.initialize();
+                addGraphAnalysisButton();
+            } catch (error) {
+                console.error('Failed to initialize GraphAnalysisVisualizer:', error);
+            }
         }
     }
     
@@ -249,6 +257,13 @@ const PluginAwareInitializer = (function() {
     }
     
     function addGraphManagementButton() {
+        // Check if addButtonToSidebar is available
+        if (!window.addButtonToSidebar) {
+            console.error('addButtonToSidebar not available, deferring button creation');
+            setTimeout(() => addGraphManagementButton(), 100);
+            return;
+        }
+        
         const toggleGraphManagementButton = document.createElement('button');
         toggleGraphManagementButton.id = 'toggle-graph-management';
         toggleGraphManagementButton.className = 'feature-toggle';
@@ -269,6 +284,13 @@ const PluginAwareInitializer = (function() {
     }
     
     function addGraphAnalysisButton() {
+        // Check if addButtonToSidebar is available
+        if (!window.addButtonToSidebar) {
+            console.error('addButtonToSidebar not available, deferring button creation');
+            setTimeout(() => addGraphAnalysisButton(), 100);
+            return;
+        }
+        
         const toggleGraphAnalysisButton = document.createElement('button');
         toggleGraphAnalysisButton.id = 'toggle-graph-analysis';
         toggleGraphAnalysisButton.className = 'feature-toggle';

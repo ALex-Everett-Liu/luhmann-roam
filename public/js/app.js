@@ -1,5 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
   // ================================================================
+  // MOVE THIS TO THE TOP - Make addButtonToSidebar available globally early
+  // ================================================================
+  
+  // Define this function at the top of the file, after other variable declarations
+  function addButtonToSidebar(button) {
+    const sidebarElement = document.querySelector('.sidebar');
+    if (sidebarElement) {
+      sidebarElement.appendChild(button);
+    }
+  }
+  
+  // Make it available globally immediately
+  window.addButtonToSidebar = addButtonToSidebar;
+
+  // ================================================================
   // ALL APPLICATION CODE AND FUNCTIONS SHOULD BE DEFINED INSIDE HERE
   // =
   const outlinerContainer = document.getElementById('outliner-container');
@@ -1013,14 +1028,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up resizable sidebar
   setupResizableSidebar();
-
-  // Define this function at the top of the file, after other variable declarations
-  function addButtonToSidebar(button) {
-    const sidebarElement = document.querySelector('.sidebar');
-    if (sidebarElement) {
-      sidebarElement.appendChild(button);
-    }
-  }
 
   // Add clear default focus button (just once)
   const clearDefaultFocusButton = document.createElement('button');
