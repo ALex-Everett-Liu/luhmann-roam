@@ -130,8 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
       outlinerContainer.appendChild(nodeElement);
     }
     
-    // Use DragDropManager instead of local function
-    if (window.DragDropManager) {
+    // Use DragDropManager instead of local function - ONLY if plugin is enabled
+    if (window.DragDropManager && window.PluginManager && PluginManager.isPluginEnabled('dragDropManager')) {
       DragDropManager.setupDragAndDrop();
     }
 
@@ -1596,143 +1596,7 @@ document.addEventListener('DOMContentLoaded', () => {
     SettingsManager.initialize();
   }
 
-  // Initialize the GraphAnalysisVisualizer
-  if (window.GraphAnalysisVisualizer) {
-    console.log('Setting up GraphAnalysisVisualizer initialization from app.js');
-    GraphAnalysisVisualizer.initialize();
-  }
-
-  // Add a toggle button for the graph analysis visualizer
-  const toggleGraphAnalysisButton = document.createElement('button');
-  toggleGraphAnalysisButton.id = 'toggle-graph-analysis';
-  toggleGraphAnalysisButton.className = 'feature-toggle';
-  toggleGraphAnalysisButton.textContent = 'Graph Analysis';
-  toggleGraphAnalysisButton.title = 'Open advanced graph analysis and visualization';
-
-  toggleGraphAnalysisButton.addEventListener('click', function() {
-    console.log('Graph Analysis button clicked');
-    console.log('GraphAnalysisVisualizer exists:', !!window.GraphAnalysisVisualizer);
-    
-    if (window.GraphAnalysisVisualizer) {
-      const isVisible = GraphAnalysisVisualizer.isVisible();
-      console.log('Is currently visible:', isVisible);
-      
-      if (isVisible) {
-        console.log('Hiding graph analysis');
-        GraphAnalysisVisualizer.hide();
-      } else {
-        console.log('Showing graph analysis');
-        GraphAnalysisVisualizer.show();
-      }
-    } else {
-      console.error('GraphAnalysisVisualizer is not available');
-      alert('Graph Analysis module not loaded. Please refresh the page.');
-    }
-  });
-
-  // Add to sidebar using helper function
-  addButtonToSidebar(toggleGraphAnalysisButton);
-
-  // Initialize the GraphManagementUI
-  if (window.GraphManagementUI) {
-    console.log('Setting up GraphManagementUI initialization from app.js');
-    GraphManagementUI.initialize();
-  }
-
-  // Add graph management button
-  const toggleGraphManagementButton = document.createElement('button');
-  toggleGraphManagementButton.id = 'toggle-graph-management';
-  toggleGraphManagementButton.className = 'feature-toggle';
-  toggleGraphManagementButton.textContent = 'Graph Management';
-  toggleGraphManagementButton.title = 'Manage graph vertices and edges';
-
-  toggleGraphManagementButton.addEventListener('click', function() {
-    if (window.GraphManagementUI) {
-      if (GraphManagementUI.isVisible()) {
-        GraphManagementUI.hide();
-      } else {
-        GraphManagementUI.show();
-      }
-    }
-  });
-
-  addButtonToSidebar(toggleGraphManagementButton);
-
-  // Initialize Code Graph Manager
-  if (window.CodeGraphManager) {
-    console.log('Setting up CodeGraphManager initialization from app.js');
-    CodeGraphManager.initialize();
-  } else {
-    console.error('CodeGraphManager not found on window object');
-  }
   
-  // Add code graph button - UPDATED to check plugin state
-  const toggleCodeGraphButton = document.createElement('button');
-  toggleCodeGraphButton.id = 'toggle-code-graph';
-  toggleCodeGraphButton.className = 'feature-toggle';
-  toggleCodeGraphButton.textContent = 'Code Graph';
-  toggleCodeGraphButton.title = 'Manage code entities and relationships';
-
-  toggleCodeGraphButton.addEventListener('click', function() {
-    console.log('Code Graph button clicked');
-    
-    // Check if plugin is enabled first
-    if (window.PluginManager && !PluginManager.isPluginEnabled('codeGraphManager')) {
-      alert('Code Graph (Legacy) plugin is disabled. Please enable it in Settings > Plugins.');
-      return;
-    }
-    
-    if (window.CodeGraphManager) {
-      if (CodeGraphManager.isVisible()) {
-        CodeGraphManager.hide();
-      } else {
-        CodeGraphManager.show();
-      }
-    }
-  });
-
-  console.log('About to add Code Graph button to sidebar');
-  addButtonToSidebar(toggleCodeGraphButton);
-  console.log('Code Graph button added to sidebar');
-
-  // Initialize New Code Graph Manager - UPDATED to use PluginManager
-  if (window.NewCodeGraphManager && window.PluginManager && PluginManager.isPluginEnabled('newCodeGraphManager')) {
-    console.log('Setting up NewCodeGraphManager initialization from app.js via PluginManager');
-    NewCodeGraphManager.initialize();
-  } else if (window.NewCodeGraphManager) {
-    console.log('NewCodeGraphManager available but plugin disabled or PluginManager not available');
-  } else {
-    console.error('NewCodeGraphManager not found on window object');
-  }
-
-  // UPDATED: Modify the button click handler to check plugin state
-  const toggleNewCodeGraphButton = document.createElement('button');
-  toggleNewCodeGraphButton.id = 'toggle-new-code-graph';
-  toggleNewCodeGraphButton.className = 'feature-toggle';
-  toggleNewCodeGraphButton.textContent = 'New Code Graph';
-  toggleNewCodeGraphButton.title = 'Simple, clean code analysis and visualization';
-
-  toggleNewCodeGraphButton.addEventListener('click', function() {
-    console.log('New Code Graph button clicked');
-    
-    // Check if plugin is enabled first
-    if (window.PluginManager && !PluginManager.isPluginEnabled('newCodeGraphManager')) {
-      alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
-      return;
-    }
-    
-    if (window.NewCodeGraphManager) {
-      if (NewCodeGraphManager.isVisible()) {
-        NewCodeGraphManager.hide();
-      } else {
-        NewCodeGraphManager.show();
-      }
-    }
-  });
-
-  console.log('About to add New Code Graph button to sidebar');
-  addButtonToSidebar(toggleNewCodeGraphButton);
-  console.log('New Code Graph button added to sidebar');
 
   // Initialize the NodeSizeHighlightManager (remove duplicate initialization)
   // The manager initializes itself, so we don't need to do it here
