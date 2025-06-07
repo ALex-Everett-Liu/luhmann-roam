@@ -1267,6 +1267,28 @@ const NewCodeGraphManager = (function() {
         showStatus('Visualization cleared');
     }
 
+    /**
+     * Global cleanup function to remove any interfering elements
+     */
+    function globalCleanup() {
+        // Remove any fullscreen overlays
+        const fullscreenOverlay = document.getElementById('ncg-fullscreen-overlay');
+        if (fullscreenOverlay) {
+            document.body.removeChild(fullscreenOverlay);
+        }
+        
+        // Remove global event listeners
+        document.removeEventListener('keydown', handleFullscreenEscape);
+        
+        // Clear any global state
+        isFullscreen = false;
+        originalContainer = null;
+        svg = null;
+        simulation = null;
+        
+        console.log('NewCodeGraphManager global cleanup completed');
+    }
+
     // Public API
     return {
         initialize,
@@ -1282,7 +1304,8 @@ const NewCodeGraphManager = (function() {
         fitGraphToView,
         handleZoom,
         toggleFullscreen,
-        exitFullscreen
+        exitFullscreen,
+        globalCleanup
     };
 })();
 

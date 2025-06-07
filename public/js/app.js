@@ -1717,15 +1717,17 @@ document.addEventListener('DOMContentLoaded', () => {
   addButtonToSidebar(toggleCodeGraphButton);
   console.log('Code Graph button added to sidebar');
 
-  // Initialize New Code Graph Manager
-  if (window.NewCodeGraphManager) {
-    console.log('Setting up NewCodeGraphManager initialization from app.js');
+  // Initialize New Code Graph Manager - UPDATED to use PluginManager
+  if (window.NewCodeGraphManager && window.PluginManager && PluginManager.isPluginEnabled('newCodeGraphManager')) {
+    console.log('Setting up NewCodeGraphManager initialization from app.js via PluginManager');
     NewCodeGraphManager.initialize();
+  } else if (window.NewCodeGraphManager) {
+    console.log('NewCodeGraphManager available but plugin disabled or PluginManager not available');
   } else {
     console.error('NewCodeGraphManager not found on window object');
   }
 
-  // Add new code graph button
+  // UPDATED: Modify the button click handler to check plugin state
   const toggleNewCodeGraphButton = document.createElement('button');
   toggleNewCodeGraphButton.id = 'toggle-new-code-graph';
   toggleNewCodeGraphButton.className = 'feature-toggle';
@@ -1734,6 +1736,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   toggleNewCodeGraphButton.addEventListener('click', function() {
     console.log('New Code Graph button clicked');
+    
+    // Check if plugin is enabled first
+    if (window.PluginManager && !PluginManager.isPluginEnabled('newCodeGraphManager')) {
+      alert('New Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+      return;
+    }
+    
     if (window.NewCodeGraphManager) {
       if (NewCodeGraphManager.isVisible()) {
         NewCodeGraphManager.hide();

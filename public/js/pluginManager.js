@@ -154,6 +154,64 @@
           defaultEnabled: true,
           category: 'data'
         });
+        
+        // Register NewCodeGraphManager
+        this.registerPlugin('newCodeGraphManager', {
+          name: 'New Code Graph',
+          description: 'Simple, clean code analysis and visualization tool',
+          defaultEnabled: true,
+          requiresReload: false,
+          category: 'analysis',
+          initialize: function() {
+            if (window.NewCodeGraphManager) {
+              console.log('Initializing NewCodeGraphManager plugin');
+              NewCodeGraphManager.initialize();
+              return true;
+            }
+            return false;
+          },
+          cleanup: function() {
+            if (window.NewCodeGraphManager) {
+              console.log('Cleaning up NewCodeGraphManager plugin');
+              NewCodeGraphManager.hide();
+              
+              // Remove any fullscreen overlays
+              const fullscreenOverlay = document.getElementById('ncg-fullscreen-overlay');
+              if (fullscreenOverlay) {
+                document.body.removeChild(fullscreenOverlay);
+              }
+              
+              // Remove modal if open
+              const modal = document.querySelector('.new-code-graph-modal');
+              if (modal) {
+                modal.style.display = 'none';
+              }
+              
+              return true;
+            }
+            return false;
+          },
+          toggle: function(enabled) {
+            if (window.NewCodeGraphManager) {
+              if (enabled) {
+                NewCodeGraphManager.initialize();
+              } else {
+                NewCodeGraphManager.hide();
+                
+                // Clean up any global styles that might affect cursor
+                const fullscreenOverlay = document.getElementById('ncg-fullscreen-overlay');
+                if (fullscreenOverlay) {
+                  document.body.removeChild(fullscreenOverlay);
+                }
+                
+                // Remove any global event listeners
+                document.removeEventListener('keydown', window.handleFullscreenEscape);
+              }
+              return true;
+            }
+            return false;
+          }
+        });
       },
       
       // Load saved plugin states from localStorage

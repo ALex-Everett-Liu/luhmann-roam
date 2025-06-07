@@ -907,8 +907,9 @@
     margin-right: 4px;
 }
 
-/* Enhanced graph controls for better fullscreen experience */
-.graph-controls {
+/* Enhanced graph controls for better fullscreen experience - SCOPE FIXED */
+.new-code-graph-modal .graph-controls,
+.ncg-fullscreen-controls .ncg-fullscreen-graph-controls {
     display: flex;
     gap: 15px;
     align-items: center;
@@ -920,8 +921,78 @@
     flex-wrap: wrap;
 }
 
-.graph-controls .btn {
+.new-code-graph-modal .graph-controls .btn,
+.ncg-fullscreen-controls .btn {
     white-space: nowrap;
+}
+
+/* FIXED: Make cursor styles more specific to avoid affecting main outliner */
+.new-code-graph-modal .graph-svg-container svg,
+.ncg-fullscreen-graph-container svg {
+    display: block;
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    cursor: grab;
+}
+
+.new-code-graph-modal .graph-svg-container svg:active,
+.ncg-fullscreen-graph-container svg:active {
+    cursor: grabbing;
+}
+
+/* FIXED: Scope node cursor styles to only affect graph nodes */
+.new-code-graph-modal .node,
+.ncg-fullscreen-graph-container .node {
+    cursor: pointer;
+    /* REMOVED: transition that conflicts with D3 positioning */
+}
+
+.new-code-graph-modal .node circle,
+.ncg-fullscreen-graph-container .node circle {
+    stroke: #fff;
+    stroke-width: 2px;
+    /* Only transition safe properties that don't affect positioning */
+    transition: stroke-width 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+}
+
+.new-code-graph-modal .node text,
+.ncg-fullscreen-graph-container .node text {
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.new-code-graph-modal .links line,
+.ncg-fullscreen-graph-container .links line {
+    stroke: #999;
+    stroke-opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.new-code-graph-modal .links line:hover,
+.ncg-fullscreen-graph-container .links line:hover {
+    stroke-width: 4px !important;
+    stroke-opacity: 1 !important;
+}
+
+.new-code-graph-modal .link-labels text,
+.ncg-fullscreen-graph-container .link-labels text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 10px;
+    fill: #666;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* FIXED: Scope click animations to only affect graph elements */
+.new-code-graph-modal .node.clicked,
+.ncg-fullscreen-graph-container .node.clicked {
+    animation: nodeClick 0.3s ease;
+}
+
+.new-code-graph-modal .links line.clicked,
+.ncg-fullscreen-graph-container .links line.clicked {
+    animation: edgeClick 0.3s ease;
 }
 
 /* Responsive fullscreen */
