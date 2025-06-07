@@ -6,6 +6,36 @@ const fs = require('fs');
 class NewCodeGraphController {
   constructor() {
     this.currentProject = null;
+    
+    // Define semantic relationship types for better code analysis
+    this.RELATIONSHIP_TYPES = {
+      // Data flow relationships
+      'derives_from': 'derives data from',
+      'extracts_from': 'extracts value from', 
+      'transforms_via': 'transforms using',
+      'computes_from': 'computes result from',
+      'assigns_from': 'assigns value from',
+      
+      // Validation/checking relationships
+      'validates_against': 'validates using',
+      'filters_by': 'filters using',
+      'checks': 'performs check on',
+      'compares_with': 'compares against',
+      
+      // Function relationships  
+      'calls': 'invokes function',
+      'passes_to': 'passes argument to',
+      'returns_to': 'returns value to',
+      'invokes': 'calls method on',
+      
+      // Control flow
+      'conditions_on': 'conditional based on',
+      'branches_on': 'branches based on',
+      'iterates_over': 'iterates through',
+      
+      // Legacy fallback
+      'uses': 'uses (generic)'
+    };
   }
 
   // Initialize database tables for the simple code graph
@@ -324,6 +354,48 @@ class NewCodeGraphController {
       targetType: dep.target_type
     }));
   }
+
+  // Enhanced method to analyze semantic relationships
+  analyzeSemanticRelationship(sourceValue, targetType, targetName) {
+    if (!sourceValue) return 'uses';
+    
+    const value = sourceValue.toLowerCase();
+    
+    // Function call patterns
+    if (value.includes('.extname(') || value.includes('.basename(') || value.includes('.dirname(')) {
+      return 'extracts_from';
+    }
+    if (value.includes('.tolowercase()') || value.includes('.touppercase()') || value.includes('.trim()')) {
+      return 'transforms_via';
+    }
+    if (value.includes('.includes(') || value.includes('.startswith(') || value.includes('.endswith(')) {
+      return 'validates_against';
+    }
+    if (value.includes('===') || value.includes('!==') || value.includes('==') || value.includes('!=')) {
+      return 'compares_with';
+    }
+    
+    // Array/collection operations
+    if (value.includes('[') && value.includes('].includes(')) {
+      return 'validates_against';
+    }
+    if (value.includes('.map(') || value.includes('.filter(') || value.includes('.reduce(')) {
+      return 'transforms_via';
+    }
+    
+    // Assignment patterns
+    if (targetType === 'variable' && (value.includes('=') || value.includes('new '))) {
+      return 'assigns_from';
+    }
+    
+    // Mathematical operations
+    if (value.match(/[\+\-\*\/\%]/)) {
+      return 'computes_from';
+    }
+    
+    // Default fallback
+    return 'derives_from';
+  }
 }
 
 // Controller instance
@@ -416,28 +488,28 @@ exports.analyzeDcimExample = async (req, res) => {
       'parameter'
     );
 
-    // Record dependencies with proper node IDs
-    // fileExtension depends on path.extname and inputPath
+    // Record dependencies with semantic relationship types
+    // fileExtension extracts from inputPath via path.extname and transforms via toLowerCase
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', fileExtensionVarId,
-      'function', pathExtnameId,  // Now points to actual node
-      'uses'
+      'function', pathExtnameId,
+      'transforms_via'  // path.extname transforms the input
     );
 
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', fileExtensionVarId,
-      'variable', inputPathVarId,  // Now points to actual node
-      'uses'
+      'variable', inputPathVarId,
+      'extracts_from'  // extracts extension from the input path
     );
 
-    // isVideo depends on fileExtension
+    // isVideo validates fileExtension against a list of video extensions
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', isVideoVarId,
       'variable', fileExtensionVarId,
-      'uses'
+      'validates_against'  // checks if extension is in video list
     );
 
     // Get visualization data
@@ -445,11 +517,12 @@ exports.analyzeDcimExample = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'DCIM controller example analyzed successfully',
+      message: 'DCIM controller example analyzed with semantic relationships',
       projectId,
       functionId,
       variables: { fileExtensionVarId, isVideoVarId, inputPathVarId },
-      visualization: visualizationData
+      visualization: visualizationData,
+      relationshipTypes: newCodeGraphController.RELATIONSHIP_TYPES
     });
 
   } catch (error) {

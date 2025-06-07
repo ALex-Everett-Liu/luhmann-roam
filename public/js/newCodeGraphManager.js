@@ -535,7 +535,7 @@ const NewCodeGraphManager = (function() {
             graphContainer.appendChild(nodeDiv);
         });
         
-        // Render dependencies
+        // Render dependencies with enhanced relationship display
         if (data.edges && data.edges.length > 0) {
             data.edges.forEach(edge => {
                 const sourceNode = data.nodes.find(n => n.id === edge.source);
@@ -544,9 +544,14 @@ const NewCodeGraphManager = (function() {
                 if (sourceNode && targetNode) {
                     const depDiv = document.createElement('div');
                     depDiv.className = 'dependency-item';
+                    depDiv.setAttribute('data-relationship', edge.relationship);
+                    
+                    // Create more descriptive relationship text
+                    const relationshipText = getRelationshipDescription(edge.relationship);
+                    
                     depDiv.innerHTML = `
                         <strong>${sourceNode.label}</strong>
-                        <span class="dependency-arrow">→ ${edge.relationship} →</span>
+                        <span class="dependency-arrow">${relationshipText}</span>
                         <strong>${targetNode.label}</strong>
                     `;
                     depsList.appendChild(depDiv);
@@ -555,6 +560,33 @@ const NewCodeGraphManager = (function() {
             
             depsContainer.style.display = 'block';
         }
+    }
+
+    /**
+     * Get human-readable description for relationship types
+     */
+    function getRelationshipDescription(relationshipType) {
+        const descriptions = {
+            'derives_from': 'derives from',
+            'extracts_from': 'extracts from', 
+            'transforms_via': 'transforms via',
+            'computes_from': 'computes from',
+            'assigns_from': 'assigns from',
+            'validates_against': 'validates against',
+            'filters_by': 'filters by',
+            'checks': 'checks',
+            'compares_with': 'compares with',
+            'calls': 'calls',
+            'passes_to': 'passes to',
+            'returns_to': 'returns to',
+            'invokes': 'invokes',
+            'conditions_on': 'conditions on',
+            'branches_on': 'branches on',
+            'iterates_over': 'iterates over',
+            'uses': 'uses'
+        };
+        
+        return descriptions[relationshipType] || relationshipType;
     }
 
     /**

@@ -334,13 +334,55 @@
     border-radius: 6px;
     border-left: 3px solid #28a745;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
 }
 
 .dependency-arrow {
     margin: 0 12px;
     color: #28a745;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
+    background: #e8f5e8;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Different colors for different relationship types */
+.dependency-item[data-relationship="extracts_from"] {
+    border-left-color: #007bff;
+}
+
+.dependency-item[data-relationship="extracts_from"] .dependency-arrow {
+    background: #e3f2fd;
+    color: #007bff;
+}
+
+.dependency-item[data-relationship="transforms_via"] {
+    border-left-color: #6f42c1;
+}
+
+.dependency-item[data-relationship="transforms_via"] .dependency-arrow {
+    background: #f3e5f5;
+    color: #6f42c1;
+}
+
+.dependency-item[data-relationship="validates_against"] {
+    border-left-color: #fd7e14;
+}
+
+.dependency-item[data-relationship="validates_against"] .dependency-arrow {
+    background: #fff3cd;
+    color: #fd7e14;
+}
+
+.dependency-item[data-relationship="computes_from"] {
+    border-left-color: #20c997;
+}
+
+.dependency-item[data-relationship="computes_from"] .dependency-arrow {
+    background: #d1ecf1;
+    color: #20c997;
 }
 
 .projects-container {
