@@ -7,7 +7,7 @@ class NewCodeGraphController {
   constructor() {
     this.currentProject = null;
     
-    // Define semantic relationship types for better code analysis
+    // Enhanced semantic relationship types
     this.RELATIONSHIP_TYPES = {
       // Data flow relationships
       'derives_from': 'derives data from',
@@ -15,18 +15,26 @@ class NewCodeGraphController {
       'transforms_via': 'transforms using',
       'computes_from': 'computes result from',
       'assigns_from': 'assigns value from',
+      'chains_from': 'chains method from',
       
       // Validation/checking relationships
       'validates_against': 'validates using',
       'filters_by': 'filters using',
       'checks': 'performs check on',
       'compares_with': 'compares against',
+      'includes_check': 'checks inclusion in',
       
       // Function relationships  
       'calls': 'invokes function',
       'passes_to': 'passes argument to',
       'returns_to': 'returns value to',
       'invokes': 'calls method on',
+      'uses_parameter': 'uses parameter',
+      
+      // Scope relationships
+      'contains': 'contains variable',
+      'defined_in': 'defined within',
+      'scoped_to': 'scoped to',
       
       // Control flow
       'conditions_on': 'conditional based on',
@@ -396,6 +404,48 @@ class NewCodeGraphController {
     // Default fallback
     return 'derives_from';
   }
+
+  // Enhanced method to analyze built-in methods and literals
+  async analyzeLiteral(projectId, functionId, name, value, type, filePath, lineNumber) {
+    const db = await getDb();
+    
+    try {
+      const literalId = `lit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      await db.run(`
+        INSERT INTO simple_variables (
+          id, project_id, function_id, name, type, value, file_path, line_number, scope
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [literalId, projectId, functionId, name, type, value, filePath, lineNumber, 'literal']);
+      
+      console.log(`Recorded literal: ${name} = ${value} in ${filePath}:${lineNumber}`);
+      return literalId;
+    } catch (error) {
+      console.error('Error analyzing literal:', error);
+      throw error;
+    }
+  }
+
+  // Analyze built-in methods
+  async analyzeBuiltinMethod(projectId, methodName, targetType, filePath, lineNumber) {
+    const db = await getDb();
+    
+    try {
+      const methodId = `builtin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      await db.run(`
+        INSERT INTO simple_functions (
+          id, project_id, name, file_path, line_number, parameters, is_async
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [methodId, projectId, methodName, 'built-in', lineNumber, JSON.stringify([{name: 'value', type: targetType}]), false]);
+      
+      console.log(`Recorded built-in method: ${methodName} in ${filePath}:${lineNumber}`);
+      return methodId;
+    } catch (error) {
+      console.error('Error analyzing built-in method:', error);
+      throw error;
+    }
+  }
 }
 
 // Controller instance
@@ -421,7 +471,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
-// Analyze the specific example from dcimController.js
+// Enhanced DCIM example analysis with finer granularity
 exports.analyzeDcimExample = async (req, res) => {
   try {
     // Initialize database first
@@ -441,6 +491,88 @@ exports.analyzeDcimExample = async (req, res) => {
       'controllers/dcimController.js',
       68,
       'async function generateThumbnail(inputPath, thumbPath, maxSize = 180, quality = 60)'
+    );
+
+    // Create parameter nodes for generateThumbnail
+    const inputPathParamId = await newCodeGraphController.analyzeVariable(
+      projectId,
+      functionId,
+      'inputPath',
+      'string',
+      'function parameter',
+      'controllers/dcimController.js',
+      68,
+      'parameter'
+    );
+
+    const thumbPathParamId = await newCodeGraphController.analyzeVariable(
+      projectId,
+      functionId,
+      'thumbPath',
+      'string',
+      'function parameter',
+      'controllers/dcimController.js',
+      68,
+      'parameter'
+    );
+
+    const maxSizeParamId = await newCodeGraphController.analyzeVariable(
+      projectId,
+      functionId,
+      'maxSize',
+      'number',
+      'function parameter (default: 180)',
+      'controllers/dcimController.js',
+      68,
+      'parameter'
+    );
+
+    const qualityParamId = await newCodeGraphController.analyzeVariable(
+      projectId,
+      functionId,
+      'quality',
+      'number',
+      'function parameter (default: 60)',
+      'controllers/dcimController.js',
+      68,
+      'parameter'
+    );
+
+    // Create external function nodes for dependencies
+    const pathExtnameId = await newCodeGraphController.analyzeFunction(
+      projectId,
+      'path.extname',
+      'path (Node.js module)',
+      0,
+      'function extname(path)'
+    );
+
+    // Create built-in method nodes
+    const toLowerCaseId = await newCodeGraphController.analyzeBuiltinMethod(
+      projectId,
+      'toLowerCase',
+      'string',
+      'controllers/dcimController.js',
+      70
+    );
+
+    const includesMethodId = await newCodeGraphController.analyzeBuiltinMethod(
+      projectId,
+      'includes',
+      'array',
+      'controllers/dcimController.js',
+      71
+    );
+
+    // Create literal array node
+    const videoExtensionsArrayId = await newCodeGraphController.analyzeLiteral(
+      projectId,
+      functionId,
+      'videoExtensions',
+      "['.mp4', '.mov', '.avi', '.mkv', '.webm']",
+      'array',
+      'controllers/dcimController.js',
+      71
     );
 
     // Analyze the fileExtension variable (line 70)
@@ -467,49 +599,94 @@ exports.analyzeDcimExample = async (req, res) => {
       'local'
     );
 
-    // Create external function nodes for dependencies
-    const pathExtnameId = await newCodeGraphController.analyzeFunction(
+    // Record enhanced dependency relationships
+
+    // Function contains its parameters
+    await newCodeGraphController.recordDependency(
       projectId,
-      'path.extname',
-      'path (Node.js module)',
-      0,
-      'function extname(path)'
+      'function', functionId,
+      'variable', inputPathParamId,
+      'contains'
     );
 
-    // Create parameter nodes
-    const inputPathVarId = await newCodeGraphController.analyzeVariable(
+    await newCodeGraphController.recordDependency(
       projectId,
-      functionId,
-      'inputPath',
-      'string',
-      'function parameter',
-      'controllers/dcimController.js',
-      68,
-      'parameter'
+      'function', functionId,
+      'variable', thumbPathParamId,
+      'contains'
     );
 
-    // Record dependencies with semantic relationship types
-    // fileExtension extracts from inputPath via path.extname and transforms via toLowerCase
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'function', functionId,
+      'variable', maxSizeParamId,
+      'contains'
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'function', functionId,
+      'variable', qualityParamId,
+      'contains'
+    );
+
+    // Function contains its local variables
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'function', functionId,
+      'variable', fileExtensionVarId,
+      'contains'
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'function', functionId,
+      'variable', isVideoVarId,
+      'contains'
+    );
+
+    // fileExtension dependency chain: inputPath -> path.extname -> toLowerCase
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', fileExtensionVarId,
+      'variable', inputPathParamId,
+      'uses_parameter'  // uses the input parameter
+    );
+
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', fileExtensionVarId,
       'function', pathExtnameId,
-      'transforms_via'  // path.extname transforms the input
+      'transforms_via'  // transforms via path.extname
     );
 
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', fileExtensionVarId,
-      'variable', inputPathVarId,
-      'extracts_from'  // extracts extension from the input path
+      'function', toLowerCaseId,
+      'chains_from'  // chains toLowerCase method
     );
 
-    // isVideo validates fileExtension against a list of video extensions
+    // isVideo dependency chain: videoExtensions array -> includes method -> fileExtension
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', isVideoVarId,
+      'variable', videoExtensionsArrayId,
+      'validates_against'  // validates against the array
+    );
+
+    await newCodeGraphController.recordDependency(
+      projectId,
+      'variable', isVideoVarId,
+      'function', includesMethodId,
+      'transforms_via'  // uses includes method
+    );
+
     await newCodeGraphController.recordDependency(
       projectId,
       'variable', isVideoVarId,
       'variable', fileExtensionVarId,
-      'validates_against'  // checks if extension is in video list
+      'includes_check'  // checks if fileExtension is included
     );
 
     // Get visualization data
@@ -517,10 +694,23 @@ exports.analyzeDcimExample = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'DCIM controller example analyzed with semantic relationships',
+      message: 'DCIM controller example analyzed with detailed relationships',
       projectId,
       functionId,
-      variables: { fileExtensionVarId, isVideoVarId, inputPathVarId },
+      variables: { 
+        fileExtensionVarId, 
+        isVideoVarId, 
+        inputPathParamId,
+        thumbPathParamId,
+        maxSizeParamId,
+        qualityParamId,
+        videoExtensionsArrayId 
+      },
+      functions: {
+        pathExtnameId,
+        toLowerCaseId,
+        includesMethodId
+      },
       visualization: visualizationData,
       relationshipTypes: newCodeGraphController.RELATIONSHIP_TYPES
     });

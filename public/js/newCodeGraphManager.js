@@ -493,7 +493,7 @@ const NewCodeGraphManager = (function() {
     }
 
     /**
-     * Render the card visualization (existing functionality)
+     * Enhanced visualization with hierarchical relationships
      */
     function renderVisualization(data) {
         const graphContainer = document.getElementById('ncg-graph-container');
@@ -506,60 +506,162 @@ const NewCodeGraphManager = (function() {
         graphContainer.innerHTML = '';
         depsList.innerHTML = '';
         
-        // Render nodes
-        data.nodes.forEach(node => {
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = `code-node ${node.type}`;
+        // Group nodes by type and scope
+        const nodeGroups = {
+            functions: data.nodes.filter(n => n.type === 'function'),
+            parameters: data.nodes.filter(n => n.type === 'variable' && n.scope === 'parameter'),
+            localVars: data.nodes.filter(n => n.type === 'variable' && n.scope === 'local'),
+            literals: data.nodes.filter(n => n.type === 'variable' && n.scope === 'literal'),
+            builtins: data.nodes.filter(n => n.file === 'built-in')
+        };
+        
+        // Render function container
+        const functionContainer = document.createElement('div');
+        functionContainer.className = 'function-container';
+        functionContainer.innerHTML = '<h4>Functions</h4>';
+        
+        nodeGroups.functions.forEach(node => {
+            const nodeDiv = createNodeElement(node);
+            functionContainer.appendChild(nodeDiv);
             
-            let nodeContent = `
-                <div class="node-title">${node.label}</div>
-                <div class="node-meta">Type: ${node.type}</div>
-                <div class="node-meta">File: ${node.file}:${node.line}</div>
-            `;
+            // Add parameters container
+            const paramsContainer = document.createElement('div');
+            paramsContainer.className = 'parameters-container';
+            paramsContainer.innerHTML = '<h5>Parameters</h5>';
             
-            if (node.type === 'function') {
-                if (node.isAsync) {
-                    nodeContent += `<div class="node-meta">Async: true</div>`;
-                }
-                if (node.parameters && node.parameters.length > 0) {
-                    nodeContent += `<div class="node-meta">Parameters: ${node.parameters.length}</div>`;
-                }
-            } else if (node.type === 'variable') {
-                nodeContent += `<div class="node-meta">Scope: ${node.scope}</div>`;
-                if (node.value) {
-                    nodeContent += `<div class="node-value">${node.value}</div>`;
-                }
-            }
+            nodeGroups.parameters.forEach(param => {
+                const paramDiv = createNodeElement(param);
+                paramDiv.classList.add('nested-node');
+                paramsContainer.appendChild(paramDiv);
+            });
             
-            nodeDiv.innerHTML = nodeContent;
-            graphContainer.appendChild(nodeDiv);
+            functionContainer.appendChild(paramsContainer);
+            
+            // Add local variables container
+            const varsContainer = document.createElement('div');
+            varsContainer.className = 'variables-container';
+            varsContainer.innerHTML = '<h5>Local Variables</h5>';
+            
+            nodeGroups.localVars.forEach(variable => {
+                const varDiv = createNodeElement(variable);
+                varDiv.classList.add('nested-node');
+                varsContainer.appendChild(varDiv);
+            });
+            
+            functionContainer.appendChild(varsContainer);
         });
         
-        // Render dependencies with enhanced relationship display
+        graphContainer.appendChild(functionContainer);
+        
+        // Render built-ins and literals separately
+        const builtinsContainer = document.createElement('div');
+        builtinsContainer.className = 'builtins-container';
+        builtinsContainer.innerHTML = '<h4>Built-in Methods & Literals</h4>';
+        
+        [...nodeGroups.builtins, ...nodeGroups.literals].forEach(node => {
+            const nodeDiv = createNodeElement(node);
+            builtinsContainer.appendChild(nodeDiv);
+        });
+        
+        graphContainer.appendChild(builtinsContainer);
+        
+        // Enhanced dependency rendering with grouping
         if (data.edges && data.edges.length > 0) {
-            data.edges.forEach(edge => {
-                const sourceNode = data.nodes.find(n => n.id === edge.source);
-                const targetNode = data.nodes.find(n => n.id === edge.target);
-                
-                if (sourceNode && targetNode) {
-                    const depDiv = document.createElement('div');
-                    depDiv.className = 'dependency-item';
-                    depDiv.setAttribute('data-relationship', edge.relationship);
-                    
-                    // Create more descriptive relationship text
-                    const relationshipText = getRelationshipDescription(edge.relationship);
-                    
-                    depDiv.innerHTML = `
-                        <strong>${sourceNode.label}</strong>
-                        <span class="dependency-arrow">${relationshipText}</span>
-                        <strong>${targetNode.label}</strong>
-                    `;
-                    depsList.appendChild(depDiv);
-                }
-            });
+            const dependencyGroups = {
+                containment: data.edges.filter(e => e.relationship === 'contains'),
+                dataFlow: data.edges.filter(e => ['uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship)),
+                other: data.edges.filter(e => !['contains', 'uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship))
+            };
+            
+            // Render containment relationships
+            if (dependencyGroups.containment.length > 0) {
+                const containmentSection = document.createElement('div');
+                containmentSection.innerHTML = '<h5>Scope Relationships</h5>';
+                dependencyGroups.containment.forEach(edge => {
+                    const depDiv = createDependencyElement(edge, data.nodes);
+                    containmentSection.appendChild(depDiv);
+                });
+                depsList.appendChild(containmentSection);
+            }
+            
+            // Render data flow relationships
+            if (dependencyGroups.dataFlow.length > 0) {
+                const dataFlowSection = document.createElement('div');
+                dataFlowSection.innerHTML = '<h5>Data Flow & Transformations</h5>';
+                dependencyGroups.dataFlow.forEach(edge => {
+                    const depDiv = createDependencyElement(edge, data.nodes);
+                    dataFlowSection.appendChild(depDiv);
+                });
+                depsList.appendChild(dataFlowSection);
+            }
+            
+            // Render other relationships
+            if (dependencyGroups.other.length > 0) {
+                const otherSection = document.createElement('div');
+                otherSection.innerHTML = '<h5>Other Relationships</h5>';
+                dependencyGroups.other.forEach(edge => {
+                    const depDiv = createDependencyElement(edge, data.nodes);
+                    otherSection.appendChild(depDiv);
+                });
+                depsList.appendChild(otherSection);
+            }
             
             depsContainer.style.display = 'block';
         }
+    }
+
+    function createNodeElement(node) {
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = `code-node ${node.type}`;
+        
+        // Add special styling for different scopes
+        if (node.scope) {
+            nodeDiv.classList.add(`scope-${node.scope}`);
+        }
+        
+        let nodeContent = `
+            <div class="node-title">${node.label}</div>
+            <div class="node-meta">Type: ${node.type}</div>
+            <div class="node-meta">File: ${node.file}:${node.line}</div>
+        `;
+        
+        if (node.type === 'function') {
+            if (node.isAsync) {
+                nodeContent += `<div class="node-meta">Async: true</div>`;
+            }
+            if (node.parameters && node.parameters.length > 0) {
+                nodeContent += `<div class="node-meta">Parameters: ${node.parameters.length}</div>`;
+            }
+        } else if (node.type === 'variable') {
+            nodeContent += `<div class="node-meta">Scope: ${node.scope}</div>`;
+            if (node.value) {
+                nodeContent += `<div class="node-value">${node.value}</div>`;
+            }
+        }
+        
+        nodeDiv.innerHTML = nodeContent;
+        return nodeDiv;
+    }
+
+    function createDependencyElement(edge, nodes) {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetNode = nodes.find(n => n.id === edge.target);
+        
+        if (sourceNode && targetNode) {
+            const depDiv = document.createElement('div');
+            depDiv.className = 'dependency-item';
+            depDiv.setAttribute('data-relationship', edge.relationship);
+            
+            const relationshipText = getRelationshipDescription(edge.relationship);
+            
+            depDiv.innerHTML = `
+                <strong>${sourceNode.label}</strong>
+                <span class="dependency-arrow">${relationshipText}</span>
+                <strong>${targetNode.label}</strong>
+            `;
+            return depDiv;
+        }
+        return document.createElement('div');
     }
 
     /**
@@ -572,14 +674,20 @@ const NewCodeGraphManager = (function() {
             'transforms_via': 'transforms via',
             'computes_from': 'computes from',
             'assigns_from': 'assigns from',
+            'chains_from': 'chains method from',
             'validates_against': 'validates against',
             'filters_by': 'filters by',
             'checks': 'checks',
             'compares_with': 'compares with',
+            'includes_check': 'checks inclusion in',
             'calls': 'calls',
             'passes_to': 'passes to',
             'returns_to': 'returns to',
             'invokes': 'invokes',
+            'uses_parameter': 'uses parameter',
+            'contains': 'contains',
+            'defined_in': 'defined in',
+            'scoped_to': 'scoped to',
             'conditions_on': 'conditions on',
             'branches_on': 'branches on',
             'iterates_over': 'iterates over',
