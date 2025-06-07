@@ -174,19 +174,7 @@
             if (window.NewCodeGraphManager) {
               console.log('Cleaning up NewCodeGraphManager plugin');
               NewCodeGraphManager.hide();
-              
-              // Remove any fullscreen overlays
-              const fullscreenOverlay = document.getElementById('ncg-fullscreen-overlay');
-              if (fullscreenOverlay) {
-                document.body.removeChild(fullscreenOverlay);
-              }
-              
-              // Remove modal if open
-              const modal = document.querySelector('.new-code-graph-modal');
-              if (modal) {
-                modal.style.display = 'none';
-              }
-              
+              NewCodeGraphManager.globalCleanup();
               return true;
             }
             return false;
@@ -197,15 +185,86 @@
                 NewCodeGraphManager.initialize();
               } else {
                 NewCodeGraphManager.hide();
+                NewCodeGraphManager.globalCleanup();
+              }
+              return true;
+            }
+            return false;
+          }
+        });
+        
+        // Register CodeGraphManager (Old) - POTENTIAL CURSOR ISSUE CULPRIT
+        this.registerPlugin('codeGraphManager', {
+          name: 'Code Graph (Legacy)',
+          description: 'Complex code analysis and visualization tool (legacy version) - May cause cursor issues',
+          defaultEnabled: false, // Disabled by default since it's legacy and problematic
+          requiresReload: false,
+          category: 'analysis',
+          initialize: function() {
+            if (window.CodeGraphManager) {
+              console.log('Initializing CodeGraphManager (legacy) plugin');
+              CodeGraphManager.initialize();
+              return true;
+            }
+            return false;
+          },
+          cleanup: function() {
+            if (window.CodeGraphManager) {
+              console.log('Cleaning up CodeGraphManager (legacy) plugin');
+              CodeGraphManager.hide();
+              
+              // Clean up any modals or overlays
+              const modal = document.querySelector('.code-graph-modal');
+              if (modal) {
+                modal.style.display = 'none';
+                modal.remove(); // Completely remove the modal
+              }
+              
+              // Remove all global event listeners that might affect cursor
+              // These are the problematic listeners found in lines 2406 and 3381
+              const clonedDocument = document.cloneNode(true);
+              document.parentNode.replaceChild(clonedDocument, document);
+              
+              // Alternative approach: Remove specific known listeners
+              // Note: This is a more targeted cleanup but may not catch all listeners
+              document.removeEventListener('click', window.codeGraphDropdownHandler);
+              document.removeEventListener('click', window.codeGraphAutocompleteHandler);
+              
+              // Reset any global cursor styles
+              document.body.style.cursor = '';
+              document.documentElement.style.cursor = '';
+              
+              return true;
+            }
+            return false;
+          },
+          toggle: function(enabled) {
+            if (window.CodeGraphManager) {
+              if (enabled) {
+                console.warn('⚠️ Enabling legacy CodeGraphManager - this may cause cursor issues in the main outliner');
+                CodeGraphManager.initialize();
+              } else {
+                console.log('🧹 Disabling legacy CodeGraphManager and cleaning up global listeners');
+                CodeGraphManager.hide();
                 
-                // Clean up any global styles that might affect cursor
-                const fullscreenOverlay = document.getElementById('ncg-fullscreen-overlay');
-                if (fullscreenOverlay) {
-                  document.body.removeChild(fullscreenOverlay);
+                // Aggressive cleanup for global listeners
+                const modal = document.querySelector('.code-graph-modal');
+                if (modal) {
+                  modal.style.display = 'none';
+                  modal.remove();
                 }
                 
-                // Remove any global event listeners
-                document.removeEventListener('keydown', window.handleFullscreenEscape);
+                // Remove global event listeners that cause cursor issues
+                document.removeEventListener('click', window.codeGraphDropdownHandler);
+                document.removeEventListener('click', window.codeGraphAutocompleteHandler);
+                
+                // Reset cursor styles
+                document.body.style.cursor = '';
+                document.documentElement.style.cursor = '';
+                
+                // Remove any lingering dropdown elements
+                const dropdowns = document.querySelectorAll('.dropdown-options, .autocomplete-suggestions');
+                dropdowns.forEach(dropdown => dropdown.remove());
               }
               return true;
             }
