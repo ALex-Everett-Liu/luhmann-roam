@@ -639,15 +639,26 @@
     color: #856404;
 }
 
-/* Enhanced tooltip styles */
+/* Enhanced tooltip styles for graph view */
 .detailed-tooltip {
     background: white;
     border: 2px solid #0366d6;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-    min-width: 300px;
+    max-width: 450px;
+    min-width: 350px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    opacity: 1;
+    transform: scale(1);
+    transition: all 0.3s ease;
+}
+
+.detailed-tooltip.edge-tooltip {
+    border-color: #28a745;
+}
+
+.detailed-tooltip.edge-tooltip .tooltip-header {
+    background: #28a745;
 }
 
 .tooltip-header {
@@ -692,6 +703,23 @@
     overflow-y: auto;
 }
 
+.tooltip-section {
+    margin-bottom: 16px;
+}
+
+.tooltip-section:last-child {
+    margin-bottom: 0;
+}
+
+.tooltip-section h5 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #24292e;
+    border-bottom: 1px solid #e1e5e9;
+    padding-bottom: 4px;
+}
+
 .tooltip-item {
     padding: 6px 0;
     border-bottom: 1px solid #f1f3f4;
@@ -703,67 +731,127 @@
     border-bottom: none;
 }
 
-/* Enhanced node styling with icons */
-.node-meta {
-    font-size: 12px;
-    color: #586069;
-    margin-bottom: 4px;
+.relationship-flow {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e1e5e9;
 }
 
-/* Enhanced relationship colors for new relationship types */
-.dependency-item[data-relationship="passes_to"] {
-    border-left-color: #28a745;
+.relationship-flow strong {
+    padding: 4px 8px;
+    background: #e3f2fd;
+    border-radius: 4px;
+    font-size: 13px;
 }
 
-.dependency-item[data-relationship="passes_to"] .dependency-arrow {
-    background: #d4edda;
+.flow-arrow {
+    font-size: 12px;
     color: #28a745;
+    font-weight: bold;
+    background: #d4edda;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
 }
 
-.dependency-item[data-relationship="chains_to"] {
-    border-left-color: #17a2b8;
-}
-
-.dependency-item[data-relationship="chains_to"] .dependency-arrow {
-    background: #d1ecf1;
-    color: #17a2b8;
-}
-
-.dependency-item[data-relationship="assigns_to"] {
-    border-left-color: #6f42c1;
-}
-
-.dependency-item[data-relationship="assigns_to"] .dependency-arrow {
-    background: #e9d8fd;
-    color: #6f42c1;
-}
-
-.dependency-item[data-relationship="calls_method_on"] {
-    border-left-color: #e83e8c;
-}
-
-.dependency-item[data-relationship="calls_method_on"] .dependency-arrow {
-    background: #f8d7da;
-    color: #e83e8c;
-}
-
-/* Enhanced hover effects */
-.code-node:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+/* Enhanced D3.js Graph Specific Styles */
+.node {
     cursor: pointer;
-}
-
-.dependency-item:hover {
-    transform: translateX(2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-}
-
-.dependency-arrow:hover {
-    transform: scale(1.05);
     transition: all 0.2s ease;
+}
+
+.node:hover {
+    transform: scale(1.1);
+}
+
+.node circle {
+    stroke: #fff;
+    stroke-width: 2px;
+    transition: all 0.2s ease;
+}
+
+.node text {
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.links line {
+    stroke: #999;
+    stroke-opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.links line:hover {
+    stroke-width: 4px !important;
+    stroke-opacity: 1 !important;
+}
+
+.link-labels text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 10px;
+    fill: #666;
+    pointer-events: none;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Click animation for graph elements */
+.node.clicked {
+    animation: nodeClick 0.3s ease;
+}
+
+.links line.clicked {
+    animation: edgeClick 0.3s ease;
+}
+
+@keyframes nodeClick {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+@keyframes edgeClick {
+    0% { stroke-width: 2px; }
+    50% { stroke-width: 6px; }
+    100% { stroke-width: 2px; }
+}
+
+/* Tooltip animations */
+@keyframes tooltipAppear {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.detailed-tooltip {
+    animation: tooltipAppear 0.3s ease;
+}
+
+/* Enhanced hover effects for better interactivity */
+.graph-svg-container svg {
+    display: block;
+    background: white;
+    cursor: grab;
+}
+
+.graph-svg-container svg:active {
+    cursor: grabbing;
+}
+
+/* Node type specific styling in graph */
+.node.function circle {
+    filter: drop-shadow(0 2px 4px rgba(25, 118, 210, 0.3));
+}
+
+.node.variable circle {
+    filter: drop-shadow(0 2px 4px rgba(123, 31, 162, 0.3));
 }

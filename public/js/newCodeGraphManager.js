@@ -131,7 +131,7 @@ const NewCodeGraphManager = (function() {
     }
 
     /**
-     * Render the D3.js graph visualization
+     * Render the D3.js graph visualization with interactive tooltips
      */
     function renderGraph(data) {
         const container = document.getElementById('ncg-graph-svg-container');
@@ -198,7 +198,8 @@ const NewCodeGraphManager = (function() {
             target: d.target,
             relationship: d.relationship,
             sourceType: d.sourceType,
-            targetType: d.targetType
+            targetType: d.targetType,
+            originalEdge: d // Store original edge data for tooltips
         }));
         
         // Create force simulation
@@ -214,10 +215,28 @@ const NewCodeGraphManager = (function() {
             .selectAll('line')
             .data(links)
             .enter().append('line')
-            .attr('stroke', '#999')
+            .attr('stroke', d => getEdgeColor(d.relationship))
             .attr('stroke-opacity', 0.8)
             .attr('stroke-width', 2)
-            .attr('marker-end', 'url(#arrow)');
+            .attr('marker-end', 'url(#arrow)')
+            .style('cursor', 'pointer')
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                // Find the source and target nodes for tooltip
+                const sourceNode = data.nodes.find(n => n.id === d.source.id);
+                const targetNode = data.nodes.find(n => n.id === d.target.id);
+                showDetailedEdgeTooltip(d.originalEdge, sourceNode, targetNode);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 4)
+                    .attr('stroke-opacity', 1);
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 2)
+                    .attr('stroke-opacity', 0.8);
+            });
         
         // Create link labels
         const linkLabel = g.append('g')
@@ -228,7 +247,8 @@ const NewCodeGraphManager = (function() {
             .attr('text-anchor', 'middle')
             .attr('font-size', '10px')
             .attr('fill', '#666')
-            .text(d => d.relationship);
+            .attr('pointer-events', 'none')
+            .text(d => getRelationshipDescription(d.relationship));
         
         // Create nodes (vertices)
         const node = g.append('g')
@@ -237,15 +257,30 @@ const NewCodeGraphManager = (function() {
             .data(nodes)
             .enter().append('g')
             .attr('class', 'node')
+            .style('cursor', 'pointer')
             .call(d3.drag()
                 .on('start', dragstarted)
                 .on('drag', dragged)
-                .on('end', dragended));
+                .on('end', dragended))
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                showDetailedTooltip(d);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 4)
+                    .attr('r', d => (d.type === 'function' ? 22 : 17));
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 2)
+                    .attr('r', d => (d.type === 'function' ? 20 : 15));
+            });
         
         // Add circles for nodes
         node.append('circle')
             .attr('r', d => d.type === 'function' ? 20 : 15)
-            .attr('fill', d => d.type === 'function' ? '#1976d2' : '#7b1fa2')
+            .attr('fill', d => getNodeColor(d))
             .attr('stroke', '#fff')
             .attr('stroke-width', 2);
         
@@ -256,6 +291,7 @@ const NewCodeGraphManager = (function() {
             .attr('font-size', '12px')
             .attr('font-weight', 'bold')
             .attr('fill', '#24292e')
+            .attr('pointer-events', 'none')
             .text(d => d.name);
         
         // Add type labels
@@ -264,11 +300,18 @@ const NewCodeGraphManager = (function() {
             .attr('text-anchor', 'middle')
             .attr('font-size', '8px')
             .attr('fill', '#666')
+            .attr('pointer-events', 'none')
             .text(d => d.type);
         
-        // Add tooltips
-        node.append('title')
-            .text(d => `${d.name}\nType: ${d.type}\nFile: ${d.file}:${d.line}`);
+        // Add scope indicators for variables
+        node.filter(d => d.type === 'variable' && d.scope)
+            .append('text')
+            .attr('dy', 15)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '7px')
+            .attr('fill', '#999')
+            .attr('pointer-events', 'none')
+            .text(d => getScopeIcon(d.scope));
         
         // Update positions on tick
         simulation.on('tick', () => {
@@ -565,12 +608,13 @@ const NewCodeGraphManager = (function() {
         
         graphContainer.appendChild(builtinsContainer);
         
-        // Enhanced dependency rendering with grouping
+        // Enhanced dependency rendering with grouping for new relationship types
         if (data.edges && data.edges.length > 0) {
             const dependencyGroups = {
                 containment: data.edges.filter(e => e.relationship === 'contains'),
-                dataFlow: data.edges.filter(e => ['uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship)),
-                other: data.edges.filter(e => !['contains', 'uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship))
+                dataFlow: data.edges.filter(e => ['passes_to', 'chains_to', 'assigns_to', 'calls_method_on'].includes(e.relationship)),
+                legacy: data.edges.filter(e => ['uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship)),
+                other: data.edges.filter(e => !['contains', 'passes_to', 'chains_to', 'assigns_to', 'calls_method_on', 'uses_parameter', 'transforms_via', 'chains_from', 'validates_against', 'includes_check'].includes(e.relationship))
             };
             
             // Render containment relationships
@@ -584,15 +628,26 @@ const NewCodeGraphManager = (function() {
                 depsList.appendChild(containmentSection);
             }
             
-            // Render data flow relationships
+            // Render execution flow relationships
             if (dependencyGroups.dataFlow.length > 0) {
                 const dataFlowSection = document.createElement('div');
-                dataFlowSection.innerHTML = '<h5>Data Flow & Transformations</h5>';
+                dataFlowSection.innerHTML = '<h5>Execution Flow</h5>';
                 dependencyGroups.dataFlow.forEach(edge => {
                     const depDiv = createDependencyElement(edge, data.nodes);
                     dataFlowSection.appendChild(depDiv);
                 });
                 depsList.appendChild(dataFlowSection);
+            }
+            
+            // Render legacy relationships (if any)
+            if (dependencyGroups.legacy.length > 0) {
+                const legacySection = document.createElement('div');
+                legacySection.innerHTML = '<h5>Legacy Relationships</h5>';
+                dependencyGroups.legacy.forEach(edge => {
+                    const depDiv = createDependencyElement(edge, data.nodes);
+                    legacySection.appendChild(depDiv);
+                });
+                depsList.appendChild(legacySection);
             }
             
             // Render other relationships
@@ -807,15 +862,30 @@ const NewCodeGraphManager = (function() {
     }
 
     function showDetailedTooltip(node) {
+        // Remove any existing tooltips
+        d3.selectAll('.detailed-tooltip').remove();
+        
         const tooltip = document.createElement('div');
         tooltip.className = 'detailed-tooltip';
+        
+        const properties = getNodeProperties(node);
+        
         tooltip.innerHTML = `
             <div class="tooltip-header">
-                <h4>${node.label}</h4>
+                <h4>${node.label || node.name}</h4>
                 <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
             <div class="tooltip-content">
-                ${getNodeProperties(node).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                <div class="tooltip-section">
+                    <h5>Basic Information</h5>
+                    ${properties.slice(0, 4).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                </div>
+                ${properties.length > 4 ? `
+                <div class="tooltip-section">
+                    <h5>Additional Details</h5>
+                    ${properties.slice(4).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                </div>
+                ` : ''}
             </div>
         `;
         
@@ -827,18 +897,44 @@ const NewCodeGraphManager = (function() {
         tooltip.style.left = '50%';
         tooltip.style.transform = 'translate(-50%, -50%)';
         tooltip.style.zIndex = '10001';
+        
+        // Add animation
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        setTimeout(() => {
+            tooltip.style.transition = 'all 0.3s ease';
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
     }
 
     function showDetailedEdgeTooltip(edge, sourceNode, targetNode) {
+        // Remove any existing tooltips
+        d3.selectAll('.detailed-tooltip').remove();
+        
         const tooltip = document.createElement('div');
-        tooltip.className = 'detailed-tooltip';
+        tooltip.className = 'detailed-tooltip edge-tooltip';
+        
+        const properties = getEdgeProperties(edge, sourceNode, targetNode);
+        
         tooltip.innerHTML = `
             <div class="tooltip-header">
-                <h4>Relationship Details</h4>
+                <h4>Relationship: ${getRelationshipDescription(edge.relationship)}</h4>
                 <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
             <div class="tooltip-content">
-                ${getEdgeProperties(edge, sourceNode, targetNode).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                <div class="tooltip-section">
+                    <h5>Connection Details</h5>
+                    <div class="tooltip-item relationship-flow">
+                        <strong>${sourceNode.label}</strong>
+                        <span class="flow-arrow">→ ${getRelationshipDescription(edge.relationship)} →</span>
+                        <strong>${targetNode.label}</strong>
+                    </div>
+                </div>
+                <div class="tooltip-section">
+                    <h5>Additional Information</h5>
+                    ${properties.slice(3).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                </div>
             </div>
         `;
         
@@ -850,6 +946,15 @@ const NewCodeGraphManager = (function() {
         tooltip.style.left = '50%';
         tooltip.style.transform = 'translate(-50%, -50%)';
         tooltip.style.zIndex = '10001';
+        
+        // Add animation
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        setTimeout(() => {
+            tooltip.style.transition = 'all 0.3s ease';
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
     }
 
     function truncateValue(value, maxLength) {
@@ -889,6 +994,55 @@ const NewCodeGraphManager = (function() {
         };
         
         return descriptions[relationshipType] || relationshipType;
+    }
+
+    // Helper functions for enhanced graph visualization
+    function getNodeColor(node) {
+        if (node.type === 'function') {
+            if (node.file === 'built-in') {
+                return '#6f42c1'; // Purple for built-ins
+            } else if (node.file.includes('Node.js')) {
+                return '#28a745'; // Green for Node.js modules
+            }
+            return '#1976d2'; // Blue for custom functions
+        } else if (node.type === 'variable') {
+            switch (node.scope) {
+                case 'parameter':
+                    return '#28a745'; // Green for parameters
+                case 'local':
+                    return '#7b1fa2'; // Purple for local vars
+                case 'literal':
+                    return '#fd7e14'; // Orange for literals
+                default:
+                    return '#6c757d'; // Gray for others
+            }
+        }
+        return '#666666';
+    }
+
+    function getEdgeColor(relationship) {
+        const colorMap = {
+            'passes_to': '#28a745',
+            'chains_to': '#17a2b8',
+            'assigns_to': '#6f42c1',
+            'calls_method_on': '#e83e8c',
+            'contains': '#6c757d',
+            'transforms_via': '#6f42c1',
+            'validates_against': '#fd7e14',
+            'extracts_from': '#007bff',
+            'computes_from': '#20c997'
+        };
+        return colorMap[relationship] || '#999';
+    }
+
+    function getScopeIcon(scope) {
+        const icons = {
+            'parameter': '📥',
+            'local': '🔐',
+            'literal': '📝',
+            'global': '🌐'
+        };
+        return icons[scope] || '';
     }
 
     /**
