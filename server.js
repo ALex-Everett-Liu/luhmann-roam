@@ -32,6 +32,7 @@ const graphRoutes = require('./routes/graphRoutes');
 const graphManagementRoutes = require('./routes/graphManagementRoutes');
 const codeGraphRoutes = require('./routes/codeGraphRoutes');
 const newCodeGraphRoutes = require('./routes/newCodeGraphRoutes');
+const enhancedCodeGraphRoutes = require('./routes/enhancedCodeGraphRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -804,6 +805,7 @@ app.use('/api/search', markdownSearchRoutes);
 
 // Use the new code graph routes
 app.use('/api/new-code-graph', newCodeGraphRoutes);
+app.use('/api/enhanced-code-graph', enhancedCodeGraphRoutes);
 
 // Start the server
 app.listen(PORT, () => {

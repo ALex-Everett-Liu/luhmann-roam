@@ -947,6 +947,177 @@ try {
     console.log('Simple code graph triggers may already exist:', error.message);
   }
 
+  // Create enhanced code graph tables for the comprehensive system
+  console.log('Creating enhanced code graph tables...');
+
+  try {
+    // Enhanced Projects table with additional metadata
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS enhanced_projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        description TEXT,
+        language TEXT DEFAULT 'javascript',
+        framework TEXT,
+        version TEXT,
+        tags TEXT, -- JSON array of tags
+        metadata TEXT, -- JSON object for flexible metadata
+        status TEXT DEFAULT 'active', -- 'active', 'archived', 'template'
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER
+      )
+    `);
+
+    // Enhanced Functions table with more detailed tracking
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS enhanced_functions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        full_name TEXT, -- Namespace.ClassName.methodName
+        file_path TEXT NOT NULL,
+        line_number INTEGER,
+        end_line_number INTEGER,
+        parameters TEXT, -- JSON string of parameters with types
+        return_type TEXT,
+        is_async BOOLEAN DEFAULT 0,
+        is_static BOOLEAN DEFAULT 0,
+        is_private BOOLEAN DEFAULT 0,
+        complexity_score INTEGER DEFAULT 1,
+        description TEXT,
+        tags TEXT, -- JSON array of tags
+        metadata TEXT, -- JSON object for flexible metadata
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Enhanced Variables table with better typing
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS enhanced_variables (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        function_id TEXT,
+        name TEXT NOT NULL,
+        type TEXT,
+        value TEXT,
+        file_path TEXT NOT NULL,
+        line_number INTEGER,
+        scope TEXT, -- 'local', 'parameter', 'global', 'class', 'module'
+        declaration_type TEXT, -- 'const', 'let', 'var', 'parameter', 'property'
+        mutability TEXT DEFAULT 'mutable', -- 'immutable', 'mutable'
+        is_exported BOOLEAN DEFAULT 0,
+        description TEXT,
+        tags TEXT, -- JSON array of tags
+        metadata TEXT, -- JSON object for flexible metadata
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE,
+        FOREIGN KEY (function_id) REFERENCES enhanced_functions(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Enhanced Dependencies table with richer relationships
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS enhanced_dependencies (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        source_type TEXT NOT NULL, -- 'function', 'variable', 'class', 'module'
+        source_id TEXT NOT NULL,
+        target_type TEXT NOT NULL, -- 'function', 'variable', 'class', 'module'
+        target_id TEXT NOT NULL,
+        relationship_type TEXT NOT NULL,
+        relationship_strength REAL DEFAULT 1.0, -- 0.0 to 1.0
+        context TEXT, -- Additional context about the relationship
+        line_number INTEGER,
+        order_sequence INTEGER DEFAULT 1, -- For ordered relationships
+        description TEXT,
+        metadata TEXT, -- JSON object for flexible metadata
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Project Statistics View (computed)
+    await db.exec(`
+      CREATE VIEW IF NOT EXISTS project_statistics AS
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.status,
+        p.tags,
+        p.metadata,
+        COUNT(DISTINCT f.id) as function_count,
+        COUNT(DISTINCT v.id) as variable_count,
+        COUNT(DISTINCT d.id) as dependency_count,
+        AVG(f.complexity_score) as avg_complexity,
+        MAX(f.updated_at) as last_function_update,
+        p.created_at,
+        p.updated_at
+      FROM enhanced_projects p
+      LEFT JOIN enhanced_functions f ON p.id = f.project_id
+      LEFT JOIN enhanced_variables v ON p.id = v.project_id
+      LEFT JOIN enhanced_dependencies d ON p.id = d.project_id
+      GROUP BY p.id, p.name, p.description, p.status, p.tags, p.metadata, p.created_at, p.updated_at
+    `);
+
+    console.log('Enhanced code graph tables created successfully');
+  } catch (error) {
+    console.log('Enhanced code graph tables may already exist:', error.message);
+  }
+
+  // Add indices for enhanced code graph tables
+  try {
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_enhanced_functions_project ON enhanced_functions(project_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_functions_name ON enhanced_functions(name);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_variables_project ON enhanced_variables(project_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_variables_function ON enhanced_variables(function_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_variables_name ON enhanced_variables(name);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_project ON enhanced_dependencies(project_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_source ON enhanced_dependencies(source_type, source_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_target ON enhanced_dependencies(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_relationship ON enhanced_dependencies(relationship_type);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_projects_sequence_id ON enhanced_projects(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_functions_sequence_id ON enhanced_functions(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_variables_sequence_id ON enhanced_variables(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_sequence_id ON enhanced_dependencies(sequence_id);
+    `);
+    console.log('Enhanced code graph indices created successfully');
+  } catch (error) {
+    console.log('Enhanced code graph indices may already exist:', error.message);
+  }
+
+  // Add triggers for enhanced code graph tables
+  try {
+    const enhancedTables = ['enhanced_projects', 'enhanced_functions', 'enhanced_variables', 'enhanced_dependencies'];
+    
+    for (const table of enhancedTables) {
+      await db.exec(`
+        CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
+        AFTER INSERT ON ${table}
+        FOR EACH ROW
+        WHEN NEW.sequence_id IS NULL
+        BEGIN
+          UPDATE ${table} 
+          SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
+          WHERE id = NEW.id;
+        END;
+      `);
+    }
+    console.log('Enhanced code graph triggers created successfully');
+  } catch (error) {
+    console.log('Enhanced code graph triggers may already exist:', error.message);
+  }
+
   return db;
 }
 
@@ -1051,7 +1222,7 @@ async function populateSequenceIds() {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Tables that need sequence IDs - including new graph and word group tables
+    // Tables that need sequence IDs - including enhanced code graph tables
     const tables = [
       'nodes',
       'links', 
@@ -1072,7 +1243,11 @@ async function populateSequenceIds() {
       'simple_projects',
       'simple_functions',
       'simple_variables',
-      'simple_dependencies'
+      'simple_dependencies',
+      'enhanced_projects',
+      'enhanced_functions',
+      'enhanced_variables',
+      'enhanced_dependencies'
     ];
     
     // Process each table

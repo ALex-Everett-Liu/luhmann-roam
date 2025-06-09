@@ -2207,6 +2207,255 @@ const CommandPaletteManager = (function() {
             // Don't register any commands if plugin is disabled
             console.log('New Code Graph commands not registered - plugin is disabled');
         }
+
+        // Check if Enhanced CodeGraphManager exists AND plugin is enabled
+        if (window.EnhancedCodeGraphManager && isPluginEnabled('enhancedCodeGraphManager')) {
+            registerCommand({
+                name: 'Open Enhanced Code Graph (Full CRUD)',
+                action: () => {
+                    if (isPluginEnabled('enhancedCodeGraphManager')) {
+                        window.EnhancedCodeGraphManager.show();
+                    } else {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                    }
+                },
+                category: 'Code Analysis',
+                shortcut: 'Alt+E',
+                keywords: ['enhanced', 'code', 'graph', 'crud', 'projects', 'advanced', 'analysis']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Project Overview',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const overviewTab = document.querySelector('.ecg-tab[data-tab="overview"]');
+                        if (overviewTab) {
+                            overviewTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'project', 'overview', 'statistics', 'dashboard']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Create New Project',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const createBtn = document.getElementById('ecg-create-project-btn');
+                        if (createBtn) {
+                            createBtn.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'create', 'new', 'project', 'add']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Create DCIM Example',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const dcimBtn = document.getElementById('ecg-create-dcim-example-btn');
+                        if (dcimBtn) {
+                            dcimBtn.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'dcim', 'example', 'template', 'create']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Functions Management',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const functionsTab = document.querySelector('.ecg-tab[data-tab="functions"]');
+                        if (functionsTab) {
+                            functionsTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'functions', 'management', 'crud', 'edit']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Variables Management',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const variablesTab = document.querySelector('.ecg-tab[data-tab="variables"]');
+                        if (variablesTab) {
+                            variablesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'variables', 'management', 'crud', 'edit']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Dependencies Management',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const dependenciesTab = document.querySelector('.ecg-tab[data-tab="dependencies"]');
+                        if (dependenciesTab) {
+                            dependenciesTab.click();
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'dependencies', 'relationships', 'management', 'crud']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - View Graph Visualization',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    // First check if there's a current project selected
+                    if (window.EnhancedCodeGraphManager.currentProject) {
+                        const projectId = window.EnhancedCodeGraphManager.currentProject.id;
+                        window.EnhancedCodeGraphManager.viewGraph(projectId);
+                    } else {
+                        window.EnhancedCodeGraphManager.show();
+                        setTimeout(() => {
+                            alert('Please select a project first to view its graph visualization.');
+                        }, 300);
+                    }
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'graph', 'visualization', 'view', 'd3', 'interactive']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Add Function',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const functionsTab = document.querySelector('.ecg-tab[data-tab="functions"]');
+                        if (functionsTab) {
+                            functionsTab.click();
+                            setTimeout(() => {
+                                const addFunctionBtn = document.getElementById('ecg-add-function-btn');
+                                if (addFunctionBtn) {
+                                    addFunctionBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'add', 'function', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Add Variable',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const variablesTab = document.querySelector('.ecg-tab[data-tab="variables"]');
+                        if (variablesTab) {
+                            variablesTab.click();
+                            setTimeout(() => {
+                                const addVariableBtn = document.getElementById('ecg-add-variable-btn');
+                                if (addVariableBtn) {
+                                    addVariableBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'add', 'variable', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Add Dependency',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        const dependenciesTab = document.querySelector('.ecg-tab[data-tab="dependencies"]');
+                        if (dependenciesTab) {
+                            dependenciesTab.click();
+                            setTimeout(() => {
+                                const addDependencyBtn = document.getElementById('ecg-add-dependency-btn');
+                                if (addDependencyBtn) {
+                                    addDependencyBtn.click();
+                                }
+                            }, 200);
+                        }
+                    }, 300);
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'add', 'dependency', 'relationship', 'create', 'new']
+            });
+            
+            registerCommand({
+                name: 'Enhanced Code Graph - Initialize Database',
+                action: () => {
+                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
+                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                        return;
+                    }
+                    if (window.EnhancedCodeGraphManager.initializeDatabase) {
+                        window.EnhancedCodeGraphManager.initializeDatabase();
+                    } else {
+                        alert('Initialize database function not available');
+                    }
+                },
+                category: 'Code Analysis',
+                keywords: ['enhanced', 'code', 'database', 'initialize', 'setup', 'tables']
+            });
+            
+        } else if (window.EnhancedCodeGraphManager && !isPluginEnabled('enhancedCodeGraphManager')) {
+            // Don't register any commands if plugin is disabled
+            console.log('Enhanced Code Graph commands not registered - plugin is disabled');
+        }
     }
     
     /**

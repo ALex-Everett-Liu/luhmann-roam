@@ -251,6 +251,42 @@
             return false;
           }
         });
+        
+        // Register EnhancedCodeGraphManager
+        this.registerPlugin('enhancedCodeGraphManager', {
+          name: 'Enhanced Code Graph',
+          description: 'Full CRUD code analysis with project management and advanced features',
+          defaultEnabled: true,
+          requiresReload: false,
+          category: 'analysis',
+          initialize: function() {
+            if (window.EnhancedCodeGraphManager) {
+              console.log('Initializing EnhancedCodeGraphManager plugin');
+              EnhancedCodeGraphManager.initialize();
+              return true;
+            }
+            return false;
+          },
+          cleanup: function() {
+            if (window.EnhancedCodeGraphManager) {
+              console.log('Cleaning up EnhancedCodeGraphManager plugin');
+              EnhancedCodeGraphManager.hide();
+              return true;
+            }
+            return false;
+          },
+          toggle: function(enabled) {
+            if (window.EnhancedCodeGraphManager) {
+              if (enabled) {
+                EnhancedCodeGraphManager.initialize();
+              } else {
+                EnhancedCodeGraphManager.hide();
+              }
+              return true;
+            }
+            return false;
+          }
+        });
       },
       
       // Load saved plugin states from localStorage

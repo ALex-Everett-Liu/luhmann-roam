@@ -74,6 +74,12 @@ const PluginAwareInitializer = (function() {
                 name: 'Graph Analysis Visualizer',
                 initialize: initializeGraphAnalysisVisualizer,
                 pluginId: 'graphAnalysisVisualizer'
+            },
+            
+            'enhancedCodeGraphManager': {
+                name: 'Enhanced Code Graph Manager',
+                initialize: initializeEnhancedCodeGraphManager,
+                pluginId: 'enhancedCodeGraphManager'
             }
         };
         
@@ -230,6 +236,17 @@ const PluginAwareInitializer = (function() {
             } catch (error) {
                 console.error('Failed to initialize GraphAnalysisVisualizer:', error);
             }
+        }
+    }
+    
+    /**
+     * Initialize Enhanced Code Graph Manager only if plugin is enabled
+     */
+    function initializeEnhancedCodeGraphManager() {
+        if (window.EnhancedCodeGraphManager && !window.EnhancedCodeGraphManager.isInitialized) {
+            EnhancedCodeGraphManager.initialize();
+            // Add sidebar button
+            addEnhancedCodeGraphButton();
         }
     }
     
@@ -461,6 +478,31 @@ const PluginAwareInitializer = (function() {
         window.addButtonToSidebar(toggle2DCosmicButton);
     }
     
+    function addEnhancedCodeGraphButton() {
+        const toggleEnhancedCodeGraphButton = document.createElement('button');
+        toggleEnhancedCodeGraphButton.id = 'toggle-enhanced-code-graph';
+        toggleEnhancedCodeGraphButton.className = 'feature-toggle';
+        toggleEnhancedCodeGraphButton.textContent = 'Enhanced Code Graph';
+        toggleEnhancedCodeGraphButton.title = 'Full CRUD code analysis with project management';
+        
+        toggleEnhancedCodeGraphButton.addEventListener('click', function() {
+            if (window.PluginManager && !PluginManager.isPluginEnabled('enhancedCodeGraphManager')) {
+                alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
+                return;
+            }
+            
+            if (window.EnhancedCodeGraphManager) {
+                if (EnhancedCodeGraphManager.isVisible()) {
+                    EnhancedCodeGraphManager.hide();
+                } else {
+                    EnhancedCodeGraphManager.show();
+                }
+            }
+        });
+        
+        window.addButtonToSidebar(toggleEnhancedCodeGraphButton);
+    }
+    
     /**
      * Handle plugin state changes (when user enables/disables plugins)
      */
@@ -490,6 +532,9 @@ const PluginAwareInitializer = (function() {
                     break;
                 case 'graphAnalysisVisualizer':
                     initializeGraphAnalysisVisualizer();
+                    break;
+                case 'enhancedCodeGraphManager':
+                    initializeEnhancedCodeGraphManager();
                     break;
                 default:
                     console.log(`No specific initialization handler for plugin: ${pluginId}`);
@@ -530,6 +575,11 @@ const PluginAwareInitializer = (function() {
                         CodeGraphManager.hide();
                         // Clean up global listeners that cause cursor issues
                         console.log('🧹 Cleaning up CodeGraphManager global listeners');
+                    }
+                    break;
+                case 'enhancedCodeGraphManager':
+                    if (window.EnhancedCodeGraphManager) {
+                        EnhancedCodeGraphManager.hide();
                     }
                     break;
                 default:
