@@ -1545,108 +1545,299 @@ const EnhancedCodeGraphManager = (function() {
         // Render based on mode
         switch (viewMode) {
             case 'macro':
-                renderMacroGraph(data);
+                renderMacroGraphActual(data);
                 break;
             case 'micro':
-                renderMicroGraph(data);
+                renderMicroGraphActual(data);
                 break;
             case 'hybrid':
-                renderHybridGraph(data);
+                renderHybridGraphActual(data);
                 break;
         }
     }
 
+    function renderMacroGraphActual(data) {
+        renderActualGraph(data, 'macro');
+    }
+
+    function renderMicroGraphActual(data) {
+        renderActualGraph(data, 'micro');
+    }
+
+    function renderHybridGraphActual(data) {
+        renderActualGraph(data, 'hybrid');
+    }
+
+    function renderActualGraph(data, viewMode) {
+            const container = document.getElementById('ecg-graph-container');
+        if (!container) return;
+        
+        // Clear previous graph
+        container.innerHTML = '';
+        
+        if (!data.nodes || data.nodes.length === 0) {
+            container.innerHTML = `
+                <div class="graph-placeholder">
+                    <h3>${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View</h3>
+                    <p>No data to visualize. Create some functions, variables, and dependencies first.</p>
+            </div>
+        `;
+            return;
+        }
+        
+        const width = container.clientWidth || 800;
+        const height = 600;
+        
+        // Create SVG
+        svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .style('border', '1px solid #e1e5e9')
+            .style('border-radius', '8px')
+            .style('background', '#fafafa');
+        
+        // Create zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 3])
+            .on('zoom', function(event) {
+                g.attr('transform', event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // Create main group for zooming/panning
+        const g = svg.append('g');
+        
+        // Store references for other functions
+        window.currentGraphElements = { g, zoom };
+        
+        // Create arrow markers for edges
+        svg.append('defs').selectAll('marker')
+            .data(['arrow'])
+            .enter().append('marker')
+            .attr('id', 'arrow')
+            .attr('viewBox', '0 -5 10 10')
+            .attr('refX', 20)
+            .attr('refY', 0)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-5L10,0L0,5')
+            .attr('fill', '#666');
+        
+        // Prepare data for D3
+        const nodes = data.nodes.map(d => ({
+            ...d,
+            id: d.id,
+            name: d.label || d.name,
+            group: d.type === 'function' ? 1 : 2
+        }));
+        
+        const links = data.edges.map(d => ({
+            source: d.source,
+            target: d.target,
+            relationship: d.relationship,
+            sourceType: d.sourceType,
+            targetType: d.targetType,
+            originalEdge: d
+        }));
+        
+        // Create force simulation
+        simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => {
+                return d.type === 'function' ? 25 : 20;
+            }));
+        
+        // Create links (edges)
+        const link = g.append('g')
+            .attr('class', 'links')
+            .selectAll('line')
+            .data(links)
+            .enter().append('line')
+            .attr('stroke', d => getEdgeColor(d.relationship))
+            .attr('stroke-opacity', 0.8)
+            .attr('stroke-width', 2)
+            .attr('marker-end', 'url(#arrow)')
+            .style('cursor', 'pointer')
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                const sourceNode = data.nodes.find(n => n.id === d.source.id);
+                const targetNode = data.nodes.find(n => n.id === d.target.id);
+                showDetailedEdgeTooltip(d.originalEdge, sourceNode, targetNode);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 4)
+                    .attr('stroke-opacity', 1);
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 2)
+                    .attr('stroke-opacity', 0.8);
+            });
+        
+        // Create link labels
+        const linkLabel = g.append('g')
+            .attr('class', 'link-labels')
+            .selectAll('text')
+            .data(links)
+            .enter().append('text')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#666')
+            .attr('pointer-events', 'none')
+            .text(d => getRelationshipDescription(d.relationship));
+        
+        // Create nodes (vertices)
+        const node = g.append('g')
+            .attr('class', 'nodes')
+            .selectAll('g')
+            .data(nodes)
+            .enter().append('g')
+            .attr('class', 'node')
+            .style('cursor', 'pointer')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended))
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                showDetailedTooltip(d);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 4)
+                    .attr('stroke', '#ff6b6b')
+                    .style('filter', 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.4))');
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 2)
+                    .attr('stroke', '#fff')
+                    .style('filter', null);
+            });
+        
+        // Add circles for nodes
+        node.append('circle')
+            .attr('r', d => d.type === 'function' ? 20 : 15)
+            .attr('fill', d => getNodeColor(d))
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+        
+        // Add labels for nodes
+        node.append('text')
+            .attr('dy', -25)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '12px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#24292e')
+            .attr('pointer-events', 'none')
+            .text(d => d.name);
+        
+        // Add type labels
+        node.append('text')
+            .attr('dy', 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#666')
+            .attr('pointer-events', 'none')
+            .text(d => d.type);
+        
+        // Add scope indicators for variables
+        node.filter(d => d.type === 'variable' && d.scope)
+            .append('text')
+            .attr('dy', 15)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '7px')
+            .attr('fill', '#999')
+            .attr('pointer-events', 'none')
+            .text(d => getScopeIcon(d.scope));
+        
+        // Update positions on tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            linkLabel
+                .attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2);
+            
+            node
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Add title
+        const title = container.insertBefore(document.createElement('div'), container.firstChild);
+        title.style.cssText = 'padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e1e5e9; font-weight: bold;';
+        title.innerHTML = `
+            ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View - 
+            ${data.nodes.length} nodes, ${data.edges.length} relationships
+        `;
+    }
+
+    function getNodeColor(node) {
+        if (node.type === 'function') {
+            return node.is_async ? '#FF6B6B' : '#4ECDC4';
+        } else if (node.type === 'variable') {
+            switch (node.scope) {
+                case 'parameter': return '#95E1D3';
+                case 'local': return '#F3D2A7';
+                case 'global': return '#FFAAA5';
+                default: return '#C7CEEA';
+            }
+        }
+        return '#999';
+    }
+
+    function getEdgeColor(relationship) {
+        switch (relationship) {
+            case 'calls': return '#FF6B6B';
+            case 'uses': return '#4ECDC4';
+            case 'assigns': return '#45B7D1';
+            case 'passes_to': return '#96CEB4';
+            case 'chains_to': return '#FFEAA7';
+            case 'transforms_via': return '#DDA0DD';
+            default: return '#666';
+        }
+    }
+
+    // Remove the broken functions completely
     function renderMacroGraph(data) {
-        // Add view mode selector to graph header
-        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
-        if (!document.getElementById('graph-view-mode')) {
-            const viewModeSelector = document.createElement('select');
-            viewModeSelector.id = 'graph-view-mode';
-            viewModeSelector.innerHTML = `
-                <option value="macro">Macro View (Modules/Libraries)</option>
-                <option value="micro">Micro View (Functions/Variables)</option>
-                <option value="hybrid">Hybrid View (Both)</option>
-            `;
-            viewModeSelector.onchange = () => loadGraphVisualization();
-            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
-        }
-        
-        document.getElementById('graph-view-mode').value = 'macro';
-        
-        // Render based on mode
-        switch ('macro') {
-            case 'macro':
-                renderMacroGraph(data);
-                break;
-            case 'micro':
-                renderMicroGraph(data);
-                break;
-            case 'hybrid':
-                renderHybridGraph(data);
-                break;
-        }
+        renderMacroGraphActual(data);
     }
 
     function renderMicroGraph(data) {
-        // Add view mode selector to graph header
-        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
-        if (!document.getElementById('graph-view-mode')) {
-            const viewModeSelector = document.createElement('select');
-            viewModeSelector.id = 'graph-view-mode';
-            viewModeSelector.innerHTML = `
-                <option value="macro">Macro View (Modules/Libraries)</option>
-                <option value="micro">Micro View (Functions/Variables)</option>
-                <option value="hybrid">Hybrid View (Both)</option>
-            `;
-            viewModeSelector.onchange = () => loadGraphVisualization();
-            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
-        }
-        
-        document.getElementById('graph-view-mode').value = 'micro';
-        
-        // Render based on mode
-        switch ('micro') {
-            case 'macro':
-                renderMacroGraph(data);
-                break;
-            case 'micro':
-                renderMicroGraph(data);
-                break;
-            case 'hybrid':
-                renderHybridGraph(data);
-                break;
-        }
+        renderMicroGraphActual(data);
     }
 
     function renderHybridGraph(data) {
-        // Add view mode selector to graph header
-        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
-        if (!document.getElementById('graph-view-mode')) {
-            const viewModeSelector = document.createElement('select');
-            viewModeSelector.id = 'graph-view-mode';
-            viewModeSelector.innerHTML = `
-                <option value="macro">Macro View (Modules/Libraries)</option>
-                <option value="micro">Micro View (Functions/Variables)</option>
-                <option value="hybrid">Hybrid View (Both)</option>
-            `;
-            viewModeSelector.onchange = () => loadGraphVisualization();
-            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
-        }
-        
-        document.getElementById('graph-view-mode').value = 'hybrid';
-        
-        // Render based on mode
-        switch ('hybrid') {
-            case 'macro':
-                renderMacroGraph(data);
-                break;
-            case 'micro':
-                renderMicroGraph(data);
-                break;
-            case 'hybrid':
-                renderHybridGraph(data);
-                break;
-        }
+        renderHybridGraphActual(data);
     }
 
     function resetGraphLayout() {
