@@ -1816,25 +1816,24 @@ const EnhancedCodeGraphManager = (function() {
         const tooltip = document.createElement('div');
         tooltip.className = 'detailed-tooltip';
         
-        // Create detailed properties
-        const properties = [];
-        properties.push(`Name: ${node.label || node.name}`);
-        properties.push(`Type: ${node.type}`);
-        if (node.file) properties.push(`File: ${node.file}`);
-        if (node.line) properties.push(`Line: ${node.line}`);
-        if (node.scope) properties.push(`Scope: ${node.scope}`);
-        if (node.value) properties.push(`Value: ${node.value}`);
+        const properties = getNodeProperties(node);
         
         tooltip.innerHTML = `
-            <div class="tooltip-header">
+            <div class="tooltip-header" style="cursor: move;">
                 <h4>${node.label || node.name}</h4>
                 <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
             <div class="tooltip-content">
                 <div class="tooltip-section">
-                    <h5>Details</h5>
-                    ${properties.map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                    <h5>Basic Information</h5>
+                    ${properties.slice(0, 4).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
                 </div>
+                ${properties.length > 4 ? `
+                <div class="tooltip-section">
+                    <h5>Additional Details</h5>
+                    ${properties.slice(4).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                </div>
+                ` : ''}
             </div>
         `;
         
@@ -1853,6 +1852,9 @@ const EnhancedCodeGraphManager = (function() {
         tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
         tooltip.style.maxWidth = '400px';
         
+        // Make tooltip draggable
+        makeDraggable(tooltip);
+        
         // Add animation
         tooltip.style.opacity = '0';
         tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
@@ -1861,8 +1863,65 @@ const EnhancedCodeGraphManager = (function() {
             tooltip.style.opacity = '1';
             tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
         }, 10);
+    }
+
+    // Add the comprehensive getNodeProperties function from newCodeGraphManager.js
+    function getNodeProperties(node) {
+        const properties = [];
         
-        console.log('Showing detailed tooltip for node:', node);
+        properties.push(`Name: ${node.label || node.name}`);
+        properties.push(`Type: ${node.type}`);
+        properties.push(`Location: ${node.file}:${node.line || '?'}`);
+        
+        if (node.scope) {
+            properties.push(`Scope: ${node.scope}`);
+        }
+        
+        if (node.type === 'function') {
+            if (node.isAsync) {
+                properties.push('🔄 Asynchronous function');
+            }
+            if (node.parameters && node.parameters.length > 0) {
+                properties.push(`Parameters: ${node.parameters.map(p => p.name || p).join(', ')}`);
+            }
+            if (node.file === 'built-in') {
+                properties.push('🔧 JavaScript built-in method');
+            } else if (node.file && node.file.includes('Node.js')) {
+                properties.push('📦 Node.js standard library');
+            }
+        }
+        
+        if (node.type === 'variable') {
+            if (node.scope === 'parameter') {
+                properties.push('📥 Input parameter to function');
+                if (node.value && node.value.includes('default')) {
+                    const defaultMatch = node.value.match(/default[:\s]+(\d+)/);
+                    if (defaultMatch) {
+                        properties.push(`🎯 Default value: ${defaultMatch[1]}`);
+                    }
+                }
+            } else if (node.scope === 'local') {
+                properties.push('🔐 Local variable within function');
+                if (node.value && node.value.includes('const')) {
+                    properties.push('🔒 Immutable constant declaration');
+                }
+            } else if (node.scope === 'literal') {
+                properties.push('📝 Literal value in code');
+                if (node.value && node.value.includes('[')) {
+                    const arrayMatch = node.value.match(/\[(.*)\]/);
+                    if (arrayMatch) {
+                        const elements = arrayMatch[1].split(',').length;
+                        properties.push(`📋 Array with ${elements} elements`);
+                    }
+                }
+            }
+            
+            if (node.value) {
+                properties.push(`Value: ${node.value}`);
+            }
+        }
+        
+        return properties;
     }
 
     function showDetailedEdgeTooltip(edge, sourceNode, targetNode) {
@@ -1873,11 +1932,11 @@ const EnhancedCodeGraphManager = (function() {
         const tooltip = document.createElement('div');
         tooltip.className = 'detailed-tooltip edge-tooltip';
         
-        const relationshipText = getRelationshipDescription(edge.relationship);
+        const properties = getEdgeProperties(edge, sourceNode, targetNode);
         
         tooltip.innerHTML = `
-            <div class="tooltip-header">
-                <h4>Relationship: ${relationshipText}</h4>
+            <div class="tooltip-header" style="cursor: move;">
+                <h4>Relationship: ${getRelationshipDescription(edge.relationship)}</h4>
                 <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
             </div>
             <div class="tooltip-content">
@@ -1885,15 +1944,13 @@ const EnhancedCodeGraphManager = (function() {
                     <h5>Connection Details</h5>
                     <div class="tooltip-item relationship-flow">
                         <strong>${sourceNode.label}</strong>
-                        <span class="flow-arrow">→ ${relationshipText} →</span>
+                        <span class="flow-arrow">→ ${getRelationshipDescription(edge.relationship)} →</span>
                         <strong>${targetNode.label}</strong>
                     </div>
                 </div>
                 <div class="tooltip-section">
                     <h5>Additional Information</h5>
-                    <div class="tooltip-item">From: ${sourceNode.label} (${sourceNode.type})</div>
-                    <div class="tooltip-item">To: ${targetNode.label} (${targetNode.type})</div>
-                    <div class="tooltip-item">Relationship: ${edge.relationship}</div>
+                    ${properties.slice(3).map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
                 </div>
             </div>
         `;
@@ -1913,6 +1970,9 @@ const EnhancedCodeGraphManager = (function() {
         tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
         tooltip.style.maxWidth = '400px';
         
+        // Make tooltip draggable
+        makeDraggable(tooltip);
+        
         // Add animation
         tooltip.style.opacity = '0';
         tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
@@ -1921,8 +1981,137 @@ const EnhancedCodeGraphManager = (function() {
             tooltip.style.opacity = '1';
             tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
         }, 10);
+    }
+
+    // Add the comprehensive getEdgeProperties function from newCodeGraphManager.js
+    function getEdgeProperties(edge, sourceNode, targetNode) {
+        const properties = [];
         
-        console.log('Showing detailed edge tooltip:', edge, sourceNode, targetNode);
+        properties.push(`Relationship: ${getRelationshipDescription(edge.relationship)}`);
+        properties.push(`From: ${sourceNode.label} (${sourceNode.type})`);
+        properties.push(`To: ${targetNode.label} (${targetNode.type})`);
+        
+        // Add relationship-specific details
+        switch (edge.relationship) {
+            case 'passes_to':
+                properties.push('🔄 Data flows as input parameter');
+                break;
+            case 'chains_to':
+                properties.push('🔗 Method chaining - result becomes input');
+                break;
+            case 'assigns_to':
+                properties.push('💾 Final result stored in variable');
+                break;
+            case 'calls_method_on':
+                properties.push('📞 Method invoked on this object');
+                break;
+            case 'contains':
+                properties.push('📦 Scope containment relationship');
+                break;
+            case 'transforms_via':
+                properties.push('🔄 Data transformation through function');
+                break;
+            case 'validates_against':
+                properties.push('✅ Validation check performed');
+                break;
+        }
+        
+        return properties;
+    }
+
+    // Add draggable functionality
+    function makeDraggable(element) {
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+        
+        const header = element.querySelector('.tooltip-header');
+        if (!header) return;
+        
+        header.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+        
+        function dragStart(e) {
+            // Don't drag if clicking the close button
+            if (e.target.classList.contains('tooltip-close')) {
+                return;
+            }
+            
+            // Get current position
+            const rect = element.getBoundingClientRect();
+            
+            initialX = e.clientX - rect.left;
+            initialY = e.clientY - rect.top;
+            
+            if (e.target === header || header.contains(e.target)) {
+                isDragging = true;
+                
+                // Remove transform and transition for dragging
+                element.style.transition = 'none';
+                element.style.transform = 'none';
+                
+                // Set initial position
+                element.style.left = rect.left + 'px';
+                element.style.top = rect.top + 'px';
+                
+                xOffset = rect.left;
+                yOffset = rect.top;
+            }
+        }
+        
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                
+                xOffset = currentX;
+                yOffset = currentY;
+                
+                // Constrain to viewport
+                const maxX = window.innerWidth - element.offsetWidth;
+                const maxY = window.innerHeight - element.offsetHeight;
+                
+                xOffset = Math.max(0, Math.min(xOffset, maxX));
+                yOffset = Math.max(0, Math.min(yOffset, maxY));
+                
+                element.style.left = xOffset + 'px';
+                element.style.top = yOffset + 'px';
+            }
+        }
+        
+        function dragEnd(e) {
+            if (isDragging) {
+                isDragging = false;
+                
+                // Store final position
+                const rect = element.getBoundingClientRect();
+                element.style.left = rect.left + 'px';
+                element.style.top = rect.top + 'px';
+            }
+        }
+        
+        // Prevent text selection during drag
+        header.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+        
+        // Add visual feedback
+        header.addEventListener('mouseenter', function() {
+            header.style.backgroundColor = '#f8f9fa';
+        });
+        
+        header.addEventListener('mouseleave', function() {
+            if (!isDragging) {
+                header.style.backgroundColor = '';
+            }
+        });
     }
 
     // =================================================================
