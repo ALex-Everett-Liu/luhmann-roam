@@ -2213,6 +2213,116 @@ class EnhancedCodeGraphController {
       throw error;
     }
   }
+
+  // Add these methods after the existing template methods (around line 500)
+
+  async getAvailableTemplateFiles(req, res) {
+    try {
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      const templatesDir = path.join(__dirname, '..', 'templates');
+      
+      // Check if templates directory exists
+      try {
+        await fs.access(templatesDir);
+      } catch (error) {
+        // Directory doesn't exist, create it
+        await fs.mkdir(templatesDir, { recursive: true });
+        return res.json([]);
+      }
+      
+      const files = await fs.readdir(templatesDir);
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      
+      const templateFiles = await Promise.all(
+        jsonFiles.map(async (filename) => {
+          try {
+            const filePath = path.join(templatesDir, filename);
+            const stats = await fs.stat(filePath);
+            const content = await fs.readFile(filePath, 'utf8');
+            const data = JSON.parse(content);
+            
+            return {
+              filename,
+              name: data.metadata?.originalProject?.name || data.template?.name || filename.replace('.json', ''),
+              description: data.metadata?.originalProject?.description || data.template?.description || 'No description',
+              functionCount: data.template?.functions?.length || 0,
+              variableCount: data.template?.variables?.length || 0,
+              relationshipCount: data.template?.relationships?.length || 0,
+              size: stats.size,
+              modified: stats.mtime,
+              error: false
+            };
+          } catch (error) {
+            console.error(`Error reading template file ${filename}:`, error);
+            return {
+              filename,
+              name: filename.replace('.json', ''),
+              description: 'Error reading file',
+              functionCount: 0,
+              variableCount: 0,
+              relationshipCount: 0,
+              size: 0,
+              modified: new Date(),
+              error: true
+            };
+          }
+        })
+      );
+      
+      res.json(templateFiles);
+    } catch (error) {
+      console.error('Error getting template files:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async loadTemplateFile(req, res) {
+    try {
+      const { filename } = req.params;
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      const filePath = path.join(__dirname, '..', 'templates', filename);
+      const content = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(content);
+      
+      res.json(data);
+    } catch (error) {
+      console.error('Error loading template file:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async importFromTemplateFile(req, res) {
+    try {
+      const { filename, customName } = req.body;
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      // Load template file
+      const filePath = path.join(__dirname, '..', 'templates', filename);
+      const content = await fs.readFile(filePath, 'utf8');
+      const templateData = JSON.parse(content);
+      
+      // Use the existing import logic
+      const result = await this.importProjectStructure({
+        body: {
+          importData: templateData,
+          customName: customName
+        }
+      }, res);
+      
+      return result;
+    } catch (error) {
+      console.error('Error importing from template file:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  }
 }
 
 // Controller instance

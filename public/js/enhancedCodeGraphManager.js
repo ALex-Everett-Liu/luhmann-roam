@@ -2517,14 +2517,14 @@ async function exportProject(projectId) {
     
     modalBody.innerHTML = `
       <div class="import-tabs">
-        <button class="tab-button active" onclick="switchImportTab('file')">Upload JSON File</button>
-        <button class="tab-button" onclick="switchImportTab('templates')">Load from Templates</button>
+        <button class="tab-button active" onclick="EnhancedCodeGraphManager.switchImportTab('file')">Upload JSON File</button>
+        <button class="tab-button" onclick="EnhancedCodeGraphManager.switchImportTab('templates')">Load from Templates</button>
       </div>
       
       <div id="import-tab-file" class="import-tab active">
         <div class="form-group">
           <label for="importFile">Select exported JSON file:</label>
-          <input type="file" id="importFile" accept=".json" onchange="handleImportFile(this)">
+          <input type="file" id="importFile" accept=".json" onchange="EnhancedCodeGraphManager.handleImportFile(this)">
           <div class="file-info">Choose a JSON file exported from another Enhanced Code Graph project</div>
         </div>
         
@@ -2553,7 +2553,7 @@ async function exportProject(projectId) {
       </div>
       
       <div class="modal-actions">
-        <button type="button" onclick="confirmImport()" class="btn btn-primary" id="confirmImportBtn" disabled>
+        <button type="button" onclick="EnhancedCodeGraphManager.confirmImport()" class="btn btn-primary" id="confirmImportBtn" disabled>
           Import Project
         </button>
         <button type="button" onclick="EnhancedCodeGraphManager.hideModal('ecg-import-modal')" class="btn btn-secondary">
@@ -2668,7 +2668,8 @@ async function exportProject(projectId) {
       const customName = document.getElementById('importProjectName').value.trim();
       
       try {
-        const response = await fetch('/enhanced-code-graph/import', {
+        // Fix: Add the correct API prefix
+        const response = await fetch('/api/enhanced-code-graph/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2703,7 +2704,8 @@ async function exportProject(projectId) {
       const customName = document.getElementById('templateProjectName').value.trim();
       
       try {
-        const response = await fetch('/enhanced-code-graph/import-from-template', {
+        // Fix: Add the correct API prefix
+        const response = await fetch('/api/enhanced-code-graph/import-from-template', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2731,7 +2733,7 @@ async function exportProject(projectId) {
   function switchImportTab(tabName) {
     // Update tab buttons
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[onclick="switchImportTab('${tabName}')"]`).classList.add('active');
+    document.querySelector(`[onclick="EnhancedCodeGraphManager.switchImportTab('${tabName}')"]`).classList.add('active');
     
     // Update tab content
     document.querySelectorAll('.import-tab').forEach(tab => {
@@ -2763,9 +2765,14 @@ async function exportProject(projectId) {
   
   async function loadTemplateFiles() {
     try {
-      const response = await fetch('/enhanced-code-graph/template-files');
-      const templateFiles = await response.json();
+      // Fix: Add the correct API prefix
+      const response = await fetch('/api/enhanced-code-graph/template-files');
       
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const templateFiles = await response.json();
       renderTemplateFilesList(templateFiles);
     } catch (error) {
       console.error('Error loading template files:', error);
@@ -2796,7 +2803,7 @@ async function exportProject(projectId) {
     container.innerHTML = templateFiles.map(template => `
       <div class="template-file-item ${template.error ? 'error' : ''}" 
            data-filename="${template.filename}" 
-           onclick="selectTemplateFile('${template.filename}')">
+           onclick="EnhancedCodeGraphManager.selectTemplateFile('${template.filename}')">
         <div class="template-header">
           <h5>${template.name}</h5>
           <div class="template-stats">
@@ -3076,25 +3083,47 @@ async function exportProject(projectId) {
         initialize,
         show,
         hide,
-        isVisible: getIsVisible,
-        initializeDatabase,
+        getIsVisible,
+        showStatus,
         switchView,
-        
-        // Project management
-        loadProjects,
+        showModal,
+        hideModal,
         showCreateProjectModal,
         createProject,
-        editProject,
         showTemplateModal,
         createFromTemplate,
         viewProjectGraph,
         deleteProject,
-
+        editProject,
+        updateProject,
+        resetCreateProjectModal,
+        showCreateFunctionModal,
+        saveFunction,
+        editFunction,
+        deleteFunction,
+        showCreateVariableModal,
+        saveVariable,
+        editVariable,
+        deleteVariable,
+        showCreateDependencyModal,
+        saveDependency,
+        editDependency,
+        deleteDependency,
+        resetGraphLayout,
+        fitGraphToView,
+        handleZoom,
+        toggleFullscreen,
+        exitFullscreen, // Add this for the fullscreen exit button
+        handleZoom, // Add this for the zoom slider
+        
         // Export/Import
         exportProject,
         showImportModal,
         handleImportFile,
         confirmImport,
+        switchImportTab,        // ← ADD THIS
+        selectTemplateFile,     // ← ADD THIS
+        loadTemplateFiles,      // ← ADD THIS
         showUpdateImportModal,
         handleUpdateImportFile,
         confirmUpdateImport,
@@ -3135,7 +3164,8 @@ async function exportProject(projectId) {
         showUpdateImportModal,
         handleUpdateImportFile,
         showUpdateImportPreview,
-        confirmUpdateImport
+        confirmUpdateImport,
+        selectTemplateFile
     };
 })();
 

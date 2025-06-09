@@ -59,6 +59,11 @@ router.get('/projects/:projectId/dependencies', enhancedCodeGraphController.getD
 router.get('/templates', enhancedCodeGraphController.getAvailableTemplates);
 router.post('/templates/create', enhancedCodeGraphController.createProjectFromTemplate);
 
+// Template file management
+router.get('/template-files', enhancedCodeGraphController.getAvailableTemplateFiles);
+router.get('/template-files/:filename', enhancedCodeGraphController.loadTemplateFile);
+router.post('/import-from-template', enhancedCodeGraphController.importFromTemplateFile);
+
 // =================================================================
 // VISUALIZATION ROUTES
 // =================================================================
@@ -68,7 +73,7 @@ router.get('/visualization/:projectId', enhancedCodeGraphController.getVisualiza
 // EXPORT/IMPORT ROUTES
 // =================================================================
 router.get('/projects/:projectId/export', enhancedCodeGraphController.exportProjectStructure);
-router.post('/projects/import', enhancedCodeGraphController.importProjectStructure);
+router.post('/import', enhancedCodeGraphController.importProjectStructure);
 router.put('/projects/:projectId/import-update', enhancedCodeGraphController.updateProjectFromImport);
 
 module.exports = router;
