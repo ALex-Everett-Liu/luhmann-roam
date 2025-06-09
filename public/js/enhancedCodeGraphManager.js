@@ -2488,153 +2488,223 @@ async function exportProject(projectId) {
   }
   
   function showImportModal() {
-    const importModal = document.createElement('div');
-    importModal.id = 'ecg-import-modal';
-    importModal.className = 'ecg-modal';
-    importModal.innerHTML = `
-      <div class="ecg-modal-content">
-        <div class="ecg-modal-header">
-          <h3>Import Project Structure</h3>
-          <button class="close-btn" onclick="EnhancedCodeGraphManager.hideModal('ecg-import-modal')">&times;</button>
+    // Reset modal content
+    const modal = document.getElementById('ecg-import-modal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    modalBody.innerHTML = `
+      <div class="import-tabs">
+        <button class="tab-button active" onclick="switchImportTab('file')">Upload JSON File</button>
+        <button class="tab-button" onclick="switchImportTab('templates')">Load from Templates</button>
+      </div>
+      
+      <div id="import-tab-file" class="import-tab active">
+        <div class="form-group">
+          <label for="importFile">Select exported JSON file:</label>
+          <input type="file" id="importFile" accept=".json" onchange="handleImportFile(this)">
+          <div class="file-info">Choose a JSON file exported from another Enhanced Code Graph project</div>
         </div>
-        <div class="ecg-modal-body">
-          <div class="form-group">
-            <label for="import-custom-name">Custom Project Name (optional)</label>
-            <input type="text" id="import-custom-name" placeholder="Leave empty to use imported name">
-          </div>
-          <div class="form-group">
-            <label for="import-file">Select Export File</label>
-            <input type="file" id="import-file" accept=".json" onchange="EnhancedCodeGraphManager.handleImportFile(this)">
-            <small class="help-text">Select a JSON file exported from Enhanced Code Graph Manager</small>
-          </div>
-          <div id="import-preview" class="import-preview" style="display: none;">
-            <h4>Import Preview</h4>
-            <div id="import-details"></div>
+        
+        <div id="import-preview" style="display: none;">
+          <!-- Preview content will be added here -->
+        </div>
+        
+        <div class="form-group">
+          <label for="importProjectName">Project Name (optional):</label>
+          <input type="text" id="importProjectName" placeholder="Leave empty to use original name + timestamp">
+        </div>
+      </div>
+      
+      <div id="import-tab-templates" class="import-tab" style="display: none;">
+        <div class="template-list-container">
+          <h4>Available Template Files</h4>
+          <div id="template-files-list">
+            <div class="loading">Loading templates...</div>
           </div>
         </div>
-        <div class="ecg-modal-footer">
-          <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.hideModal('ecg-import-modal')">Cancel</button>
-          <button class="btn btn-primary" id="import-confirm-btn" onclick="EnhancedCodeGraphManager.confirmImport()" disabled>Import Project</button>
+        
+        <div class="form-group">
+          <label for="templateProjectName">Project Name (optional):</label>
+          <input type="text" id="templateProjectName" placeholder="Leave empty to use template name + timestamp">
         </div>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" onclick="confirmImport()" class="btn btn-primary" id="confirmImportBtn" disabled>
+          Import Project
+        </button>
+        <button type="button" onclick="hideModal('ecg-import-modal')" class="btn btn-secondary">
+          Cancel
+        </button>
       </div>
     `;
     
-    container.appendChild(importModal);
     showModal('ecg-import-modal');
+    
+    // Load template files for the templates tab
+    loadTemplateFiles();
   }
   
-  function handleImportFile(input) {
-    const file = input.files[0];
-    if (!file) return;
+  function switchImportTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[onclick="switchImportTab('${tabName}')"]`).classList.add('active');
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const importData = JSON.parse(e.target.result);
-        
-        // Validate import data
-        if (!importData.metadata || !importData.template) {
-          throw new Error('Invalid export file format');
-        }
-        
-        if (importData.metadata.exportType !== 'enhanced_code_graph_project') {
-          throw new Error('This file is not an Enhanced Code Graph project export');
-        }
-        
-        // Show preview
-        showImportPreview(importData);
-        
-        // Store import data for confirmation
-        window.currentImportData = importData;
-        
-        // Enable import button
-        document.getElementById('import-confirm-btn').disabled = false;
-        
-      } catch (error) {
-        showStatus('Error reading import file: ' + error.message, 'error');
-        document.getElementById('import-preview').style.display = 'none';
-        document.getElementById('import-confirm-btn').disabled = true;
-      }
-    };
-    reader.readAsText(file);
+    // Update tab content
+    document.querySelectorAll('.import-tab').forEach(tab => {
+      tab.style.display = 'none';
+      tab.classList.remove('active');
+    });
+    
+    const activeTab = document.getElementById(`import-tab-${tabName}`);
+    activeTab.style.display = 'block';
+    activeTab.classList.add('active');
+    
+    // Reset import button
+    document.getElementById('confirmImportBtn').disabled = true;
   }
   
-  function showImportPreview(importData) {
-    const preview = document.getElementById('import-preview');
-    const details = document.getElementById('import-details');
+  async function loadTemplateFiles() {
+    try {
+      const response = await fetch('/enhanced-code-graph/template-files');
+      const templateFiles = await response.json();
+      
+      renderTemplateFilesList(templateFiles);
+    } catch (error) {
+      console.error('Error loading template files:', error);
+      document.getElementById('template-files-list').innerHTML = `
+        <div class="error">Error loading template files: ${error.message}</div>
+      `;
+    }
+  }
+  
+  function renderTemplateFilesList(templateFiles) {
+    const container = document.getElementById('template-files-list');
     
-    const original = importData.metadata.originalProject;
-    const stats = importData.metadata.statistics;
+    if (templateFiles.length === 0) {
+      container.innerHTML = `
+        <div class="no-templates">
+          <p>No template files found.</p>
+          <p>To add templates:</p>
+          <ol>
+            <li>Export a project using the "Export Project" button</li>
+            <li>Save the JSON file in the <code>templates/</code> directory</li>
+            <li>Refresh this list</li>
+          </ol>
+        </div>
+      `;
+      return;
+    }
     
-    details.innerHTML = `
-      <div class="import-project-info">
-        <h5>Original Project: ${original.name}</h5>
-        <p><strong>Description:</strong> ${original.description || 'No description'}</p>
-        <p><strong>Language:</strong> ${original.language || 'javascript'}</p>
-        ${original.framework ? `<p><strong>Framework:</strong> ${original.framework}</p>` : ''}
-        <p><strong>Path:</strong> ${original.path}</p>
-        <p><strong>Exported:</strong> ${new Date(importData.metadata.exportedAt).toLocaleString()}</p>
-      </div>
-      <div class="import-statistics">
-        <h5>Structure Overview</h5>
-        <div class="stats-grid">
-          <div class="stat">
-            <span class="stat-number">${stats.function_count}</span>
-            <span class="stat-label">Functions</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">${stats.variable_count}</span>
-            <span class="stat-label">Variables</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">${stats.dependency_count}</span>
-            <span class="stat-label">Dependencies</span>
+    container.innerHTML = templateFiles.map(template => `
+      <div class="template-file-item ${template.error ? 'error' : ''}" 
+           data-filename="${template.filename}" 
+           onclick="selectTemplateFile('${template.filename}')">
+        <div class="template-header">
+          <h5>${template.name}</h5>
+          <div class="template-stats">
+            ${template.functionCount} functions, ${template.variableCount} variables, ${template.relationshipCount} relationships
           </div>
         </div>
-        ${stats.relationship_types.length > 0 ? `
-        <div class="relationship-types">
-          <strong>Relationship Types:</strong> ${stats.relationship_types.join(', ')}
+        <div class="template-description">${template.description}</div>
+        <div class="template-meta">
+          <small>File: ${template.filename} | Size: ${(template.size / 1024).toFixed(1)}KB | Modified: ${new Date(template.modified).toLocaleDateString()}</small>
         </div>
-        ` : ''}
+        ${template.error ? '<div class="template-error">⚠️ Error reading this template file</div>' : ''}
       </div>
-    `;
+    `).join('');
+  }
+  
+  function selectTemplateFile(filename) {
+    // Remove previous selections
+    document.querySelectorAll('.template-file-item').forEach(item => {
+      item.classList.remove('selected');
+    });
     
-    preview.style.display = 'block';
+    // Select current item
+    const selectedItem = document.querySelector(`[data-filename="${filename}"]`);
+    selectedItem.classList.add('selected');
+    
+    // Store selected filename
+    selectedItem.dataset.selected = 'true';
+    
+    // Enable import button
+    document.getElementById('confirmImportBtn').disabled = false;
+    
+    // Update button text
+    document.getElementById('confirmImportBtn').textContent = 'Import from Template';
   }
   
   async function confirmImport() {
-    try {
-      if (!window.currentImportData) {
-        throw new Error('No import data available');
+    const activeTab = document.querySelector('.import-tab.active');
+    
+    if (activeTab.id === 'import-tab-file') {
+      // Original file import logic
+      if (!window.pendingImportData) {
+        showStatus('Please select a file first', 'error');
+        return;
       }
       
-      showStatus('Importing project structure...', 'info');
+      const customName = document.getElementById('importProjectName').value.trim();
       
-      const customName = document.getElementById('import-custom-name').value.trim() || null;
-      
-      const response = await fetch('/api/enhanced-code-graph/projects/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          importData: window.currentImportData,
-          customName: customName
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        showStatus(`Project imported successfully! Created ${result.imported_elements.functions} functions, ${result.imported_elements.variables} variables, and ${result.imported_elements.relationships} relationships.`);
-        hideModal('ecg-import-modal');
-        loadProjects(); // Refresh projects list
+      try {
+        const response = await fetch('/enhanced-code-graph/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            importData: window.pendingImportData,
+            customName: customName || null
+          })
+        });
         
-        // Clean up
-        window.currentImportData = null;
-      } else {
-        showStatus('Error importing project: ' + result.error, 'error');
+        const result = await response.json();
+        
+        if (result.success) {
+          showStatus(`Successfully imported project: ${result.project.name}`, 'success');
+          hideModal('ecg-import-modal');
+          loadProjects();
+          window.pendingImportData = null;
+        } else {
+          showStatus(`Import failed: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        console.error('Import error:', error);
+        showStatus(`Import failed: ${error.message}`, 'error');
       }
-    } catch (error) {
-      showStatus('Error importing project: ' + error.message, 'error');
+    } else if (activeTab.id === 'import-tab-templates') {
+      // Template file import logic
+      const selectedTemplate = document.querySelector('.template-file-item.selected');
+      if (!selectedTemplate) {
+        showStatus('Please select a template first', 'error');
+        return;
+      }
+      
+      const filename = selectedTemplate.dataset.filename;
+      const customName = document.getElementById('templateProjectName').value.trim();
+      
+      try {
+        const response = await fetch('/enhanced-code-graph/import-from-template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: filename,
+            customName: customName || null
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showStatus(`Successfully imported project from template: ${result.project.name}`, 'success');
+          hideModal('ecg-import-modal');
+          loadProjects();
+        } else {
+          showStatus(`Template import failed: ${result.error}`, 'error');
+        }
+      } catch (error) {
+        console.error('Template import error:', error);
+        showStatus(`Template import failed: ${error.message}`, 'error');
+      }
     }
   }
 

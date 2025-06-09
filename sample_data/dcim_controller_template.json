@@ -1,0 +1,367 @@
+{
+    "metadata": {
+      "exportedAt": "2024-01-15T00:00:00.000Z",
+      "version": "1.0",
+      "exportType": "enhanced_code_graph_project",
+      "originalProject": {
+        "name": "DCIM Controller Analysis",
+        "path": "controllers/dcimController.js",
+        "description": "Comprehensive Digital Camera Image Management Controller - Full dcimController.js and dcimRoutes.js analysis",
+        "language": "javascript",
+        "framework": "Express.js",
+        "tags": ["template", "dcim", "image-processing", "file-management"],
+        "status": "template"
+      },
+      "statistics": {
+        "function_count": 26,
+        "variable_count": 17,
+        "dependency_count": 43,
+        "relationship_types": ["contains", "passes_to", "chains_to", "assigns_to", "calls_method_on", "calls"]
+      }
+    },
+    "template": {
+      "name": "DCIM_Controller_Complete_Analysis",
+      "display_name": "DCIM Controller - Complete Analysis",
+      "description": "Comprehensive analysis of Digital Camera Image Management system including file processing, thumbnails, database operations, and route handling",
+      "functions": [
+        {
+          "name": "generateThumbnail",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 68,
+          "parameters": ["inputPath", "thumbPath", "maxSize", "quality"],
+          "is_async": true,
+          "description": "Generate thumbnails for images and videos using Sharp and FFmpeg"
+        },
+        {
+          "name": "getAssetDirectory",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 25,
+          "parameters": [],
+          "is_async": true,
+          "description": "Retrieves custom asset directory path from database with fallback"
+        },
+        {
+          "name": "getThumbnailDirectory",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 45,
+          "parameters": [],
+          "is_async": true,
+          "description": "Retrieves custom thumbnail directory path from database with fallback"
+        },
+        {
+          "name": "convertToWebP",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 110,
+          "parameters": ["imagePath", "outputPath", "quality"],
+          "is_async": true,
+          "description": "Convert image to WebP format using Sharp"
+        },
+        {
+          "name": "formatFileSize",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 120,
+          "parameters": ["size"],
+          "is_async": false,
+          "description": "Format file size in bytes to human-readable format"
+        },
+        {
+          "name": "getImages",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 125,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Retrieve all images from database for gallery view"
+        },
+        {
+          "name": "getImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 139,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Retrieve single image by ID for detailed view"
+        },
+        {
+          "name": "addImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 156,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Add new image with file upload and thumbnail generation"
+        },
+        {
+          "name": "updateImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 270,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Update existing image metadata"
+        },
+        {
+          "name": "deleteImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 322,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Delete image with file cleanup and subsidiary handling"
+        },
+        {
+          "name": "convertImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 436,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Convert existing image to WebP format"
+        },
+        {
+          "name": "convertUploadedImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 520,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Convert uploaded image to optimized WebP format"
+        },
+        {
+          "name": "getSubsidiaryImages",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 610,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Get all subsidiary images for a parent image"
+        },
+        {
+          "name": "addSubsidiaryImage",
+          "file_path": "controllers/dcimController.js",
+          "line_number": 634,
+          "parameters": ["req", "res"],
+          "is_async": true,
+          "description": "Add new subsidiary image with metadata inheritance"
+        },
+        {
+          "name": "multer.diskStorage",
+          "file_path": "routes/dcimRoutes.js",
+          "line_number": 8,
+          "parameters": ["options"],
+          "is_async": false,
+          "description": "Configure multer disk storage for file uploads"
+        },
+        {
+          "name": "router.get",
+          "file_path": "routes/dcimRoutes.js",
+          "line_number": 40,
+          "parameters": ["path", "handler"],
+          "is_async": false,
+          "description": "Express GET route registration"
+        },
+        {
+          "name": "router.post",
+          "file_path": "routes/dcimRoutes.js",
+          "line_number": 50,
+          "parameters": ["path", "middleware", "handler"],
+          "is_async": false,
+          "description": "Express POST route registration with middleware"
+        },
+        {
+          "name": "upload.single",
+          "file_path": "routes/dcimRoutes.js",
+          "line_number": 50,
+          "parameters": ["fieldName"],
+          "is_async": false,
+          "description": "Multer middleware for single file upload"
+        },
+        {
+          "name": "sharp",
+          "file_path": "sharp (Node.js module)",
+          "line_number": 0,
+          "parameters": ["input"],
+          "is_async": false,
+          "description": "Sharp image processing library constructor"
+        },
+        {
+          "name": "ffmpeg.screenshots",
+          "file_path": "ffmpeg (Node.js module)",
+          "line_number": 0,
+          "parameters": ["options"],
+          "is_async": false,
+          "description": "FFmpeg video frame extraction"
+        },
+        {
+          "name": "path.extname",
+          "file_path": "path (Node.js module)",
+          "line_number": 0,
+          "parameters": ["path"],
+          "is_async": false,
+          "description": "Extract file extension from path"
+        },
+        {
+          "name": "fs.existsSync",
+          "file_path": "fs (Node.js module)",
+          "line_number": 0,
+          "parameters": ["path"],
+          "is_async": false,
+          "description": "Synchronously check if file exists"
+        },
+        {
+          "name": "toLowerCase",
+          "file_path": "built-in",
+          "line_number": 70,
+          "parameters": [],
+          "is_async": false,
+          "description": "JavaScript built-in string method to convert to lowercase"
+        },
+        {
+          "name": "includes",
+          "file_path": "built-in",
+          "line_number": 71,
+          "parameters": ["searchElement"],
+          "is_async": false,
+          "description": "JavaScript built-in array method to check if element exists"
+        }
+      ],
+      "variables": [
+        {
+          "name": "inputPath",
+          "type": "string",
+          "value": "function parameter - source file path for thumbnail generation",
+          "scope": "parameter",
+          "line_number": 68,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "thumbPath",
+          "type": "string",
+          "value": "function parameter - output path for generated thumbnail",
+          "scope": "parameter",
+          "line_number": 68,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "maxSize",
+          "type": "number",
+          "value": "function parameter with default value: 180",
+          "scope": "parameter",
+          "line_number": 68,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "quality",
+          "type": "number",
+          "value": "function parameter with default value: 60",
+          "scope": "parameter",
+          "line_number": 68,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "req",
+          "type": "object",
+          "value": "Express request object",
+          "scope": "parameter",
+          "line_number": 125,
+          "function_name": "getImages"
+        },
+        {
+          "name": "res",
+          "type": "object",
+          "value": "Express response object",
+          "scope": "parameter",
+          "line_number": 125,
+          "function_name": "getImages"
+        },
+        {
+          "name": "fileExtension",
+          "type": "string",
+          "value": "const fileExtension - extracted and lowercased file extension",
+          "scope": "local",
+          "line_number": 70,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "isVideo",
+          "type": "boolean",
+          "value": "const isVideo - boolean indicating if file is video format",
+          "scope": "local",
+          "line_number": 71,
+          "function_name": "generateThumbnail"
+        },
+        {
+          "name": "db",
+          "type": "object",
+          "value": "Database connection object from getDb()",
+          "scope": "local",
+          "line_number": 130,
+          "function_name": "getImages"
+        },
+        {
+          "name": "images",
+          "type": "array",
+          "value": "Array of image records from database query",
+          "scope": "local",
+          "line_number": 132,
+          "function_name": "getImages"
+        },
+        {
+          "name": "DEFAULT_ASSET_DIR",
+          "type": "string",
+          "value": "path.join(__dirname, '../public/attachment/dcim')",
+          "scope": "global",
+          "line_number": 10
+        },
+        {
+          "name": "DEFAULT_THUMB_DIR",
+          "type": "string",
+          "value": "path.join(__dirname, '../public/attachment/thumbnails')",
+          "scope": "global",
+          "line_number": 11
+        },
+        {
+          "name": "THUMBNAIL_SIZE",
+          "type": "number",
+          "value": "180",
+          "scope": "global",
+          "line_number": 9
+        },
+        {
+          "name": "videoExtensions",
+          "type": "array",
+          "value": "['.mp4', '.mov', '.avi', '.mkv', '.webm']",
+          "scope": "literal",
+          "line_number": 71
+        },
+        {
+          "name": "allowedTypes",
+          "type": "regexp",
+          "value": "/jpeg|jpg|png|gif|webp|mp4|mov|avi|mkv|webm/",
+          "scope": "literal",
+          "line_number": 25
+        }
+      ],
+      "relationships": [
+        { "source": "generateThumbnail", "target": "inputPath", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "generateThumbnail", "target": "thumbPath", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "generateThumbnail", "target": "maxSize", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "generateThumbnail", "target": "quality", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "generateThumbnail", "target": "fileExtension", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "generateThumbnail", "target": "isVideo", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "getImages", "target": "req", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "getImages", "target": "res", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "getImages", "target": "db", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "getImages", "target": "images", "type": "contains", "source_type": "function", "target_type": "variable" },
+        { "source": "inputPath", "target": "path.extname", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "path.extname", "target": "toLowerCase", "type": "chains_to", "source_type": "function", "target_type": "function" },
+        { "source": "toLowerCase", "target": "fileExtension", "type": "assigns_to", "source_type": "function", "target_type": "variable" },
+        { "source": "videoExtensions", "target": "includes", "type": "calls_method_on", "source_type": "variable", "target_type": "function" },
+        { "source": "fileExtension", "target": "includes", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "includes", "target": "isVideo", "type": "assigns_to", "source_type": "function", "target_type": "variable" },
+        { "source": "inputPath", "target": "sharp", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "thumbPath", "target": "sharp", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "maxSize", "target": "sharp", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "quality", "target": "sharp", "type": "passes_to", "source_type": "variable", "target_type": "function" },
+        { "source": "router.get", "target": "getImages", "type": "calls", "source_type": "function", "target_type": "function" },
+        { "source": "router.get", "target": "getImage", "type": "calls", "source_type": "function", "target_type": "function" },
+        { "source": "router.post", "target": "addImage", "type": "calls", "source_type": "function", "target_type": "function" },
+        { "source": "upload.single", "target": "addImage", "type": "chains_to", "source_type": "function", "target_type": "function" },
+        { "source": "addImage", "target": "generateThumbnail", "type": "calls", "source_type": "function", "target_type": "function" },
+        { "source": "convertImage", "target": "convertToWebP", "type": "calls", "source_type": "function", "target_type": "function" },
+        { "source": "convertUploadedImage", "target": "sharp", "type": "calls", "source_type": "function", "target_type": "function" }
+      ]
+    }
+  }

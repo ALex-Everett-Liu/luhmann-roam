@@ -747,3 +747,116 @@
     margin: 5px 0;
     color: #856404;
 }
+
+/* Import tabs styling */
+.import-tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    border: none;
+    background: #f8f9fa;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-button.active {
+    background: white;
+    border-bottom-color: #007bff;
+    color: #007bff;
+}
+
+.tab-button:hover {
+    background: #e9ecef;
+}
+
+.import-tab {
+    display: none;
+}
+
+.import-tab.active {
+    display: block;
+}
+
+/* Template files list styling */
+.template-list-container {
+    margin-bottom: 20px;
+}
+
+.template-file-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.template-file-item:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+}
+
+.template-file-item.selected {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.template-file-item.error {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.template-header h5 {
+    margin: 0;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.template-stats {
+    font-size: 0.85em;
+    color: #666;
+    text-align: right;
+}
+
+.template-description {
+    color: #555;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.template-meta {
+    color: #888;
+    font-size: 0.8em;
+}
+
+.template-error {
+    color: #dc3545;
+    font-size: 0.85em;
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.no-templates {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+}
+
+.no-templates code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}

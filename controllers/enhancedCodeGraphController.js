@@ -51,423 +51,168 @@ class EnhancedCodeGraphController {
       'uses': { label: 'uses (generic)', category: 'generic', strength: 0.5 }
     };
     
-    // Templates for quick project creation
+    // Templates for quick project creation - simplified for user completion
     this.PROJECT_TEMPLATES = {
-      'dcim_controller': {
-        name: 'DCIM Controller Analysis',
-        description: 'Comprehensive Digital Camera Image Management Controller - Full dcimController.js and dcimRoutes.js analysis',
+      'basic_web_app': {
+        name: 'Basic Web Application',
+        description: 'Simple web application template with common patterns - complete with your own functions and relationships',
         functions: [
-          // === DCIM Controller Functions ===
           {
-            name: 'generateThumbnail',
-            file_path: 'controllers/dcimController.js',
-            line_number: 68,
-            parameters: ['inputPath', 'thumbPath', 'maxSize', 'quality'],
-            is_async: true,
-            description: 'Generate thumbnails for images and videos using Sharp and FFmpeg'
-          },
-          {
-            name: 'getAssetDirectory',
-            file_path: 'controllers/dcimController.js',
-            line_number: 25,
-            parameters: [],
-            is_async: true,
-            description: 'Retrieves custom asset directory path from database with fallback'
-          },
-          {
-            name: 'getThumbnailDirectory',
-            file_path: 'controllers/dcimController.js',
-            line_number: 45,
-            parameters: [],
-            is_async: true,
-            description: 'Retrieves custom thumbnail directory path from database with fallback'
-          },
-          {
-            name: 'convertToWebP',
-            file_path: 'controllers/dcimController.js',
-            line_number: 110,
-            parameters: ['imagePath', 'outputPath', 'quality'],
-            is_async: true,
-            description: 'Convert image to WebP format using Sharp'
-          },
-          {
-            name: 'formatFileSize',
-            file_path: 'controllers/dcimController.js',
-            line_number: 120,
-            parameters: ['size'],
-            is_async: false,
-            description: 'Format file size in bytes to human-readable format'
-          },
-          {
-            name: 'getImages',
-            file_path: 'controllers/dcimController.js',
-            line_number: 125,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Retrieve all images from database for gallery view'
-          },
-          {
-            name: 'getImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 139,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Retrieve single image by ID for detailed view'
-          },
-          {
-            name: 'addImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 156,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Add new image with file upload and thumbnail generation'
-          },
-          {
-            name: 'updateImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 270,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Update existing image metadata'
-          },
-          {
-            name: 'deleteImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 322,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Delete image with file cleanup and subsidiary handling'
-          },
-          {
-            name: 'convertImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 436,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Convert existing image to WebP format'
-          },
-          {
-            name: 'convertUploadedImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 520,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Convert uploaded image to optimized WebP format'
-          },
-          {
-            name: 'getSubsidiaryImages',
-            file_path: 'controllers/dcimController.js',
-            line_number: 610,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Get all subsidiary images for a parent image'
-          },
-          {
-            name: 'addSubsidiaryImage',
-            file_path: 'controllers/dcimController.js',
-            line_number: 634,
-            parameters: ['req', 'res'],
-            is_async: true,
-            description: 'Add new subsidiary image with metadata inheritance'
-          },
-          
-          // === Route Handler Functions (dcimRoutes.js) ===
-          {
-            name: 'multer.diskStorage',
-            file_path: 'routes/dcimRoutes.js',
-            line_number: 8,
-            parameters: ['options'],
-            is_async: false,
-            description: 'Configure multer disk storage for file uploads'
-          },
-          {
-            name: 'router.get',
-            file_path: 'routes/dcimRoutes.js',
-            line_number: 40,
-            parameters: ['path', 'handler'],
-            is_async: false,
-            description: 'Express GET route registration'
-          },
-          {
-            name: 'router.post',
-            file_path: 'routes/dcimRoutes.js',
-            line_number: 50,
-            parameters: ['path', 'middleware', 'handler'],
-            is_async: false,
-            description: 'Express POST route registration with middleware'
-          },
-          {
-            name: 'upload.single',
-            file_path: 'routes/dcimRoutes.js',
-            line_number: 50,
-            parameters: ['fieldName'],
-            is_async: false,
-            description: 'Multer middleware for single file upload'
-          },
-          
-          // === External Dependencies ===
-          {
-            name: 'sharp',
-            file_path: 'sharp (Node.js module)',
-            line_number: 0,
-            parameters: ['input'],
-            is_async: false,
-            description: 'Sharp image processing library constructor'
-          },
-          {
-            name: 'ffmpeg.screenshots',
-            file_path: 'ffmpeg (Node.js module)',
-            line_number: 0,
-            parameters: ['options'],
-            is_async: false,
-            description: 'FFmpeg video frame extraction'
-          },
-          {
-            name: 'path.extname',
-            file_path: 'path (Node.js module)',
-            line_number: 0,
-            parameters: ['path'],
-            is_async: false,
-            description: 'Extract file extension from path'
-          },
-          {
-            name: 'fs.existsSync',
-            file_path: 'fs (Node.js module)',
-            line_number: 0,
-            parameters: ['path'],
-            is_async: false,
-            description: 'Synchronously check if file exists'
-          },
-          
-          // === Built-in JavaScript Methods ===
-          {
-            name: 'toLowerCase',
-            file_path: 'built-in',
-            line_number: 70,
+            name: 'initApp',
+            file_path: 'app.js',
+            line_number: 1,
             parameters: [],
             is_async: false,
-            description: 'JavaScript built-in string method to convert to lowercase'
+            description: 'Initialize the application - customize this function'
           },
           {
-            name: 'includes',
-            file_path: 'built-in',
-            line_number: 71,
-            parameters: ['searchElement'],
+            name: 'handleRequest',
+            file_path: 'app.js',
+            line_number: 10,
+            parameters: ['req', 'res'],
+            is_async: true,
+            description: 'Handle incoming requests - add your request handling logic'
+          },
+          {
+            name: 'processData',
+            file_path: 'utils.js',
+            line_number: 5,
+            parameters: ['data'],
             is_async: false,
-            description: 'JavaScript built-in array method to check if element exists'
+            description: 'Process incoming data - implement your data processing logic'
+          },
+          {
+            name: 'saveToDatabase',
+            file_path: 'database.js',
+            line_number: 15,
+            parameters: ['data'],
+            is_async: true,
+            description: 'Save data to database - implement your database operations'
           }
         ],
         variables: [
-          // === Function Parameters ===
-          {
-            name: 'inputPath',
-            type: 'string',
-            value: 'function parameter - source file path for thumbnail generation',
-            scope: 'parameter',
-            line_number: 68
-          },
-          {
-            name: 'thumbPath',
-            type: 'string',
-            value: 'function parameter - output path for generated thumbnail',
-            scope: 'parameter',
-            line_number: 68
-          },
-          {
-            name: 'maxSize',
-            type: 'number',
-            value: 'function parameter with default value: 180',
-            scope: 'parameter',
-            line_number: 68
-          },
-          {
-            name: 'quality',
-            type: 'number',
-            value: 'function parameter with default value: 60',
-            scope: 'parameter',
-            line_number: 68
-          },
           {
             name: 'req',
             type: 'object',
             value: 'Express request object',
             scope: 'parameter',
-            line_number: 125
+            line_number: 10
           },
           {
             name: 'res',
             type: 'object',
             value: 'Express response object',
             scope: 'parameter',
-            line_number: 125
-          },
-          
-          // === Local Variables ===
-          {
-            name: 'fileExtension',
-            type: 'string',
-            value: 'const fileExtension - extracted and lowercased file extension',
-            scope: 'local',
-            line_number: 70
-          },
-          {
-            name: 'isVideo',
-            type: 'boolean',
-            value: 'const isVideo - boolean indicating if file is video format',
-            scope: 'local',
-            line_number: 71
-          },
-          {
-            name: 'db',
-            type: 'object',
-            value: 'Database connection object from getDb()',
-            scope: 'local',
-            line_number: 130
-          },
-          {
-            name: 'images',
-            type: 'array',
-            value: 'Array of image records from database query',
-            scope: 'local',
-            line_number: 132
-          },
-          {
-            name: 'id',
-            type: 'string',
-            value: 'Image ID extracted from request parameters',
-            scope: 'local',
-            line_number: 142
-          },
-          {
-            name: 'image',
-            type: 'object',
-            value: 'Single image record from database',
-            scope: 'local',
-            line_number: 144
-          },
-          {
-            name: 'assetDir',
-            type: 'string',
-            value: 'Directory path for storing image assets',
-            scope: 'local',
-            line_number: 180
-          },
-          {
-            name: 'thumbnailPath',
-            type: 'string',
-            value: 'Generated path for thumbnail file',
-            scope: 'local',
-            line_number: 185
-          },
-          
-          // === Global Constants ===
-          {
-            name: 'DEFAULT_ASSET_DIR',
-            type: 'string',
-            value: "path.join(__dirname, '../public/attachment/dcim')",
-            scope: 'global',
             line_number: 10
           },
           {
-            name: 'DEFAULT_THUMB_DIR',
-            type: 'string',
-            value: "path.join(__dirname, '../public/attachment/thumbnails')",
+            name: 'data',
+            type: 'object',
+            value: 'Input data to be processed',
+            scope: 'parameter',
+            line_number: 5
+          },
+          {
+            name: 'processedData',
+            type: 'object',
+            value: 'Data after processing',
+            scope: 'local',
+            line_number: 7
+          },
+          {
+            name: 'CONFIG',
+            type: 'object',
+            value: 'Application configuration',
             scope: 'global',
-            line_number: 11
-          },
-          {
-            name: 'THUMBNAIL_SIZE',
-            type: 'number',
-            value: '180',
-            scope: 'global',
-            line_number: 9
-          },
-          
-          // === Array Literals ===
-          {
-            name: 'videoExtensions',
-            type: 'array',
-            value: "['.mp4', '.mov', '.avi', '.mkv', '.webm']",
-            scope: 'literal',
-            line_number: 71
-          },
-          {
-            name: 'allowedTypes',
-            type: 'regexp',
-            value: '/jpeg|jpg|png|gif|webp|mp4|mov|avi|mkv|webm/',
-            scope: 'literal',
-            line_number: 25
+            line_number: 1
           }
         ],
         relationships: [
-          // === Function Containment Relationships ===
-          { source: 'generateThumbnail', target: 'inputPath', type: 'contains' },
-          { source: 'generateThumbnail', target: 'thumbPath', type: 'contains' },
-          { source: 'generateThumbnail', target: 'maxSize', type: 'contains' },
-          { source: 'generateThumbnail', target: 'quality', type: 'contains' },
-          { source: 'generateThumbnail', target: 'fileExtension', type: 'contains' },
-          { source: 'generateThumbnail', target: 'isVideo', type: 'contains' },
-          
-          { source: 'getImages', target: 'req', type: 'contains' },
-          { source: 'getImages', target: 'res', type: 'contains' },
-          { source: 'getImages', target: 'db', type: 'contains' },
-          { source: 'getImages', target: 'images', type: 'contains' },
-          
-          { source: 'getImage', target: 'req', type: 'contains' },
-          { source: 'getImage', target: 'res', type: 'contains' },
-          { source: 'getImage', target: 'id', type: 'contains' },
-          { source: 'getImage', target: 'db', type: 'contains' },
-          { source: 'getImage', target: 'image', type: 'contains' },
-          
-          // === Data Flow Chains in generateThumbnail ===
-          { source: 'inputPath', target: 'path.extname', type: 'passes_to' },
-          { source: 'path.extname', target: 'toLowerCase', type: 'chains_to' },
-          { source: 'toLowerCase', target: 'fileExtension', type: 'assigns_to' },
-          
-          { source: 'videoExtensions', target: 'includes', type: 'calls_method_on' },
-          { source: 'fileExtension', target: 'includes', type: 'passes_to' },
-          { source: 'includes', target: 'isVideo', type: 'assigns_to' },
-          
-          { source: 'inputPath', target: 'sharp', type: 'passes_to' },
-          { source: 'thumbPath', target: 'sharp', type: 'passes_to' },
-          { source: 'maxSize', target: 'sharp', type: 'passes_to' },
-          { source: 'quality', target: 'sharp', type: 'passes_to' },
-          
-          // === Database Operations Flow ===
-          { source: 'getDb', target: 'db', type: 'assigns_to' },
-          { source: 'db', target: 'db.all', type: 'calls_method_on' },
-          { source: 'db.all', target: 'images', type: 'assigns_to' },
-          
-          { source: 'req.params', target: 'id', type: 'assigns_to' },
-          { source: 'db', target: 'db.get', type: 'calls_method_on' },
-          { source: 'id', target: 'db.get', type: 'passes_to' },
-          { source: 'db.get', target: 'image', type: 'assigns_to' },
-          
-          // === Route → Controller Relationships ===
-          { source: 'router.get', target: 'getImages', type: 'calls' },
-          { source: 'router.get', target: 'getImage', type: 'calls' },
-          { source: 'router.post', target: 'addImage', type: 'calls' },
-          { source: 'router.put', target: 'updateImage', type: 'calls' },
-          { source: 'router.delete', target: 'deleteImage', type: 'calls' },
-          
-          { source: 'upload.single', target: 'addImage', type: 'chains_to' },
-          { source: 'upload.single', target: 'convertUploadedImage', type: 'chains_to' },
-          
-          // === File System Operations ===
-          { source: 'assetDir', target: 'fs.existsSync', type: 'passes_to' },
-          { source: 'thumbnailPath', target: 'fs.existsSync', type: 'passes_to' },
-          { source: 'getAssetDirectory', target: 'assetDir', type: 'assigns_to' },
-          { source: 'getThumbnailDirectory', target: 'thumbnailPath', type: 'assigns_to' },
-          
-          // === Image Processing Pipeline ===
-          { source: 'addImage', target: 'generateThumbnail', type: 'calls' },
-          { source: 'convertImage', target: 'convertToWebP', type: 'calls' },
-          { source: 'convertUploadedImage', target: 'sharp', type: 'calls' },
-          
-          // === Response Operations ===
-          { source: 'images', target: 'res.json', type: 'passes_to' },
-          { source: 'image', target: 'res.json', type: 'passes_to' },
-          { source: 'error', target: 'res.status', type: 'passes_to' }
+          { source: 'handleRequest', target: 'req', type: 'contains' },
+          { source: 'handleRequest', target: 'res', type: 'contains' },
+          { source: 'processData', target: 'data', type: 'contains' },
+          { source: 'processData', target: 'processedData', type: 'contains' },
+          { source: 'handleRequest', target: 'processData', type: 'calls' },
+          { source: 'handleRequest', target: 'saveToDatabase', type: 'calls' },
+          { source: 'data', target: 'processData', type: 'passes_to' },
+          { source: 'processData', target: 'processedData', type: 'assigns_to' },
+          { source: 'processedData', target: 'saveToDatabase', type: 'passes_to' }
+        ]
+      },
+      'simple_api': {
+        name: 'Simple REST API',
+        description: 'Basic REST API template with CRUD operations - expand with your own endpoints',
+        functions: [
+          {
+            name: 'getAllItems',
+            file_path: 'api/items.js',
+            line_number: 10,
+            parameters: ['req', 'res'],
+            is_async: true,
+            description: 'GET endpoint to retrieve all items'
+          },
+          {
+            name: 'getItemById',
+            file_path: 'api/items.js',
+            line_number: 20,
+            parameters: ['req', 'res'],
+            is_async: true,
+            description: 'GET endpoint to retrieve item by ID'
+          },
+          {
+            name: 'createItem',
+            file_path: 'api/items.js',
+            line_number: 30,
+            parameters: ['req', 'res'],
+            is_async: true,
+            description: 'POST endpoint to create new item'
+          },
+          {
+            name: 'validateInput',
+            file_path: 'utils/validation.js',
+            line_number: 5,
+            parameters: ['input'],
+            is_async: false,
+            description: 'Validate input data'
+          }
+        ],
+        variables: [
+          {
+            name: 'req',
+            type: 'object',
+            value: 'Express request object',
+            scope: 'parameter',
+            line_number: 10
+          },
+          {
+            name: 'res',
+            type: 'object',
+            value: 'Express response object',
+            scope: 'parameter',
+            line_number: 10
+          },
+          {
+            name: 'items',
+            type: 'array',
+            value: 'Array of items from database',
+            scope: 'local',
+            line_number: 12
+          },
+          {
+            name: 'itemId',
+            type: 'string',
+            value: 'Item ID from request parameters',
+            scope: 'local',
+            line_number: 22
+          }
+        ],
+        relationships: [
+          { source: 'getAllItems', target: 'req', type: 'contains' },
+          { source: 'getAllItems', target: 'res', type: 'contains' },
+          { source: 'getAllItems', target: 'items', type: 'contains' },
+          { source: 'getItemById', target: 'itemId', type: 'contains' },
+          { source: 'createItem', target: 'validateInput', type: 'calls' },
+          { source: 'req', target: 'validateInput', type: 'passes_to' }
         ]
       }
     };
@@ -2389,6 +2134,85 @@ class EnhancedCodeGraphController {
       throw error;
     }
   }
+
+  // Add this method to the class
+  async getAvailableTemplateFiles() {
+    const templateDir = path.join(__dirname, '../templates');
+    
+    try {
+      // Check if templates directory exists
+      if (!fs.existsSync(templateDir)) {
+        fs.mkdirSync(templateDir, { recursive: true });
+        console.log('Created templates directory');
+      }
+      
+      const files = fs.readdirSync(templateDir);
+      const templateFiles = files
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(templateDir, file);
+          const stats = fs.statSync(filePath);
+          
+          // Try to read basic info from the file
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const templateData = JSON.parse(content);
+            
+            return {
+              filename: file,
+              name: templateData.template?.display_name || templateData.template?.name || file.replace('.json', ''),
+              description: templateData.template?.description || templateData.metadata?.originalProject?.description || 'No description available',
+              size: stats.size,
+              modified: stats.mtime,
+              functionCount: templateData.template?.functions?.length || 0,
+              variableCount: templateData.template?.variables?.length || 0,
+              relationshipCount: templateData.template?.relationships?.length || 0
+            };
+          } catch (error) {
+            console.warn(`Error reading template file ${file}:`, error);
+            return {
+              filename: file,
+              name: file.replace('.json', ''),
+              description: 'Error reading template file',
+              size: stats.size,
+              modified: stats.mtime,
+              functionCount: 0,
+              variableCount: 0,
+              relationshipCount: 0,
+              error: true
+            };
+          }
+        });
+      
+      return templateFiles;
+    } catch (error) {
+      console.error('Error reading template directory:', error);
+      return [];
+    }
+  }
+
+  async loadTemplateFile(filename) {
+    const templatePath = path.join(__dirname, '../templates', filename);
+    
+    try {
+      if (!fs.existsSync(templatePath)) {
+        throw new Error(`Template file ${filename} not found`);
+      }
+      
+      const content = fs.readFileSync(templatePath, 'utf8');
+      const templateData = JSON.parse(content);
+      
+      console.log(`Loaded template file: ${filename}`);
+      return {
+        success: true,
+        templateData,
+        filename
+      };
+    } catch (error) {
+      console.error(`Error loading template file ${filename}:`, error);
+      throw error;
+    }
+  }
 }
 
 // Controller instance
@@ -2690,5 +2514,42 @@ exports.updateProjectFromImport = async (req, res) => {
     }
   };
 
+// Add these route handlers at the end
+exports.getAvailableTemplateFiles = async (req, res) => {
+    try {
+      const templateFiles = await enhancedCodeGraphController.getAvailableTemplateFiles();
+      res.json(templateFiles);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  exports.loadTemplateFile = async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const result = await enhancedCodeGraphController.loadTemplateFile(filename);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  exports.importFromTemplateFile = async (req, res) => {
+    try {
+      const { filename, customName } = req.body;
+      
+      // Load the template file
+      const { templateData } = await enhancedCodeGraphController.loadTemplateFile(filename);
+      
+      // Import it as a project
+      const result = await enhancedCodeGraphController.importProjectStructure(templateData, customName);
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+
 // Export the controller instance for direct use
 exports.enhancedCodeGraphController = enhancedCodeGraphController;
+
