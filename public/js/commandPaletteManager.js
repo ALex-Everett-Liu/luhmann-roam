@@ -2233,10 +2233,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const overviewTab = document.querySelector('.ecg-tab[data-tab="overview"]');
-                        if (overviewTab) {
-                            overviewTab.click();
-                        }
+                        window.EnhancedCodeGraphManager.switchView('projects');
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2252,10 +2249,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const createBtn = document.getElementById('ecg-create-project-btn');
-                        if (createBtn) {
-                            createBtn.click();
-                        }
+                        window.EnhancedCodeGraphManager.showCreateProjectModal();
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2271,10 +2265,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const dcimBtn = document.getElementById('ecg-create-dcim-example-btn');
-                        if (dcimBtn) {
-                            dcimBtn.click();
-                        }
+                        window.EnhancedCodeGraphManager.showTemplateModal();
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2290,10 +2281,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const functionsTab = document.querySelector('.ecg-tab[data-tab="functions"]');
-                        if (functionsTab) {
-                            functionsTab.click();
-                        }
+                        window.EnhancedCodeGraphManager.switchView('functions');
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2309,10 +2297,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const variablesTab = document.querySelector('.ecg-tab[data-tab="variables"]');
-                        if (variablesTab) {
-                            variablesTab.click();
-                        }
+                        window.EnhancedCodeGraphManager.switchView('variables');
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2328,10 +2313,7 @@ const CommandPaletteManager = (function() {
                     }
                     window.EnhancedCodeGraphManager.show();
                     setTimeout(() => {
-                        const dependenciesTab = document.querySelector('.ecg-tab[data-tab="dependencies"]');
-                        if (dependenciesTab) {
-                            dependenciesTab.click();
-                        }
+                        window.EnhancedCodeGraphManager.switchView('dependencies');
                     }, 300);
                 },
                 category: 'Code Analysis',
@@ -2345,94 +2327,13 @@ const CommandPaletteManager = (function() {
                         alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
                         return;
                     }
-                    // First check if there's a current project selected
-                    if (window.EnhancedCodeGraphManager.currentProject) {
-                        const projectId = window.EnhancedCodeGraphManager.currentProject.id;
-                        window.EnhancedCodeGraphManager.viewGraph(projectId);
-                    } else {
-                        window.EnhancedCodeGraphManager.show();
-                        setTimeout(() => {
-                            alert('Please select a project first to view its graph visualization.');
-                        }, 300);
-                    }
+                    window.EnhancedCodeGraphManager.show();
+                    setTimeout(() => {
+                        window.EnhancedCodeGraphManager.switchView('graph');
+                    }, 300);
                 },
                 category: 'Code Analysis',
                 keywords: ['enhanced', 'code', 'graph', 'visualization', 'view', 'd3', 'interactive']
-            });
-            
-            registerCommand({
-                name: 'Enhanced Code Graph - Add Function',
-                action: () => {
-                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
-                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
-                        return;
-                    }
-                    window.EnhancedCodeGraphManager.show();
-                    setTimeout(() => {
-                        const functionsTab = document.querySelector('.ecg-tab[data-tab="functions"]');
-                        if (functionsTab) {
-                            functionsTab.click();
-                            setTimeout(() => {
-                                const addFunctionBtn = document.getElementById('ecg-add-function-btn');
-                                if (addFunctionBtn) {
-                                    addFunctionBtn.click();
-                                }
-                            }, 200);
-                        }
-                    }, 300);
-                },
-                category: 'Code Analysis',
-                keywords: ['enhanced', 'code', 'add', 'function', 'create', 'new']
-            });
-            
-            registerCommand({
-                name: 'Enhanced Code Graph - Add Variable',
-                action: () => {
-                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
-                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
-                        return;
-                    }
-                    window.EnhancedCodeGraphManager.show();
-                    setTimeout(() => {
-                        const variablesTab = document.querySelector('.ecg-tab[data-tab="variables"]');
-                        if (variablesTab) {
-                            variablesTab.click();
-                            setTimeout(() => {
-                                const addVariableBtn = document.getElementById('ecg-add-variable-btn');
-                                if (addVariableBtn) {
-                                    addVariableBtn.click();
-                                }
-                            }, 200);
-                        }
-                    }, 300);
-                },
-                category: 'Code Analysis',
-                keywords: ['enhanced', 'code', 'add', 'variable', 'create', 'new']
-            });
-            
-            registerCommand({
-                name: 'Enhanced Code Graph - Add Dependency',
-                action: () => {
-                    if (!isPluginEnabled('enhancedCodeGraphManager')) {
-                        alert('Enhanced Code Graph plugin is disabled. Please enable it in Settings > Plugins.');
-                        return;
-                    }
-                    window.EnhancedCodeGraphManager.show();
-                    setTimeout(() => {
-                        const dependenciesTab = document.querySelector('.ecg-tab[data-tab="dependencies"]');
-                        if (dependenciesTab) {
-                            dependenciesTab.click();
-                            setTimeout(() => {
-                                const addDependencyBtn = document.getElementById('ecg-add-dependency-btn');
-                                if (addDependencyBtn) {
-                                    addDependencyBtn.click();
-                                }
-                            }, 200);
-                        }
-                    }, 300);
-                },
-                category: 'Code Analysis',
-                keywords: ['enhanced', 'code', 'add', 'dependency', 'relationship', 'create', 'new']
             });
             
             registerCommand({

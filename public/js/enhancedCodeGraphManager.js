@@ -578,13 +578,23 @@ const EnhancedCodeGraphManager = (function() {
     async function loadProjects() {
         try {
             const response = await fetch('/api/enhanced-code-graph/projects');
-            projects = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            projects = Array.isArray(data) ? data : [];
             
             renderProjectsGrid();
             populateProjectSelectors();
             
             showStatus(`Loaded ${projects.length} projects`);
         } catch (error) {
+            console.error('Error loading projects:', error);
+            projects = []; // Ensure projects is always an array
+            renderProjectsGrid();
+            populateProjectSelectors();
             showStatus('Error loading projects: ' + error.message, 'error');
         }
     }
@@ -638,10 +648,13 @@ const EnhancedCodeGraphManager = (function() {
             const selector = document.getElementById(selectorId);
             if (selector) {
                 const currentValue = selector.value;
-                selector.innerHTML = '<option value="">Select a project...</option>' +
+                // Ensure projects is an array before calling map
+                const projectOptions = Array.isArray(projects) ? 
                     projects.map(project => 
                         `<option value="${project.id}" ${currentValue === project.id ? 'selected' : ''}>${project.name}</option>`
-                    ).join('');
+                    ).join('') : '';
+                    
+                selector.innerHTML = '<option value="">Select a project...</option>' + projectOptions;
             }
         });
     }
