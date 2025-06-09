@@ -2137,86 +2137,6 @@ class EnhancedCodeGraphController {
 
   // Add this method to the class
   async getAvailableTemplateFiles() {
-    const templateDir = path.join(__dirname, '../templates');
-    
-    try {
-      // Check if templates directory exists
-      if (!fs.existsSync(templateDir)) {
-        fs.mkdirSync(templateDir, { recursive: true });
-        console.log('Created templates directory');
-      }
-      
-      const files = fs.readdirSync(templateDir);
-      const templateFiles = files
-        .filter(file => file.endsWith('.json'))
-        .map(file => {
-          const filePath = path.join(templateDir, file);
-          const stats = fs.statSync(filePath);
-          
-          // Try to read basic info from the file
-          try {
-            const content = fs.readFileSync(filePath, 'utf8');
-            const templateData = JSON.parse(content);
-            
-            return {
-              filename: file,
-              name: templateData.template?.display_name || templateData.template?.name || file.replace('.json', ''),
-              description: templateData.template?.description || templateData.metadata?.originalProject?.description || 'No description available',
-              size: stats.size,
-              modified: stats.mtime,
-              functionCount: templateData.template?.functions?.length || 0,
-              variableCount: templateData.template?.variables?.length || 0,
-              relationshipCount: templateData.template?.relationships?.length || 0
-            };
-          } catch (error) {
-            console.warn(`Error reading template file ${file}:`, error);
-            return {
-              filename: file,
-              name: file.replace('.json', ''),
-              description: 'Error reading template file',
-              size: stats.size,
-              modified: stats.mtime,
-              functionCount: 0,
-              variableCount: 0,
-              relationshipCount: 0,
-              error: true
-            };
-          }
-        });
-      
-      return templateFiles;
-    } catch (error) {
-      console.error('Error reading template directory:', error);
-      return [];
-    }
-  }
-
-  async loadTemplateFile(filename) {
-    const templatePath = path.join(__dirname, '../templates', filename);
-    
-    try {
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template file ${filename} not found`);
-      }
-      
-      const content = fs.readFileSync(templatePath, 'utf8');
-      const templateData = JSON.parse(content);
-      
-      console.log(`Loaded template file: ${filename}`);
-      return {
-        success: true,
-        templateData,
-        filename
-      };
-    } catch (error) {
-      console.error(`Error loading template file ${filename}:`, error);
-      throw error;
-    }
-  }
-
-  // Add these methods after the existing template methods (around line 500)
-
-  async getAvailableTemplateFiles(req, res) {
     try {
       const fs = require('fs').promises;
       const path = require('path');
@@ -2229,7 +2149,7 @@ class EnhancedCodeGraphController {
       } catch (error) {
         // Directory doesn't exist, create it
         await fs.mkdir(templatesDir, { recursive: true });
-        return res.json([]);
+        return [];
       }
       
       const files = await fs.readdir(templatesDir);
@@ -2271,27 +2191,33 @@ class EnhancedCodeGraphController {
         })
       );
       
-      res.json(templateFiles);
+      return templateFiles;
     } catch (error) {
       console.error('Error getting template files:', error);
-      res.status(500).json({ error: error.message });
+      return [];
     }
   }
 
-  async loadTemplateFile(req, res) {
+  async loadTemplateFile(filename) {
+    const templatePath = path.join(__dirname, '../templates', filename);
+    
     try {
-      const { filename } = req.params;
-      const fs = require('fs').promises;
-      const path = require('path');
+      if (!fs.existsSync(templatePath)) {
+        throw new Error(`Template file ${filename} not found`);
+      }
       
-      const filePath = path.join(__dirname, '..', 'templates', filename);
-      const content = await fs.readFile(filePath, 'utf8');
-      const data = JSON.parse(content);
+      const content = fs.readFileSync(templatePath, 'utf8');
+      const templateData = JSON.parse(content);
       
-      res.json(data);
+      console.log(`Loaded template file: ${filename}`);
+      return {
+        success: true,
+        templateData,
+        filename
+      };
     } catch (error) {
-      console.error('Error loading template file:', error);
-      res.status(500).json({ error: error.message });
+      console.error(`Error loading template file ${filename}:`, error);
+      throw error;
     }
   }
 
@@ -2610,7 +2536,11 @@ exports.exportProjectStructure = async (req, res) => {
       const result = await enhancedCodeGraphController.importProjectStructure(importData, customName);
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Error in importProjectStructure route:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
     }
   };
 
@@ -2649,16 +2579,22 @@ exports.getAvailableTemplateFiles = async (req, res) => {
       const { filename, customName } = req.body;
       
       // Load the template file
-      const { templateData } = await enhancedCodeGraphController.loadTemplateFile(filename);
+      const result = await enhancedCodeGraphController.loadTemplateFile(filename);
       
       // Import it as a project
-      const result = await enhancedCodeGraphController.importProjectStructure(templateData, customName);
+      const importResult = await enhancedCodeGraphController.importProjectStructure(result.templateData, customName);
       
-      res.json(result);
+      res.json(importResult);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Error in importFromTemplateFile route:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
     }
   };
+  
+
 
 // Export the controller instance for direct use
 exports.enhancedCodeGraphController = enhancedCodeGraphController;
