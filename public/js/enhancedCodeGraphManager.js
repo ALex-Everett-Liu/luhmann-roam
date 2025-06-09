@@ -1487,7 +1487,7 @@ const EnhancedCodeGraphManager = (function() {
         const height = 600;
         
         // Create SVG
-        const svg = d3.select(container)
+        svg = d3.select(container)
             .append('svg')
             .attr('width', width)
             .attr('height', height)
@@ -1512,14 +1512,14 @@ const EnhancedCodeGraphManager = (function() {
             .enter().append('marker')
             .attr('id', 'arrow')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 15)
+            .attr('refX', 20)
             .attr('refY', 0)
-            .attr('markerWidth', 8)
-            .attr('markerHeight', 8)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#333');
+            .attr('fill', '#666');
         
         // Prepare data for D3
         const nodes = data.nodes.map(d => ({
@@ -1536,7 +1536,8 @@ const EnhancedCodeGraphManager = (function() {
             source: d.source,
             target: d.target,
             relationship: d.relationship,
-            strength: d.strength || d.relationship_strength || 0.5,
+            sourceType: d.sourceType,
+            targetType: d.targetType,
             originalEdge: d
         }));
         
@@ -1567,11 +1568,13 @@ const EnhancedCodeGraphManager = (function() {
         }
         
         // Create force simulation
-        const simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(validLinks).id(d => d.id).distance(150))
-            .force('charge', d3.forceManyBody().strength(-400))
+        simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(validLinks).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(35));
+            .force('collision', d3.forceCollide().radius(d => {
+                return d.type === 'function' ? 25 : 20;
+            }));
         
         // Create links FIRST (so they appear behind nodes)
         const link = g.append('g')
@@ -1580,12 +1583,38 @@ const EnhancedCodeGraphManager = (function() {
             .data(validLinks)
             .enter().append('line')
             .attr('stroke', d => getEnhancedEdgeColor(d.relationship))
-            .attr('stroke-opacity', 0.9)
-            .attr('stroke-width', d => Math.max(2, (d.strength || 0.5) * 4))
+            .attr('stroke-opacity', 0.8)
+            .attr('stroke-width', 2)
             .attr('marker-end', 'url(#arrow)')
-            .style('pointer-events', 'none');
+            .style('cursor', 'pointer')
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                const sourceNode = data.nodes.find(n => n.id === d.source.id);
+                const targetNode = data.nodes.find(n => n.id === d.target.id);
+                showDetailedEdgeTooltip(d.originalEdge, sourceNode, targetNode);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 4)
+                    .attr('stroke-opacity', 1);
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this)
+                    .attr('stroke-width', 2)
+                    .attr('stroke-opacity', 0.8);
+            });
         
-        console.log('Created links:', link.size(), 'elements');
+        // Create link labels
+        const linkLabel = g.append('g')
+            .attr('class', 'link-labels')
+            .selectAll('text')
+            .data(validLinks)
+            .enter().append('text')
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#666')
+            .attr('pointer-events', 'none')
+            .text(d => getRelationshipDescription(d.relationship));
         
         // Create nodes AFTER links (so they appear on top)
         const node = g.append('g')
@@ -1594,28 +1623,63 @@ const EnhancedCodeGraphManager = (function() {
             .data(nodes)
             .enter().append('g')
             .attr('class', 'node')
+            .style('cursor', 'pointer')
             .call(d3.drag()
                 .on('start', dragstarted)
                 .on('drag', dragged)
-                .on('end', dragended));
+                .on('end', dragended))
+            .on('click', function(event, d) {
+                event.stopPropagation();
+                showDetailedTooltip(d);
+            })
+            .on('mouseover', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 4)
+                    .attr('stroke', '#ff6b6b')
+                    .style('filter', 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.4))');
+            })
+            .on('mouseout', function(event, d) {
+                d3.select(this).select('circle')
+                    .attr('stroke-width', 2)
+                    .attr('stroke', '#fff')
+                    .style('filter', null);
+            });
         
         // Add circles for nodes
         node.append('circle')
-            .attr('r', d => d.type === 'function' ? 25 : 20)
+            .attr('r', d => d.type === 'function' ? 20 : 15)
             .attr('fill', d => getEnhancedNodeColor(d))
             .attr('stroke', '#fff')
-            .attr('stroke-width', 3);
+            .attr('stroke-width', 2);
         
         // Add labels for nodes
         node.append('text')
-            .attr('dy', -30)
+            .attr('dy', -25)
             .attr('text-anchor', 'middle')
-            .attr('font-size', '14px')
+            .attr('font-size', '12px')
             .attr('font-weight', 'bold')
             .attr('fill', '#24292e')
+            .attr('pointer-events', 'none')
             .text(d => d.name);
         
-        console.log('Created nodes:', node.size(), 'elements');
+        // Add type labels
+        node.append('text')
+            .attr('dy', 4)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#666')
+            .attr('pointer-events', 'none')
+            .text(d => d.type);
+        
+        // Add scope indicators for variables
+        node.filter(d => d.type === 'variable' && d.scope)
+            .append('text')
+            .attr('dy', 15)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '7px')
+            .attr('fill', '#999')
+            .attr('pointer-events', 'none')
+            .text(d => getScopeIcon(d.scope));
         
         // Update positions on tick
         simulation.on('tick', () => {
@@ -1625,20 +1689,12 @@ const EnhancedCodeGraphManager = (function() {
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
             
+            linkLabel
+                .attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2);
+            
             node
                 .attr('transform', d => `translate(${d.x},${d.y})`);
-        });
-        
-        // Add debugging for simulation
-        simulation.on('end', () => {
-            console.log('Simulation ended');
-            console.log('Final node positions:', nodes.map(n => ({ id: n.id, x: n.x, y: n.y })));
-            console.log('Final link positions:', validLinks.map(l => ({ 
-                source: l.source.id || l.source, 
-                target: l.target.id || l.target,
-                sourcePos: { x: l.source.x, y: l.source.y },
-                targetPos: { x: l.target.x, y: l.target.y }
-            })));
         });
         
         // Drag functions
@@ -1659,18 +1715,10 @@ const EnhancedCodeGraphManager = (function() {
             d.fy = null;
         }
         
-        // Store references for debugging
-        window.debugGraph = {
-            svg,
-            g,
-            nodes,
-            links: validLinks,
-            simulation,
-            linkElements: link,
-            nodeElements: node
-        };
+        // Store references for manipulation
+        window.currentGraphElements = { svg, simulation, g, zoom };
         
-        console.log('Graph rendering complete. Debug info stored in window.debugGraph');
+        console.log('Enhanced graph rendering complete');
     }
 
     function getEnhancedNodeColor(node) {
@@ -1715,6 +1763,166 @@ const EnhancedCodeGraphManager = (function() {
     function toggleFullscreen() {
         // Implementation for fullscreen toggle
         showStatus('Fullscreen toggle functionality implemented');
+    }
+
+    // Add the missing helper functions
+    function getRelationshipDescription(relationshipType) {
+        const descriptions = {
+            'derives_from': 'derives from',
+            'extracts_from': 'extracts from', 
+            'transforms_via': 'transforms via',
+            'computes_from': 'computes from',
+            'assigns_from': 'assigns from',
+            'passes_to': 'passes to',
+            'chains_to': 'chains to',
+            'assigns_to': 'assigns to',
+            'calls_method_on': 'calls method on',
+            'validates_against': 'validates against',
+            'filters_by': 'filters by',
+            'checks': 'checks',
+            'compares_with': 'compares with',
+            'includes_check': 'checks inclusion in',
+            'calls': 'calls',
+            'returns_to': 'returns to',
+            'invokes': 'invokes',
+            'uses_parameter': 'uses parameter',
+            'contains': 'contains',
+            'defined_in': 'defined in',
+            'scoped_to': 'scoped to',
+            'conditions_on': 'conditions on',
+            'branches_on': 'branches on',
+            'iterates_over': 'iterates over',
+            'uses': 'uses'
+        };
+        
+        return descriptions[relationshipType] || relationshipType;
+    }
+
+    function getScopeIcon(scope) {
+        const icons = {
+            'parameter': '📥',
+            'local': '🔐',
+            'literal': '📝',
+            'global': '🌐'
+        };
+        return icons[scope] || '';
+    }
+
+    function showDetailedTooltip(node) {
+        // Remove any existing tooltips
+        const existingTooltips = document.querySelectorAll('.detailed-tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'detailed-tooltip';
+        
+        // Create detailed properties
+        const properties = [];
+        properties.push(`Name: ${node.label || node.name}`);
+        properties.push(`Type: ${node.type}`);
+        if (node.file) properties.push(`File: ${node.file}`);
+        if (node.line) properties.push(`Line: ${node.line}`);
+        if (node.scope) properties.push(`Scope: ${node.scope}`);
+        if (node.value) properties.push(`Value: ${node.value}`);
+        
+        tooltip.innerHTML = `
+            <div class="tooltip-header">
+                <h4>${node.label || node.name}</h4>
+                <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="tooltip-content">
+                <div class="tooltip-section">
+                    <h5>Details</h5>
+                    ${properties.map(prop => `<div class="tooltip-item">${prop}</div>`).join('')}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // Position tooltip
+        tooltip.style.position = 'fixed';
+        tooltip.style.top = '50%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+        tooltip.style.zIndex = '10001';
+        tooltip.style.background = 'white';
+        tooltip.style.border = '1px solid #ccc';
+        tooltip.style.borderRadius = '8px';
+        tooltip.style.padding = '16px';
+        tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        tooltip.style.maxWidth = '400px';
+        
+        // Add animation
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        setTimeout(() => {
+            tooltip.style.transition = 'all 0.3s ease';
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
+        
+        console.log('Showing detailed tooltip for node:', node);
+    }
+
+    function showDetailedEdgeTooltip(edge, sourceNode, targetNode) {
+        // Remove any existing tooltips
+        const existingTooltips = document.querySelectorAll('.detailed-tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'detailed-tooltip edge-tooltip';
+        
+        const relationshipText = getRelationshipDescription(edge.relationship);
+        
+        tooltip.innerHTML = `
+            <div class="tooltip-header">
+                <h4>Relationship: ${relationshipText}</h4>
+                <button class="tooltip-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+            <div class="tooltip-content">
+                <div class="tooltip-section">
+                    <h5>Connection Details</h5>
+                    <div class="tooltip-item relationship-flow">
+                        <strong>${sourceNode.label}</strong>
+                        <span class="flow-arrow">→ ${relationshipText} →</span>
+                        <strong>${targetNode.label}</strong>
+                    </div>
+                </div>
+                <div class="tooltip-section">
+                    <h5>Additional Information</h5>
+                    <div class="tooltip-item">From: ${sourceNode.label} (${sourceNode.type})</div>
+                    <div class="tooltip-item">To: ${targetNode.label} (${targetNode.type})</div>
+                    <div class="tooltip-item">Relationship: ${edge.relationship}</div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // Position tooltip
+        tooltip.style.position = 'fixed';
+        tooltip.style.top = '50%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+        tooltip.style.zIndex = '10001';
+        tooltip.style.background = 'white';
+        tooltip.style.border = '1px solid #ccc';
+        tooltip.style.borderRadius = '8px';
+        tooltip.style.padding = '16px';
+        tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        tooltip.style.maxWidth = '400px';
+        
+        // Add animation
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        setTimeout(() => {
+            tooltip.style.transition = 'all 0.3s ease';
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
+        
+        console.log('Showing detailed edge tooltip:', edge, sourceNode, targetNode);
     }
 
     // =================================================================
