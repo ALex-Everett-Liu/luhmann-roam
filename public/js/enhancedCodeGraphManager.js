@@ -52,9 +52,12 @@ const EnhancedCodeGraphManager = (function() {
                 
                 <div class="enhanced-code-graph-navigation">
                     <button class="nav-btn active" data-view="projects" onclick="EnhancedCodeGraphManager.switchView('projects')">Projects</button>
+                    <button class="nav-btn" data-view="modules" onclick="EnhancedCodeGraphManager.switchView('modules')">Modules</button>
+                    <button class="nav-btn" data-view="libraries" onclick="EnhancedCodeGraphManager.switchView('libraries')">Libraries</button>
                     <button class="nav-btn" data-view="functions" onclick="EnhancedCodeGraphManager.switchView('functions')">Functions</button>
                     <button class="nav-btn" data-view="variables" onclick="EnhancedCodeGraphManager.switchView('variables')">Variables</button>
-                    <button class="nav-btn" data-view="dependencies" onclick="EnhancedCodeGraphManager.switchView('dependencies')">Dependencies</button>
+                    <button class="nav-btn" data-view="dependencies" onclick="EnhancedCodeGraphManager.switchView('dependencies')">Micro Dependencies</button>
+                    <button class="nav-btn" data-view="module-deps" onclick="EnhancedCodeGraphManager.switchView('module-deps')">Macro Dependencies</button>
                     <button class="nav-btn" data-view="graph" onclick="EnhancedCodeGraphManager.switchView('graph')">Graph View</button>
                 </div>
                 
@@ -140,6 +143,57 @@ const EnhancedCodeGraphManager = (function() {
                         </div>
                         <div class="graph-visualization-container" id="ecg-graph-container">
                             <p class="placeholder-text">Select a project to view its graph visualization</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Modules View -->
+                    <div class="view-container" id="ecg-modules-view" style="display: none;">
+                        <div class="view-header">
+                            <h3>Modules & Files</h3>
+                            <div class="view-actions">
+                                <select id="ecg-project-selector-modules" onchange="EnhancedCodeGraphManager.loadModules()">
+                                    <option value="">Select a project...</option>
+                                </select>
+                                <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateModuleModal()">+ New Module</button>
+                                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.scanProjectStructure()">🔍 Scan Project</button>
+                            </div>
+                        </div>
+                        <div class="modules-hierarchy" id="ecg-modules-hierarchy">
+                            <p class="placeholder-text">Select a project to view modules</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Libraries View -->
+                    <div class="view-container" id="ecg-libraries-view" style="display: none;">
+                        <div class="view-header">
+                            <h3>External Libraries</h3>
+                            <div class="view-actions">
+                                <select id="ecg-project-selector-libraries" onchange="EnhancedCodeGraphManager.loadLibraries()">
+                                    <option value="">Select a project...</option>
+                                </select>
+                                <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateLibraryModal()">+ Add Library</button>
+                                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.scanPackageJson()">📦 Scan package.json</button>
+                            </div>
+                        </div>
+                        <div class="libraries-grid" id="ecg-libraries-grid">
+                            <p class="placeholder-text">Select a project to view libraries</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Module Dependencies View -->
+                    <div class="view-container" id="ecg-module-deps-view" style="display: none;">
+                        <div class="view-header">
+                            <h3>Module Dependencies</h3>
+                            <div class="view-actions">
+                                <select id="ecg-project-selector-module-deps" onchange="EnhancedCodeGraphManager.loadModuleDependencies()">
+                                    <option value="">Select a project...</option>
+                                </select>
+                                <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateModuleDependencyModal()">+ New Dependency</button>
+                                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.analyzeImports()">🔍 Analyze Imports</button>
+                            </div>
+                        </div>
+                        <div class="module-dependencies-list" id="ecg-module-dependencies-list">
+                            <p class="placeholder-text">Select a project to view module dependencies</p>
                         </div>
                     </div>
                 </div>
@@ -1456,299 +1510,143 @@ const EnhancedCodeGraphManager = (function() {
         }
         
         try {
-            const response = await fetch(`/api/enhanced-code-graph/visualization/${projectId}`);
+            // Add view mode selector
+            const viewMode = document.getElementById('graph-view-mode')?.value || 'macro';
+            
+            const response = await fetch(`/api/enhanced-code-graph/visualization/${projectId}?mode=${viewMode}`);
             const data = await response.json();
             
-            // Add debugging
-            console.log('Visualization data received:', data);
-            console.log('Nodes:', data.nodes);
-            console.log('Edges:', data.edges);
-            
             currentVisualizationData = data;
-            renderEnhancedGraph(data);
+            renderEnhancedMultiLevelGraph(data, viewMode);
             
-            showStatus(`Loaded graph for project with ${data.nodes.length} nodes and ${data.edges.length} edges`);
+            showStatus(`Loaded ${viewMode} graph for project with ${data.nodes.length} nodes and ${data.edges.length} edges`);
         } catch (error) {
             showStatus('Error loading graph visualization: ' + error.message, 'error');
         }
     }
 
-    function renderEnhancedGraph(data) {
-        const container = document.getElementById('ecg-graph-container');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        console.log('Rendering graph with data:', data);
-        
-        if (!data.nodes || data.nodes.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No data to visualize</p>';
-            return;
+    function renderEnhancedMultiLevelGraph(data, viewMode) {
+        // Add view mode selector to graph header
+        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
+        if (!document.getElementById('graph-view-mode')) {
+            const viewModeSelector = document.createElement('select');
+            viewModeSelector.id = 'graph-view-mode';
+            viewModeSelector.innerHTML = `
+                <option value="macro">Macro View (Modules/Libraries)</option>
+                <option value="micro">Micro View (Functions/Variables)</option>
+                <option value="hybrid">Hybrid View (Both)</option>
+            `;
+            viewModeSelector.onchange = () => loadGraphVisualization();
+            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
         }
         
-        const width = container.clientWidth || 800;
-        const height = 600;
+        document.getElementById('graph-view-mode').value = viewMode;
         
-        // Create SVG
-        svg = d3.select(container)
-            .append('svg')
-            .attr('width', width)
-            .attr('height', height)
-            .style('border', '1px solid #e1e5e9')
-            .style('border-radius', '8px');
-        
-        // Create zoom behavior
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 3])
-            .on('zoom', function(event) {
-                g.attr('transform', event.transform);
-            });
-        
-        svg.call(zoom);
-        
-        // Create main group for zooming/panning
-        const g = svg.append('g');
-        
-        // Create arrow markers for edges
-        svg.append('defs').selectAll('marker')
-            .data(['arrow'])
-            .enter().append('marker')
-            .attr('id', 'arrow')
-            .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 20)
-            .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
-            .attr('orient', 'auto')
-            .append('path')
-            .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#666');
-        
-        // Prepare data for D3
-        const nodes = data.nodes.map(d => ({
-            ...d,
-            id: d.id,
-            name: d.label,
-            group: d.type === 'function' ? 1 : 2
-        }));
-        
-        console.log('Prepared nodes:', nodes);
-        
-        // Fix the edges mapping - use the correct property names
-        const links = data.edges.map(d => ({
-            source: d.source,
-            target: d.target,
-            relationship: d.relationship,
-            sourceType: d.sourceType,
-            targetType: d.targetType,
-            originalEdge: d
-        }));
-        
-        console.log('Prepared links:', links);
-        
-        // Validate that all source and target IDs exist in nodes
-        const nodeIds = new Set(nodes.map(n => n.id));
-        const validLinks = links.filter(link => {
-            const hasValidSource = nodeIds.has(link.source);
-            const hasValidTarget = nodeIds.has(link.target);
-            
-            if (!hasValidSource) {
-                console.warn('Invalid source ID:', link.source, 'in link:', link);
-            }
-            if (!hasValidTarget) {
-                console.warn('Invalid target ID:', link.target, 'in link:', link);
-            }
-            
-            return hasValidSource && hasValidTarget;
-        });
-        
-        console.log('Valid links after filtering:', validLinks);
-        console.log('Number of valid links:', validLinks.length);
-        
-        if (validLinks.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No valid relationships to visualize. Check that all functions and variables exist.</p>';
-            return;
+        // Render based on mode
+        switch (viewMode) {
+            case 'macro':
+                renderMacroGraph(data);
+                break;
+            case 'micro':
+                renderMicroGraph(data);
+                break;
+            case 'hybrid':
+                renderHybridGraph(data);
+                break;
         }
-        
-        // Create force simulation
-        simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(validLinks).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-300))
-            .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(d => {
-                return d.type === 'function' ? 25 : 20;
-            }));
-        
-        // Create links FIRST (so they appear behind nodes)
-        const link = g.append('g')
-            .attr('class', 'links')
-            .selectAll('line')
-            .data(validLinks)
-            .enter().append('line')
-            .attr('stroke', d => getEnhancedEdgeColor(d.relationship))
-            .attr('stroke-opacity', 0.8)
-            .attr('stroke-width', 2)
-            .attr('marker-end', 'url(#arrow)')
-            .style('cursor', 'pointer')
-            .on('click', function(event, d) {
-                event.stopPropagation();
-                const sourceNode = data.nodes.find(n => n.id === d.source.id);
-                const targetNode = data.nodes.find(n => n.id === d.target.id);
-                showDetailedEdgeTooltip(d.originalEdge, sourceNode, targetNode);
-            })
-            .on('mouseover', function(event, d) {
-                d3.select(this)
-                    .attr('stroke-width', 4)
-                    .attr('stroke-opacity', 1);
-            })
-            .on('mouseout', function(event, d) {
-                d3.select(this)
-                    .attr('stroke-width', 2)
-                    .attr('stroke-opacity', 0.8);
-            });
-        
-        // Create link labels
-        const linkLabel = g.append('g')
-            .attr('class', 'link-labels')
-            .selectAll('text')
-            .data(validLinks)
-            .enter().append('text')
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '10px')
-            .attr('fill', '#666')
-            .attr('pointer-events', 'none')
-            .text(d => getRelationshipDescription(d.relationship));
-        
-        // Create nodes AFTER links (so they appear on top)
-        const node = g.append('g')
-            .attr('class', 'nodes')
-            .selectAll('g')
-            .data(nodes)
-            .enter().append('g')
-            .attr('class', 'node')
-            .style('cursor', 'pointer')
-            .call(d3.drag()
-                .on('start', dragstarted)
-                .on('drag', dragged)
-                .on('end', dragended))
-            .on('click', function(event, d) {
-                event.stopPropagation();
-                showDetailedTooltip(d);
-            })
-            .on('mouseover', function(event, d) {
-                d3.select(this).select('circle')
-                    .attr('stroke-width', 4)
-                    .attr('stroke', '#ff6b6b')
-                    .style('filter', 'drop-shadow(0 0 8px rgba(255, 107, 107, 0.4))');
-            })
-            .on('mouseout', function(event, d) {
-                d3.select(this).select('circle')
-                    .attr('stroke-width', 2)
-                    .attr('stroke', '#fff')
-                    .style('filter', null);
-            });
-        
-        // Add circles for nodes
-        node.append('circle')
-            .attr('r', d => d.type === 'function' ? 20 : 15)
-            .attr('fill', d => getEnhancedNodeColor(d))
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 2);
-        
-        // Add labels for nodes
-        node.append('text')
-            .attr('dy', -25)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '12px')
-            .attr('font-weight', 'bold')
-            .attr('fill', '#24292e')
-            .attr('pointer-events', 'none')
-            .text(d => d.name);
-        
-        // Add type labels
-        node.append('text')
-            .attr('dy', 4)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '8px')
-            .attr('fill', '#666')
-            .attr('pointer-events', 'none')
-            .text(d => d.type);
-        
-        // Add scope indicators for variables
-        node.filter(d => d.type === 'variable' && d.scope)
-            .append('text')
-            .attr('dy', 15)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '7px')
-            .attr('fill', '#999')
-            .attr('pointer-events', 'none')
-            .text(d => getScopeIcon(d.scope));
-        
-        // Update positions on tick
-        simulation.on('tick', () => {
-            link
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
-            
-            linkLabel
-                .attr('x', d => (d.source.x + d.target.x) / 2)
-                .attr('y', d => (d.source.y + d.target.y) / 2);
-            
-            node
-                .attr('transform', d => `translate(${d.x},${d.y})`);
-        });
-        
-        // Drag functions
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-        
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-        
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-        
-        // Store references for manipulation
-        window.currentGraphElements = { svg, simulation, g, zoom };
-        
-        console.log('Enhanced graph rendering complete');
     }
 
-    function getEnhancedNodeColor(node) {
-        if (node.type === 'function') {
-            return '#1976d2'; // Blue for functions
-        } else if (node.type === 'variable') {
-            switch (node.scope) {
-                case 'parameter': return '#28a745'; // Green
-                case 'local': return '#7b1fa2'; // Purple
-                case 'literal': return '#fd7e14'; // Orange
-                default: return '#6c757d'; // Gray
-            }
+    function renderMacroGraph(data) {
+        // Add view mode selector to graph header
+        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
+        if (!document.getElementById('graph-view-mode')) {
+            const viewModeSelector = document.createElement('select');
+            viewModeSelector.id = 'graph-view-mode';
+            viewModeSelector.innerHTML = `
+                <option value="macro">Macro View (Modules/Libraries)</option>
+                <option value="micro">Micro View (Functions/Variables)</option>
+                <option value="hybrid">Hybrid View (Both)</option>
+            `;
+            viewModeSelector.onchange = () => loadGraphVisualization();
+            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
         }
-        return '#666666';
+        
+        document.getElementById('graph-view-mode').value = 'macro';
+        
+        // Render based on mode
+        switch ('macro') {
+            case 'macro':
+                renderMacroGraph(data);
+                break;
+            case 'micro':
+                renderMicroGraph(data);
+                break;
+            case 'hybrid':
+                renderHybridGraph(data);
+                break;
+        }
     }
 
-    function getEnhancedEdgeColor(relationship) {
-        const colorMap = {
-            'passes_to': '#28a745',
-            'chains_to': '#17a2b8',
-            'assigns_to': '#6f42c1',
-            'calls_method_on': '#e83e8c',
-            'contains': '#6c757d',
-            'validates_against': '#fd7e14',
-            'transforms_via': '#20c997'
-        };
-        return colorMap[relationship] || '#999';
+    function renderMicroGraph(data) {
+        // Add view mode selector to graph header
+        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
+        if (!document.getElementById('graph-view-mode')) {
+            const viewModeSelector = document.createElement('select');
+            viewModeSelector.id = 'graph-view-mode';
+            viewModeSelector.innerHTML = `
+                <option value="macro">Macro View (Modules/Libraries)</option>
+                <option value="micro">Micro View (Functions/Variables)</option>
+                <option value="hybrid">Hybrid View (Both)</option>
+            `;
+            viewModeSelector.onchange = () => loadGraphVisualization();
+            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
+        }
+        
+        document.getElementById('graph-view-mode').value = 'micro';
+        
+        // Render based on mode
+        switch ('micro') {
+            case 'macro':
+                renderMacroGraph(data);
+                break;
+            case 'micro':
+                renderMicroGraph(data);
+                break;
+            case 'hybrid':
+                renderHybridGraph(data);
+                break;
+        }
+    }
+
+    function renderHybridGraph(data) {
+        // Add view mode selector to graph header
+        const viewHeader = document.querySelector('#ecg-graph-view .view-actions');
+        if (!document.getElementById('graph-view-mode')) {
+            const viewModeSelector = document.createElement('select');
+            viewModeSelector.id = 'graph-view-mode';
+            viewModeSelector.innerHTML = `
+                <option value="macro">Macro View (Modules/Libraries)</option>
+                <option value="micro">Micro View (Functions/Variables)</option>
+                <option value="hybrid">Hybrid View (Both)</option>
+            `;
+            viewModeSelector.onchange = () => loadGraphVisualization();
+            viewHeader.insertBefore(viewModeSelector, viewHeader.firstChild);
+        }
+        
+        document.getElementById('graph-view-mode').value = 'hybrid';
+        
+        // Render based on mode
+        switch ('hybrid') {
+            case 'macro':
+                renderMacroGraph(data);
+                break;
+            case 'micro':
+                renderMicroGraph(data);
+                break;
+            case 'hybrid':
+                renderHybridGraph(data);
+                break;
+        }
     }
 
     function resetGraphLayout() {
@@ -2685,7 +2583,7 @@ async function exportProject(projectId) {
     } catch (error) {
       showStatus('Error updating project: ' + error.message, 'error');
     }
-  }
+    }
 
     // =================================================================
     // PUBLIC API

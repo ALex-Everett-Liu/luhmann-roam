@@ -261,6 +261,89 @@ class EnhancedCodeGraphController {
         )
       `);
 
+      // Modules/Packages table - for organizing code hierarchically
+      await db.run(`
+        CREATE TABLE IF NOT EXISTS enhanced_modules (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL, -- 'package', 'module', 'namespace', 'directory', 'file'
+          parent_module_id TEXT, -- for nested modules
+          file_path TEXT NOT NULL,
+          relative_path TEXT, -- path within project
+          description TEXT,
+          is_entry_point BOOLEAN DEFAULT 0,
+          exports TEXT, -- JSON array of exported elements
+          imports TEXT, -- JSON array of imported elements
+          tags TEXT,
+          metadata TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+          sequence_id INTEGER,
+          FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE,
+          FOREIGN KEY (parent_module_id) REFERENCES enhanced_modules(id) ON DELETE CASCADE
+        )
+      `);
+
+      // External Libraries/Dependencies table
+      await db.run(`
+        CREATE TABLE IF NOT EXISTS enhanced_libraries (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          version TEXT,
+          type TEXT NOT NULL, -- 'npm', 'cdn', 'local', 'builtin', 'framework'
+          source TEXT, -- npm registry, github, cdn url, etc.
+          license TEXT,
+          description TEXT,
+          install_command TEXT,
+          documentation_url TEXT,
+          repository_url TEXT,
+          is_dev_dependency BOOLEAN DEFAULT 0,
+          is_peer_dependency BOOLEAN DEFAULT 0,
+          tags TEXT,
+          metadata TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+          sequence_id INTEGER,
+          FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Module Dependencies - relationships between modules/libraries
+      await db.run(`
+        CREATE TABLE IF NOT EXISTS enhanced_module_dependencies (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          source_type TEXT NOT NULL, -- 'module', 'library'
+          source_id TEXT NOT NULL,
+          target_type TEXT NOT NULL, -- 'module', 'library'
+          target_id TEXT NOT NULL,
+          dependency_type TEXT NOT NULL, -- 'import', 'require', 'include', 'extends', 'implements'
+          import_style TEXT, -- 'named', 'default', 'namespace', 'dynamic'
+          imported_elements TEXT, -- JSON array of specific imports
+          is_circular BOOLEAN DEFAULT 0,
+          weight REAL DEFAULT 1.0,
+          line_number INTEGER,
+          description TEXT,
+          metadata TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+          sequence_id INTEGER,
+          FOREIGN KEY (project_id) REFERENCES enhanced_projects(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Update Functions table to link to modules
+      await db.run(`
+        ALTER TABLE enhanced_functions ADD COLUMN module_id TEXT REFERENCES enhanced_modules(id)
+      `);
+
+      // Update Variables table to link to modules  
+      await db.run(`
+        ALTER TABLE enhanced_variables ADD COLUMN module_id TEXT REFERENCES enhanced_modules(id)
+      `);
+
       // Project Statistics View (computed)
       await db.run(`
         CREATE VIEW IF NOT EXISTS project_statistics AS
@@ -296,9 +379,17 @@ class EnhancedCodeGraphController {
         CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_source ON enhanced_dependencies(source_type, source_id);
         CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_target ON enhanced_dependencies(target_type, target_id);
         CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_relationship ON enhanced_dependencies(relationship_type);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_modules_project ON enhanced_modules(project_id);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_modules_parent ON enhanced_modules(parent_module_id);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_modules_path ON enhanced_modules(file_path);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_libraries_project ON enhanced_libraries(project_id);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_libraries_name ON enhanced_libraries(name);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_module_deps_project ON enhanced_module_dependencies(project_id);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_module_deps_source ON enhanced_module_dependencies(source_type, source_id);
+        CREATE INDEX IF NOT EXISTS idx_enhanced_module_deps_target ON enhanced_module_dependencies(target_type, target_id);
       `);
 
-      console.log('Enhanced code graph tables initialized successfully');
+      console.log('Enhanced multi-level code graph tables initialized successfully');
       return { success: true };
     } catch (error) {
       console.error('Error initializing enhanced code graph database:', error);
@@ -1719,6 +1810,268 @@ class EnhancedCodeGraphController {
       };
     } catch (error) {
       console.error('Error updating project from import:', error);
+      throw error;
+    }
+  }
+
+  // =================================================================
+  // MODULE MANAGEMENT
+  // =================================================================
+
+  async createModule(moduleData) {
+    const db = await getDb();
+    
+    try {
+      const moduleId = `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const {
+        project_id,
+        name,
+        type, // 'package', 'module', 'namespace', 'directory', 'file'
+        parent_module_id = null,
+        file_path,
+        relative_path = null,
+        description = null,
+        is_entry_point = false,
+        exports = [],
+        imports = [],
+        tags = [],
+        metadata = {}
+      } = moduleData;
+
+      await db.run(`
+        INSERT INTO enhanced_modules (
+          id, project_id, name, type, parent_module_id, file_path, relative_path,
+          description, is_entry_point, exports, imports, tags, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        moduleId, project_id, name, type, parent_module_id, file_path, relative_path,
+        description, is_entry_point, JSON.stringify(exports), JSON.stringify(imports),
+        JSON.stringify(tags), JSON.stringify(metadata)
+      ]);
+
+      console.log(`Created module: ${name} (${moduleId})`);
+      return { success: true, moduleId, module: await this.getModule(moduleId) };
+    } catch (error) {
+      console.error('Error creating module:', error);
+      throw error;
+    }
+  }
+
+  async getModulesByProject(projectId) {
+    const db = await getDb();
+    
+    try {
+      const modules = await db.all(`
+        SELECT * FROM enhanced_modules 
+        WHERE project_id = ? 
+        ORDER BY type, name
+      `, [projectId]);
+
+      return modules.map(module => ({
+        ...module,
+        exports: JSON.parse(module.exports || '[]'),
+        imports: JSON.parse(module.imports || '[]'),
+        tags: JSON.parse(module.tags || '[]'),
+        metadata: JSON.parse(module.metadata || '{}')
+      }));
+    } catch (error) {
+      console.error('Error getting modules by project:', error);
+      throw error;
+    }
+  }
+
+  // =================================================================
+  // LIBRARY MANAGEMENT
+  // =================================================================
+
+  async createLibrary(libraryData) {
+    const db = await getDb();
+    
+    try {
+      const libraryId = `lib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const {
+        project_id,
+        name,
+        version = null,
+        type, // 'npm', 'cdn', 'local', 'builtin', 'framework'
+        source = null,
+        license = null,
+        description = null,
+        install_command = null,
+        documentation_url = null,
+        repository_url = null,
+        is_dev_dependency = false,
+        is_peer_dependency = false,
+        tags = [],
+        metadata = {}
+      } = libraryData;
+
+      await db.run(`
+        INSERT INTO enhanced_libraries (
+          id, project_id, name, version, type, source, license, description,
+          install_command, documentation_url, repository_url, is_dev_dependency,
+          is_peer_dependency, tags, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        libraryId, project_id, name, version, type, source, license, description,
+        install_command, documentation_url, repository_url, is_dev_dependency,
+        is_peer_dependency, JSON.stringify(tags), JSON.stringify(metadata)
+      ]);
+
+      console.log(`Created library: ${name} (${libraryId})`);
+      return { success: true, libraryId, library: await this.getLibrary(libraryId) };
+    } catch (error) {
+      console.error('Error creating library:', error);
+      throw error;
+    }
+  }
+
+  async getLibrariesByProject(projectId) {
+    const db = await getDb();
+    
+    try {
+      const libraries = await db.all(`
+        SELECT * FROM enhanced_libraries 
+        WHERE project_id = ? 
+        ORDER BY type, name
+      `, [projectId]);
+
+      return libraries.map(library => ({
+        ...library,
+        tags: JSON.parse(library.tags || '[]'),
+        metadata: JSON.parse(library.metadata || '{}')
+      }));
+    } catch (error) {
+      console.error('Error getting libraries by project:', error);
+      throw error;
+    }
+  }
+
+  // =================================================================
+  // MODULE DEPENDENCY MANAGEMENT
+  // =================================================================
+
+  async createModuleDependency(dependencyData) {
+    const db = await getDb();
+    
+    try {
+      const dependencyId = `mdep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const {
+        project_id,
+        source_type, // 'module', 'library'
+        source_id,
+        target_type, // 'module', 'library'
+        target_id,
+        dependency_type, // 'import', 'require', 'include', 'extends', 'implements'
+        import_style = null, // 'named', 'default', 'namespace', 'dynamic'
+        imported_elements = [],
+        is_circular = false,
+        weight = 1.0,
+        line_number = null,
+        description = null,
+        metadata = {}
+      } = dependencyData;
+
+      await db.run(`
+        INSERT INTO enhanced_module_dependencies (
+          id, project_id, source_type, source_id, target_type, target_id,
+          dependency_type, import_style, imported_elements, is_circular,
+          weight, line_number, description, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        dependencyId, project_id, source_type, source_id, target_type, target_id,
+        dependency_type, import_style, JSON.stringify(imported_elements), is_circular,
+        weight, line_number, description, JSON.stringify(metadata)
+      ]);
+
+      console.log(`Created module dependency: ${source_type}:${source_id} -> ${dependency_type} -> ${target_type}:${target_id}`);
+      return { success: true, dependencyId, dependency: await this.getModuleDependency(dependencyId) };
+    } catch (error) {
+      console.error('Error creating module dependency:', error);
+      throw error;
+    }
+  }
+
+  async getModuleDependenciesByProject(projectId) {
+    const db = await getDb();
+    
+    try {
+      const dependencies = await db.all(`
+        SELECT * FROM enhanced_module_dependencies 
+        WHERE project_id = ? 
+        ORDER BY created_at
+      `, [projectId]);
+
+      return dependencies.map(dependency => ({
+        ...dependency,
+        imported_elements: JSON.parse(dependency.imported_elements || '[]'),
+        metadata: JSON.parse(dependency.metadata || '{}')
+      }));
+    } catch (error) {
+      console.error('Error getting module dependencies by project:', error);
+      throw error;
+    }
+  }
+
+  // =================================================================
+  // PROJECT STRUCTURE ANALYSIS
+  // =================================================================
+
+  async scanProjectStructure(projectId, options = {}) {
+    try {
+      const project = await this.getProject(projectId);
+      const basePath = project.path;
+      
+      // This would be implemented to scan the actual file system
+      // For now, return mock structure detection
+      const detectedStructure = {
+        modules: [
+          {
+            name: 'src',
+            type: 'directory',
+            path: 'src/',
+            children: [
+              { name: 'components', type: 'directory', path: 'src/components/' },
+              { name: 'utils', type: 'directory', path: 'src/utils/' },
+              { name: 'api', type: 'directory', path: 'src/api/' }
+            ]
+          },
+          {
+            name: 'public',
+            type: 'directory', 
+            path: 'public/',
+            children: []
+          }
+        ],
+        libraries: [
+          { name: 'react', version: '^18.0.0', type: 'npm' },
+          { name: 'lodash', version: '^4.17.21', type: 'npm' },
+          { name: 'axios', version: '^1.0.0', type: 'npm' }
+        ],
+        dependencies: [
+          {
+            source: 'src/components/App.js',
+            target: 'react',
+            type: 'import',
+            elements: ['useState', 'useEffect']
+          }
+        ]
+      };
+      
+      return {
+        success: true,
+        structure: detectedStructure,
+        suggestions: {
+          modulesToCreate: detectedStructure.modules.length,
+          librariesToAdd: detectedStructure.libraries.length,
+          dependenciesToMap: detectedStructure.dependencies.length
+        }
+      };
+    } catch (error) {
+      console.error('Error scanning project structure:', error);
       throw error;
     }
   }
