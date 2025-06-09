@@ -948,10 +948,15 @@ class EnhancedCodeGraphController {
 
   async createProjectFromTemplate(templateName, customName = null) {
     try {
+      console.log(`Creating project from template: ${templateName}`);
+      
       const template = this.PROJECT_TEMPLATES[templateName];
       if (!template) {
+        console.error(`Template '${templateName}' not found. Available templates:`, Object.keys(this.PROJECT_TEMPLATES));
         throw new Error(`Template '${templateName}' not found`);
       }
+
+      console.log(`Found template:`, template.name);
 
       // Create project
       const projectData = {
@@ -959,38 +964,72 @@ class EnhancedCodeGraphController {
         path: template.path || 'template-generated',
         description: template.description,
         status: 'active',
-        tags: ['template', templateName],
-        metadata: { template: templateName, generated: true }
+        tags: JSON.stringify(['template', templateName]),
+        metadata: JSON.stringify({ template: templateName, generated: true })
       };
 
+      console.log(`Creating project with data:`, projectData);
       const { projectId } = await this.createProject(projectData);
+      console.log(`Created project with ID: ${projectId}`);
 
       // Create functions
       const functionMap = new Map(); // name -> id mapping
+      console.log(`Creating ${template.functions.length} functions...`);
+      
       for (const funcData of template.functions) {
+        console.log(`Creating function: ${funcData.name}`);
+        
         const { functionId } = await this.createFunction({
           project_id: projectId,
-          ...funcData,
-          parameters: funcData.parameters || []
+          name: funcData.name,
+          file_path: funcData.file_path,
+          line_number: funcData.line_number,
+          parameters: JSON.stringify(funcData.parameters || []),
+          is_async: funcData.is_async || false,
+          complexity_score: 1,
+          description: `Template function: ${funcData.name}`
         });
+        
         functionMap.set(funcData.name, functionId);
+        console.log(`Created function ${funcData.name} with ID: ${functionId}`);
       }
 
       // Create variables
       const variableMap = new Map(); // name -> id mapping
+      console.log(`Creating ${template.variables.length} variables...`);
+      
       for (const varData of template.variables) {
+        console.log(`Creating variable: ${varData.name}`);
+        
+        // Determine function_id for parameters and local variables
+        let functionId = null;
+        if (varData.scope === 'parameter' || varData.scope === 'local') {
+          functionId = functionMap.get('generateThumbnail');
+        }
+        
         const { variableId } = await this.createVariable({
           project_id: projectId,
-          function_id: varData.scope === 'parameter' || varData.scope === 'local' ? 
-            functionMap.get('generateThumbnail') : null, // Link to main function for template
+          function_id: functionId,
+          name: varData.name,
+          type: varData.type,
+          value: varData.value,
           file_path: 'controllers/dcimController.js', // Default for template
-          ...varData
+          line_number: varData.line_number,
+          scope: varData.scope,
+          declaration_type: varData.scope === 'parameter' ? 'parameter' : 'const',
+          description: `Template variable: ${varData.name}`
         });
+        
         variableMap.set(varData.name, variableId);
+        console.log(`Created variable ${varData.name} with ID: ${variableId}`);
       }
 
       // Create relationships
+      console.log(`Creating ${template.relationships.length} relationships...`);
+      
       for (const relData of template.relationships) {
+        console.log(`Creating relationship: ${relData.source} -> ${relData.type} -> ${relData.target}`);
+        
         const sourceId = functionMap.get(relData.source) || variableMap.get(relData.source);
         const targetId = functionMap.get(relData.target) || variableMap.get(relData.target);
         
@@ -1005,17 +1044,28 @@ class EnhancedCodeGraphController {
             target_type: targetType,
             target_id: targetId,
             relationship_type: relData.type,
+            relationship_strength: 0.8,
             description: `Template relationship: ${relData.source} ${relData.type} ${relData.target}`
           });
+          
+          console.log(`Created relationship: ${sourceType}:${sourceId} -> ${relData.type} -> ${targetType}:${targetId}`);
+        } else {
+          console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
+          console.warn(`Source ID: ${sourceId}, Target ID: ${targetId}`);
         }
       }
 
-      console.log(`Created project from template '${templateName}': ${projectId}`);
+      console.log(`Successfully created project from template '${templateName}': ${projectId}`);
       return { 
         success: true, 
         projectId, 
         project: await this.getProject(projectId),
-        template: templateName 
+        template: templateName,
+        created_elements: {
+          functions: functionMap.size,
+          variables: variableMap.size,
+          relationships: template.relationships.length
+        }
       };
     } catch (error) {
       console.error('Error creating project from template:', error);

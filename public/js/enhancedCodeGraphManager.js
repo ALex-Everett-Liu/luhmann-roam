@@ -608,29 +608,50 @@ const EnhancedCodeGraphManager = (function() {
             return;
         }
         
-        grid.innerHTML = projects.map(project => `
-            <div class="project-card" data-project-id="${project.id}">
-                <div class="project-header">
-                    <h4>${project.name}</h4>
-                    <div class="project-status ${project.status}">${project.status}</div>
+        grid.innerHTML = projects.map(project => {
+            // Safe JSON parsing for tags
+            let tagsHtml = '';
+            try {
+                if (project.tags) {
+                    let tags = [];
+                    if (typeof project.tags === 'string') {
+                        tags = JSON.parse(project.tags);
+                    } else if (Array.isArray(project.tags)) {
+                        tags = project.tags;
+                    }
+                    if (Array.isArray(tags) && tags.length > 0) {
+                        tagsHtml = tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                    }
+                }
+            } catch (e) {
+                console.warn('Error parsing tags for project:', project.id, e);
+            }
+            
+            return `
+                <div class="project-card" data-project-id="${project.id}">
+                    <div class="project-header">
+                        <h4>${project.name}</h4>
+                        <div class="project-status ${project.status || 'active'}">${project.status || 'active'}</div>
+                    </div>
+                    <div class="project-description">${project.description || 'No description'}</div>
+                    <div class="project-stats">
+                        <span class="stat">📊 ${project.function_count || 0} functions</span>
+                        <span class="stat">🔢 ${project.variable_count || 0} variables</span>
+                        <span class="stat">🔗 ${project.dependency_count || 0} dependencies</span>
+                    </div>
+                    <div class="project-meta">
+                        <span class="language">${project.language || 'javascript'}</span>
+                        ${project.framework ? `<span class="framework">${project.framework}</span>` : ''}
+                        ${tagsHtml ? `<div class="project-tags">${tagsHtml}</div>` : ''}
+                    </div>
+                    <div class="project-actions">
+                        <button class="btn btn-sm btn-primary" onclick="EnhancedCodeGraphManager.viewProjectGraph('${project.id}')">📈 View Graph</button>
+                        <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editProject('${project.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteProject('${project.id}')">🗑️ Delete</button>
+                    </div>
                 </div>
-                <div class="project-description">${project.description || 'No description'}</div>
-                <div class="project-stats">
-                    <span class="stat">📊 ${project.function_count || 0} functions</span>
-                    <span class="stat">🔢 ${project.variable_count || 0} variables</span>
-                    <span class="stat">🔗 ${project.dependency_count || 0} dependencies</span>
-                </div>
-                <div class="project-meta">
-                    <span class="language">${project.language || 'javascript'}</span>
-                    ${project.framework ? `<span class="framework">${project.framework}</span>` : ''}
-                </div>
-                <div class="project-actions">
-                    <button class="btn btn-sm btn-primary" onclick="EnhancedCodeGraphManager.viewProjectGraph('${project.id}')">📈 View Graph</button>
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editProject('${project.id}')">✏️ Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteProject('${project.id}')">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function populateProjectSelectors() {
@@ -675,6 +696,7 @@ const EnhancedCodeGraphManager = (function() {
     }
 
     function showCreateProjectModal() {
+        resetCreateProjectModal(); // Reset modal first
         showModal('ecg-create-project-modal');
     }
 
@@ -795,6 +817,112 @@ const EnhancedCodeGraphManager = (function() {
         } catch (error) {
             showStatus('Error: ' + error.message, 'error');
         }
+    }
+
+    async function editProject(projectId) {
+        try {
+            const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}`);
+            const project = await response.json();
+            
+            // Populate the create project modal with existing data
+            document.getElementById('project-name').value = project.name;
+            document.getElementById('project-path').value = project.path;
+            document.getElementById('project-description').value = project.description || '';
+            document.getElementById('project-language').value = project.language || 'javascript';
+            document.getElementById('project-framework').value = project.framework || '';
+            
+            // Safe JSON parsing for tags
+            let tagsValue = '';
+            try {
+                if (project.tags) {
+                    if (typeof project.tags === 'string') {
+                        const parsedTags = JSON.parse(project.tags);
+                        tagsValue = Array.isArray(parsedTags) ? parsedTags.join(', ') : '';
+                    } else if (Array.isArray(project.tags)) {
+                        tagsValue = project.tags.join(', ');
+                    }
+                }
+            } catch (e) {
+                console.warn('Error parsing tags:', e);
+                tagsValue = '';
+            }
+            document.getElementById('project-tags').value = tagsValue;
+            
+            // Change modal title and add hidden field for project ID
+            document.getElementById('ecg-create-project-modal').querySelector('h3').textContent = 'Edit Project';
+            
+            // Add hidden input for project ID if it doesn't exist
+            let projectIdInput = document.getElementById('edit-project-id');
+            if (!projectIdInput) {
+                projectIdInput = document.createElement('input');
+                projectIdInput.type = 'hidden';
+                projectIdInput.id = 'edit-project-id';
+                document.getElementById('ecg-create-project-form').appendChild(projectIdInput);
+            }
+            projectIdInput.value = projectId;
+            
+            // Change the submit button text
+            const submitButton = document.querySelector('#ecg-create-project-modal .btn-primary');
+            submitButton.textContent = 'Update Project';
+            submitButton.onclick = () => updateProject();
+            
+            showModal('ecg-create-project-modal');
+        } catch (error) {
+            showStatus('Error loading project: ' + error.message, 'error');
+        }
+    }
+
+    async function updateProject() {
+        try {
+            const form = document.getElementById('ecg-create-project-form');
+            const formData = new FormData(form);
+            const projectId = document.getElementById('edit-project-id').value;
+            
+            const projectData = {
+                name: formData.get('name'),
+                path: formData.get('path'),
+                description: formData.get('description'),
+                language: formData.get('language'),
+                framework: formData.get('framework'),
+                tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()) : []
+            };
+            
+            const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projectData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showStatus(`Project "${result.project.name}" updated successfully!`);
+                hideModal('ecg-create-project-modal');
+                resetCreateProjectModal();
+                loadProjects();
+            } else {
+                showStatus('Error updating project: ' + result.error, 'error');
+            }
+        } catch (error) {
+            showStatus('Error: ' + error.message, 'error');
+        }
+    }
+
+    function resetCreateProjectModal() {
+        // Reset modal title and button
+        document.getElementById('ecg-create-project-modal').querySelector('h3').textContent = 'Create New Project';
+        const submitButton = document.querySelector('#ecg-create-project-modal .btn-primary');
+        submitButton.textContent = 'Create Project';
+        submitButton.onclick = () => createProject();
+        
+        // Remove project ID input if it exists
+        const projectIdInput = document.getElementById('edit-project-id');
+        if (projectIdInput) {
+            projectIdInput.remove();
+        }
+        
+        // Reset form
+        document.getElementById('ecg-create-project-form').reset();
     }
 
     // =================================================================
@@ -1286,6 +1414,33 @@ const EnhancedCodeGraphManager = (function() {
         }
     }
 
+    async function editDependency(dependencyId) {
+        try {
+            const response = await fetch(`/api/enhanced-code-graph/dependencies/${dependencyId}`);
+            const dependency = await response.json();
+            
+            document.getElementById('dependency-modal-title').textContent = 'Edit Dependency';
+            document.getElementById('dependency-id').value = dependency.id;
+            document.getElementById('dependency-project').value = dependency.project_id;
+            
+            // Load elements for the project first
+            await loadDependencyElements();
+            
+            // Then set the values
+            document.getElementById('dependency-source').value = dependency.source_id;
+            document.getElementById('dependency-target').value = dependency.target_id;
+            document.getElementById('dependency-relationship').value = dependency.relationship_type;
+            document.getElementById('dependency-strength').value = dependency.relationship_strength;
+            document.getElementById('dependency-context').value = dependency.context || '';
+            document.getElementById('dependency-line').value = dependency.line_number || '';
+            document.getElementById('dependency-description').value = dependency.description || '';
+            
+            showModal('ecg-dependency-modal');
+        } catch (error) {
+            showStatus('Error loading dependency: ' + error.message, 'error');
+        }
+    }
+
     // =================================================================
     // GRAPH VISUALIZATION
     // =================================================================
@@ -1512,6 +1667,7 @@ const EnhancedCodeGraphManager = (function() {
         loadProjects,
         showCreateProjectModal,
         createProject,
+        editProject,
         showTemplateModal,
         createFromTemplate,
         viewProjectGraph,
@@ -1536,6 +1692,7 @@ const EnhancedCodeGraphManager = (function() {
         showCreateDependencyModal,
         loadDependencyElements,
         saveDependency,
+        editDependency,
         deleteDependency,
         
         // Graph visualization
