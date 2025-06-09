@@ -1456,6 +1456,11 @@ const EnhancedCodeGraphManager = (function() {
             const response = await fetch(`/api/enhanced-code-graph/visualization/${projectId}`);
             const data = await response.json();
             
+            // Add debugging
+            console.log('Visualization data received:', data);
+            console.log('Nodes:', data.nodes);
+            console.log('Edges:', data.edges);
+            
             currentVisualizationData = data;
             renderEnhancedGraph(data);
             
@@ -1470,6 +1475,8 @@ const EnhancedCodeGraphManager = (function() {
         if (!container) return;
         
         container.innerHTML = '';
+        
+        console.log('Rendering graph with data:', data);
         
         if (!data.nodes || data.nodes.length === 0) {
             container.innerHTML = '<p class="placeholder-text">No data to visualize</p>';
@@ -1505,14 +1512,14 @@ const EnhancedCodeGraphManager = (function() {
             .enter().append('marker')
             .attr('id', 'arrow')
             .attr('viewBox', '0 -5 10 10')
-            .attr('refX', 20)
+            .attr('refX', 15)
             .attr('refY', 0)
-            .attr('markerWidth', 6)
-            .attr('markerHeight', 6)
+            .attr('markerWidth', 8)
+            .attr('markerHeight', 8)
             .attr('orient', 'auto')
             .append('path')
             .attr('d', 'M0,-5L10,0L0,5')
-            .attr('fill', '#666');
+            .attr('fill', '#333');
         
         // Prepare data for D3
         const nodes = data.nodes.map(d => ({
@@ -1522,33 +1529,65 @@ const EnhancedCodeGraphManager = (function() {
             group: d.type === 'function' ? 1 : 2
         }));
         
+        console.log('Prepared nodes:', nodes);
+        
+        // Fix the edges mapping - use the correct property names
         const links = data.edges.map(d => ({
             source: d.source,
             target: d.target,
             relationship: d.relationship,
-            strength: d.strength,
+            strength: d.strength || d.relationship_strength || 0.5,
             originalEdge: d
         }));
         
+        console.log('Prepared links:', links);
+        
+        // Validate that all source and target IDs exist in nodes
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const validLinks = links.filter(link => {
+            const hasValidSource = nodeIds.has(link.source);
+            const hasValidTarget = nodeIds.has(link.target);
+            
+            if (!hasValidSource) {
+                console.warn('Invalid source ID:', link.source, 'in link:', link);
+            }
+            if (!hasValidTarget) {
+                console.warn('Invalid target ID:', link.target, 'in link:', link);
+            }
+            
+            return hasValidSource && hasValidTarget;
+        });
+        
+        console.log('Valid links after filtering:', validLinks);
+        console.log('Number of valid links:', validLinks.length);
+        
+        if (validLinks.length === 0) {
+            container.innerHTML = '<p class="placeholder-text">No valid relationships to visualize. Check that all functions and variables exist.</p>';
+            return;
+        }
+        
         // Create force simulation
         const simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-300))
+            .force('link', d3.forceLink(validLinks).id(d => d.id).distance(150))
+            .force('charge', d3.forceManyBody().strength(-400))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(30));
+            .force('collision', d3.forceCollide().radius(35));
         
-        // Create links
+        // Create links FIRST (so they appear behind nodes)
         const link = g.append('g')
             .attr('class', 'links')
             .selectAll('line')
-            .data(links)
+            .data(validLinks)
             .enter().append('line')
             .attr('stroke', d => getEnhancedEdgeColor(d.relationship))
-            .attr('stroke-opacity', 0.8)
-            .attr('stroke-width', d => Math.max(1, d.strength * 3))
-            .attr('marker-end', 'url(#arrow)');
+            .attr('stroke-opacity', 0.9)
+            .attr('stroke-width', d => Math.max(2, (d.strength || 0.5) * 4))
+            .attr('marker-end', 'url(#arrow)')
+            .style('pointer-events', 'none');
         
-        // Create nodes
+        console.log('Created links:', link.size(), 'elements');
+        
+        // Create nodes AFTER links (so they appear on top)
         const node = g.append('g')
             .attr('class', 'nodes')
             .selectAll('g')
@@ -1562,19 +1601,21 @@ const EnhancedCodeGraphManager = (function() {
         
         // Add circles for nodes
         node.append('circle')
-            .attr('r', d => d.type === 'function' ? 20 : 15)
+            .attr('r', d => d.type === 'function' ? 25 : 20)
             .attr('fill', d => getEnhancedNodeColor(d))
             .attr('stroke', '#fff')
-            .attr('stroke-width', 2);
+            .attr('stroke-width', 3);
         
         // Add labels for nodes
         node.append('text')
-            .attr('dy', -25)
+            .attr('dy', -30)
             .attr('text-anchor', 'middle')
-            .attr('font-size', '12px')
+            .attr('font-size', '14px')
             .attr('font-weight', 'bold')
             .attr('fill', '#24292e')
             .text(d => d.name);
+        
+        console.log('Created nodes:', node.size(), 'elements');
         
         // Update positions on tick
         simulation.on('tick', () => {
@@ -1586,6 +1627,18 @@ const EnhancedCodeGraphManager = (function() {
             
             node
                 .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Add debugging for simulation
+        simulation.on('end', () => {
+            console.log('Simulation ended');
+            console.log('Final node positions:', nodes.map(n => ({ id: n.id, x: n.x, y: n.y })));
+            console.log('Final link positions:', validLinks.map(l => ({ 
+                source: l.source.id || l.source, 
+                target: l.target.id || l.target,
+                sourcePos: { x: l.source.x, y: l.source.y },
+                targetPos: { x: l.target.x, y: l.target.y }
+            })));
         });
         
         // Drag functions
@@ -1605,6 +1658,19 @@ const EnhancedCodeGraphManager = (function() {
             d.fx = null;
             d.fy = null;
         }
+        
+        // Store references for debugging
+        window.debugGraph = {
+            svg,
+            g,
+            nodes,
+            links: validLinks,
+            simulation,
+            linkElements: link,
+            nodeElements: node
+        };
+        
+        console.log('Graph rendering complete. Debug info stored in window.debugGraph');
     }
 
     function getEnhancedNodeColor(node) {
