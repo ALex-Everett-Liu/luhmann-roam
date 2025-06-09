@@ -69,5 +69,6 @@ router.get('/visualization/:projectId', enhancedCodeGraphController.getVisualiza
 // =================================================================
 router.get('/projects/:projectId/export', enhancedCodeGraphController.exportProjectStructure);
 router.post('/projects/import', enhancedCodeGraphController.importProjectStructure);
+router.put('/projects/:projectId/import-update', enhancedCodeGraphController.updateProjectFromImport);
 
 module.exports = router;

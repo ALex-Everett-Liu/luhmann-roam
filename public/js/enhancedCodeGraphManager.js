@@ -648,6 +648,7 @@ const EnhancedCodeGraphManager = (function() {
                     <div class="project-actions">
                         <button class="btn btn-sm btn-primary" onclick="EnhancedCodeGraphManager.viewProjectGraph('${project.id}')">📈 View Graph</button>
                         <button class="btn btn-sm btn-success" onclick="EnhancedCodeGraphManager.exportProject('${project.id}')">📤 Export</button>
+                        <button class="btn btn-sm btn-info" onclick="EnhancedCodeGraphManager.showUpdateImportModal('${project.id}')">📥 Update from Import</button>
                         <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editProject('${project.id}')">✏️ Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteProject('${project.id}')">🗑️ Delete</button>
                     </div>
@@ -2523,6 +2524,169 @@ async function exportProject(projectId) {
     }
   }
 
+  function showUpdateImportModal(projectId) {
+    const updateImportModal = document.createElement('div');
+    updateImportModal.id = 'ecg-update-import-modal';
+    updateImportModal.className = 'ecg-modal';
+    updateImportModal.innerHTML = `
+      <div class="ecg-modal-content">
+        <div class="ecg-modal-header">
+          <h3>Update Project from Import</h3>
+          <button class="close-btn" onclick="EnhancedCodeGraphManager.hideModal('ecg-update-import-modal')">&times;</button>
+        </div>
+        <div class="ecg-modal-body">
+          <div class="form-group">
+            <label for="update-import-file">Select Modified Export File</label>
+            <input type="file" id="update-import-file" accept=".json" onchange="EnhancedCodeGraphManager.handleUpdateImportFile(this, '${projectId}')">
+            <small class="help-text">Select the JSON file with your modifications</small>
+          </div>
+          
+          <div class="form-group">
+            <h4>Update Options</h4>
+            <label>
+              <input type="checkbox" id="update-project-info" checked> Update project information
+            </label>
+            <label>
+              <input type="checkbox" id="remove-absent-elements"> Remove elements not in import
+              <small class="help-text">⚠️ This will delete functions/variables that aren't in the import file</small>
+            </label>
+            <label>
+              <input type="checkbox" id="update-dependencies" checked> Update dependencies
+            </label>
+          </div>
+          
+          <div id="update-import-preview" class="import-preview" style="display: none;">
+            <h4>Update Preview</h4>
+            <div id="update-import-details"></div>
+          </div>
+        </div>
+        <div class="ecg-modal-footer">
+          <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.hideModal('ecg-update-import-modal')">Cancel</button>
+          <button class="btn btn-primary" id="update-import-confirm-btn" onclick="EnhancedCodeGraphManager.confirmUpdateImport('${projectId}')" disabled>Update Project</button>
+        </div>
+      </div>
+    `;
+    
+    container.appendChild(updateImportModal);
+    showModal('ecg-update-import-modal');
+  }
+
+  function handleUpdateImportFile(input, projectId) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importData = JSON.parse(e.target.result);
+        
+        // Validate import data
+        if (!importData.metadata || !importData.template) {
+          throw new Error('Invalid export file format');
+        }
+        
+        if (importData.metadata.exportType !== 'enhanced_code_graph_project') {
+          throw new Error('This file is not an Enhanced Code Graph project export');
+        }
+        
+        // Show preview with diff info
+        showUpdateImportPreview(importData);
+        
+        // Store import data for confirmation
+        window.currentUpdateImportData = importData;
+        
+        // Enable update button
+        document.getElementById('update-import-confirm-btn').disabled = false;
+        
+      } catch (error) {
+        showStatus('Error reading import file: ' + error.message, 'error');
+        document.getElementById('update-import-preview').style.display = 'none';
+        document.getElementById('update-import-confirm-btn').disabled = true;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function showUpdateImportPreview(importData) {
+    const preview = document.getElementById('update-import-preview');
+    const details = document.getElementById('update-import-details');
+    
+    const original = importData.metadata.originalProject;
+    const stats = importData.metadata.statistics;
+    
+    details.innerHTML = `
+      <div class="import-project-info">
+        <h5>Import Source: ${original.name}</h5>
+        <p><strong>Last Exported:</strong> ${new Date(importData.metadata.exportedAt).toLocaleString()}</p>
+        <div class="update-warning">
+          <p>⚠️ <strong>This will update your existing project with the imported changes.</strong></p>
+          <p>Functions and variables with the same names will be updated.</p>
+          <p>New elements will be added. Check options to remove absent elements.</p>
+        </div>
+      </div>
+      <div class="import-statistics">
+        <h5>Import Contains</h5>
+        <div class="stats-grid">
+          <div class="stat">
+            <span class="stat-number">${stats.function_count}</span>
+            <span class="stat-label">Functions</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">${stats.variable_count}</span>
+            <span class="stat-label">Variables</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">${stats.dependency_count}</span>
+            <span class="stat-label">Dependencies</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    preview.style.display = 'block';
+  }
+
+  async function confirmUpdateImport(projectId) {
+    try {
+      if (!window.currentUpdateImportData) {
+        throw new Error('No import data available');
+      }
+      
+      showStatus('Updating project from import...', 'info');
+      
+      const options = {
+        updateProjectInfo: document.getElementById('update-project-info').checked,
+        removeAbsent: document.getElementById('remove-absent-elements').checked,
+        updateDependencies: document.getElementById('update-dependencies').checked
+      };
+      
+      const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/import-update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          importData: window.currentUpdateImportData,
+          options: options
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const stats = result.updateStats;
+        showStatus(`Project updated successfully! Added: ${stats.functionsAdded} functions, ${stats.variablesAdded} variables. Updated: ${stats.functionsUpdated} functions, ${stats.variablesUpdated} variables.`);
+        hideModal('ecg-update-import-modal');
+        loadProjects(); // Refresh projects list
+        
+        // Clean up
+        window.currentUpdateImportData = null;
+      } else {
+        showStatus('Error updating project: ' + result.error, 'error');
+      }
+    } catch (error) {
+      showStatus('Error updating project: ' + error.message, 'error');
+    }
+  }
+
     // =================================================================
     // PUBLIC API
     // =================================================================
@@ -2550,6 +2714,9 @@ async function exportProject(projectId) {
         showImportModal,
         handleImportFile,
         confirmImport,
+        showUpdateImportModal,
+        handleUpdateImportFile,
+        confirmUpdateImport,
         
         // Function management
         loadFunctions,
@@ -2583,7 +2750,11 @@ async function exportProject(projectId) {
         
         // Modal management
         showModal,
-        hideModal
+        hideModal,
+        showUpdateImportModal,
+        handleUpdateImportFile,
+        showUpdateImportPreview,
+        confirmUpdateImport
     };
 })();
 

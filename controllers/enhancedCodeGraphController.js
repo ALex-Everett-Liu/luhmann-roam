@@ -1493,6 +1493,235 @@ class EnhancedCodeGraphController {
       throw error;
     }
   }
+
+  async updateProjectFromImport(projectId, importData, options = {}) {
+    try {
+      console.log(`Updating existing project ${projectId} from import data`);
+      
+      if (!importData.template || !importData.metadata) {
+        throw new Error('Invalid import data format');
+      }
+      
+      const template = importData.template;
+      const existingProject = await this.getProject(projectId);
+      
+      // Get current project data
+      const existingFunctions = await this.getFunctionsByProject(projectId);
+      const existingVariables = await this.getVariablesByProject(projectId);
+      const existingDependencies = await this.getDependenciesByProject(projectId);
+      
+      const updateStats = {
+        functionsAdded: 0,
+        functionsUpdated: 0,
+        functionsRemoved: 0,
+        variablesAdded: 0,
+        variablesUpdated: 0,
+        variablesRemoved: 0,
+        dependenciesAdded: 0,
+        dependenciesUpdated: 0,
+        dependenciesRemoved: 0
+      };
+      
+      // Update project metadata if provided
+      if (options.updateProjectInfo) {
+        const originalProject = importData.metadata.originalProject;
+        await this.updateProject(projectId, {
+          description: originalProject.description,
+          language: originalProject.language,
+          framework: originalProject.framework,
+          tags: [...(existingProject.tags || []), 'updated-from-import'],
+          metadata: {
+            ...existingProject.metadata,
+            lastImportUpdate: new Date().toISOString(),
+            importSource: originalProject.name
+          }
+        });
+      }
+      
+      // Create maps for existing elements
+      const existingFunctionMap = new Map(existingFunctions.map(f => [f.name, f]));
+      const existingVariableMap = new Map(existingVariables.map(v => [v.name, v]));
+      
+      // Track new IDs for relationships
+      const functionNameToId = new Map();
+      const variableNameToId = new Map();
+      
+      // Process functions
+      const importedFunctionNames = new Set(template.functions.map(f => f.name));
+      
+      for (const funcData of template.functions) {
+        const existingFunc = existingFunctionMap.get(funcData.name);
+        
+        if (existingFunc) {
+          // Update existing function
+          await this.updateFunction(existingFunc.id, {
+            full_name: funcData.full_name,
+            file_path: funcData.file_path,
+            line_number: funcData.line_number,
+            end_line_number: funcData.end_line_number,
+            parameters: funcData.parameters,
+            return_type: funcData.return_type,
+            is_async: funcData.is_async,
+            is_static: funcData.is_static,
+            is_private: funcData.is_private,
+            complexity_score: funcData.complexity_score,
+            description: funcData.description,
+            tags: funcData.tags,
+            metadata: funcData.metadata
+          });
+          functionNameToId.set(funcData.name, existingFunc.id);
+          updateStats.functionsUpdated++;
+          console.log(`Updated function: ${funcData.name}`);
+        } else {
+          // Create new function
+          const { functionId } = await this.createFunction({
+            project_id: projectId,
+            name: funcData.name,
+            full_name: funcData.full_name,
+            file_path: funcData.file_path,
+            line_number: funcData.line_number,
+            end_line_number: funcData.end_line_number,
+            parameters: funcData.parameters,
+            return_type: funcData.return_type,
+            is_async: funcData.is_async,
+            is_static: funcData.is_static,
+            is_private: funcData.is_private,
+            complexity_score: funcData.complexity_score,
+            description: funcData.description,
+            tags: funcData.tags,
+            metadata: funcData.metadata
+          });
+          functionNameToId.set(funcData.name, functionId);
+          updateStats.functionsAdded++;
+          console.log(`Added function: ${funcData.name}`);
+        }
+      }
+      
+      // Remove functions not in import (if option enabled)
+      if (options.removeAbsent) {
+        for (const existingFunc of existingFunctions) {
+          if (!importedFunctionNames.has(existingFunc.name)) {
+            await this.deleteFunction(existingFunc.id);
+            updateStats.functionsRemoved++;
+            console.log(`Removed function: ${existingFunc.name}`);
+          }
+        }
+      }
+      
+      // Process variables
+      const importedVariableNames = new Set(template.variables.map(v => v.name));
+      
+      for (const varData of template.variables) {
+        const existingVar = existingVariableMap.get(varData.name);
+        
+        // Map function name to function ID
+        let functionId = null;
+        if (varData.function_name) {
+          functionId = functionNameToId.get(varData.function_name);
+        }
+        
+        if (existingVar) {
+          // Update existing variable
+          await this.updateVariable(existingVar.id, {
+            function_id: functionId,
+            type: varData.type,
+            value: varData.value,
+            file_path: varData.file_path,
+            line_number: varData.line_number,
+            scope: varData.scope,
+            declaration_type: varData.declaration_type,
+            mutability: varData.mutability,
+            is_exported: varData.is_exported,
+            description: varData.description,
+            tags: varData.tags,
+            metadata: varData.metadata
+          });
+          variableNameToId.set(varData.name, existingVar.id);
+          updateStats.variablesUpdated++;
+          console.log(`Updated variable: ${varData.name}`);
+        } else {
+          // Create new variable
+          const { variableId } = await this.createVariable({
+            project_id: projectId,
+            function_id: functionId,
+            name: varData.name,
+            type: varData.type,
+            value: varData.value,
+            file_path: varData.file_path,
+            line_number: varData.line_number,
+            scope: varData.scope,
+            declaration_type: varData.declaration_type,
+            mutability: varData.mutability,
+            is_exported: varData.is_exported,
+            description: varData.description,
+            tags: varData.tags,
+            metadata: varData.metadata
+          });
+          variableNameToId.set(varData.name, variableId);
+          updateStats.variablesAdded++;
+          console.log(`Added variable: ${varData.name}`);
+        }
+      }
+      
+      // Remove variables not in import (if option enabled)
+      if (options.removeAbsent) {
+        for (const existingVar of existingVariables) {
+          if (!importedVariableNames.has(existingVar.name)) {
+            await this.deleteVariable(existingVar.id);
+            updateStats.variablesRemoved++;
+            console.log(`Removed variable: ${existingVar.name}`);
+          }
+        }
+      }
+      
+      // Process dependencies - always recreate for simplicity
+      if (options.updateDependencies !== false) {
+        // Remove all existing dependencies
+        for (const dep of existingDependencies) {
+          await this.deleteDependency(dep.id);
+          updateStats.dependenciesRemoved++;
+        }
+        
+        // Create new dependencies
+        for (const relData of template.relationships) {
+          const sourceId = functionNameToId.get(relData.source) || variableNameToId.get(relData.source);
+          const targetId = functionNameToId.get(relData.target) || variableNameToId.get(relData.target);
+          
+          if (sourceId && targetId) {
+            await this.createDependency({
+              project_id: projectId,
+              source_type: relData.source_type,
+              source_id: sourceId,
+              target_type: relData.target_type,
+              target_id: targetId,
+              relationship_type: relData.relationship_type,
+              relationship_strength: relData.relationship_strength,
+              context: relData.context,
+              line_number: relData.line_number,
+              order_sequence: relData.order_sequence,
+              description: relData.description,
+              metadata: relData.metadata
+            });
+            updateStats.dependenciesAdded++;
+            console.log(`Added relationship: ${relData.source} -> ${relData.relationship_type} -> ${relData.target}`);
+          } else {
+            console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
+          }
+        }
+      }
+      
+      console.log(`Successfully updated project ${projectId} from import`);
+      return {
+        success: true,
+        projectId,
+        project: await this.getProject(projectId),
+        updateStats
+      };
+    } catch (error) {
+      console.error('Error updating project from import:', error);
+      throw error;
+    }
+  }
 }
 
 // Controller instance
@@ -1778,6 +2007,16 @@ exports.exportProjectStructure = async (req, res) => {
     try {
       const { importData, customName } = req.body;
       const result = await enhancedCodeGraphController.importProjectStructure(importData, customName);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+
+exports.updateProjectFromImport = async (req, res) => {
+    try {
+      const { projectId, importData, options } = req.body;
+      const result = await enhancedCodeGraphController.updateProjectFromImport(projectId, importData, options);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: error.message });

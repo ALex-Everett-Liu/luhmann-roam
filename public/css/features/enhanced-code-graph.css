@@ -734,3 +734,16 @@
     margin-top: 5px;
     display: block;
 }
+
+.update-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.update-warning p {
+    margin: 5px 0;
+    color: #856404;
+}
