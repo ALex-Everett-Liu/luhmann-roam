@@ -66,6 +66,7 @@ const EnhancedCodeGraphManager = (function() {
                             <div class="view-actions">
                                 <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateProjectModal()">+ New Project</button>
                                 <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.showTemplateModal()">📋 From Template</button>
+                                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.showImportModal()">📥 Import Project</button>
                                 <button class="btn btn-info" onclick="EnhancedCodeGraphManager.loadProjects()">🔄 Refresh</button>
                             </div>
                         </div>
@@ -646,6 +647,7 @@ const EnhancedCodeGraphManager = (function() {
                     </div>
                     <div class="project-actions">
                         <button class="btn btn-sm btn-primary" onclick="EnhancedCodeGraphManager.viewProjectGraph('${project.id}')">📈 View Graph</button>
+                        <button class="btn btn-sm btn-success" onclick="EnhancedCodeGraphManager.exportProject('${project.id}')">📤 Export</button>
                         <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editProject('${project.id}')">✏️ Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteProject('${project.id}')">🗑️ Delete</button>
                     </div>
@@ -2328,6 +2330,199 @@ const EnhancedCodeGraphManager = (function() {
         });
     }
 
+    
+// =================================================================
+// EXPORT/IMPORT FUNCTIONALITY
+// =================================================================
+
+async function exportProject(projectId) {
+    try {
+      showStatus('Exporting project structure...', 'info');
+      
+      const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/export`);
+      
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+      
+      const exportData = await response.json();
+      
+      // Create download
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      });
+      const url = URL.createObjectURL(blob);
+      
+      // Get project name for filename
+      const project = projects.find(p => p.id === projectId);
+      const filename = `${(project?.name || 'project').replace(/[^a-zA-Z0-9]/g, '_')}_export_${new Date().toISOString().split('T')[0]}.json`;
+      
+      // Create download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showStatus(`Project structure exported successfully as ${filename}!`);
+    } catch (error) {
+      showStatus('Error exporting project: ' + error.message, 'error');
+    }
+  }
+  
+  function showImportModal() {
+    const importModal = document.createElement('div');
+    importModal.id = 'ecg-import-modal';
+    importModal.className = 'ecg-modal';
+    importModal.innerHTML = `
+      <div class="ecg-modal-content">
+        <div class="ecg-modal-header">
+          <h3>Import Project Structure</h3>
+          <button class="close-btn" onclick="EnhancedCodeGraphManager.hideModal('ecg-import-modal')">&times;</button>
+        </div>
+        <div class="ecg-modal-body">
+          <div class="form-group">
+            <label for="import-custom-name">Custom Project Name (optional)</label>
+            <input type="text" id="import-custom-name" placeholder="Leave empty to use imported name">
+          </div>
+          <div class="form-group">
+            <label for="import-file">Select Export File</label>
+            <input type="file" id="import-file" accept=".json" onchange="EnhancedCodeGraphManager.handleImportFile(this)">
+            <small class="help-text">Select a JSON file exported from Enhanced Code Graph Manager</small>
+          </div>
+          <div id="import-preview" class="import-preview" style="display: none;">
+            <h4>Import Preview</h4>
+            <div id="import-details"></div>
+          </div>
+        </div>
+        <div class="ecg-modal-footer">
+          <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.hideModal('ecg-import-modal')">Cancel</button>
+          <button class="btn btn-primary" id="import-confirm-btn" onclick="EnhancedCodeGraphManager.confirmImport()" disabled>Import Project</button>
+        </div>
+      </div>
+    `;
+    
+    container.appendChild(importModal);
+    showModal('ecg-import-modal');
+  }
+  
+  function handleImportFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importData = JSON.parse(e.target.result);
+        
+        // Validate import data
+        if (!importData.metadata || !importData.template) {
+          throw new Error('Invalid export file format');
+        }
+        
+        if (importData.metadata.exportType !== 'enhanced_code_graph_project') {
+          throw new Error('This file is not an Enhanced Code Graph project export');
+        }
+        
+        // Show preview
+        showImportPreview(importData);
+        
+        // Store import data for confirmation
+        window.currentImportData = importData;
+        
+        // Enable import button
+        document.getElementById('import-confirm-btn').disabled = false;
+        
+      } catch (error) {
+        showStatus('Error reading import file: ' + error.message, 'error');
+        document.getElementById('import-preview').style.display = 'none';
+        document.getElementById('import-confirm-btn').disabled = true;
+      }
+    };
+    reader.readAsText(file);
+  }
+  
+  function showImportPreview(importData) {
+    const preview = document.getElementById('import-preview');
+    const details = document.getElementById('import-details');
+    
+    const original = importData.metadata.originalProject;
+    const stats = importData.metadata.statistics;
+    
+    details.innerHTML = `
+      <div class="import-project-info">
+        <h5>Original Project: ${original.name}</h5>
+        <p><strong>Description:</strong> ${original.description || 'No description'}</p>
+        <p><strong>Language:</strong> ${original.language || 'javascript'}</p>
+        ${original.framework ? `<p><strong>Framework:</strong> ${original.framework}</p>` : ''}
+        <p><strong>Path:</strong> ${original.path}</p>
+        <p><strong>Exported:</strong> ${new Date(importData.metadata.exportedAt).toLocaleString()}</p>
+      </div>
+      <div class="import-statistics">
+        <h5>Structure Overview</h5>
+        <div class="stats-grid">
+          <div class="stat">
+            <span class="stat-number">${stats.function_count}</span>
+            <span class="stat-label">Functions</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">${stats.variable_count}</span>
+            <span class="stat-label">Variables</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">${stats.dependency_count}</span>
+            <span class="stat-label">Dependencies</span>
+          </div>
+        </div>
+        ${stats.relationship_types.length > 0 ? `
+        <div class="relationship-types">
+          <strong>Relationship Types:</strong> ${stats.relationship_types.join(', ')}
+        </div>
+        ` : ''}
+      </div>
+    `;
+    
+    preview.style.display = 'block';
+  }
+  
+  async function confirmImport() {
+    try {
+      if (!window.currentImportData) {
+        throw new Error('No import data available');
+      }
+      
+      showStatus('Importing project structure...', 'info');
+      
+      const customName = document.getElementById('import-custom-name').value.trim() || null;
+      
+      const response = await fetch('/api/enhanced-code-graph/projects/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          importData: window.currentImportData,
+          customName: customName
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        showStatus(`Project imported successfully! Created ${result.imported_elements.functions} functions, ${result.imported_elements.variables} variables, and ${result.imported_elements.relationships} relationships.`);
+        hideModal('ecg-import-modal');
+        loadProjects(); // Refresh projects list
+        
+        // Clean up
+        window.currentImportData = null;
+      } else {
+        showStatus('Error importing project: ' + result.error, 'error');
+      }
+    } catch (error) {
+      showStatus('Error importing project: ' + error.message, 'error');
+    }
+  }
+
     // =================================================================
     // PUBLIC API
     // =================================================================
@@ -2349,6 +2544,12 @@ const EnhancedCodeGraphManager = (function() {
         createFromTemplate,
         viewProjectGraph,
         deleteProject,
+
+        // Export/Import
+        exportProject,
+        showImportModal,
+        handleImportFile,
+        confirmImport,
         
         // Function management
         loadFunctions,

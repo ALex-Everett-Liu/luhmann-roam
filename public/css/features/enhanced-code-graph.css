@@ -668,3 +668,69 @@
         transform: translateY(0);
     }
 }
+
+/* Import Preview Styles */
+.import-preview {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    background: #f8f9fa;
+}
+
+.import-project-info {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.import-project-info h5 {
+    margin: 0 0 10px 0;
+    color: #24292e;
+}
+
+.import-project-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.import-statistics h5 {
+    margin: 0 0 10px 0;
+    color: #24292e;
+}
+
+.stats-grid {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.relationship-types {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.help-text {
+    font-size: 12px;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+    display: block;
+}

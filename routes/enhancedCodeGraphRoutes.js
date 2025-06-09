@@ -64,4 +64,10 @@ router.post('/templates/create', enhancedCodeGraphController.createProjectFromTe
 // =================================================================
 router.get('/visualization/:projectId', enhancedCodeGraphController.getVisualizationData);
 
+// =================================================================
+// EXPORT/IMPORT ROUTES
+// =================================================================
+router.get('/projects/:projectId/export', enhancedCodeGraphController.exportProjectStructure);
+router.post('/projects/import', enhancedCodeGraphController.importProjectStructure);
+
 module.exports = router;

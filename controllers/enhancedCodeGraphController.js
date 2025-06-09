@@ -1230,6 +1230,269 @@ class EnhancedCodeGraphController {
       throw error;
     }
   }
+
+  // =================================================================
+  // PROJECT EXPORT/IMPORT SYSTEM
+  // =================================================================
+
+  async exportProjectStructure(projectId, options = {}) {
+    try {
+      console.log(`Exporting project structure for project: ${projectId}`);
+      
+      // Get project info
+      const project = await this.getProject(projectId);
+      
+      // Get all project data
+      const functions = await this.getFunctionsByProject(projectId);
+      const variables = await this.getVariablesByProject(projectId);
+      const dependencies = await this.getDependenciesByProject(projectId);
+      
+      // Create exportable structure
+      const exportData = {
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          version: '1.0',
+          exportType: 'enhanced_code_graph_project',
+          originalProject: {
+            id: project.id,
+            name: project.name,
+            path: project.path,
+            description: project.description,
+            language: project.language,
+            framework: project.framework,
+            tags: project.tags,
+            status: project.status
+          },
+          statistics: {
+            function_count: functions.length,
+            variable_count: variables.length,
+            dependency_count: dependencies.length,
+            relationship_types: [...new Set(dependencies.map(d => d.relationship_type))]
+          }
+        },
+        template: {
+          name: `${project.name}_Export_${Date.now()}`,
+          display_name: `${project.name} - Exported Structure`,
+          description: `Exported project structure from: ${project.description || project.name}`,
+          // Convert functions to template format (without database IDs)
+          functions: functions.map(func => ({
+            name: func.name,
+            full_name: func.full_name,
+            file_path: func.file_path,
+            line_number: func.line_number,
+            end_line_number: func.end_line_number,
+            parameters: func.parameters,
+            return_type: func.return_type,
+            is_async: func.is_async,
+            is_static: func.is_static,
+            is_private: func.is_private,
+            complexity_score: func.complexity_score,
+            description: func.description,
+            tags: func.tags,
+            metadata: func.metadata
+          })),
+          // Convert variables to template format (without database IDs)
+          variables: variables.map(variable => ({
+            name: variable.name,
+            type: variable.type,
+            value: variable.value,
+            file_path: variable.file_path,
+            line_number: variable.line_number,
+            scope: variable.scope,
+            declaration_type: variable.declaration_type,
+            mutability: variable.mutability,
+            is_exported: variable.is_exported,
+            description: variable.description,
+            tags: variable.tags,
+            metadata: variable.metadata,
+            // Reference to function by name instead of ID
+            function_name: variable.function_id ? 
+              functions.find(f => f.id === variable.function_id)?.name : null
+          })),
+          // Convert dependencies to template format (using names instead of IDs)
+          relationships: dependencies.map(dep => {
+            // Find source and target names
+            const sourceFunction = functions.find(f => f.id === dep.source_id);
+            const sourceVariable = variables.find(v => v.id === dep.source_id);
+            const targetFunction = functions.find(f => f.id === dep.target_id);
+            const targetVariable = variables.find(v => v.id === dep.target_id);
+            
+            const sourceName = sourceFunction?.name || sourceVariable?.name;
+            const targetName = targetFunction?.name || targetVariable?.name;
+            
+            return {
+              source: sourceName,
+              target: targetName,
+              source_type: dep.source_type,
+              target_type: dep.target_type,
+              type: dep.relationship_type,
+              relationship_type: dep.relationship_type,
+              relationship_strength: dep.relationship_strength,
+              context: dep.context,
+              line_number: dep.line_number,
+              order_sequence: dep.order_sequence,
+              description: dep.description,
+              metadata: dep.metadata
+            };
+          }).filter(rel => rel.source && rel.target) // Only include valid relationships
+        }
+      };
+      
+      console.log(`Successfully exported project structure with ${functions.length} functions, ${variables.length} variables, and ${dependencies.length} dependencies`);
+      
+      return {
+        success: true,
+        exportData,
+        filename: `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}_export_${new Date().toISOString().split('T')[0]}.json`,
+        statistics: exportData.metadata.statistics
+      };
+    } catch (error) {
+      console.error('Error exporting project structure:', error);
+      throw error;
+    }
+  }
+
+  async importProjectStructure(importData, customName = null) {
+    try {
+      console.log('Importing project structure from export data');
+      
+      if (!importData.template || !importData.metadata) {
+        throw new Error('Invalid import data format');
+      }
+      
+      const template = importData.template;
+      const originalProject = importData.metadata.originalProject;
+      
+      // Create project from imported structure
+      const projectData = {
+        name: customName || `${originalProject.name}_Import_${Date.now()}`,
+        path: originalProject.path || 'imported-project',
+        description: `Imported from: ${originalProject.description || originalProject.name}`,
+        language: originalProject.language || 'javascript',
+        framework: originalProject.framework,
+        tags: [...(originalProject.tags || []), 'imported', 'template'],
+        metadata: {
+          importedFrom: originalProject.name,
+          importedAt: new Date().toISOString(),
+          originalExportDate: importData.metadata.exportedAt
+        },
+        status: 'active'
+      };
+
+      console.log(`Creating project with data:`, projectData);
+      const { projectId } = await this.createProject(projectData);
+      console.log(`Created imported project with ID: ${projectId}`);
+
+      // Create functions
+      const functionMap = new Map(); // name -> id mapping
+      console.log(`Creating ${template.functions.length} functions...`);
+      
+      for (const funcData of template.functions) {
+        console.log(`Creating function: ${funcData.name}`);
+        
+        const { functionId } = await this.createFunction({
+          project_id: projectId,
+          name: funcData.name,
+          full_name: funcData.full_name,
+          file_path: funcData.file_path,
+          line_number: funcData.line_number,
+          end_line_number: funcData.end_line_number,
+          parameters: funcData.parameters,
+          return_type: funcData.return_type,
+          is_async: funcData.is_async,
+          is_static: funcData.is_static,
+          is_private: funcData.is_private,
+          complexity_score: funcData.complexity_score,
+          description: funcData.description,
+          tags: funcData.tags,
+          metadata: funcData.metadata
+        });
+        
+        functionMap.set(funcData.name, functionId);
+        console.log(`Created function ${funcData.name} with ID: ${functionId}`);
+      }
+
+      // Create variables
+      const variableMap = new Map(); // name -> id mapping
+      console.log(`Creating ${template.variables.length} variables...`);
+      
+      for (const varData of template.variables) {
+        console.log(`Creating variable: ${varData.name}`);
+        
+        // Map function name to function ID
+        let functionId = null;
+        if (varData.function_name) {
+          functionId = functionMap.get(varData.function_name);
+        }
+        
+        const { variableId } = await this.createVariable({
+          project_id: projectId,
+          function_id: functionId,
+          name: varData.name,
+          type: varData.type,
+          value: varData.value,
+          file_path: varData.file_path,
+          line_number: varData.line_number,
+          scope: varData.scope,
+          declaration_type: varData.declaration_type,
+          mutability: varData.mutability,
+          is_exported: varData.is_exported,
+          description: varData.description,
+          tags: varData.tags,
+          metadata: varData.metadata
+        });
+        
+        variableMap.set(varData.name, variableId);
+        console.log(`Created variable ${varData.name} with ID: ${variableId}`);
+      }
+
+      // Create relationships
+      console.log(`Creating ${template.relationships.length} relationships...`);
+      
+      for (const relData of template.relationships) {
+        console.log(`Creating relationship: ${relData.source} -> ${relData.type} -> ${relData.target}`);
+        
+        const sourceId = functionMap.get(relData.source) || variableMap.get(relData.source);
+        const targetId = functionMap.get(relData.target) || variableMap.get(relData.target);
+        
+        if (sourceId && targetId) {
+          await this.createDependency({
+            project_id: projectId,
+            source_type: relData.source_type,
+            source_id: sourceId,
+            target_type: relData.target_type,
+            target_id: targetId,
+            relationship_type: relData.relationship_type,
+            relationship_strength: relData.relationship_strength,
+            context: relData.context,
+            line_number: relData.line_number,
+            order_sequence: relData.order_sequence,
+            description: relData.description,
+            metadata: relData.metadata
+          });
+          
+          console.log(`Created relationship: ${relData.source_type}:${sourceId} -> ${relData.relationship_type} -> ${relData.target_type}:${targetId}`);
+        } else {
+          console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
+        }
+      }
+
+      console.log(`Successfully imported project structure: ${projectId}`);
+      return { 
+        success: true, 
+        projectId, 
+        project: await this.getProject(projectId),
+        imported_elements: {
+          functions: functionMap.size,
+          variables: variableMap.size,
+          relationships: template.relationships.length
+        }
+      };
+    } catch (error) {
+      console.error('Error importing project structure:', error);
+      throw error;
+    }
+  }
 }
 
 // Controller instance
@@ -1492,6 +1755,34 @@ exports.getProjectAnalytics = async (req, res) => {
     res.status(500).json({ error: error.message });
     }
 };
+
+// Export/Import system
+exports.exportProjectStructure = async (req, res) => {
+    try {
+      const result = await enhancedCodeGraphController.exportProjectStructure(
+        req.params.projectId,
+        req.body.options || {}
+      );
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      
+      res.json(result.exportData);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  exports.importProjectStructure = async (req, res) => {
+    try {
+      const { importData, customName } = req.body;
+      const result = await enhancedCodeGraphController.importProjectStructure(importData, customName);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
 
 // Export the controller instance for direct use
 exports.enhancedCodeGraphController = enhancedCodeGraphController;
