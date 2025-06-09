@@ -1749,20 +1749,234 @@ const EnhancedCodeGraphManager = (function() {
     }
 
     function resetGraphLayout() {
-        // Implementation for resetting graph layout
-        if (currentVisualizationData) {
-            renderEnhancedGraph(currentVisualizationData);
+        if (simulation) {
+            simulation.alpha(1).restart();
         }
     }
 
     function fitGraphToView() {
-        // Implementation for fitting graph to view
-        showStatus('Fit to view functionality implemented');
+        if (!svg || !window.currentGraphElements) return;
+        
+        const { g, zoom } = window.currentGraphElements;
+        const bounds = g.node().getBBox();
+        
+        let width, height;
+        if (isFullscreen) {
+            width = window.innerWidth - 40;
+            height = window.innerHeight - 120;
+        } else {
+            const container = document.getElementById('ecg-graph-container');
+            width = container.clientWidth || 800;
+            height = 600;
+        }
+        
+        const scale = Math.min(width / bounds.width, height / bounds.height) * 0.8;
+        const translate = [
+            width / 2 - scale * (bounds.x + bounds.width / 2),
+            height / 2 - scale * (bounds.y + bounds.height / 2)
+        ];
+        
+        svg.transition().duration(750).call(
+            zoom.transform,
+            d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+        );
+    }
+
+    function handleZoom(scale) {
+        if (!svg || !window.currentGraphElements) return;
+        
+        const { zoom } = window.currentGraphElements;
+        let width, height;
+        
+        if (isFullscreen) {
+            width = window.innerWidth - 40;
+            height = window.innerHeight - 120;
+            // Sync zoom sliders
+            const normalSlider = document.getElementById('ecg-zoom-slider');
+            const fullscreenSlider = document.getElementById('ecg-fullscreen-zoom-slider');
+            if (normalSlider && fullscreenSlider) {
+                normalSlider.value = scale;
+                fullscreenSlider.value = scale;
+            }
+        } else {
+            const container = document.getElementById('ecg-graph-container');
+            width = container.clientWidth || 800;
+            height = 600;
+        }
+        
+        svg.transition().duration(300).call(
+            zoom.transform,
+            d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-width / 2, -height / 2)
+        );
     }
 
     function toggleFullscreen() {
-        // Implementation for fullscreen toggle
-        showStatus('Fullscreen toggle functionality implemented');
+        if (!isFullscreen) {
+            enterFullscreen();
+        } else {
+            exitFullscreen();
+        }
+    }
+
+    function enterFullscreen() {
+        const graphContainer = document.getElementById('ecg-graph-container');
+        if (!graphContainer) return;
+        
+        // Store original container reference
+        originalContainer = graphContainer;
+        
+        // Create fullscreen overlay
+        const fullscreenOverlay = document.createElement('div');
+        fullscreenOverlay.id = 'ecg-fullscreen-overlay';
+        fullscreenOverlay.className = 'ecg-fullscreen-overlay';
+        fullscreenOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        // Create fullscreen controls
+        const fullscreenControls = document.createElement('div');
+        fullscreenControls.className = 'ecg-fullscreen-controls';
+        fullscreenControls.style.cssText = `
+            padding: 20px;
+            border-bottom: 1px solid #e1e5e9;
+            background: #f8f9fa;
+        `;
+        fullscreenControls.innerHTML = `
+            <div class="ecg-fullscreen-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Enhanced Code Graph - Fullscreen</h3>
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.exitFullscreen()" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    ✕ Exit Fullscreen
+                </button>
+            </div>
+            <div class="ecg-fullscreen-graph-controls" style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.resetGraphLayout()" style="padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">Reset Layout</button>
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.fitGraphToView()" style="padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">Fit to View</button>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="range" id="ecg-fullscreen-zoom-slider" min="0.1" max="3" step="0.1" value="1" onchange="EnhancedCodeGraphManager.handleZoom(this.value)" style="width: 150px;">
+                    Zoom
+                </label>
+            </div>
+        `;
+        
+        // Create fullscreen graph container
+        const fullscreenGraphContainer = document.createElement('div');
+        fullscreenGraphContainer.id = 'ecg-fullscreen-graph-container';
+        fullscreenGraphContainer.className = 'ecg-fullscreen-graph-container';
+        fullscreenGraphContainer.style.cssText = `
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+        `;
+        
+        // Move the SVG to fullscreen container
+        const svg = graphContainer.querySelector('svg');
+        if (svg) {
+            fullscreenGraphContainer.appendChild(svg);
+        }
+        
+        // Assemble fullscreen overlay
+        fullscreenOverlay.appendChild(fullscreenControls);
+        fullscreenOverlay.appendChild(fullscreenGraphContainer);
+        
+        // Add to document
+        document.body.appendChild(fullscreenOverlay);
+        
+        // Update state
+        isFullscreen = true;
+        
+        // Resize graph for fullscreen
+        setTimeout(() => {
+            resizeGraphForFullscreen();
+        }, 100);
+        
+        // Add escape key listener
+        document.addEventListener('keydown', handleFullscreenEscape);
+        
+        console.log('Entered enhanced code graph fullscreen mode');
+    }
+
+    function exitFullscreen() {
+        const fullscreenOverlay = document.getElementById('ecg-fullscreen-overlay');
+        const fullscreenGraphContainer = document.getElementById('ecg-fullscreen-graph-container');
+        
+        if (fullscreenOverlay && fullscreenGraphContainer && originalContainer) {
+            // Move SVG back to original container
+            const svg = fullscreenGraphContainer.querySelector('svg');
+            if (svg) {
+                originalContainer.appendChild(svg);
+            }
+            
+            // Remove fullscreen overlay
+            document.body.removeChild(fullscreenOverlay);
+            
+            // Update state
+            isFullscreen = false;
+            originalContainer = null;
+            
+            // Resize graph back to normal
+            setTimeout(() => {
+                resizeGraphForNormal();
+            }, 100);
+            
+            // Remove escape key listener
+            document.removeEventListener('keydown', handleFullscreenEscape);
+            
+            console.log('Exited enhanced code graph fullscreen mode');
+        }
+    }
+
+    function resizeGraphForFullscreen() {
+        const svg = d3.select('#ecg-fullscreen-graph-container svg');
+        if (svg.empty()) return;
+        
+        const width = window.innerWidth - 40; // Account for padding
+        const height = window.innerHeight - 120; // Account for controls
+        
+        svg.attr('width', width).attr('height', height);
+        
+        // Update force simulation center
+        if (simulation) {
+            simulation.force('center', d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        }
+        
+        // Sync zoom sliders
+        const fullscreenZoomSlider = document.getElementById('ecg-fullscreen-zoom-slider');
+        const originalZoomSlider = document.getElementById('ecg-zoom-slider');
+        if (fullscreenZoomSlider && originalZoomSlider) {
+            fullscreenZoomSlider.value = originalZoomSlider.value;
+        }
+    }
+
+    function resizeGraphForNormal() {
+        const container = document.getElementById('ecg-graph-container');
+        const svg = d3.select(container).select('svg');
+        if (svg.empty()) return;
+        
+        const width = container.clientWidth || 800;
+        const height = 600;
+        
+        svg.attr('width', width).attr('height', height);
+        
+        // Update force simulation center
+        if (simulation) {
+            simulation.force('center', d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        }
+    }
+
+    function handleFullscreenEscape(event) {
+        if (event.key === 'Escape' && isFullscreen) {
+            exitFullscreen();
+        }
     }
 
     // Add the missing helper functions
@@ -2163,6 +2377,8 @@ const EnhancedCodeGraphManager = (function() {
         resetGraphLayout,
         fitGraphToView,
         toggleFullscreen,
+        exitFullscreen, // Add this for the fullscreen exit button
+        handleZoom, // Add this for the zoom slider
         
         // Modal management
         showModal,
