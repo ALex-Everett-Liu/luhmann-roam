@@ -2175,7 +2175,6 @@ const EnhancedCodeGraphManager = (function() {
     function getNodeProperties(node) {
         const properties = [];
         
-        properties.push(`Name: ${node.label || node.name}`);
         properties.push(`Type: ${node.type}`);
         properties.push(`Location: ${node.file}:${node.line || '?'}`);
         
@@ -2187,9 +2186,35 @@ const EnhancedCodeGraphManager = (function() {
             if (node.isAsync) {
                 properties.push('🔄 Asynchronous function');
             }
-            if (node.parameters && node.parameters.length > 0) {
-                properties.push(`Parameters: ${node.parameters.map(p => p.name || p).join(', ')}`);
+            
+            // Fix: Safely parse parameters
+            if (node.parameters) {
+                let params = [];
+                try {
+                    // If it's a string, try to parse it as JSON
+                    if (typeof node.parameters === 'string') {
+                        params = JSON.parse(node.parameters);
+                    } else if (Array.isArray(node.parameters)) {
+                        params = node.parameters;
+                    }
+                    
+                    if (params && params.length > 0) {
+                        const paramNames = params.map(p => {
+                            if (typeof p === 'string') return p;
+                            if (typeof p === 'object' && p.name) return p.name;
+                            return String(p);
+                        });
+                        properties.push(`Parameters: ${paramNames.join(', ')}`);
+                    }
+                } catch (e) {
+                    console.warn('Error parsing parameters for node:', node.label, e);
+                    // Fallback: treat as string
+                    if (typeof node.parameters === 'string' && node.parameters.length > 0) {
+                        properties.push(`Parameters: ${node.parameters}`);
+                    }
+                }
             }
+            
             if (node.file === 'built-in') {
                 properties.push('🔧 JavaScript built-in method');
             } else if (node.file && node.file.includes('Node.js')) {

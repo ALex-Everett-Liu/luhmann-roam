@@ -237,6 +237,24 @@ class EnhancedCodeGraphController {
             parameters: ['path'],
             is_async: false,
             description: 'Synchronously check if file exists'
+          },
+          
+          // === Built-in JavaScript Methods ===
+          {
+            name: 'toLowerCase',
+            file_path: 'built-in',
+            line_number: 70,
+            parameters: [],
+            is_async: false,
+            description: 'JavaScript built-in string method to convert to lowercase'
+          },
+          {
+            name: 'includes',
+            file_path: 'built-in',
+            line_number: 71,
+            parameters: ['searchElement'],
+            is_async: false,
+            description: 'JavaScript built-in array method to check if element exists'
           }
         ],
         variables: [
