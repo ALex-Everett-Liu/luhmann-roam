@@ -66,6 +66,7 @@ const EnhancedCodeGraphManager = (function() {
                     <button class="nav-btn" data-view="dependencies" onclick="EnhancedCodeGraphManager.switchView('dependencies')">Micro Dependencies</button>
                     <button class="nav-btn" data-view="module-deps" onclick="EnhancedCodeGraphManager.switchView('module-deps')">Macro Dependencies</button>
                     <button class="nav-btn" data-view="graph" onclick="EnhancedCodeGraphManager.switchView('graph')">Graph View</button>
+                    <button class="nav-btn" data-view="text-editor" onclick="EnhancedCodeGraphManager.switchView('text-editor')">📝 Text Editor</button>
                 </div>
                 
                 <div class="enhanced-code-graph-main">
@@ -293,6 +294,93 @@ const EnhancedCodeGraphManager = (function() {
                     </div>
                 </div>
             </div>
+
+            <!-- Text Editor View -->
+<div class="view-container" id="ecg-text-editor-view" style="display: none;">
+    <div class="view-header">
+        <h3>📝 Text Editor - Code Graph Definition</h3>
+        <div class="view-actions">
+            <select id="ecg-project-selector-text-editor" onchange="EnhancedCodeGraphManager.loadProjectForTextEditor()">
+                <option value="">Select a project...</option>
+            </select>
+            <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.loadCurrentProjectAsText()">📥 Load Current</button>
+            <button class="btn btn-success" onclick="EnhancedCodeGraphManager.parseAndSaveTextDefinition()">💾 Parse & Save</button>
+            <button class="btn btn-info" onclick="EnhancedCodeGraphManager.showTextEditorHelp()">❓ Help</button>
+        </div>
+    </div>
+    
+    <div class="text-editor-container">
+        <div class="text-editor-sidebar">
+            <div class="text-editor-toolbar">
+                <h4>Quick Actions</h4>
+                <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('function')">+ Add Function</button>
+                <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('variable')">+ Add Variable</button>
+                <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('relationship')">+ Add Relationship</button>
+                <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.validateTextSyntax()">✅ Validate</button>
+            </div>
+            
+            <div class="syntax-info">
+                <h4>Syntax Preview</h4>
+                <div class="syntax-example">
+                    <pre># Functions
+                        function myFunction(param1, param2) async
+                        file: src/myfile.js:42
+                        returns: Promise&lt;string&gt;
+                        description: Does something useful
+
+                        # Variables  
+                        variable myVar: string = "hello"
+                        scope: local
+                        function: myFunction
+                        description: A local variable
+
+                        # Relationships
+                        myFunction -> someOtherFunction (calls)
+                        param1 -> myVar (assigns_to)</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-editor-main">
+                                    <div class="text-editor-status" id="text-editor-status"></div>
+                                    
+                                    <textarea id="text-editor-input" class="text-editor-textarea" 
+                                            placeholder="Start typing your code graph definition here...
+
+                        # Example:
+                        # Functions
+                        function generateThumbnail(inputPath, thumbPath, maxSize=180, quality=60) async
+                        file: controllers/dcimController.js:68
+                        description: Generate thumbnails for images and videos using Sharp and FFmpeg
+
+                        function getAssetDirectory()
+                        file: controllers/dcimController.js:25
+                        description: Retrieves custom asset directory path from database with fallback
+
+                        # Variables
+                        variable inputPath: string
+                        scope: parameter
+                        function: generateThumbnail
+                        description: source file path for thumbnail generation
+
+                        variable maxSize: number = 180
+                        scope: parameter
+                        function: generateThumbnail
+                        description: function parameter with default value
+
+                        # Relationships
+                        generateThumbnail -> sharp (calls)
+                        inputPath -> path.extname (passes_to)
+                        path.extname -> toLowerCase (chains_to)
+                        toLowerCase -> fileExtension (assigns_to)"></textarea>
+                                    
+                                    <div class="text-editor-preview" id="text-editor-preview" style="display: none;">
+                                        <h4>Parsed Structure Preview</h4>
+                                        <div id="text-editor-preview-content"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
             
             <!-- Modals will be inserted here -->
         `;
@@ -707,6 +795,9 @@ const EnhancedCodeGraphManager = (function() {
                 populateProjectSelectors();
                 break;
             case 'graph':
+                populateProjectSelectors();
+                break;
+            case 'text-editor':
                 populateProjectSelectors();
                 break;
         }
@@ -3632,6 +3723,637 @@ async function exportProject(projectId) {
     // EXPORT/IMPORT FUNCTIONALITY
     // =================================================================
 
+    // =================================================================
+// TEXT EDITOR FUNCTIONALITY
+// =================================================================
+
+let currentTextEditorProject = null;
+
+async function loadProjectForTextEditor() {
+    const projectId = document.getElementById('ecg-project-selector-text-editor').value;
+    if (!projectId) {
+        currentTextEditorProject = null;
+        updateTextEditorStatus('No project selected');
+        return;
+    }
+    
+    currentTextEditorProject = projectId;
+    updateTextEditorStatus(`Project selected: ${projects.find(p => p.id === projectId)?.name || 'Unknown'}`);
+}
+
+async function loadCurrentProjectAsText() {
+    if (!currentTextEditorProject) {
+        showStatus('Please select a project first', 'error');
+        return;
+    }
+    
+    try {
+        updateTextEditorStatus('Loading current project structure...', 'info');
+        
+        // Load project data
+        const [functionsResponse, variablesResponse, dependenciesResponse] = await Promise.all([
+            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/functions`),
+            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/variables`),
+            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/dependencies`)
+        ]);
+        
+        const functions = await functionsResponse.json();
+        const variables = await variablesResponse.json();
+        const dependencies = await dependenciesResponse.json();
+        
+        // Convert to text format
+        const textDefinition = convertProjectToTextFormat(functions, variables, dependencies);
+        
+        // Update textarea
+        document.getElementById('text-editor-input').value = textDefinition;
+        
+        updateTextEditorStatus(`Loaded ${functions.length} functions, ${variables.length} variables, ${dependencies.length} relationships`);
+        showStatus('Project structure loaded into text editor');
+        
+    } catch (error) {
+        updateTextEditorStatus('Error loading project structure', 'error');
+        showStatus('Error loading project structure: ' + error.message, 'error');
+    }
+}
+
+function convertProjectToTextFormat(functions, variables, dependencies) {
+    let text = '';
+    
+    // Add functions section
+    if (functions.length > 0) {
+        text += '# Functions\n\n';
+        functions.forEach(func => {
+            // Parse parameters safely
+            let parameters = [];
+            try {
+                if (typeof func.parameters === 'string') {
+                    parameters = JSON.parse(func.parameters);
+                } else if (Array.isArray(func.parameters)) {
+                    parameters = func.parameters;
+                }
+            } catch (e) {
+                console.warn('Error parsing parameters for function:', func.name, e);
+            }
+            
+            const paramStr = Array.isArray(parameters) ? parameters.join(', ') : '';
+            const asyncStr = func.is_async ? ' async' : '';
+            
+            text += `function ${func.name}(${paramStr})${asyncStr}\n`;
+            text += `  file: ${func.file_path}${func.line_number ? ':' + func.line_number : ''}\n`;
+            if (func.return_type) text += `  returns: ${func.return_type}\n`;
+            if (func.description) text += `  description: ${func.description}\n`;
+            text += '\n';
+        });
+    }
+    
+    // Add variables section
+    if (variables.length > 0) {
+        text += '# Variables\n\n';
+        variables.forEach(variable => {
+            const typeStr = variable.type ? `: ${variable.type}` : '';
+            const valueStr = variable.value ? ` = ${variable.value}` : '';
+            
+            text += `variable ${variable.name}${typeStr}${valueStr}\n`;
+            text += `  scope: ${variable.scope}\n`;
+            if (variable.function_id) {
+                const func = functions.find(f => f.id === variable.function_id);
+                if (func) text += `  function: ${func.name}\n`;
+            }
+            text += `  file: ${variable.file_path}${variable.line_number ? ':' + variable.line_number : ''}\n`;
+            if (variable.description) text += `  description: ${variable.description}\n`;
+            text += '\n';
+        });
+    }
+    
+    // Add relationships section
+    if (dependencies.length > 0) {
+        text += '# Relationships\n\n';
+        
+        // Create lookup maps for names
+        const functionNames = {};
+        const variableNames = {};
+        
+        functions.forEach(func => {
+            functionNames[func.id] = func.name;
+        });
+        
+        variables.forEach(variable => {
+            variableNames[variable.id] = variable.name;
+        });
+        
+        dependencies.forEach(dep => {
+            const sourceName = dep.source_type === 'function' ? 
+                functionNames[dep.source_id] : variableNames[dep.source_id];
+            const targetName = dep.target_type === 'function' ? 
+                functionNames[dep.target_id] : variableNames[dep.target_id];
+            
+            if (sourceName && targetName) {
+                text += `${sourceName} -> ${targetName} (${dep.relationship_type})`;
+                if (dep.context) text += ` # ${dep.context}`;
+                text += '\n';
+            }
+        });
+    }
+    
+    return text;
+}
+
+async function parseAndSaveTextDefinition() {
+    if (!currentTextEditorProject) {
+        showStatus('Please select a project first', 'error');
+        return;
+    }
+    
+    const textContent = document.getElementById('text-editor-input').value.trim();
+    if (!textContent) {
+        showStatus('Please enter some text to parse', 'error');
+        return;
+    }
+    
+    try {
+        updateTextEditorStatus('Parsing text definition...', 'info');
+        
+        // Parse the text content
+        const parsedData = parseTextDefinition(textContent);
+        
+        // Validate the parsed data
+        const validationResult = validateParsedData(parsedData);
+        if (!validationResult.valid) {
+            updateTextEditorStatus(`Validation failed: ${validationResult.errors.join(', ')}`, 'error');
+            showStatus('Validation failed: ' + validationResult.errors.join(', '), 'error');
+            return;
+        }
+        
+        // Show preview
+        showTextEditorPreview(parsedData);
+        
+        // Send to backend for processing
+        const response = await fetch('/api/enhanced-code-graph/text-definition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectId: currentTextEditorProject,
+                textDefinition: textContent,
+                parsedData: parsedData
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            updateTextEditorStatus(`Successfully processed: ${result.stats.functionsProcessed} functions, ${result.stats.variablesProcessed} variables, ${result.stats.relationshipsProcessed} relationships`);
+            showStatus('Text definition processed successfully!');
+            
+            // Refresh other views if they're visible
+            if (currentView === 'functions') loadFunctions();
+            if (currentView === 'variables') loadVariables();
+            if (currentView === 'dependencies') loadDependencies();
+        } else {
+            updateTextEditorStatus('Error processing text definition', 'error');
+            showStatus('Error processing text definition: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        updateTextEditorStatus('Error parsing text definition', 'error');
+        showStatus('Error parsing text definition: ' + error.message, 'error');
+    }
+}
+
+function parseTextDefinition(textContent) {
+    const lines = textContent.split('\n');
+    const result = {
+        functions: [],
+        variables: [],
+        relationships: []
+    };
+    
+    let currentSection = null;
+    let currentItem = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // Skip empty lines and comments (except section headers)
+        if (!line || (line.startsWith('#') && !line.match(/^# (Functions|Variables|Relationships)$/))) {
+            continue;
+        }
+        
+        // Section headers
+        if (line.startsWith('# ')) {
+            const sectionName = line.substring(2).toLowerCase();
+            if (['functions', 'variables', 'relationships'].includes(sectionName)) {
+                currentSection = sectionName;
+                currentItem = null;
+                continue;
+            }
+        }
+        
+        // Function definitions
+        if (currentSection === 'functions' && line.startsWith('function ')) {
+            currentItem = parseFunctionLine(line);
+            if (currentItem) {
+                result.functions.push(currentItem);
+            }
+            continue;
+        }
+        
+        // Variable definitions
+        if (currentSection === 'variables' && line.startsWith('variable ')) {
+            currentItem = parseVariableLine(line);
+            if (currentItem) {
+                result.variables.push(currentItem);
+            }
+            continue;
+        }
+        
+        // Relationship definitions
+        if (currentSection === 'relationships' && line.includes(' -> ')) {
+            const relationship = parseRelationshipLine(line);
+            if (relationship) {
+                result.relationships.push(relationship);
+            }
+            continue;
+        }
+        
+        // Property lines (indented)
+        if (line.startsWith('  ') && currentItem) {
+            parsePropertyLine(line, currentItem);
+        }
+    }
+    
+    return result;
+}
+
+function parseFunctionLine(line) {
+    // Parse: function functionName(param1, param2) async
+    const match = line.match(/^function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(async)?/);
+    if (!match) return null;
+    
+    const [, name, paramsStr, asyncFlag] = match;
+    const parameters = paramsStr.split(',').map(p => p.trim()).filter(p => p);
+    
+    return {
+        name,
+        parameters,
+        is_async: !!asyncFlag,
+        file_path: null,
+        line_number: null,
+        description: null,
+        return_type: null
+    };
+}
+
+function parseVariableLine(line) {
+    // Parse: variable varName: type = value
+    const match = line.match(/^variable\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?::\s*([a-zA-Z_$][a-zA-Z0-9_$]*))?\s*(?:=\s*(.+))?/);
+    if (!match) return null;
+    
+    const [, name, type, value] = match;
+    
+    return {
+        name,
+        type: type || null,
+        value: value || null,
+        scope: 'local',
+        file_path: null,
+        line_number: null,
+        description: null,
+        function_name: null
+    };
+}
+
+function parseRelationshipLine(line) {
+    // Parse: source -> target (relationship_type) # optional comment
+    const match = line.match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*->\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]+)\)\s*(?:#\s*(.+))?/);
+    if (!match) return null;
+    
+    const [, source, target, relationshipType, context] = match;
+    
+    return {
+        source,
+        target,
+        relationship_type: relationshipType.trim(),
+        context: context ? context.trim() : null
+    };
+}
+
+function parsePropertyLine(line, currentItem) {
+    // Parse indented property lines like "  file: src/file.js:42"
+    const trimmed = line.trim();
+    const colonIndex = trimmed.indexOf(':');
+    if (colonIndex === -1) return;
+    
+    const key = trimmed.substring(0, colonIndex).trim();
+    const value = trimmed.substring(colonIndex + 1).trim();
+    
+    switch (key) {
+        case 'file':
+            const fileMatch = value.match(/^(.+?)(?::(\d+))?$/);
+            if (fileMatch) {
+                currentItem.file_path = fileMatch[1];
+                if (fileMatch[2]) {
+                    currentItem.line_number = parseInt(fileMatch[2]);
+                }
+            }
+            break;
+        case 'description':
+            currentItem.description = value;
+            break;
+        case 'returns':
+            currentItem.return_type = value;
+            break;
+        case 'scope':
+            currentItem.scope = value;
+            break;
+        case 'function':
+            currentItem.function_name = value;
+            break;
+    }
+}
+
+function validateParsedData(parsedData) {
+    const errors = [];
+    
+    // Validate functions
+    parsedData.functions.forEach((func, index) => {
+        if (!func.name) {
+            errors.push(`Function at index ${index} is missing a name`);
+        }
+        if (!func.file_path) {
+            errors.push(`Function '${func.name}' is missing file path`);
+        }
+    });
+    
+    // Validate variables
+    parsedData.variables.forEach((variable, index) => {
+        if (!variable.name) {
+            errors.push(`Variable at index ${index} is missing a name`);
+        }
+        if (!variable.file_path) {
+            errors.push(`Variable '${variable.name}' is missing file path`);
+        }
+    });
+    
+    // Validate relationships
+    const functionNames = new Set(parsedData.functions.map(f => f.name));
+    const variableNames = new Set(parsedData.variables.map(v => v.name));
+    const allNames = new Set([...functionNames, ...variableNames]);
+    
+    parsedData.relationships.forEach((rel, index) => {
+        if (!allNames.has(rel.source)) {
+            errors.push(`Relationship at index ${index}: source '${rel.source}' not found in functions or variables`);
+        }
+        if (!allNames.has(rel.target)) {
+            errors.push(`Relationship at index ${index}: target '${rel.target}' not found in functions or variables`);
+        }
+    });
+    
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+}
+
+function showTextEditorPreview(parsedData) {
+    const preview = document.getElementById('text-editor-preview');
+    const content = document.getElementById('text-editor-preview-content');
+    
+    content.innerHTML = `
+        <div class="parse-success">
+            ✅ Successfully parsed: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships
+        </div>
+        
+        ${parsedData.functions.map(func => `
+            <div class="parsed-item">
+                <div class="parsed-item-type">Function</div>
+                <div class="parsed-item-name">${func.name}(${Array.isArray(func.parameters) ? func.parameters.join(', ') : ''})</div>
+                <div class="parsed-item-details">
+                    ${func.file_path ? `📁 ${func.file_path}${func.line_number ? ':' + func.line_number : ''}` : ''}
+                    ${func.is_async ? ' • ⚡ async' : ''}
+                    ${func.description ? `<br>📝 ${func.description}` : ''}
+                </div>
+            </div>
+        `).join('')}
+        
+        ${parsedData.variables.map(variable => `
+            <div class="parsed-item">
+                <div class="parsed-item-type">Variable</div>
+                <div class="parsed-item-name">${variable.name}${variable.type ? ': ' + variable.type : ''}${variable.value ? ' = ' + variable.value : ''}</div>
+                <div class="parsed-item-details">
+                    📁 ${variable.file_path || 'Not specified'}${variable.line_number ? ':' + variable.line_number : ''}
+                    • 🔍 ${variable.scope}
+                    ${variable.function_name ? ` • 📊 in ${variable.function_name}` : ''}
+                    ${variable.description ? `<br>📝 ${variable.description}` : ''}
+                </div>
+            </div>
+        `).join('')}
+        
+        ${parsedData.relationships.map(rel => `
+            <div class="parsed-item">
+                <div class="parsed-item-type">Relationship</div>
+                <div class="parsed-item-name">${rel.source} → ${rel.target}</div>
+                <div class="parsed-item-details">
+                    🔗 ${rel.relationship_type}
+                    ${rel.context ? ` • 💬 ${rel.context}` : ''}
+                </div>
+            </div>
+        `).join('')}
+    `;
+    
+    preview.style.display = 'block';
+}
+
+function updateTextEditorStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('text-editor-status');
+    if (statusDiv) {
+        statusDiv.innerHTML = `
+            <span class="status-message ${type}">${message}</span>
+            <span class="status-timestamp">${new Date().toLocaleTimeString()}</span>
+        `;
+    }
+}
+
+function insertTextTemplate(type) {
+    const textarea = document.getElementById('text-editor-input');
+    const cursor = textarea.selectionStart;
+    const textBefore = textarea.value.substring(0, cursor);
+    const textAfter = textarea.value.substring(cursor);
+    
+    let template = '';
+    
+    switch (type) {
+        case 'function':
+            template = `function myFunction(param1, param2) async
+  file: src/myfile.js:42
+  returns: Promise<string>
+  description: Description of what this function does
+
+`;
+            break;
+        case 'variable':
+            template = `variable myVariable: string = "initial value"
+  scope: local
+  function: myFunction
+  description: Description of this variable
+
+`;
+            break;
+        case 'relationship':
+            template = `sourceElement -> targetElement (relationship_type) # optional context
+
+`;
+            break;
+    }
+    
+    textarea.value = textBefore + template + textAfter;
+    textarea.selectionStart = textarea.selectionEnd = cursor + template.length;
+    textarea.focus();
+}
+
+function validateTextSyntax() {
+    const textContent = document.getElementById('text-editor-input').value.trim();
+    if (!textContent) {
+        updateTextEditorStatus('No text to validate', 'error');
+        return;
+    }
+    
+    try {
+        const parsedData = parseTextDefinition(textContent);
+        const validationResult = validateParsedData(parsedData);
+        
+        if (validationResult.valid) {
+            updateTextEditorStatus(`✅ Syntax valid: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships`);
+            showTextEditorPreview(parsedData);
+        } else {
+            updateTextEditorStatus(`❌ Validation errors: ${validationResult.errors.join(', ')}`, 'error');
+            
+            // Show errors in preview
+            const preview = document.getElementById('text-editor-preview');
+            const content = document.getElementById('text-editor-preview-content');
+            
+            content.innerHTML = `
+                <div class="parse-error">
+                    ❌ Validation Errors:
+                    <ul>
+                        ${validationResult.errors.map(error => `<li>${error}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            preview.style.display = 'block';
+        }
+    } catch (error) {
+        updateTextEditorStatus(`❌ Parse error: ${error.message}`, 'error');
+    }
+}
+
+function showTextEditorHelp() {
+    const helpModal = document.createElement('div');
+    helpModal.className = 'text-editor-help-modal';
+    helpModal.innerHTML = `
+        <div class="text-editor-help-content">
+            <div class="text-editor-help-header">
+                <h2>📝 Text Editor Help & Syntax Guide</h2>
+                <button class="close-btn" onclick="this.parentElement.parentElement.remove()">&times;</button>
+            </div>
+            <div class="text-editor-help-body">
+                <div class="help-section">
+                    <h3>🎯 Overview</h3>
+                    <p class="help-explanation">
+                        The Text Editor allows you to define your code graph structure using a simple, intuitive text format. 
+                        You can define functions, variables, and their relationships using familiar syntax patterns.
+                    </p>
+                </div>
+                
+                <div class="help-section">
+                    <h3>📊 Functions</h3>
+                    <p class="help-explanation">Define functions with their parameters and properties:</p>
+                    <div class="help-example"># Functions
+
+function generateThumbnail(inputPath, thumbPath, maxSize=180, quality=60) async
+  file: controllers/dcimController.js:68
+  returns: Promise<void>
+  description: Generate thumbnails for images and videos using Sharp and FFmpeg
+
+function calculateArea(width, height)
+  file: utils/math.js:15
+  returns: number
+  description: Calculate the area of a rectangle</div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>🔢 Variables</h3>
+                    <p class="help-explanation">Define variables with their types, values, and scope:</p>
+                    <div class="help-example"># Variables
+
+variable inputPath: string
+  scope: parameter
+  function: generateThumbnail
+  description: Input file path for image processing
+
+variable DEFAULT_SIZE: number = 180
+  scope: global
+  file: config/constants.js:5
+  description: Default thumbnail size in pixels
+
+variable isProcessing: boolean = false
+  scope: local
+  function: processImages
+  description: Flag to track processing state</div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>🔗 Relationships</h3>
+                    <p class="help-explanation">Define how functions and variables relate to each other:</p>
+                    <div class="help-example"># Relationships
+
+generateThumbnail -> sharp (calls) # Uses Sharp library for image processing
+inputPath -> path.extname (passes_to) # Extracts file extension
+path.extname -> toLowerCase (chains_to) # Converts to lowercase
+maxSize -> sharp.resize (passes_to) # Sets thumbnail dimensions
+quality -> sharp.webp (passes_to) # Sets compression quality</div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>🔧 Available Relationship Types</h3>
+                    <p class="help-explanation">Common relationship types you can use:</p>
+                    <ul>
+                        <li><strong>calls</strong> - Function A calls Function B</li>
+                        <li><strong>passes_to</strong> - Variable/value passed as parameter</li>
+                        <li><strong>chains_to</strong> - Method chaining (result.method())</li>
+                        <li><strong>assigns_to</strong> - Value assigned to variable</li>
+                        <li><strong>transforms_via</strong> - Data transformation</li>
+                        <li><strong>validates_against</strong> - Validation check</li>
+                        <li><strong>uses</strong> - Generic usage relationship</li>
+                    </ul>
+                </div>
+                
+                <div class="help-section">
+                    <h3>💡 Tips & Best Practices</h3>
+                    <ul>
+                        <li>Use meaningful names for functions and variables</li>
+                        <li>Always specify file paths for better organization</li>
+                        <li>Add descriptions to document purpose and behavior</li>
+                        <li>Use the validation feature to check syntax before saving</li>
+                        <li>Load existing projects to see examples of the format</li>
+                        <li>Use comments (# comment) to add notes and context</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(helpModal);
+    
+    // Close on background click
+    helpModal.addEventListener('click', function(e) {
+        if (e.target === helpModal) {
+            helpModal.remove();
+        }
+    });
+}
+
+
     return {
         initialize,
         show,
@@ -3727,7 +4449,14 @@ async function exportProject(projectId) {
         clearVariableSearch,
         searchDependencies,
         clearDependencySearch,
-        changePage
+        changePage,
+
+        loadProjectForTextEditor,
+        loadCurrentProjectAsText,
+        parseAndSaveTextDefinition,
+        insertTextTemplate,
+        validateTextSyntax,
+        showTextEditorHelp
     };
 })();
 

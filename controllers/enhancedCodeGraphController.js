@@ -2268,6 +2268,186 @@ class EnhancedCodeGraphController {
       });
     }
   }
+
+  // Add this method to the EnhancedCodeGraphController class:
+
+  async processTextDefinition(projectId, textDefinition, parsedData) {
+    const db = await getDb();
+    
+    try {
+        console.log(`Processing text definition for project: ${projectId}`);
+        
+        const stats = {
+            functionsProcessed: 0,
+            variablesProcessed: 0,
+            relationshipsProcessed: 0,
+            functionsCreated: 0,
+            functionsUpdated: 0,
+            variablesCreated: 0,
+            variablesUpdated: 0,
+            relationshipsCreated: 0
+        };
+        
+        // Get existing project data
+        const existingFunctions = await this.getFunctionsByProject(projectId);
+        const existingVariables = await this.getVariablesByProject(projectId);
+        
+        // Create lookup maps
+        const existingFunctionMap = new Map();
+        const existingVariableMap = new Map();
+        
+        existingFunctions.forEach(func => {
+            existingFunctionMap.set(func.name, func);
+        });
+        
+        existingVariables.forEach(variable => {
+            existingVariableMap.set(variable.name, variable);
+        });
+        
+        // Track new IDs for relationships
+        const functionNameToId = new Map();
+        const variableNameToId = new Map();
+        
+        // Process functions
+        for (const funcData of parsedData.functions) {
+            const existingFunc = existingFunctionMap.get(funcData.name);
+            
+            if (existingFunc) {
+                // Update existing function
+                await this.updateFunction(existingFunc.id, {
+                    file_path: funcData.file_path || existingFunc.file_path,
+                    line_number: funcData.line_number || existingFunc.line_number,
+                    parameters: Array.isArray(funcData.parameters) ? funcData.parameters : existingFunc.parameters,
+                    is_async: funcData.is_async !== undefined ? funcData.is_async : existingFunc.is_async,
+                    return_type: funcData.return_type || existingFunc.return_type,
+                    description: funcData.description || existingFunc.description
+                });
+                
+                functionNameToId.set(funcData.name, existingFunc.id);
+                stats.functionsUpdated++;
+                console.log(`Updated function: ${funcData.name}`);
+            } else {
+                // Create new function
+                const { functionId } = await this.createFunction({
+                    project_id: projectId,
+                    name: funcData.name,
+                    file_path: funcData.file_path || 'unknown.js',
+                    line_number: funcData.line_number,
+                    parameters: Array.isArray(funcData.parameters) ? funcData.parameters : [],
+                    is_async: funcData.is_async || false,
+                    return_type: funcData.return_type,
+                    complexity_score: 1,
+                    description: funcData.description
+                });
+                
+                functionNameToId.set(funcData.name, functionId);
+                stats.functionsCreated++;
+                console.log(`Created function: ${funcData.name}`);
+            }
+            
+            stats.functionsProcessed++;
+        }
+        
+        // Process variables
+        for (const varData of parsedData.variables) {
+            const existingVar = existingVariableMap.get(varData.name);
+            
+            // Map function name to function ID
+            let functionId = null;
+            if (varData.function_name) {
+                functionId = functionNameToId.get(varData.function_name);
+            }
+            
+            if (existingVar) {
+                // Update existing variable
+                await this.updateVariable(existingVar.id, {
+                    type: varData.type || existingVar.type,
+                    value: varData.value || existingVar.value,
+                    file_path: varData.file_path || existingVar.file_path,
+                    line_number: varData.line_number || existingVar.line_number,
+                    scope: varData.scope || existingVar.scope,
+                    function_id: functionId !== undefined ? functionId : existingVar.function_id,
+                    description: varData.description || existingVar.description
+                });
+                
+                variableNameToId.set(varData.name, existingVar.id);
+                stats.variablesUpdated++;
+                console.log(`Updated variable: ${varData.name}`);
+            } else {
+                // Create new variable
+                const { variableId } = await this.createVariable({
+                    project_id: projectId,
+                    function_id: functionId,
+                    name: varData.name,
+                    type: varData.type,
+                    value: varData.value,
+                    file_path: varData.file_path || 'unknown.js',
+                    line_number: varData.line_number,
+                    scope: varData.scope || 'local',
+                    description: varData.description
+                });
+                
+                variableNameToId.set(varData.name, variableId);
+                stats.variablesCreated++;
+                console.log(`Created variable: ${varData.name}`);
+            }
+            
+            stats.variablesProcessed++;
+        }
+        
+        // Process relationships (always create new ones for now, could be enhanced to update existing)
+        for (const relData of parsedData.relationships) {
+            const sourceId = functionNameToId.get(relData.source) || variableNameToId.get(relData.source);
+            const targetId = functionNameToId.get(relData.target) || variableNameToId.get(relData.target);
+            
+            if (sourceId && targetId) {
+                const sourceType = functionNameToId.has(relData.source) ? 'function' : 'variable';
+                const targetType = functionNameToId.has(relData.target) ? 'function' : 'variable';
+                
+                // Check if relationship already exists
+                const existingRelationships = await this.getDependenciesByProject(projectId);
+                const relationshipExists = existingRelationships.some(dep => 
+                    dep.source_id === sourceId && 
+                    dep.target_id === targetId && 
+                    dep.relationship_type === relData.relationship_type
+                );
+                
+                if (!relationshipExists) {
+                    await this.createDependency({
+                        project_id: projectId,
+                        source_type: sourceType,
+                        source_id: sourceId,
+                        target_type: targetType,
+                        target_id: targetId,
+                        relationship_type: relData.relationship_type,
+                        relationship_strength: 0.8,
+                        context: relData.context,
+                        description: `Text definition: ${relData.source} ${relData.relationship_type} ${relData.target}`
+                    });
+                    
+                    stats.relationshipsCreated++;
+                    console.log(`Created relationship: ${relData.source} -> ${relData.target} (${relData.relationship_type})`);
+                }
+            } else {
+                console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
+            }
+            
+            stats.relationshipsProcessed++;
+        }
+        
+        console.log(`Text definition processing complete:`, stats);
+        
+        return {
+            success: true,
+            stats,
+            message: `Processed ${stats.functionsProcessed} functions, ${stats.variablesProcessed} variables, ${stats.relationshipsProcessed} relationships`
+        };
+        
+    } catch (error) {
+        console.error('Error processing text definition:', error);
+        throw error;
+    }
+}
 }
 
 // Controller instance
@@ -2612,6 +2792,36 @@ exports.getAvailableTemplateFiles = async (req, res) => {
       });
     }
   };
+
+// Add this to the exports section at the bottom of the file (around line 2800):
+exports.processTextDefinition = async (req, res) => {
+    try {
+      const { projectId, textDefinition, parsedData } = req.body;
+      
+      if (!projectId) {
+        return res.status(400).json({ error: 'Project ID is required' });
+      }
+      
+      if (!textDefinition || !parsedData) {
+        return res.status(400).json({ error: 'Text definition and parsed data are required' });
+      }
+      
+      const result = await enhancedCodeGraphController.processTextDefinition(
+        projectId, 
+        textDefinition, 
+        parsedData
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error in processTextDefinition route:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  };
+  
   
 // Add this simple test endpoint at the end of the exports
 exports.testEndpoint = async (req, res) => {
@@ -2628,4 +2838,5 @@ exports.testEndpoint = async (req, res) => {
 
 // Export the controller instance for direct use
 exports.enhancedCodeGraphController = enhancedCodeGraphController;
+
 

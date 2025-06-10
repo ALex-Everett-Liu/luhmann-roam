@@ -69,6 +69,8 @@ router.post('/import-from-template', enhancedCodeGraphController.importFromTempl
 // =================================================================
 router.get('/visualization/:projectId', enhancedCodeGraphController.getVisualizationData);
 
+router.post('/text-definition', enhancedCodeGraphController.processTextDefinition);
+
 // =================================================================
 // EXPORT/IMPORT ROUTES
 // =================================================================
