@@ -18,6 +18,13 @@ const EnhancedCodeGraphManager = (function() {
     let isFullscreen = false;
     let originalContainer = null;
 
+    // Add these variables at the top of the EnhancedCodeGraphManager function
+    let searchState = {
+        functions: { query: '', filters: {}, currentPage: 1, itemsPerPage: 20 },
+        variables: { query: '', filters: {}, currentPage: 1, itemsPerPage: 20 },
+        dependencies: { query: '', filters: {}, currentPage: 1, itemsPerPage: 20 }
+    };
+
     /**
      * Initialize the Enhanced Code Graph Manager
      */
@@ -89,9 +96,34 @@ const EnhancedCodeGraphManager = (function() {
                                 <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateFunctionModal()">+ New Function</button>
                             </div>
                         </div>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div class="search-container" id="functions-search-container" style="display: none;">
+                            <input type="text" class="search-input" id="functions-search" placeholder="Search functions by name, file path, or description..." 
+                                   onkeyup="EnhancedCodeGraphManager.searchFunctions()" />
+                            <div class="search-filters">
+                                <select class="filter-select" id="functions-async-filter" onchange="EnhancedCodeGraphManager.searchFunctions()">
+                                    <option value="">All Functions</option>
+                                    <option value="async">Async Only</option>
+                                    <option value="sync">Sync Only</option>
+                                </select>
+                                <select class="filter-select" id="functions-complexity-filter" onchange="EnhancedCodeGraphManager.searchFunctions()">
+                                    <option value="">All Complexity</option>
+                                    <option value="1-3">Low (1-3)</option>
+                                    <option value="4-6">Medium (4-6)</option>
+                                    <option value="7-10">High (7-10)</option>
+                                </select>
+                                <button class="clear-search-btn" onclick="EnhancedCodeGraphManager.clearFunctionSearch()">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <div class="search-results-info" id="functions-results-info" style="display: none;"></div>
+                        
                         <div class="functions-list" id="ecg-functions-list">
                             <p class="placeholder-text">Select a project to view functions</p>
                         </div>
+                        
+                        <div class="pagination-container" id="functions-pagination" style="display: none;"></div>
                     </div>
                     
                     <!-- Variables View -->
@@ -105,9 +137,40 @@ const EnhancedCodeGraphManager = (function() {
                                 <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateVariableModal()">+ New Variable</button>
                             </div>
                         </div>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div class="search-container" id="variables-search-container" style="display: none;">
+                            <input type="text" class="search-input" id="variables-search" placeholder="Search variables by name, type, value, or description..." 
+                                   onkeyup="EnhancedCodeGraphManager.searchVariables()" />
+                            <div class="search-filters">
+                                <select class="filter-select" id="variables-scope-filter" onchange="EnhancedCodeGraphManager.searchVariables()">
+                                    <option value="">All Scopes</option>
+                                    <option value="local">Local</option>
+                                    <option value="parameter">Parameter</option>
+                                    <option value="global">Global</option>
+                                    <option value="class">Class</option>
+                                    <option value="module">Module</option>
+                                </select>
+                                <select class="filter-select" id="variables-type-filter" onchange="EnhancedCodeGraphManager.searchVariables()">
+                                    <option value="">All Types</option>
+                                    <option value="string">String</option>
+                                    <option value="number">Number</option>
+                                    <option value="boolean">Boolean</option>
+                                    <option value="object">Object</option>
+                                    <option value="array">Array</option>
+                                    <option value="function">Function</option>
+                                </select>
+                                <button class="clear-search-btn" onclick="EnhancedCodeGraphManager.clearVariableSearch()">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <div class="search-results-info" id="variables-results-info" style="display: none;"></div>
+                        
                         <div class="variables-list" id="ecg-variables-list">
                             <p class="placeholder-text">Select a project to view variables</p>
                         </div>
+                        
+                        <div class="pagination-container" id="variables-pagination" style="display: none;"></div>
                     </div>
                     
                     <!-- Dependencies View -->
@@ -121,9 +184,41 @@ const EnhancedCodeGraphManager = (function() {
                                 <button class="btn btn-success" onclick="EnhancedCodeGraphManager.showCreateDependencyModal()">+ New Dependency</button>
                             </div>
                         </div>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div class="search-container" id="dependencies-search-container" style="display: none;">
+                            <input type="text" class="search-input" id="dependencies-search" placeholder="Search dependencies by relationship type, context, or description..." 
+                                   onkeyup="EnhancedCodeGraphManager.searchDependencies()" />
+                            <div class="search-filters">
+                                <select class="filter-select" id="dependencies-type-filter" onchange="EnhancedCodeGraphManager.searchDependencies()">
+                                    <option value="">All Relationships</option>
+                                    <option value="passes_to">passes to</option>
+                                    <option value="chains_to">chains to</option>
+                                    <option value="assigns_to">assigns to</option>
+                                    <option value="calls_method_on">calls method on</option>
+                                    <option value="contains">contains</option>
+                                    <option value="validates_against">validates against</option>
+                                    <option value="transforms_via">transforms via</option>
+                                    <option value="derives_from">derives from</option>
+                                    <option value="uses">uses (generic)</option>
+                                </select>
+                                <select class="filter-select" id="dependencies-strength-filter" onchange="EnhancedCodeGraphManager.searchDependencies()">
+                                    <option value="">All Strengths</option>
+                                    <option value="0.0-0.3">Weak (0.0-0.3)</option>
+                                    <option value="0.4-0.7">Medium (0.4-0.7)</option>
+                                    <option value="0.8-1.0">Strong (0.8-1.0)</option>
+                                </select>
+                                <button class="clear-search-btn" onclick="EnhancedCodeGraphManager.clearDependencySearch()">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <div class="search-results-info" id="dependencies-results-info" style="display: none;"></div>
+                        
                         <div class="dependencies-list" id="ecg-dependencies-list">
                             <p class="placeholder-text">Select a project to view dependencies</p>
                         </div>
+                        
+                        <div class="pagination-container" id="dependencies-pagination" style="display: none;"></div>
                     </div>
                     
                     <!-- Graph View -->
@@ -1007,6 +1102,9 @@ const EnhancedCodeGraphManager = (function() {
         const projectId = document.getElementById('ecg-project-selector-functions').value;
         if (!projectId) {
             document.getElementById('ecg-functions-list').innerHTML = '<p class="placeholder-text">Select a project to view functions</p>';
+            document.getElementById('functions-search-container').style.display = 'none';
+            document.getElementById('functions-results-info').style.display = 'none';
+            document.getElementById('functions-pagination').style.display = 'none';
             return;
         }
         
@@ -1014,44 +1112,144 @@ const EnhancedCodeGraphManager = (function() {
             const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/functions`);
             const functions = await response.json();
             
-            renderFunctionsList(functions);
+            // Store all functions for searching
+            searchState.functions.allItems = functions;
+            searchState.functions.currentPage = 1;
+            
+            // Show search controls
+            document.getElementById('functions-search-container').style.display = 'flex';
+            
+            // Render functions with search applied
+            searchFunctions();
         } catch (error) {
             showStatus('Error loading functions: ' + error.message, 'error');
         }
     }
 
-    function renderFunctionsList(functions) {
+    function searchFunctions() {
+        const query = document.getElementById('functions-search').value.toLowerCase();
+        const asyncFilter = document.getElementById('functions-async-filter').value;
+        const complexityFilter = document.getElementById('functions-complexity-filter').value;
+        
+        searchState.functions.query = query;
+        searchState.functions.filters = { asyncFilter, complexityFilter };
+        searchState.functions.currentPage = 1;
+        
+        let filteredFunctions = searchState.functions.allItems || [];
+        
+        // Apply text search
+        if (query) {
+            filteredFunctions = filteredFunctions.filter(func => 
+                func.name.toLowerCase().includes(query) ||
+                func.file_path.toLowerCase().includes(query) ||
+                (func.description && func.description.toLowerCase().includes(query)) ||
+                (func.parameters && JSON.stringify(func.parameters).toLowerCase().includes(query))
+            );
+        }
+        
+        // Apply async filter
+        if (asyncFilter === 'async') {
+            filteredFunctions = filteredFunctions.filter(func => func.is_async);
+        } else if (asyncFilter === 'sync') {
+            filteredFunctions = filteredFunctions.filter(func => !func.is_async);
+        }
+        
+        // Apply complexity filter
+        if (complexityFilter) {
+            const [min, max] = complexityFilter.split('-').map(Number);
+            filteredFunctions = filteredFunctions.filter(func => 
+                func.complexity_score >= min && func.complexity_score <= max
+            );
+        }
+        
+        searchState.functions.filteredItems = filteredFunctions;
+        renderFunctionsWithPagination();
+    }
+
+    function renderFunctionsWithPagination() {
+        const { filteredItems, currentPage, itemsPerPage, query } = searchState.functions;
+        const totalItems = filteredItems.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = filteredItems.slice(startIndex, endIndex);
+        
+        // Update results info
+        const resultsInfo = document.getElementById('functions-results-info');
+        if (query || Object.values(searchState.functions.filters).some(f => f)) {
+            resultsInfo.style.display = 'block';
+            resultsInfo.innerHTML = `Found ${totalItems} function(s) matching your criteria. Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems}.`;
+        } else {
+            resultsInfo.style.display = 'none';
+        }
+        
+        // Render functions
+        renderFunctionsList(pageItems, query);
+        
+        // Render pagination
+        renderPagination('functions', currentPage, totalPages, totalItems);
+    }
+
+    function renderFunctionsList(functions, searchQuery = '') {
         const list = document.getElementById('ecg-functions-list');
         if (!list) return;
         
         if (functions.length === 0) {
-            list.innerHTML = '<p class="placeholder-text">No functions found. Create a new function.</p>';
+            if (searchQuery || Object.values(searchState.functions.filters).some(f => f)) {
+                list.innerHTML = '<div class="no-results">No functions match your search criteria. Try adjusting your filters.</div>';
+            } else {
+                list.innerHTML = '<p class="placeholder-text">No functions found. Create a new function.</p>';
+            }
             return;
         }
         
-        list.innerHTML = functions.map(func => `
-            <div class="function-item">
-                <div class="function-header">
-                    <h4>${func.name}</h4>
-                    <div class="function-badges">
-                        ${func.is_async ? '<span class="badge async">async</span>' : ''}
-                        ${func.is_static ? '<span class="badge static">static</span>' : ''}
-                        ${func.is_private ? '<span class="badge private">private</span>' : ''}
-                        <span class="badge complexity">complexity: ${func.complexity_score}</span>
+        list.innerHTML = functions.map(func => {
+            // Highlight search terms
+            let name = func.name;
+            let filePath = func.file_path;
+            let description = func.description || '';
+            
+            if (searchQuery) {
+                const regex = new RegExp(`(${escapeRegex(searchQuery)})`, 'gi');
+                name = name.replace(regex, '<span class="highlight">$1</span>');
+                filePath = filePath.replace(regex, '<span class="highlight">$1</span>');
+                description = description.replace(regex, '<span class="highlight">$1</span>');
+            }
+            
+            return `
+                <div class="function-item">
+                    <div class="function-header">
+                        <h4>${name}</h4>
+                        <div class="function-badges">
+                            ${func.is_async ? '<span class="badge async">async</span>' : ''}
+                            ${func.is_static ? '<span class="badge static">static</span>' : ''}
+                            ${func.is_private ? '<span class="badge private">private</span>' : ''}
+                            <span class="badge complexity">complexity: ${func.complexity_score}</span>
+                        </div>
+                    </div>
+                    <div class="function-details">
+                        <div class="detail"><strong>File:</strong> ${filePath}:${func.line_number || '?'}</div>
+                        <div class="detail"><strong>Parameters:</strong> ${func.parameters.length} params</div>
+                        ${func.return_type ? `<div class="detail"><strong>Returns:</strong> ${func.return_type}</div>` : ''}
+                        ${description ? `<div class="detail"><strong>Description:</strong> ${description}</div>` : ''}
+                    </div>
+                    <div class="function-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editFunction('${func.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteFunction('${func.id}')">🗑️ Delete</button>
                     </div>
                 </div>
-                <div class="function-details">
-                    <div class="detail"><strong>File:</strong> ${func.file_path}:${func.line_number || '?'}</div>
-                    <div class="detail"><strong>Parameters:</strong> ${func.parameters.length} params</div>
-                    ${func.return_type ? `<div class="detail"><strong>Returns:</strong> ${func.return_type}</div>` : ''}
-                    ${func.description ? `<div class="detail"><strong>Description:</strong> ${func.description}</div>` : ''}
-                </div>
-                <div class="function-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editFunction('${func.id}')">✏️ Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteFunction('${func.id}')">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    function clearFunctionSearch() {
+        document.getElementById('functions-search').value = '';
+        document.getElementById('functions-async-filter').value = '';
+        document.getElementById('functions-complexity-filter').value = '';
+        searchState.functions.query = '';
+        searchState.functions.filters = {};
+        searchState.functions.currentPage = 1;
+        searchFunctions();
     }
 
     function showCreateFunctionModal() {
@@ -1160,66 +1358,157 @@ const EnhancedCodeGraphManager = (function() {
         const projectId = document.getElementById('ecg-project-selector-variables').value;
         if (!projectId) {
             document.getElementById('ecg-variables-list').innerHTML = '<p class="placeholder-text">Select a project to view variables</p>';
+            document.getElementById('variables-search-container').style.display = 'none';
+            document.getElementById('variables-results-info').style.display = 'none';
+            document.getElementById('variables-pagination').style.display = 'none';
             return;
         }
         
         try {
-            const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/variables`);
-            const variables = await response.json();
+            const [variablesResponse, functionsResponse] = await Promise.all([
+                fetch(`/api/enhanced-code-graph/projects/${projectId}/variables`),
+                fetch(`/api/enhanced-code-graph/projects/${projectId}/functions`)
+            ]);
             
-            renderVariablesList(variables);
-            
-            // Also load functions for the function selector in variable modal
-            const functionsResponse = await fetch(`/api/enhanced-code-graph/projects/${projectId}/functions`);
+            const variables = await variablesResponse.json();
             const functions = await functionsResponse.json();
+            
+            // Store all variables for searching
+            searchState.variables.allItems = variables;
+            searchState.variables.currentPage = 1;
+            
+            // Show search controls
+            document.getElementById('variables-search-container').style.display = 'flex';
+            
+            // Populate function selector and render variables
             populateFunctionSelector(functions);
+            searchVariables();
         } catch (error) {
             showStatus('Error loading variables: ' + error.message, 'error');
         }
     }
 
-    function renderVariablesList(variables) {
+    function searchVariables() {
+        const query = document.getElementById('variables-search').value.toLowerCase();
+        const scopeFilter = document.getElementById('variables-scope-filter').value;
+        const typeFilter = document.getElementById('variables-type-filter').value;
+        
+        searchState.variables.query = query;
+        searchState.variables.filters = { scopeFilter, typeFilter };
+        searchState.variables.currentPage = 1;
+        
+        let filteredVariables = searchState.variables.allItems || [];
+        
+        // Apply text search
+        if (query) {
+            filteredVariables = filteredVariables.filter(variable => 
+                variable.name.toLowerCase().includes(query) ||
+                (variable.type && variable.type.toLowerCase().includes(query)) ||
+                (variable.value && variable.value.toLowerCase().includes(query)) ||
+                variable.file_path.toLowerCase().includes(query) ||
+                (variable.description && variable.description.toLowerCase().includes(query))
+            );
+        }
+        
+        // Apply scope filter
+        if (scopeFilter) {
+            filteredVariables = filteredVariables.filter(variable => variable.scope === scopeFilter);
+        }
+        
+        // Apply type filter
+        if (typeFilter) {
+            filteredVariables = filteredVariables.filter(variable => variable.type === typeFilter);
+        }
+        
+        searchState.variables.filteredItems = filteredVariables;
+        renderVariablesWithPagination();
+    }
+
+    function renderVariablesWithPagination() {
+        const { filteredItems, currentPage, itemsPerPage, query } = searchState.variables;
+        const totalItems = filteredItems.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = filteredItems.slice(startIndex, endIndex);
+        
+        // Update results info
+        const resultsInfo = document.getElementById('variables-results-info');
+        if (query || Object.values(searchState.variables.filters).some(f => f)) {
+            resultsInfo.style.display = 'block';
+            resultsInfo.innerHTML = `Found ${totalItems} variable(s) matching your criteria. Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems}.`;
+        } else {
+            resultsInfo.style.display = 'none';
+        }
+        
+        // Render variables
+        renderVariablesList(pageItems, query);
+        
+        // Render pagination
+        renderPagination('variables', currentPage, totalPages, totalItems);
+    }
+
+    function renderVariablesList(variables, searchQuery = '') {
         const list = document.getElementById('ecg-variables-list');
         if (!list) return;
         
         if (variables.length === 0) {
-            list.innerHTML = '<p class="placeholder-text">No variables found. Create a new variable.</p>';
+            if (searchQuery || Object.values(searchState.variables.filters).some(f => f)) {
+                list.innerHTML = '<div class="no-results">No variables match your search criteria. Try adjusting your filters.</div>';
+            } else {
+                list.innerHTML = '<p class="placeholder-text">No variables found. Create a new variable.</p>';
+            }
             return;
         }
         
-        list.innerHTML = variables.map(variable => `
-            <div class="variable-item">
-                <div class="variable-header">
-                    <h4>${variable.name}</h4>
-                    <div class="variable-badges">
-                        <span class="badge scope">${variable.scope}</span>
-                        ${variable.type ? `<span class="badge type">${variable.type}</span>` : ''}
-                        ${variable.declaration_type ? `<span class="badge declaration">${variable.declaration_type}</span>` : ''}
-                        ${variable.is_exported ? '<span class="badge exported">exported</span>' : ''}
+        list.innerHTML = variables.map(variable => {
+            // Highlight search terms
+            let name = variable.name;
+            let filePath = variable.file_path;
+            let value = variable.value || '';
+            let description = variable.description || '';
+            
+            if (searchQuery) {
+                const regex = new RegExp(`(${escapeRegex(searchQuery)})`, 'gi');
+                name = name.replace(regex, '<span class="highlight">$1</span>');
+                filePath = filePath.replace(regex, '<span class="highlight">$1</span>');
+                value = value.replace(regex, '<span class="highlight">$1</span>');
+                description = description.replace(regex, '<span class="highlight">$1</span>');
+            }
+            
+            return `
+                <div class="variable-item">
+                    <div class="variable-header">
+                        <h4>${name}</h4>
+                        <div class="variable-badges">
+                            <span class="badge scope">${variable.scope}</span>
+                            ${variable.type ? `<span class="badge type">${variable.type}</span>` : ''}
+                            ${variable.declaration_type ? `<span class="badge declaration">${variable.declaration_type}</span>` : ''}
+                            ${variable.is_exported ? '<span class="badge exported">exported</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="variable-details">
+                        <div class="detail"><strong>File:</strong> ${filePath}:${variable.line_number || '?'}</div>
+                        ${value ? `<div class="detail"><strong>Value:</strong> ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}</div>` : ''}
+                        ${description ? `<div class="detail"><strong>Description:</strong> ${description}</div>` : ''}
+                    </div>
+                    <div class="variable-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editVariable('${variable.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteVariable('${variable.id}')">🗑️ Delete</button>
                     </div>
                 </div>
-                <div class="variable-details">
-                    <div class="detail"><strong>File:</strong> ${variable.file_path}:${variable.line_number || '?'}</div>
-                    ${variable.value ? `<div class="detail"><strong>Value:</strong> ${variable.value.substring(0, 100)}${variable.value.length > 100 ? '...' : ''}</div>` : ''}
-                    ${variable.description ? `<div class="detail"><strong>Description:</strong> ${variable.description}</div>` : ''}
-                </div>
-                <div class="variable-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editVariable('${variable.id}')">✏️ Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteVariable('${variable.id}')">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
-    function populateFunctionSelector(functions) {
-        const selector = document.getElementById('variable-function');
-        if (selector) {
-            const currentValue = selector.value;
-            selector.innerHTML = '<option value="">Select a function...</option>' +
-                functions.map(func => 
-                    `<option value="${func.id}" ${currentValue === func.id ? 'selected' : ''}>${func.name}</option>`
-                ).join('');
-        }
+    function clearVariableSearch() {
+        document.getElementById('variables-search').value = '';
+        document.getElementById('variables-scope-filter').value = '';
+        document.getElementById('variables-type-filter').value = '';
+        searchState.variables.query = '';
+        searchState.variables.filters = {};
+        searchState.variables.currentPage = 1;
+        searchVariables();
     }
 
     function showCreateVariableModal() {
@@ -1322,6 +1611,17 @@ const EnhancedCodeGraphManager = (function() {
         }
     }
 
+    function populateFunctionSelector(functions) {
+        const selector = document.getElementById('variable-function');
+        if (selector) {
+            const currentValue = selector.value;
+            selector.innerHTML = '<option value="">Select a function...</option>' +
+                functions.map(func => 
+                    `<option value="${func.id}" ${currentValue === func.id ? 'selected' : ''}>${func.name}</option>`
+                ).join('');
+        }
+    }
+
     // =================================================================
     // DEPENDENCY MANAGEMENT
     // =================================================================
@@ -1330,6 +1630,9 @@ const EnhancedCodeGraphManager = (function() {
         const projectId = document.getElementById('ecg-project-selector-dependencies').value;
         if (!projectId) {
             document.getElementById('ecg-dependencies-list').innerHTML = '<p class="placeholder-text">Select a project to view dependencies</p>';
+            document.getElementById('dependencies-search-container').style.display = 'none';
+            document.getElementById('dependencies-results-info').style.display = 'none';
+            document.getElementById('dependencies-pagination').style.display = 'none';
             return;
         }
         
@@ -1337,42 +1640,141 @@ const EnhancedCodeGraphManager = (function() {
             const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/dependencies`);
             const dependencies = await response.json();
             
-            renderDependenciesList(dependencies);
+            // Store all dependencies for searching
+            searchState.dependencies.allItems = dependencies;
+            searchState.dependencies.currentPage = 1;
+            
+            // Show search controls
+            document.getElementById('dependencies-search-container').style.display = 'flex';
+            
+            // Render dependencies with search applied
+            searchDependencies();
         } catch (error) {
             showStatus('Error loading dependencies: ' + error.message, 'error');
         }
     }
 
-    function renderDependenciesList(dependencies) {
+    function searchDependencies() {
+        const query = document.getElementById('dependencies-search').value.toLowerCase();
+        const typeFilter = document.getElementById('dependencies-type-filter').value;
+        const strengthFilter = document.getElementById('dependencies-strength-filter').value;
+        
+        searchState.dependencies.query = query;
+        searchState.dependencies.filters = { typeFilter, strengthFilter };
+        searchState.dependencies.currentPage = 1;
+        
+        let filteredDependencies = searchState.dependencies.allItems || [];
+        
+        // Apply text search
+        if (query) {
+            filteredDependencies = filteredDependencies.filter(dep => 
+                dep.relationship_type.toLowerCase().includes(query) ||
+                (dep.context && dep.context.toLowerCase().includes(query)) ||
+                (dep.description && dep.description.toLowerCase().includes(query)) ||
+                dep.source_type.toLowerCase().includes(query) ||
+                dep.target_type.toLowerCase().includes(query)
+            );
+        }
+        
+        // Apply relationship type filter
+        if (typeFilter) {
+            filteredDependencies = filteredDependencies.filter(dep => dep.relationship_type === typeFilter);
+        }
+        
+        // Apply strength filter
+        if (strengthFilter) {
+            const [min, max] = strengthFilter.split('-').map(Number);
+            filteredDependencies = filteredDependencies.filter(dep => 
+                dep.relationship_strength >= min && dep.relationship_strength <= max
+            );
+        }
+        
+        searchState.dependencies.filteredItems = filteredDependencies;
+        renderDependenciesWithPagination();
+    }
+
+    function renderDependenciesWithPagination() {
+        const { filteredItems, currentPage, itemsPerPage, query } = searchState.dependencies;
+        const totalItems = filteredItems.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = filteredItems.slice(startIndex, endIndex);
+        
+        // Update results info
+        const resultsInfo = document.getElementById('dependencies-results-info');
+        if (query || Object.values(searchState.dependencies.filters).some(f => f)) {
+            resultsInfo.style.display = 'block';
+            resultsInfo.innerHTML = `Found ${totalItems} dependenc(y/ies) matching your criteria. Showing ${startIndex + 1}-${Math.min(endIndex, totalItems)} of ${totalItems}.`;
+        } else {
+            resultsInfo.style.display = 'none';
+        }
+        
+        // Render dependencies
+        renderDependenciesList(pageItems, query);
+        
+        // Render pagination
+        renderPagination('dependencies', currentPage, totalPages, totalItems);
+    }
+
+    function renderDependenciesList(dependencies, searchQuery = '') {
         const list = document.getElementById('ecg-dependencies-list');
         if (!list) return;
         
         if (dependencies.length === 0) {
-            list.innerHTML = '<p class="placeholder-text">No dependencies found. Create a new dependency.</p>';
+            if (searchQuery || Object.values(searchState.dependencies.filters).some(f => f)) {
+                list.innerHTML = '<div class="no-results">No dependencies match your search criteria. Try adjusting your filters.</div>';
+            } else {
+                list.innerHTML = '<p class="placeholder-text">No dependencies found. Create a new dependency.</p>';
+            }
             return;
         }
         
-        list.innerHTML = dependencies.map(dep => `
-            <div class="dependency-item">
-                <div class="dependency-header">
-                    <h4>${dep.relationship_type}</h4>
-                    <div class="dependency-badges">
-                        <span class="badge strength">strength: ${dep.relationship_strength}</span>
-                        ${dep.context ? `<span class="badge context">context</span>` : ''}
+        list.innerHTML = dependencies.map(dep => {
+            // Highlight search terms
+            let relationshipType = dep.relationship_type;
+            let context = dep.context || '';
+            let description = dep.description || '';
+            
+            if (searchQuery) {
+                const regex = new RegExp(`(${escapeRegex(searchQuery)})`, 'gi');
+                relationshipType = relationshipType.replace(regex, '<span class="highlight">$1</span>');
+                context = context.replace(regex, '<span class="highlight">$1</span>');
+                description = description.replace(regex, '<span class="highlight">$1</span>');
+            }
+            
+            return `
+                <div class="dependency-item">
+                    <div class="dependency-header">
+                        <h4>${relationshipType}</h4>
+                        <div class="dependency-badges">
+                            <span class="badge strength">strength: ${dep.relationship_strength}</span>
+                            ${dep.context ? `<span class="badge context">context</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="dependency-details">
+                        <div class="detail"><strong>From:</strong> ${dep.source_type} (${dep.source_id})</div>
+                        <div class="detail"><strong>To:</strong> ${dep.target_type} (${dep.target_id})</div>
+                        ${context ? `<div class="detail"><strong>Context:</strong> ${context}</div>` : ''}
+                        ${description ? `<div class="detail"><strong>Description:</strong> ${description}</div>` : ''}
+                    </div>
+                    <div class="dependency-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editDependency('${dep.id}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteDependency('${dep.id}')">🗑️ Delete</button>
                     </div>
                 </div>
-                <div class="dependency-details">
-                    <div class="detail"><strong>From:</strong> ${dep.source_type} (${dep.source_id})</div>
-                    <div class="detail"><strong>To:</strong> ${dep.target_type} (${dep.target_id})</div>
-                    ${dep.context ? `<div class="detail"><strong>Context:</strong> ${dep.context}</div>` : ''}
-                    ${dep.description ? `<div class="detail"><strong>Description:</strong> ${dep.description}</div>` : ''}
-                </div>
-                <div class="dependency-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editDependency('${dep.id}')">✏️ Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="EnhancedCodeGraphManager.deleteDependency('${dep.id}')">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    function clearDependencySearch() {
+        document.getElementById('dependencies-search').value = '';
+        document.getElementById('dependencies-type-filter').value = '';
+        document.getElementById('dependencies-strength-filter').value = '';
+        searchState.dependencies.query = '';
+        searchState.dependencies.filters = {};
+        searchState.dependencies.currentPage = 1;
+        searchDependencies();
     }
 
     function showCreateDependencyModal() {
@@ -3076,7 +3478,113 @@ async function exportProject(projectId) {
     }
 
     // =================================================================
-    // PUBLIC API
+    // PAGINATION FUNCTIONS
+    // =================================================================
+
+    function renderPagination(type, currentPage, totalPages, totalItems) {
+        const paginationContainer = document.getElementById(`${type}-pagination`);
+        if (!paginationContainer) return;
+        
+        if (totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+        
+        paginationContainer.style.display = 'flex';
+        
+        const startItem = (currentPage - 1) * searchState[type].itemsPerPage + 1;
+        const endItem = Math.min(currentPage * searchState[type].itemsPerPage, totalItems);
+        
+        paginationContainer.innerHTML = `
+            <div class="pagination-info">
+                Showing ${startItem}-${endItem} of ${totalItems} items
+            </div>
+            <div class="pagination-controls">
+                <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} 
+                        onclick="EnhancedCodeGraphManager.changePage('${type}', ${currentPage - 1})">
+                    ← Previous
+                </button>
+                ${generatePageNumbers(type, currentPage, totalPages)}
+                <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} 
+                        onclick="EnhancedCodeGraphManager.changePage('${type}', ${currentPage + 1})">
+                    Next →
+                </button>
+            </div>
+        `;
+    }
+
+    function generatePageNumbers(type, currentPage, totalPages) {
+        const pages = [];
+        const maxVisiblePages = 5;
+        
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        // Adjust start page if we're near the end
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        // Add first page and ellipsis if needed
+        if (startPage > 1) {
+            pages.push(`<button class="page-btn" onclick="EnhancedCodeGraphManager.changePage('${type}', 1)">1</button>`);
+            if (startPage > 2) {
+                pages.push('<span class="page-ellipsis">...</span>');
+            }
+        }
+        
+        // Add visible page numbers
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(`
+                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
+                        onclick="EnhancedCodeGraphManager.changePage('${type}', ${i})">
+                    ${i}
+                </button>
+            `);
+        }
+        
+        // Add last page and ellipsis if needed
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                pages.push('<span class="page-ellipsis">...</span>');
+            }
+            pages.push(`<button class="page-btn" onclick="EnhancedCodeGraphManager.changePage('${type}', ${totalPages})">${totalPages}</button>`);
+        }
+        
+        return pages.join('');
+    }
+
+    function changePage(type, page) {
+        if (!searchState[type] || !searchState[type].filteredItems) return;
+        
+        const totalPages = Math.ceil(searchState[type].filteredItems.length / searchState[type].itemsPerPage);
+        
+        // Validate page number
+        if (page < 1 || page > totalPages) return;
+        
+        searchState[type].currentPage = page;
+        
+        // Re-render with new page
+        switch (type) {
+            case 'functions':
+                renderFunctionsWithPagination();
+                break;
+            case 'variables':
+                renderVariablesWithPagination();
+                break;
+            case 'dependencies':
+                renderDependenciesWithPagination();
+                break;
+        }
+    }
+
+    // Helper function to escape regex characters for search highlighting
+    function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // =================================================================
+    // EXPORT/IMPORT FUNCTIONALITY
     // =================================================================
 
     return {
@@ -3165,7 +3673,16 @@ async function exportProject(projectId) {
         handleUpdateImportFile,
         showUpdateImportPreview,
         confirmUpdateImport,
-        selectTemplateFile
+        selectTemplateFile,
+        
+        // Search functions
+        searchFunctions,
+        clearFunctionSearch,
+        searchVariables,
+        clearVariableSearch,
+        searchDependencies,
+        clearDependencySearch,
+        changePage
     };
 })();
 
