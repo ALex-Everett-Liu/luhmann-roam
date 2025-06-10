@@ -337,6 +337,12 @@
     gap: 15px;
 }
 
+/* Override the max-height constraint from code-graph.css for Enhanced Code Graph Manager */
+.enhanced-code-graph-modal .dependencies-list {
+    max-height: none;
+    overflow-y: visible;
+}
+
 .function-item, .variable-item, .dependency-item {
     background: white;
     border: 1px solid #e1e5e9;

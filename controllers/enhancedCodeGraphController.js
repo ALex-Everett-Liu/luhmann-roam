@@ -1505,26 +1505,30 @@ class EnhancedCodeGraphController {
   async importProjectStructure(importData, customName = null) {
     try {
       console.log('Importing project structure from export data');
+      console.log('Import data received:', JSON.stringify(importData, null, 2));
       
-      if (!importData.template || !importData.metadata) {
-        throw new Error('Invalid import data format');
+      if (!importData || !importData.template || !importData.metadata) {
+        throw new Error('Invalid import data format. Expected structure: { template: {...}, metadata: {...} }');
       }
       
       const template = importData.template;
-      const originalProject = importData.metadata.originalProject;
+      const metadata = importData.metadata;
       
-      // Create project from imported structure
+      // Safely access originalProject with fallbacks
+      const originalProject = metadata.originalProject || {};
+      
+      // Create project from imported structure with safe property access
       const projectData = {
-        name: customName || `${originalProject.name}_Import_${Date.now()}`,
+        name: customName || `${originalProject.name || 'Imported Project'}_Import_${Date.now()}`,
         path: originalProject.path || 'imported-project',
-        description: `Imported from: ${originalProject.description || originalProject.name}`,
+        description: `Imported from: ${originalProject.description || originalProject.name || 'Unknown project'}`,
         language: originalProject.language || 'javascript',
-        framework: originalProject.framework,
+        framework: originalProject.framework || null,
         tags: [...(originalProject.tags || []), 'imported', 'template'],
         metadata: {
-          importedFrom: originalProject.name,
+          importedFrom: originalProject.name || 'Unknown',
           importedAt: new Date().toISOString(),
-          originalExportDate: importData.metadata.exportedAt
+          originalExportDate: metadata.exportedAt || new Date().toISOString()
         },
         status: 'active'
       };
@@ -1533,29 +1537,34 @@ class EnhancedCodeGraphController {
       const { projectId } = await this.createProject(projectData);
       console.log(`Created imported project with ID: ${projectId}`);
 
+      // Safely access template arrays with fallbacks
+      const functions = template.functions || [];
+      const variables = template.variables || [];
+      const relationships = template.relationships || [];
+
       // Create functions
       const functionMap = new Map(); // name -> id mapping
-      console.log(`Creating ${template.functions.length} functions...`);
+      console.log(`Creating ${functions.length} functions...`);
       
-      for (const funcData of template.functions) {
+      for (const funcData of functions) {
         console.log(`Creating function: ${funcData.name}`);
         
         const { functionId } = await this.createFunction({
           project_id: projectId,
           name: funcData.name,
-          full_name: funcData.full_name,
-          file_path: funcData.file_path,
-          line_number: funcData.line_number,
-          end_line_number: funcData.end_line_number,
-          parameters: funcData.parameters,
-          return_type: funcData.return_type,
-          is_async: funcData.is_async,
-          is_static: funcData.is_static,
-          is_private: funcData.is_private,
-          complexity_score: funcData.complexity_score,
-          description: funcData.description,
-          tags: funcData.tags,
-          metadata: funcData.metadata
+          full_name: funcData.full_name || null,
+          file_path: funcData.file_path || 'unknown.js',
+          line_number: funcData.line_number || null,
+          end_line_number: funcData.end_line_number || null,
+          parameters: funcData.parameters || [],
+          return_type: funcData.return_type || null,
+          is_async: funcData.is_async || false,
+          is_static: funcData.is_static || false,
+          is_private: funcData.is_private || false,
+          complexity_score: funcData.complexity_score || 1,
+          description: funcData.description || null,
+          tags: funcData.tags || [],
+          metadata: funcData.metadata || {}
         });
         
         functionMap.set(funcData.name, functionId);
@@ -1564,9 +1573,9 @@ class EnhancedCodeGraphController {
 
       // Create variables
       const variableMap = new Map(); // name -> id mapping
-      console.log(`Creating ${template.variables.length} variables...`);
+      console.log(`Creating ${variables.length} variables...`);
       
-      for (const varData of template.variables) {
+      for (const varData of variables) {
         console.log(`Creating variable: ${varData.name}`);
         
         // Map function name to function ID
@@ -1579,17 +1588,17 @@ class EnhancedCodeGraphController {
           project_id: projectId,
           function_id: functionId,
           name: varData.name,
-          type: varData.type,
-          value: varData.value,
-          file_path: varData.file_path,
-          line_number: varData.line_number,
-          scope: varData.scope,
-          declaration_type: varData.declaration_type,
-          mutability: varData.mutability,
-          is_exported: varData.is_exported,
-          description: varData.description,
-          tags: varData.tags,
-          metadata: varData.metadata
+          type: varData.type || null,
+          value: varData.value || null,
+          file_path: varData.file_path || 'unknown.js',
+          line_number: varData.line_number || null,
+          scope: varData.scope || 'local',
+          declaration_type: varData.declaration_type || null,
+          mutability: varData.mutability || 'mutable',
+          is_exported: varData.is_exported || false,
+          description: varData.description || null,
+          tags: varData.tags || [],
+          metadata: varData.metadata || {}
         });
         
         variableMap.set(varData.name, variableId);
@@ -1597,10 +1606,10 @@ class EnhancedCodeGraphController {
       }
 
       // Create relationships
-      console.log(`Creating ${template.relationships.length} relationships...`);
+      console.log(`Creating ${relationships.length} relationships...`);
       
-      for (const relData of template.relationships) {
-        console.log(`Creating relationship: ${relData.source} -> ${relData.type} -> ${relData.target}`);
+      for (const relData of relationships) {
+        console.log(`Creating relationship: ${relData.source} -> ${relData.relationship_type || relData.type} -> ${relData.target}`);
         
         const sourceId = functionMap.get(relData.source) || variableMap.get(relData.source);
         const targetId = functionMap.get(relData.target) || variableMap.get(relData.target);
@@ -1608,20 +1617,20 @@ class EnhancedCodeGraphController {
         if (sourceId && targetId) {
           await this.createDependency({
             project_id: projectId,
-            source_type: relData.source_type,
+            source_type: relData.source_type || (functionMap.has(relData.source) ? 'function' : 'variable'),
             source_id: sourceId,
-            target_type: relData.target_type,
+            target_type: relData.target_type || (functionMap.has(relData.target) ? 'function' : 'variable'),
             target_id: targetId,
-            relationship_type: relData.relationship_type,
-            relationship_strength: relData.relationship_strength,
-            context: relData.context,
-            line_number: relData.line_number,
-            order_sequence: relData.order_sequence,
-            description: relData.description,
-            metadata: relData.metadata
+            relationship_type: relData.relationship_type || relData.type || 'uses',
+            relationship_strength: relData.relationship_strength || 0.5,
+            context: relData.context || null,
+            line_number: relData.line_number || null,
+            order_sequence: relData.order_sequence || 1,
+            description: relData.description || null,
+            metadata: relData.metadata || {}
           });
           
-          console.log(`Created relationship: ${relData.source_type}:${sourceId} -> ${relData.relationship_type} -> ${relData.target_type}:${targetId}`);
+          console.log(`Created relationship: ${relData.source} -> ${relData.relationship_type || relData.type} -> ${relData.target}`);
         } else {
           console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
         }
@@ -1635,7 +1644,7 @@ class EnhancedCodeGraphController {
         imported_elements: {
           functions: functionMap.size,
           variables: variableMap.size,
-          relationships: template.relationships.length
+          relationships: relationships.length
         }
       };
     } catch (error) {
@@ -2141,57 +2150,66 @@ class EnhancedCodeGraphController {
       const fs = require('fs').promises;
       const path = require('path');
       
-      const templatesDir = path.join(__dirname, '..', 'templates');
+      // Check both directories: templates and sample_data
+      const directories = [
+        path.join(__dirname, '..', 'templates'),
+        path.join(__dirname, '..', 'sample_data')
+      ];
       
-      // Check if templates directory exists
-      try {
-        await fs.access(templatesDir);
-      } catch (error) {
-        // Directory doesn't exist, create it
-        await fs.mkdir(templatesDir, { recursive: true });
-        return [];
+      let allTemplateFiles = [];
+      
+      for (const templatesDir of directories) {
+        try {
+          await fs.access(templatesDir);
+          const files = await fs.readdir(templatesDir);
+          const jsonFiles = files.filter(file => file.endsWith('.json'));
+          
+          const templateFiles = await Promise.all(
+            jsonFiles.map(async (filename) => {
+              try {
+                const filePath = path.join(templatesDir, filename);
+                const stats = await fs.stat(filePath);
+                const content = await fs.readFile(filePath, 'utf8');
+                const data = JSON.parse(content);
+                
+                return {
+                  filename,
+                  directory: path.basename(templatesDir), // 'templates' or 'sample_data'
+                  name: data.metadata?.originalProject?.name || data.template?.name || filename.replace('.json', ''),
+                  description: data.metadata?.originalProject?.description || data.template?.description || 'No description',
+                  functionCount: data.template?.functions?.length || 0,
+                  variableCount: data.template?.variables?.length || 0,
+                  relationshipCount: data.template?.relationships?.length || 0,
+                  size: stats.size,
+                  modified: stats.mtime,
+                  error: false
+                };
+              } catch (error) {
+                console.error(`Error reading template file ${filename}:`, error);
+                return {
+                  filename,
+                  directory: path.basename(templatesDir),
+                  name: filename.replace('.json', ''),
+                  description: 'Error reading file',
+                  functionCount: 0,
+                  variableCount: 0,
+                  relationshipCount: 0,
+                  size: 0,
+                  modified: new Date(),
+                  error: true
+                };
+              }
+            })
+          );
+          
+          allTemplateFiles = allTemplateFiles.concat(templateFiles);
+        } catch (error) {
+          // Directory doesn't exist, skip it
+          console.log(`Directory ${templatesDir} doesn't exist, skipping...`);
+        }
       }
       
-      const files = await fs.readdir(templatesDir);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
-      
-      const templateFiles = await Promise.all(
-        jsonFiles.map(async (filename) => {
-          try {
-            const filePath = path.join(templatesDir, filename);
-            const stats = await fs.stat(filePath);
-            const content = await fs.readFile(filePath, 'utf8');
-            const data = JSON.parse(content);
-            
-            return {
-              filename,
-              name: data.metadata?.originalProject?.name || data.template?.name || filename.replace('.json', ''),
-              description: data.metadata?.originalProject?.description || data.template?.description || 'No description',
-              functionCount: data.template?.functions?.length || 0,
-              variableCount: data.template?.variables?.length || 0,
-              relationshipCount: data.template?.relationships?.length || 0,
-              size: stats.size,
-              modified: stats.mtime,
-              error: false
-            };
-          } catch (error) {
-            console.error(`Error reading template file ${filename}:`, error);
-            return {
-              filename,
-              name: filename.replace('.json', ''),
-              description: 'Error reading file',
-              functionCount: 0,
-              variableCount: 0,
-              relationshipCount: 0,
-              size: 0,
-              modified: new Date(),
-              error: true
-            };
-          }
-        })
-      );
-      
-      return templateFiles;
+      return allTemplateFiles;
     } catch (error) {
       console.error('Error getting template files:', error);
       return [];
@@ -2199,50 +2217,51 @@ class EnhancedCodeGraphController {
   }
 
   async loadTemplateFile(filename) {
-    const templatePath = path.join(__dirname, '../templates', filename);
+    const fs = require('fs');
+    const path = require('path');
     
-    try {
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template file ${filename} not found`);
+    // Try both directories
+    const possiblePaths = [
+      path.join(__dirname, '../templates', filename),
+      path.join(__dirname, '../sample_data', filename)
+    ];
+    
+    for (const templatePath of possiblePaths) {
+      try {
+        if (fs.existsSync(templatePath)) {
+          const content = fs.readFileSync(templatePath, 'utf8');
+          const templateData = JSON.parse(content);
+          
+          console.log(`Loaded template file: ${filename} from ${templatePath}`);
+          return {
+            success: true,
+            templateData,
+            filename,
+            path: templatePath
+          };
+        }
+      } catch (error) {
+        console.error(`Error loading template file from ${templatePath}:`, error);
+        continue;
       }
-      
-      const content = fs.readFileSync(templatePath, 'utf8');
-      const templateData = JSON.parse(content);
-      
-      console.log(`Loaded template file: ${filename}`);
-      return {
-        success: true,
-        templateData,
-        filename
-      };
-    } catch (error) {
-      console.error(`Error loading template file ${filename}:`, error);
-      throw error;
     }
+    
+    throw new Error(`Template file ${filename} not found in any template directory`);
   }
 
   async importFromTemplateFile(req, res) {
     try {
       const { filename, customName } = req.body;
-      const fs = require('fs').promises;
-      const path = require('path');
       
-      // Load template file
-      const filePath = path.join(__dirname, '..', 'templates', filename);
-      const content = await fs.readFile(filePath, 'utf8');
-      const templateData = JSON.parse(content);
+      // Load the template file (will check both directories)
+      const result = await this.loadTemplateFile(filename);
       
-      // Use the existing import logic
-      const result = await this.importProjectStructure({
-        body: {
-          importData: templateData,
-          customName: customName
-        }
-      }, res);
+      // Import it as a project using the existing import logic
+      const importResult = await this.importProjectStructure(result.templateData, customName);
       
-      return result;
+      res.json(importResult);
     } catch (error) {
-      console.error('Error importing from template file:', error);
+      console.error('Error in importFromTemplateFile route:', error);
       res.status(500).json({ 
         success: false, 
         error: error.message 
@@ -2594,7 +2613,18 @@ exports.getAvailableTemplateFiles = async (req, res) => {
     }
   };
   
-
+// Add this simple test endpoint at the end of the exports
+exports.testEndpoint = async (req, res) => {
+    try {
+      res.json({ 
+        success: true, 
+        message: 'Enhanced Code Graph routes are working!',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
 
 // Export the controller instance for direct use
 exports.enhancedCodeGraphController = enhancedCodeGraphController;

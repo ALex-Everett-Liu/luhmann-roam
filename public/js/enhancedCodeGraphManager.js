@@ -2659,16 +2659,16 @@ async function exportProject(projectId) {
     const activeTab = document.querySelector('.import-tab.active');
     
     if (activeTab.id === 'import-tab-file') {
-      // Original file import logic
+      // File import logic
       if (!window.pendingImportData) {
-        showStatus('Please select a file first', 'error');
+        showStatus('No import data available', 'error');
         return;
       }
       
       const customName = document.getElementById('importProjectName').value.trim();
       
       try {
-        // Fix: Add the correct API prefix
+        // FIX: Add missing /api prefix
         const response = await fetch('/api/enhanced-code-graph/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2704,7 +2704,7 @@ async function exportProject(projectId) {
       const customName = document.getElementById('templateProjectName').value.trim();
       
       try {
-        // Fix: Add the correct API prefix
+        // FIX: Add missing /api prefix
         const response = await fetch('/api/enhanced-code-graph/import-from-template', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2852,7 +2852,7 @@ async function exportProject(projectId) {
       const customName = document.getElementById('importProjectName').value.trim();
       
       try {
-        const response = await fetch('/enhanced-code-graph/import', {
+        const response = await fetch('/api/enhanced-code-graph/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2887,7 +2887,7 @@ async function exportProject(projectId) {
       const customName = document.getElementById('templateProjectName').value.trim();
       
       try {
-        const response = await fetch('/enhanced-code-graph/import-from-template', {
+        const response = await fetch('/api/enhanced-code-graph/import-from-template', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
