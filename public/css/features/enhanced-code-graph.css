@@ -1196,3 +1196,24 @@
     color: #666;
     margin-top: 5px;
 }
+
+.element-type {
+    color: #6c757d;
+    font-size: 12px;
+    font-style: italic;
+    margin-left: 5px;
+}
+
+.dependency-details .detail {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.dependency-details .detail strong {
+    color: #24292e;
+}

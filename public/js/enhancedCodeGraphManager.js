@@ -1637,11 +1637,38 @@ const EnhancedCodeGraphManager = (function() {
         }
         
         try {
-            const response = await fetch(`/api/enhanced-code-graph/projects/${projectId}/dependencies`);
-            const dependencies = await response.json();
+            // Load dependencies, functions, and variables in parallel
+            const [dependenciesResponse, functionsResponse, variablesResponse] = await Promise.all([
+                fetch(`/api/enhanced-code-graph/projects/${projectId}/dependencies`),
+                fetch(`/api/enhanced-code-graph/projects/${projectId}/functions`),
+                fetch(`/api/enhanced-code-graph/projects/${projectId}/variables`)
+            ]);
+            
+            const dependencies = await dependenciesResponse.json();
+            const functions = await functionsResponse.json();
+            const variables = await variablesResponse.json();
+            
+            // Create lookup maps for names
+            const functionNames = {};
+            const variableNames = {};
+            
+            functions.forEach(func => {
+                functionNames[func.id] = func.name;
+            });
+            
+            variables.forEach(variable => {
+                variableNames[variable.id] = variable.name;
+            });
+            
+            // Enhance dependencies with actual names
+            const enhancedDependencies = dependencies.map(dep => ({
+                ...dep,
+                source_name: dep.source_type === 'function' ? functionNames[dep.source_id] : variableNames[dep.source_id],
+                target_name: dep.target_type === 'function' ? functionNames[dep.target_id] : variableNames[dep.target_id]
+            }));
             
             // Store all dependencies for searching
-            searchState.dependencies.allItems = dependencies;
+            searchState.dependencies.allItems = enhancedDependencies;
             searchState.dependencies.currentPage = 1;
             
             // Show search controls
@@ -1735,13 +1762,21 @@ const EnhancedCodeGraphManager = (function() {
             let relationshipType = dep.relationship_type;
             let context = dep.context || '';
             let description = dep.description || '';
+            let sourceName = dep.source_name || 'Unknown';
+            let targetName = dep.target_name || 'Unknown';
             
             if (searchQuery) {
                 const regex = new RegExp(`(${escapeRegex(searchQuery)})`, 'gi');
                 relationshipType = relationshipType.replace(regex, '<span class="highlight">$1</span>');
                 context = context.replace(regex, '<span class="highlight">$1</span>');
                 description = description.replace(regex, '<span class="highlight">$1</span>');
+                sourceName = sourceName.replace(regex, '<span class="highlight">$1</span>');
+                targetName = targetName.replace(regex, '<span class="highlight">$1</span>');
             }
+            
+            // Get appropriate icons for source and target types
+            const sourceIcon = dep.source_type === 'function' ? '📊' : '🔢';
+            const targetIcon = dep.target_type === 'function' ? '📊' : '🔢';
             
             return `
                 <div class="dependency-item">
@@ -1753,10 +1788,17 @@ const EnhancedCodeGraphManager = (function() {
                         </div>
                     </div>
                     <div class="dependency-details">
-                        <div class="detail"><strong>From:</strong> ${dep.source_type} (${dep.source_id})</div>
-                        <div class="detail"><strong>To:</strong> ${dep.target_type} (${dep.target_id})</div>
+                        <div class="detail">
+                            <strong>From:</strong> ${sourceIcon} <strong>${sourceName}</strong> 
+                            <span class="element-type">(${dep.source_type})</span>
+                        </div>
+                        <div class="detail">
+                            <strong>To:</strong> ${targetIcon} <strong>${targetName}</strong> 
+                            <span class="element-type">(${dep.target_type})</span>
+                        </div>
                         ${context ? `<div class="detail"><strong>Context:</strong> ${context}</div>` : ''}
                         ${description ? `<div class="detail"><strong>Description:</strong> ${description}</div>` : ''}
+                        ${dep.line_number ? `<div class="detail"><strong>Line:</strong> ${dep.line_number}</div>` : ''}
                     </div>
                     <div class="dependency-actions">
                         <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.editDependency('${dep.id}')">✏️ Edit</button>
