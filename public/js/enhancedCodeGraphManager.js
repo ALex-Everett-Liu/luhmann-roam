@@ -928,6 +928,10 @@ const EnhancedCodeGraphManager = (function() {
             'ecg-project-selector-variables', 
             'ecg-project-selector-dependencies',
             'ecg-project-selector-graph',
+            'ecg-project-selector-text-editor',  // ← ADD THIS
+            'ecg-project-selector-modules',       // ← ADD THIS if missing
+            'ecg-project-selector-libraries',     // ← ADD THIS if missing
+            'ecg-project-selector-module-deps',   // ← ADD THIS if missing
             'function-project',
             'variable-project',
             'dependency-project'
@@ -946,6 +950,9 @@ const EnhancedCodeGraphManager = (function() {
                 selector.innerHTML = '<option value="">Select a project...</option>' + projectOptions;
             }
         });
+        
+        // Also populate fullscreen text editor selector
+        populateTextEditorProjectSelector();
     }
 
     // Modal management
@@ -3738,15 +3745,24 @@ async function exportProject(projectId) {
 let currentTextEditorProject = null;
 
 async function loadProjectForTextEditor() {
-    const projectId = document.getElementById('ecg-project-selector-text-editor').value;
-    if (!projectId) {
+    // Try both possible selector IDs
+    const projectSelector = document.getElementById('text-editor-project-selector') || 
+                           document.getElementById('ecg-project-selector-text-editor');
+    
+    if (!projectSelector || !projectSelector.value) {
         currentTextEditorProject = null;
         updateTextEditorStatus('No project selected');
         return;
     }
     
+    const projectId = projectSelector.value;
     currentTextEditorProject = projectId;
-    updateTextEditorStatus(`Project selected: ${projects.find(p => p.id === projectId)?.name || 'Unknown'}`);
+    
+    // Find project name for better status message
+    const project = projects.find(p => p.id === projectId);
+    const projectName = project ? project.name : 'Unknown';
+    
+    updateTextEditorStatus(`Project selected: ${projectName}`);
 }
 
 async function loadCurrentProjectAsText() {
@@ -4389,7 +4405,7 @@ function showTextEditorFullscreen() {
     // Show the overlay
     overlay.style.display = 'flex';
     
-    // Populate project selector
+    // Populate project selector with current projects data
     populateTextEditorProjectSelector();
 }
 
@@ -4486,9 +4502,9 @@ function populateTextEditorProjectSelector() {
     // Clear existing options except the first one
     selector.innerHTML = '<option value="">Select a project...</option>';
     
-    // Add projects from the current projects data
-    if (window.enhancedCodeGraphProjects && window.enhancedCodeGraphProjects.length > 0) {
-        window.enhancedCodeGraphProjects.forEach(project => {
+    // Use the same projects data as other selectors
+    if (Array.isArray(projects) && projects.length > 0) {
+        projects.forEach(project => {
             const option = document.createElement('option');
             option.value = project.id;
             option.textContent = project.name;
