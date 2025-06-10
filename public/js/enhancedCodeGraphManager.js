@@ -187,7 +187,7 @@ const EnhancedCodeGraphManager = (function() {
                         
                         <!-- Search and Filter Controls -->
                         <div class="search-container" id="dependencies-search-container" style="display: none;">
-                            <input type="text" class="search-input" id="dependencies-search" placeholder="Search dependencies by relationship type, context, or description..." 
+                            <input type="text" class="search-input" id="dependencies-search" placeholder="Search dependencies by function/variable names, relationship type, context, or description..." 
                                    onkeyup="EnhancedCodeGraphManager.searchDependencies()" />
                             <div class="search-filters">
                                 <select class="filter-select" id="dependencies-type-filter" onchange="EnhancedCodeGraphManager.searchDependencies()">
@@ -1692,14 +1692,17 @@ const EnhancedCodeGraphManager = (function() {
         
         let filteredDependencies = searchState.dependencies.allItems || [];
         
-        // Apply text search
+        // Apply text search - now includes actual names
         if (query) {
             filteredDependencies = filteredDependencies.filter(dep => 
                 dep.relationship_type.toLowerCase().includes(query) ||
                 (dep.context && dep.context.toLowerCase().includes(query)) ||
                 (dep.description && dep.description.toLowerCase().includes(query)) ||
                 dep.source_type.toLowerCase().includes(query) ||
-                dep.target_type.toLowerCase().includes(query)
+                dep.target_type.toLowerCase().includes(query) ||
+                // NEW: Search by actual names instead of IDs
+                (dep.source_name && dep.source_name.toLowerCase().includes(query)) ||
+                (dep.target_name && dep.target_name.toLowerCase().includes(query))
             );
         }
         
