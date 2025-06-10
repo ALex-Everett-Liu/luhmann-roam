@@ -3896,36 +3896,18 @@ async function parseAndSaveTextDefinition() {
         return;
     }
     
-    const textContent = document.getElementById('text-editor-input').value.trim();
-    if (!textContent) {
-        showStatus('Please enter some text to parse', 'error');
-        return;
-    }
-    
-    try {
-        updateTextEditorStatus('Parsing text definition...', 'info');
+    // Check if we have pre-validated data
+    if (window.validatedParsedData) {
+        const parsedData = window.validatedParsedData;
         
-        // Parse the text content
-        const parsedData = parseTextDefinition(textContent);
-        
-        // Validate the parsed data
-        const validationResult = validateParsedData(parsedData);
-        if (!validationResult.valid) {
-            updateTextEditorStatus(`Validation failed: ${validationResult.errors.join(', ')}`, 'error');
-            showStatus('Validation failed: ' + validationResult.errors.join(', '), 'error');
-            return;
-        }
-        
-        // Show preview
-        showTextEditorPreview(parsedData);
-        
-        // Send to backend for processing
+        try {
+            updateTextEditorStatus('Saving validated definition...', 'info');
+            
         const response = await fetch('/api/enhanced-code-graph/text-definition', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 projectId: currentTextEditorProject,
-                textDefinition: textContent,
                 parsedData: parsedData
             })
         });
@@ -3936,19 +3918,24 @@ async function parseAndSaveTextDefinition() {
             updateTextEditorStatus(`Successfully processed: ${result.stats.functionsProcessed} functions, ${result.stats.variablesProcessed} variables, ${result.stats.relationshipsProcessed} relationships`);
             showStatus('Text definition processed successfully!');
             
-            // Refresh other views if they're visible
-            if (currentView === 'functions') loadFunctions();
-            if (currentView === 'variables') loadVariables();
-            if (currentView === 'dependencies') loadDependencies();
+                // Clean up
+                window.validatedParsedData = null;
         } else {
             updateTextEditorStatus('Error processing text definition', 'error');
             showStatus('Error processing text definition: ' + result.error, 'error');
         }
-        
     } catch (error) {
-        updateTextEditorStatus('Error parsing text definition', 'error');
-        showStatus('Error parsing text definition: ' + error.message, 'error');
+            console.error('Error saving:', error);
+            updateTextEditorStatus('Error saving text definition', 'error');
+            showStatus('Error saving: ' + error.message, 'error');
+        }
+        
+        return;
     }
+    
+    // If no pre-validated data, run validation first
+    updateTextEditorStatus('Please validate your syntax first using the Validate button', 'error');
+    showStatus('Please validate your syntax first', 'error');
 }
 
 function parseTextDefinition(textContent) {
@@ -4252,13 +4239,16 @@ function insertTextTemplate(type) {
 }
 
 function validateTextSyntax() {
-    const textContent = document.getElementById('text-editor-input').value.trim();
+    const textContent = document.getElementById('text-editor-fullscreen-input')?.value.trim() || 
+                       document.getElementById('text-editor-input')?.value.trim();
+    
     if (!textContent) {
         updateTextEditorStatus('No text to validate', 'error');
         return;
     }
     
     try {
+        console.log('=== VALIDATING TEXT SYNTAX ===');
         const parsedData = parseTextDefinition(textContent);
         const validationResult = validateParsedData(parsedData);
         
@@ -4266,25 +4256,164 @@ function validateTextSyntax() {
             updateTextEditorStatus(`✅ Syntax valid: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships`);
             showTextEditorPreview(parsedData);
         } else {
+            // Check if the only errors are missing file paths
+            const onlyFilePathErrors = validationResult.errors.every(error => 
+                error.includes('is missing file path')
+            );
+            
+            if (onlyFilePathErrors) {
+                showFilePathInputDialog(parsedData, validationResult.errors);
+        } else {
             updateTextEditorStatus(`❌ Validation errors: ${validationResult.errors.join(', ')}`, 'error');
-            
-            // Show errors in preview
-            const preview = document.getElementById('text-editor-preview');
-            const content = document.getElementById('text-editor-preview-content');
-            
+                showValidationErrors(validationResult.errors);
+            }
+        }
+    } catch (error) {
+        console.error('Validation error:', error);
+        updateTextEditorStatus(`❌ Parse error: ${error.message}`, 'error');
+    }
+}
+
+function showFilePathInputDialog(parsedData, errors) {
+    const dialog = document.createElement('div');
+    dialog.className = 'file-path-input-dialog';
+    dialog.innerHTML = `
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3>📁 Add Missing File Paths</h3>
+                <p>The following items need file paths:</p>
+            </div>
+            <div class="dialog-body">
+                ${errors.map((error, index) => {
+                    const match = error.match(/(Function|Variable) '([^']+)' is missing file path/);
+                    if (match) {
+                        const [, type, name] = match;
+                        return `
+                            <div class="file-path-input-row">
+                                <label>${type}: <strong>${name}</strong></label>
+                                <input type="text" 
+                                       data-type="${type.toLowerCase()}" 
+                                       data-name="${name}" 
+                                       placeholder="e.g., src/controllers/myController.js:42"
+                                       class="file-path-input">
+                            </div>
+                        `;
+                    }
+                    return '';
+                }).join('')}
+            </div>
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="EnhancedCodeGraphManager.applyFilePathsAndValidate()">Apply & Validate</button>
+            </div>
+        </div>
+    `;
+    
+    // CHECK IF WE'RE IN FULLSCREEN MODE AND ADJUST Z-INDEX
+    const isInFullscreen = document.getElementById('text-editor-fullscreen-overlay')?.style.display !== 'none';
+    const zIndex = isInFullscreen ? '25000' : '10000'; // Higher than fullscreen overlay
+    
+    dialog.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: ${zIndex};
+    `;
+    
+    const content = dialog.querySelector('.dialog-content');
+    content.style.cssText = `
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Store parsed data for later use
+    window.currentParsedData = parsedData;
+}
+
+function applyFilePathsAndValidate() {
+    const dialog = document.querySelector('.file-path-input-dialog');
+    if (!dialog || !window.currentParsedData) return;
+    
+    const inputs = dialog.querySelectorAll('.file-path-input');
+    const parsedData = window.currentParsedData;
+    
+    // Apply file paths to the parsed data
+    inputs.forEach(input => {
+        const type = input.dataset.type;
+        const name = input.dataset.name;
+        const filePath = input.value.trim();
+        
+        if (filePath) {
+            // Parse file path and line number
+            const fileMatch = filePath.match(/^(.+?)(?::(\d+))?$/);
+            if (fileMatch) {
+                const [, path, lineNumber] = fileMatch;
+                
+                // Find and update the item
+                const items = type === 'function' ? parsedData.functions : parsedData.variables;
+                const item = items.find(item => item.name === name);
+                if (item) {
+                    item.file_path = path;
+                    if (lineNumber) {
+                        item.line_number = parseInt(lineNumber);
+                    }
+                }
+            }
+        }
+    });
+    
+    // Remove dialog
+    dialog.remove();
+    
+    // Validate again
+    const validationResult = validateParsedData(parsedData);
+    
+    if (validationResult.valid) {
+        updateTextEditorStatus(`✅ All file paths added! Ready to save: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships`);
+        showTextEditorPreview(parsedData);
+        
+        // Store for save operation
+        window.validatedParsedData = parsedData;
+    } else {
+        updateTextEditorStatus(`❌ Still have validation errors: ${validationResult.errors.join(', ')}`, 'error');
+        showValidationErrors(validationResult.errors);
+    }
+    
+    // Clean up
+    window.currentParsedData = null;
+}
+
+function showValidationErrors(errors) {
+    const preview = document.getElementById('text-editor-fullscreen-preview') || 
+                   document.getElementById('text-editor-preview');
+    const content = document.getElementById('text-editor-fullscreen-preview-content') || 
+                   document.getElementById('text-editor-preview-content');
+    
+    if (preview && content) {
             content.innerHTML = `
                 <div class="parse-error">
                     ❌ Validation Errors:
                     <ul>
-                        ${validationResult.errors.map(error => `<li>${error}</li>`).join('')}
+                    ${errors.map(error => `<li>${error}</li>`).join('')}
                     </ul>
                 </div>
             `;
             
             preview.style.display = 'block';
-        }
-    } catch (error) {
-        updateTextEditorStatus(`❌ Parse error: ${error.message}`, 'error');
     }
 }
 
