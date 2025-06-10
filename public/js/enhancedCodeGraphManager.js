@@ -766,43 +766,51 @@ const EnhancedCodeGraphManager = (function() {
     // =================================================================
 
     function switchView(viewName) {
-        currentView = viewName;
+        // Hide all views first
+        const allViews = document.querySelectorAll('.view-container');
+        allViews.forEach(view => view.style.display = 'none');
         
-        // Update navigation buttons
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
+        // Remove active class from all nav buttons
+        const allNavBtns = document.querySelectorAll('.nav-btn');
+        allNavBtns.forEach(btn => btn.classList.remove('active'));
         
-        // Show/hide views
-        document.querySelectorAll('.view-container').forEach(view => {
-            view.style.display = 'none';
-        });
-        document.getElementById(`ecg-${viewName}-view`).style.display = 'block';
+        // Special handling for text editor - show full-screen overlay
+        if (viewName === 'text-editor') {
+            showTextEditorFullscreen();
+            return;
+        }
         
-        // Load data for the view
-        switch (viewName) {
+        // For other views, show normally
+        const targetView = document.getElementById(`ecg-${viewName}-view`);
+        if (targetView) {
+            targetView.style.display = 'block';
+        }
+        
+        // Set active nav button
+        const targetNavBtn = document.querySelector(`[data-view="${viewName}"]`);
+        if (targetNavBtn) {
+            targetNavBtn.classList.add('active');
+        }
+        
+        // Load data for specific views
+        switch(viewName) {
             case 'projects':
                 loadProjects();
                 break;
             case 'functions':
-                populateProjectSelectors();
+                loadFunctions();
                 break;
             case 'variables':
-                populateProjectSelectors();
+                loadVariables();
                 break;
-            case 'dependencies':
-                populateProjectSelectors();
+            case 'micro-dependencies':
+            case 'macro-dependencies':
+                loadDependencies();
                 break;
-            case 'graph':
-                populateProjectSelectors();
-                break;
-            case 'text-editor':
-                populateProjectSelectors();
+            case 'graph-view':
+                loadGraphVisualization();
                 break;
         }
-        
-        console.log(`Switched to ${viewName} view`);
     }
 
     // =================================================================
@@ -3742,19 +3750,26 @@ async function loadProjectForTextEditor() {
 }
 
 async function loadCurrentProjectAsText() {
-    if (!currentTextEditorProject) {
-        showStatus('Please select a project first', 'error');
+    const projectSelector = document.getElementById('text-editor-project-selector') || 
+                           document.getElementById('ecg-project-selector-text-editor');
+    const textarea = document.getElementById('text-editor-fullscreen-input') || 
+                    document.getElementById('text-editor-input');
+    
+    if (!projectSelector || !projectSelector.value) {
+        updateTextEditorStatus('Please select a project first', 'error');
         return;
     }
     
     try {
-        updateTextEditorStatus('Loading current project structure...', 'info');
+        updateTextEditorStatus('Loading project data...', 'info');
         
-        // Load project data
+        const projectId = projectSelector.value;
+        
+        // Load functions, variables, and dependencies for the project
         const [functionsResponse, variablesResponse, dependenciesResponse] = await Promise.all([
-            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/functions`),
-            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/variables`),
-            fetch(`/api/enhanced-code-graph/projects/${currentTextEditorProject}/dependencies`)
+            fetch(`/api/enhanced-code-graph/functions?projectId=${projectId}`),
+            fetch(`/api/enhanced-code-graph/variables?projectId=${projectId}`),
+            fetch(`/api/enhanced-code-graph/dependencies?projectId=${projectId}`)
         ]);
         
         const functions = await functionsResponse.json();
@@ -3762,17 +3777,18 @@ async function loadCurrentProjectAsText() {
         const dependencies = await dependenciesResponse.json();
         
         // Convert to text format
-        const textDefinition = convertProjectToTextFormat(functions, variables, dependencies);
+        const textContent = convertProjectToTextFormat(functions, variables, dependencies);
         
-        // Update textarea
-        document.getElementById('text-editor-input').value = textDefinition;
+        // Set the textarea content
+        if (textarea) {
+            textarea.value = textContent;
+        }
         
-        updateTextEditorStatus(`Loaded ${functions.length} functions, ${variables.length} variables, ${dependencies.length} relationships`);
-        showStatus('Project structure loaded into text editor');
+        updateTextEditorStatus('Project loaded successfully', 'info');
         
     } catch (error) {
-        updateTextEditorStatus('Error loading project structure', 'error');
-        showStatus('Error loading project structure: ' + error.message, 'error');
+        console.error('Error loading project:', error);
+        updateTextEditorStatus('Error loading project data', 'error');
     }
 }
 
@@ -4164,12 +4180,21 @@ function showTextEditorPreview(parsedData) {
 }
 
 function updateTextEditorStatus(message, type = 'info') {
-    const statusDiv = document.getElementById('text-editor-status');
-    if (statusDiv) {
-        statusDiv.innerHTML = `
-            <span class="status-message ${type}">${message}</span>
-            <span class="status-timestamp">${new Date().toLocaleTimeString()}</span>
-        `;
+    const statusElement = document.getElementById('text-editor-fullscreen-status') || 
+                         document.getElementById('text-editor-status');
+    
+    if (!statusElement) return;
+    
+    const messageElement = statusElement.querySelector('.status-message');
+    const timestampElement = statusElement.querySelector('.status-timestamp');
+    
+    if (messageElement) {
+        messageElement.textContent = message;
+        messageElement.className = `status-message ${type}`;
+    }
+    
+    if (timestampElement) {
+        timestampElement.textContent = new Date().toLocaleTimeString();
     }
 }
 
@@ -4353,6 +4378,124 @@ quality -> sharp.webp (passes_to) # Sets compression quality</div>
     });
 }
 
+function showTextEditorFullscreen() {
+    // Create fullscreen overlay if it doesn't exist
+    let overlay = document.getElementById('text-editor-fullscreen-overlay');
+    if (!overlay) {
+        createTextEditorFullscreen();
+        overlay = document.getElementById('text-editor-fullscreen-overlay');
+    }
+    
+    // Show the overlay
+    overlay.style.display = 'flex';
+    
+    // Populate project selector
+    populateTextEditorProjectSelector();
+}
+
+function createTextEditorFullscreen() {
+    const overlay = document.createElement('div');
+    overlay.id = 'text-editor-fullscreen-overlay';
+    overlay.className = 'text-editor-fullscreen-overlay';
+    overlay.innerHTML = `
+        <div class="text-editor-fullscreen-header">
+            <h2>📝 Text Editor - Code Graph Definition</h2>
+            <div class="text-editor-fullscreen-actions">
+                <select id="text-editor-project-selector" onchange="EnhancedCodeGraphManager.loadProjectForTextEditor()">
+                    <option value="">Select a project...</option>
+                </select>
+                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.loadCurrentProjectAsText()">📥 Load Current</button>
+                <button class="btn btn-success" onclick="EnhancedCodeGraphManager.parseAndSaveTextDefinition()">💾 Parse & Save</button>
+                <button class="btn btn-info" onclick="EnhancedCodeGraphManager.showTextEditorHelp()">❓ Help</button>
+                <button class="btn btn-secondary" onclick="EnhancedCodeGraphManager.closeTextEditorFullscreen()">✕ Close</button>
+            </div>
+        </div>
+        
+        <div class="text-editor-fullscreen-body">
+            <div class="text-editor-fullscreen-sidebar">
+                <div class="text-editor-toolbar">
+                    <h4>Quick Actions</h4>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('function')">+ Function</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('variable')">+ Variable</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('relationship')">+ Relationship</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.validateTextSyntax()">✅ Validate</button>
+                </div>
+                
+                <div class="syntax-info">
+                    <h4>Syntax Guide</h4>
+                    <div class="syntax-example"># Functions
+function myFunc(param1, param2) async
+  file: src/file.js:42
+  returns: Promise&lt;string&gt;
+  description: What it does
+
+# Variables  
+variable myVar: string = "hello"
+  scope: local
+  function: myFunc
+  description: A variable
+
+# Relationships
+myFunc -> otherFunc (calls)
+param1 -> myVar (assigns_to)</div>
+                </div>
+            </div>
+            
+            <div class="text-editor-fullscreen-main">
+                <div class="text-editor-fullscreen-editor">
+                    <div class="text-editor-fullscreen-status" id="text-editor-fullscreen-status">
+                        <span class="status-message">Ready to edit</span>
+                        <span class="status-timestamp">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    
+                    <textarea id="text-editor-fullscreen-input" class="text-editor-fullscreen-textarea" 
+                              placeholder="Start typing your code graph definition here...
+
+# Example:
+# Functions
+function generateThumbnail(inputPath, thumbPath, maxSize=180, quality=60) async
+  file: controllers/dcimController.js:68
+  description: Generate thumbnails for images and videos using Sharp and FFmpeg"></textarea>
+                </div>
+                
+                <div class="text-editor-fullscreen-preview" id="text-editor-fullscreen-preview" style="display: none;">
+                    <h4>Parsed Structure Preview</h4>
+                    <div id="text-editor-fullscreen-preview-content"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+function closeTextEditorFullscreen() {
+    const overlay = document.getElementById('text-editor-fullscreen-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    
+    // Reset to projects view
+    switchView('projects');
+}
+
+function populateTextEditorProjectSelector() {
+    const selector = document.getElementById('text-editor-project-selector');
+    if (!selector) return;
+    
+    // Clear existing options except the first one
+    selector.innerHTML = '<option value="">Select a project...</option>';
+    
+    // Add projects from the current projects data
+    if (window.enhancedCodeGraphProjects && window.enhancedCodeGraphProjects.length > 0) {
+        window.enhancedCodeGraphProjects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = project.name;
+            selector.appendChild(option);
+        });
+    }
+}
 
     return {
         initialize,
@@ -4456,7 +4599,10 @@ quality -> sharp.webp (passes_to) # Sets compression quality</div>
         parseAndSaveTextDefinition,
         insertTextTemplate,
         validateTextSyntax,
-        showTextEditorHelp
+        showTextEditorHelp,
+        showTextEditorFullscreen,
+        closeTextEditorFullscreen,
+        populateTextEditorProjectSelector
     };
 })();
 
