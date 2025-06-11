@@ -3896,6 +3896,9 @@ async function parseAndSaveTextDefinition() {
         return;
     }
     
+    const textContent = document.getElementById('text-editor-fullscreen-input')?.value.trim() || 
+                       document.getElementById('text-editor-input')?.value.trim();
+    
     // Check if we have pre-validated data
     if (window.validatedParsedData) {
         const parsedData = window.validatedParsedData;
@@ -3908,6 +3911,7 @@ async function parseAndSaveTextDefinition() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 projectId: currentTextEditorProject,
+                textDefinition: textContent,  // ← ADD THIS MISSING FIELD
                 parsedData: parsedData
             })
         });
@@ -4747,7 +4751,8 @@ function populateTextEditorProjectSelector() {
         showTextEditorHelp,
         showTextEditorFullscreen,
         closeTextEditorFullscreen,
-        populateTextEditorProjectSelector
+        populateTextEditorProjectSelector,
+        applyFilePathsAndValidate  // ← ADD THIS MISSING FUNCTION
     };
 })();
 
