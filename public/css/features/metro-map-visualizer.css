@@ -217,7 +217,8 @@
     font-weight: bold;
   }
   
-  .tab-content {
+  /* more specific selector: */
+  .metro-visualizer-container .tab-content {
     padding: 10px 0;
   }
 

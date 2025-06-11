@@ -27,7 +27,7 @@
     color: #007bff;
   }
   
-  .tab-content {
+  .blog-manager-modal .tab-content {
     overflow-y: auto;
     max-height: calc(80vh - 180px);
     padding-right: 10px;

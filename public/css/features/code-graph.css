@@ -61,11 +61,11 @@
     color: #24292e;
   }
   
-  .tab-content {
+  .code-graph-container .tab-content {
     display: none;
   }
   
-  .tab-content.active {
+  .code-graph-container .tab-content.active {
     display: block;
   }
   
