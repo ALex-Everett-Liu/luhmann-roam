@@ -3809,13 +3809,20 @@ async function loadCurrentProjectAsText() {
 }
 
 function convertProjectToTextFormat(functions, variables, dependencies) {
-    let text = '';
+    // Create lookup maps for relationships
+    const functionNames = {};
+    const variableNames = {};
     
-    // Add functions section
-    if (functions.length > 0) {
-        text += '# Functions\n\n';
         functions.forEach(func => {
-            // Parse parameters safely
+        functionNames[func.id] = func.name;
+    });
+    
+    variables.forEach(variable => {
+        variableNames[variable.id] = variable.name;
+    });
+
+    // Convert functions to export format
+    const exportFunctions = functions.map(func => {
             let parameters = [];
             try {
                 if (typeof func.parameters === 'string') {
@@ -3827,67 +3834,81 @@ function convertProjectToTextFormat(functions, variables, dependencies) {
                 console.warn('Error parsing parameters for function:', func.name, e);
             }
             
-            const paramStr = Array.isArray(parameters) ? parameters.join(', ') : '';
-            const asyncStr = func.is_async ? ' async' : '';
-            
-            text += `function ${func.name}(${paramStr})${asyncStr}\n`;
-            text += `  file: ${func.file_path}${func.line_number ? ':' + func.line_number : ''}\n`;
-            if (func.return_type) text += `  returns: ${func.return_type}\n`;
-            if (func.description) text += `  description: ${func.description}\n`;
-            text += '\n';
-        });
-    }
-    
-    // Add variables section
-    if (variables.length > 0) {
-        text += '# Variables\n\n';
-        variables.forEach(variable => {
-            const typeStr = variable.type ? `: ${variable.type}` : '';
-            const valueStr = variable.value ? ` = ${variable.value}` : '';
-            
-            text += `variable ${variable.name}${typeStr}${valueStr}\n`;
-            text += `  scope: ${variable.scope}\n`;
+        return {
+            name: func.name,
+            full_name: func.full_name || null,
+            file_path: func.file_path,
+            line_number: func.line_number || null,
+            end_line_number: func.end_line_number || null,
+            parameters: parameters,
+            return_type: func.return_type || null,
+            is_async: func.is_async ? 1 : 0,
+            is_static: func.is_static ? 1 : 0,
+            is_private: func.is_private ? 1 : 0,
+            complexity_score: func.complexity_score || 1,
+            description: func.description || null,
+            tags: func.tags || [],
+            metadata: func.metadata || {}
+        };
+    });
+
+    // Convert variables to export format
+    const exportVariables = variables.map(variable => {
+        // Find function name for function_name field
+        let functionName = null;
             if (variable.function_id) {
                 const func = functions.find(f => f.id === variable.function_id);
-                if (func) text += `  function: ${func.name}\n`;
-            }
-            text += `  file: ${variable.file_path}${variable.line_number ? ':' + variable.line_number : ''}\n`;
-            if (variable.description) text += `  description: ${variable.description}\n`;
-            text += '\n';
-        });
-    }
-    
-    // Add relationships section
-    if (dependencies.length > 0) {
-        text += '# Relationships\n\n';
-        
-        // Create lookup maps for names
-        const functionNames = {};
-        const variableNames = {};
-        
-        functions.forEach(func => {
-            functionNames[func.id] = func.name;
-        });
-        
-        variables.forEach(variable => {
-            variableNames[variable.id] = variable.name;
-        });
-        
-        dependencies.forEach(dep => {
+            if (func) functionName = func.name;
+        }
+
+        return {
+            name: variable.name,
+            type: variable.type || null,
+            value: variable.value || null,
+            file_path: variable.file_path,
+            line_number: variable.line_number || null,
+            scope: variable.scope || 'local',
+            declaration_type: variable.declaration_type || null,
+            mutability: variable.mutability || 'mutable',
+            is_exported: variable.is_exported ? 1 : 0,
+            description: variable.description || null,
+            tags: variable.tags || [],
+            metadata: variable.metadata || {},
+            function_name: functionName
+        };
+    });
+
+    // Convert relationships to export format
+    const exportRelationships = dependencies.map(dep => {
             const sourceName = dep.source_type === 'function' ? 
                 functionNames[dep.source_id] : variableNames[dep.source_id];
             const targetName = dep.target_type === 'function' ? 
                 functionNames[dep.target_id] : variableNames[dep.target_id];
             
-            if (sourceName && targetName) {
-                text += `${sourceName} -> ${targetName} (${dep.relationship_type})`;
-                if (dep.context) text += ` # ${dep.context}`;
-                text += '\n';
-            }
-        });
-    }
-    
-    return text;
+        return {
+            source: sourceName,
+            target: targetName,
+            source_type: dep.source_type,
+            target_type: dep.target_type,
+            type: dep.relationship_type,
+            relationship_type: dep.relationship_type,
+            relationship_strength: dep.relationship_strength || 0.5,
+            context: dep.context || null,
+            line_number: dep.line_number || null,
+            order_sequence: dep.order_sequence || 1,
+            description: dep.description || null,
+            metadata: dep.metadata || {}
+        };
+    }).filter(rel => rel.source && rel.target); // Only include valid relationships
+
+    // Create the JSON structure
+    const jsonStructure = {
+        functions: exportFunctions,
+        variables: exportVariables,
+        relationships: exportRelationships
+    };
+
+    return JSON.stringify(jsonStructure, null, 2);
 }
 
 async function parseAndSaveTextDefinition() {
@@ -3943,155 +3964,74 @@ async function parseAndSaveTextDefinition() {
 }
 
 function parseTextDefinition(textContent) {
-    const lines = textContent.split('\n');
+    try {
+        // Try to parse as JSON first
+        const jsonData = JSON.parse(textContent);
+        
+        // Validate JSON structure
+        if (jsonData && typeof jsonData === 'object') {
     const result = {
-        functions: [],
-        variables: [],
-        relationships: []
-    };
-    
-    let currentSection = null;
-    let currentItem = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        
-        // Skip empty lines and comments (except section headers)
-        if (!line || (line.startsWith('#') && !line.match(/^# (Functions|Variables|Relationships)$/))) {
-            continue;
-        }
-        
-        // Section headers
-        if (line.startsWith('# ')) {
-            const sectionName = line.substring(2).toLowerCase();
-            if (['functions', 'variables', 'relationships'].includes(sectionName)) {
-                currentSection = sectionName;
-                currentItem = null;
-                continue;
-            }
-        }
-        
-        // Function definitions
-        if (currentSection === 'functions' && line.startsWith('function ')) {
-            currentItem = parseFunctionLine(line);
-            if (currentItem) {
-                result.functions.push(currentItem);
-            }
-            continue;
-        }
-        
-        // Variable definitions
-        if (currentSection === 'variables' && line.startsWith('variable ')) {
-            currentItem = parseVariableLine(line);
-            if (currentItem) {
-                result.variables.push(currentItem);
-            }
-            continue;
-        }
-        
-        // Relationship definitions
-        if (currentSection === 'relationships' && line.includes(' -> ')) {
-            const relationship = parseRelationshipLine(line);
-            if (relationship) {
-                result.relationships.push(relationship);
-            }
-            continue;
-        }
-        
-        // Property lines (indented)
-        if (line.startsWith('  ') && currentItem) {
-            parsePropertyLine(line, currentItem);
-        }
-    }
+                functions: jsonData.functions || [],
+                variables: jsonData.variables || [],
+                relationships: jsonData.relationships || []
+            };
+            
+            // Validate and normalize the data
+            result.functions = result.functions.map(func => ({
+                name: func.name,
+                full_name: func.full_name || null,
+                file_path: func.file_path || null,
+                line_number: func.line_number || null,
+                end_line_number: func.end_line_number || null,
+                parameters: Array.isArray(func.parameters) ? func.parameters : [],
+                return_type: func.return_type || null,
+                is_async: func.is_async === 1 || func.is_async === true,
+                is_static: func.is_static === 1 || func.is_static === true,
+                is_private: func.is_private === 1 || func.is_private === true,
+                complexity_score: func.complexity_score || 1,
+                description: func.description || null,
+                tags: Array.isArray(func.tags) ? func.tags : [],
+                metadata: func.metadata || {}
+            }));
+
+            result.variables = result.variables.map(variable => ({
+                name: variable.name,
+                type: variable.type || null,
+                value: variable.value || null,
+                file_path: variable.file_path || null,
+                line_number: variable.line_number || null,
+                scope: variable.scope || 'local',
+                declaration_type: variable.declaration_type || null,
+                mutability: variable.mutability || 'mutable',
+                is_exported: variable.is_exported === 1 || variable.is_exported === true,
+                description: variable.description || null,
+                tags: Array.isArray(variable.tags) ? variable.tags : [],
+                metadata: variable.metadata || {},
+                function_name: variable.function_name || null
+            }));
+
+            result.relationships = result.relationships.map(rel => ({
+                source: rel.source,
+                target: rel.target,
+                source_type: rel.source_type || 'function',
+                target_type: rel.target_type || 'function',
+                relationship_type: rel.relationship_type || rel.type || 'uses',
+                relationship_strength: rel.relationship_strength || 0.5,
+                context: rel.context || null,
+                line_number: rel.line_number || null,
+                order_sequence: rel.order_sequence || 1,
+                description: rel.description || null,
+                metadata: rel.metadata || {}
+            }));
     
     return result;
 }
-
-function parseFunctionLine(line) {
-    // Parse: function functionName(param1, param2) async
-    const match = line.match(/^function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)\s*(async)?/);
-    if (!match) return null;
-    
-    const [, name, paramsStr, asyncFlag] = match;
-    const parameters = paramsStr.split(',').map(p => p.trim()).filter(p => p);
-    
-    return {
-        name,
-        parameters,
-        is_async: !!asyncFlag,
-        file_path: null,
-        line_number: null,
-        description: null,
-        return_type: null
-    };
-}
-
-function parseVariableLine(line) {
-    // Parse: variable varName: type = value
-    const match = line.match(/^variable\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?::\s*([a-zA-Z_$][a-zA-Z0-9_$]*))?\s*(?:=\s*(.+))?/);
-    if (!match) return null;
-    
-    const [, name, type, value] = match;
-    
-    return {
-        name,
-        type: type || null,
-        value: value || null,
-        scope: 'local',
-        file_path: null,
-        line_number: null,
-        description: null,
-        function_name: null
-    };
-}
-
-function parseRelationshipLine(line) {
-    // Parse: source -> target (relationship_type) # optional comment
-    const match = line.match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*->\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]+)\)\s*(?:#\s*(.+))?/);
-    if (!match) return null;
-    
-    const [, source, target, relationshipType, context] = match;
-    
-    return {
-        source,
-        target,
-        relationship_type: relationshipType.trim(),
-        context: context ? context.trim() : null
-    };
-}
-
-function parsePropertyLine(line, currentItem) {
-    // Parse indented property lines like "  file: src/file.js:42"
-    const trimmed = line.trim();
-    const colonIndex = trimmed.indexOf(':');
-    if (colonIndex === -1) return;
-    
-    const key = trimmed.substring(0, colonIndex).trim();
-    const value = trimmed.substring(colonIndex + 1).trim();
-    
-    switch (key) {
-        case 'file':
-            const fileMatch = value.match(/^(.+?)(?::(\d+))?$/);
-            if (fileMatch) {
-                currentItem.file_path = fileMatch[1];
-                if (fileMatch[2]) {
-                    currentItem.line_number = parseInt(fileMatch[2]);
-                }
-            }
-            break;
-        case 'description':
-            currentItem.description = value;
-            break;
-        case 'returns':
-            currentItem.return_type = value;
-            break;
-        case 'scope':
-            currentItem.scope = value;
-            break;
-        case 'function':
-            currentItem.function_name = value;
-            break;
+    } catch (e) {
+        // If JSON parsing fails, throw a helpful error
+        throw new Error(`Invalid JSON format. Please use valid JSON structure matching the export format. Error: ${e.message}`);
     }
+    
+    throw new Error('Invalid data format. Expected JSON object with functions, variables, and relationships arrays.');
 }
 
 function validateParsedData(parsedData) {
@@ -4206,7 +4146,11 @@ function updateTextEditorStatus(message, type = 'info') {
 }
 
 function insertTextTemplate(type) {
-    const textarea = document.getElementById('text-editor-input');
+    const textarea = document.getElementById('text-editor-fullscreen-input') || 
+                    document.getElementById('text-editor-input');
+    
+    if (!textarea) return;
+    
     const cursor = textarea.selectionStart;
     const textBefore = textarea.value.substring(0, cursor);
     const textAfter = textarea.value.substring(cursor);
@@ -4215,25 +4159,86 @@ function insertTextTemplate(type) {
     
     switch (type) {
         case 'function':
-            template = `function myFunction(param1, param2) async
-  file: src/myfile.js:42
-  returns: Promise<string>
-  description: Description of what this function does
-
-`;
+            template = `{
+  "name": "myFunction",
+  "file_path": "src/myfile.js",
+  "line_number": 42,
+  "parameters": ["param1", "param2"],
+  "is_async": true,
+  "return_type": "Promise<string>",
+  "description": "Description of what this function does",
+  "tags": [],
+  "metadata": {}
+}`;
             break;
         case 'variable':
-            template = `variable myVariable: string = "initial value"
-  scope: local
-  function: myFunction
-  description: Description of this variable
-
-`;
+            template = `{
+  "name": "myVariable",
+  "type": "string",
+  "value": "initial value",
+  "file_path": "src/myfile.js",
+  "line_number": 45,
+  "scope": "local",
+  "function_name": "myFunction",
+  "description": "Description of this variable",
+  "tags": [],
+  "metadata": {}
+}`;
             break;
         case 'relationship':
-            template = `sourceElement -> targetElement (relationship_type) # optional context
-
-`;
+            template = `{
+  "source": "sourceElement",
+  "target": "targetElement",
+  "source_type": "function",
+  "target_type": "variable",
+  "relationship_type": "contains",
+  "relationship_strength": 1.0,
+  "context": "optional context",
+  "description": "optional description"
+}`;
+            break;
+        case 'complete':
+            template = `{
+  "functions": [
+    {
+      "name": "generateThumbnail",
+      "file_path": "controllers/dcimController.js",
+      "line_number": 68,
+      "parameters": ["inputPath", "thumbPath", "maxSize", "quality"],
+      "is_async": true,
+      "return_type": "Promise<void>",
+      "description": "Generate thumbnails for images and videos using Sharp and FFmpeg",
+      "tags": [],
+      "metadata": {}
+    }
+  ],
+  "variables": [
+    {
+      "name": "isVideo",
+      "type": "boolean",
+      "value": "",
+      "file_path": "controllers/dcimController.js",
+      "line_number": 70,
+      "scope": "local",
+      "function_name": "generateThumbnail",
+      "description": "Boolean indicating if file is video format",
+      "tags": [],
+      "metadata": {}
+    }
+  ],
+  "relationships": [
+    {
+      "source": "generateThumbnail",
+      "target": "isVideo",
+      "source_type": "function",
+      "target_type": "variable",
+      "relationship_type": "contains",
+      "relationship_strength": 1.0,
+      "context": null,
+      "description": null
+    }
+  ]
+}`;
             break;
     }
     
@@ -4545,10 +4550,21 @@ function showTextEditorFullscreen() {
 function createTextEditorFullscreen() {
     const overlay = document.createElement('div');
     overlay.id = 'text-editor-fullscreen-overlay';
-    overlay.className = 'text-editor-fullscreen-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        z-index: 20000;
+    `;
+
     overlay.innerHTML = `
         <div class="text-editor-fullscreen-header">
-            <h2>📝 Text Editor - Code Graph Definition</h2>
+            <h2>📝 JSON Text Editor - Code Graph Definition</h2>
             <div class="text-editor-fullscreen-actions">
                 <select id="text-editor-project-selector" onchange="EnhancedCodeGraphManager.loadProjectForTextEditor()">
                     <option value="">Select a project...</option>
@@ -4563,48 +4579,63 @@ function createTextEditorFullscreen() {
         <div class="text-editor-fullscreen-body">
             <div class="text-editor-fullscreen-sidebar">
                 <div class="text-editor-toolbar">
-                    <h4>Quick Actions</h4>
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('function')">+ Function</button>
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('variable')">+ Variable</button>
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('relationship')">+ Relationship</button>
-                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.validateTextSyntax()">✅ Validate</button>
+                    <h4>Quick Templates</h4>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('complete')">📋 Complete Example</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('function')">⚡ Function</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('variable')">📊 Variable</button>
+                    <button class="btn btn-sm btn-secondary" onclick="EnhancedCodeGraphManager.insertTextTemplate('relationship')">🔗 Relationship</button>
+                    <button class="btn btn-sm btn-success" onclick="EnhancedCodeGraphManager.validateTextSyntax()">✅ Validate JSON</button>
                 </div>
                 
                 <div class="syntax-info">
-                    <h4>Syntax Guide</h4>
-                    <div class="syntax-example"># Functions
-function myFunc(param1, param2) async
-  file: src/file.js:42
-  returns: Promise&lt;string&gt;
-  description: What it does
+                    <h4>JSON Format Guide</h4>
+                    <div class="syntax-example">
+<strong>Functions:</strong>
+{
+  "name": "myFunc",
+  "file_path": "src/file.js",
+  "line_number": 42,
+  "parameters": ["param1"],
+  "is_async": true,
+  "description": "What it does"
+}
 
-# Variables  
-variable myVar: string = "hello"
-  scope: local
-  function: myFunc
-  description: A variable
+<strong>Variables:</strong>
+{
+  "name": "myVar",
+  "type": "string",
+  "scope": "local",
+  "function_name": "myFunc"
+}
 
-# Relationships
-myFunc -> otherFunc (calls)
-param1 -> myVar (assigns_to)</div>
+<strong>Relationships:</strong>
+{
+  "source": "myFunc",
+  "target": "myVar",
+  "relationship_type": "contains"
+}
+                    </div>
                 </div>
             </div>
             
             <div class="text-editor-fullscreen-main">
                 <div class="text-editor-fullscreen-editor">
                     <div class="text-editor-fullscreen-status" id="text-editor-fullscreen-status">
-                        <span class="status-message">Ready to edit</span>
-                        <span class="status-timestamp">${new Date().toLocaleTimeString()}</span>
+                        <span class="status-message">Ready to edit JSON</span>
+                        <span class="status-timestamp"></span>
                     </div>
                     
                     <textarea id="text-editor-fullscreen-input" class="text-editor-fullscreen-textarea" 
-                              placeholder="Start typing your code graph definition here...
+                              placeholder="Paste or write your JSON code graph definition here...
 
-# Example:
-# Functions
-function generateThumbnail(inputPath, thumbPath, maxSize=180, quality=60) async
-  file: controllers/dcimController.js:68
-  description: Generate thumbnails for images and videos using Sharp and FFmpeg"></textarea>
+Example structure:
+{
+  &quot;functions&quot;: [...],
+  &quot;variables&quot;: [...],
+  &quot;relationships&quot;: [...]
+}
+
+Use the template buttons to get started!"></textarea>
                 </div>
                 
                 <div class="text-editor-fullscreen-preview" id="text-editor-fullscreen-preview" style="display: none;">
