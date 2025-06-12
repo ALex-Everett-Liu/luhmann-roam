@@ -4027,14 +4027,33 @@ function parseTextDefinition(textContent) {
     return result;
 }
     } catch (e) {
-        // If JSON parsing fails, throw a helpful error
-        throw new Error(`Invalid JSON format. Please use valid JSON structure matching the export format. Error: ${e.message}`);
+        // Enhanced error handling with specific guidance
+        let errorMessage = `Invalid JSON format. Error: ${e.message}`;
+        
+        // Check for common JSON errors and provide helpful hints
+        if (e.message.includes('Unexpected token')) {
+            if (e.message.includes("Unexpected token ','")) {
+                errorMessage += '\n\n💡 Hint: You likely have a trailing comma after the last item in an array or object. JSON doesn\'t allow trailing commas.';
+            } else if (e.message.includes("Unexpected token '}'")) {
+                errorMessage += '\n\n💡 Hint: You might be missing a comma between object properties or array items.';
+            } else if (e.message.includes("Unexpected token ']'")) {
+                errorMessage += '\n\n💡 Hint: Check for trailing commas in your arrays - remove any comma after the last element.';
+            }
+        } else if (e.message.includes('Unexpected end of JSON input')) {
+            errorMessage += '\n\n💡 Hint: Your JSON appears to be incomplete. Check for missing closing brackets } or ].';
+        } else if (e.message.includes('Unexpected string')) {
+            errorMessage += '\n\n💡 Hint: You might be missing a comma between properties or have unescaped quotes in a string value.';
+        }
+        
+        errorMessage += '\n\nPlease use valid JSON structure matching the export format.';
+        
+        throw new Error(errorMessage);
     }
     
     throw new Error('Invalid data format. Expected JSON object with functions, variables, and relationships arrays.');
 }
 
-function validateParsedData(parsedData) {
+async function validateParsedData(parsedData) {
     const errors = [];
     
     // Validate functions
@@ -4057,25 +4076,79 @@ function validateParsedData(parsedData) {
         }
     });
     
-    // Validate relationships
-    const functionNames = new Set(parsedData.functions.map(f => f.name));
-    const variableNames = new Set(parsedData.variables.map(v => v.name));
-    const allNames = new Set([...functionNames, ...variableNames]);
-    
-    parsedData.relationships.forEach((rel, index) => {
-        if (!allNames.has(rel.source)) {
-            errors.push(`Relationship at index ${index}: source '${rel.source}' not found in functions or variables`);
+    // Enhanced relationship validation - check against database + current input
+    if (currentTextEditorProject) {
+        try {
+            // Load existing functions and variables from database
+            const [functionsResponse, variablesResponse] = await Promise.all([
+                fetch(`/api/enhanced-code-graph/functions?projectId=${currentTextEditorProject}`),
+                fetch(`/api/enhanced-code-graph/variables?projectId=${currentTextEditorProject}`)
+            ]);
+            
+            const existingFunctions = await functionsResponse.json();
+            const existingVariables = await variablesResponse.json();
+            
+            // Combine existing + new items
+            const allFunctionNames = new Set([
+                ...existingFunctions.map(f => f.name),
+                ...parsedData.functions.map(f => f.name)
+            ]);
+            
+            const allVariableNames = new Set([
+                ...existingVariables.map(v => v.name),
+                ...parsedData.variables.map(v => v.name)
+            ]);
+            
+            const allNames = new Set([...allFunctionNames, ...allVariableNames]);
+            
+            // Validate relationships against combined set
+            parsedData.relationships.forEach((rel, index) => {
+                if (!allNames.has(rel.source)) {
+                    errors.push(`Relationship at index ${index}: source '${rel.source}' not found in existing project or current input`);
+                }
+                if (!allNames.has(rel.target)) {
+                    errors.push(`Relationship at index ${index}: target '${rel.target}' not found in existing project or current input`);
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error loading existing project data for validation:', error);
+            // Fallback to basic validation if database check fails
+            const functionNames = new Set(parsedData.functions.map(f => f.name));
+            const variableNames = new Set(parsedData.variables.map(v => v.name));
+            const allNames = new Set([...functionNames, ...variableNames]);
+            
+            parsedData.relationships.forEach((rel, index) => {
+                if (!allNames.has(rel.source)) {
+                    errors.push(`Relationship at index ${index}: source '${rel.source}' not found in current input (database check failed)`);
+                }
+                if (!allNames.has(rel.target)) {
+                    errors.push(`Relationship at index ${index}: target '${rel.target}' not found in current input (database check failed)`);
+                }
+            });
         }
-        if (!allNames.has(rel.target)) {
-            errors.push(`Relationship at index ${index}: target '${rel.target}' not found in functions or variables`);
-        }
-    });
+    } else {
+        // No project selected - only validate against current input
+        const functionNames = new Set(parsedData.functions.map(f => f.name));
+        const variableNames = new Set(parsedData.variables.map(v => v.name));
+        const allNames = new Set([...functionNames, ...variableNames]);
+        
+        parsedData.relationships.forEach((rel, index) => {
+            if (!allNames.has(rel.source)) {
+                errors.push(`Relationship at index ${index}: source '${rel.source}' not found in functions or variables`);
+            }
+            if (!allNames.has(rel.target)) {
+                errors.push(`Relationship at index ${index}: target '${rel.target}' not found in functions or variables`);
+            }
+        });
+    }
     
     return {
         valid: errors.length === 0,
         errors
     };
 }
+
 
 function showTextEditorPreview(parsedData) {
     const preview = document.getElementById('text-editor-preview');
@@ -4247,7 +4320,8 @@ function insertTextTemplate(type) {
     textarea.focus();
 }
 
-function validateTextSyntax() {
+// Update the validateTextSyntax function to handle async validation
+async function validateTextSyntax() {
     const textContent = document.getElementById('text-editor-fullscreen-input')?.value.trim() || 
                        document.getElementById('text-editor-input')?.value.trim();
     
@@ -4257,13 +4331,20 @@ function validateTextSyntax() {
     }
     
     try {
-        console.log('=== VALIDATING TEXT SYNTAX ===');
+        console.log('=== VALIDATING JSON SYNTAX ===');
         const parsedData = parseTextDefinition(textContent);
-        const validationResult = validateParsedData(parsedData);
+        
+        // Show loading status while validating
+        updateTextEditorStatus('Validating against existing project data...', 'info');
+        
+        const validationResult = await validateParsedData(parsedData);
         
         if (validationResult.valid) {
-            updateTextEditorStatus(`✅ Syntax valid: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships`);
+            updateTextEditorStatus(`✅ JSON valid: ${parsedData.functions.length} functions, ${parsedData.variables.length} variables, ${parsedData.relationships.length} relationships`);
             showTextEditorPreview(parsedData);
+            
+            // Store validated data for saving
+            window.validatedParsedData = parsedData;
         } else {
             // Check if the only errors are missing file paths
             const onlyFilePathErrors = validationResult.errors.every(error => 
@@ -4272,14 +4353,43 @@ function validateTextSyntax() {
             
             if (onlyFilePathErrors) {
                 showFilePathInputDialog(parsedData, validationResult.errors);
-        } else {
-            updateTextEditorStatus(`❌ Validation errors: ${validationResult.errors.join(', ')}`, 'error');
+            } else {
+                updateTextEditorStatus(`❌ Validation errors: ${validationResult.errors.join(', ')}`, 'error');
                 showValidationErrors(validationResult.errors);
             }
         }
     } catch (error) {
-        console.error('Validation error:', error);
-        updateTextEditorStatus(`❌ Parse error: ${error.message}`, 'error');
+        console.error('JSON Parse error:', error);
+        
+        // Show detailed error in the status and preview
+        updateTextEditorStatus(`❌ JSON Parse Error`, 'error');
+        
+        // Show detailed error in preview area
+        const preview = document.getElementById('text-editor-fullscreen-preview') || 
+                       document.getElementById('text-editor-preview');
+        const content = document.getElementById('text-editor-fullscreen-preview-content') || 
+                       document.getElementById('text-editor-preview-content');
+        
+        if (preview && content) {
+            content.innerHTML = `
+                <div class="parse-error">
+                    <h4>❌ JSON Syntax Error</h4>
+                    <pre style="background: #f8f8f8; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace;">${error.message}</pre>
+                    
+                    <div style="margin-top: 15px;">
+                        <h5>🔧 Quick Fixes:</h5>
+                        <ul style="text-align: left;">
+                            <li>Remove trailing commas after the last item in arrays and objects</li>
+                            <li>Ensure all strings are properly quoted with double quotes</li>
+                            <li>Check that all brackets and braces are properly closed</li>
+                            <li>Use the template buttons to insert valid JSON structures</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            preview.style.display = 'block';
+        }
     }
 }
 
