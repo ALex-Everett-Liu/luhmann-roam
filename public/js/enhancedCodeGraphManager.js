@@ -4079,55 +4079,72 @@ async function validateParsedData(parsedData) {
     // Enhanced relationship validation - check against database + current input
     if (currentTextEditorProject) {
         try {
+            console.log('Loading existing project data for validation...');
+            
             // Load existing functions and variables from database
             const [functionsResponse, variablesResponse] = await Promise.all([
                 fetch(`/api/enhanced-code-graph/functions?projectId=${currentTextEditorProject}`),
                 fetch(`/api/enhanced-code-graph/variables?projectId=${currentTextEditorProject}`)
             ]);
             
-            const existingFunctions = await functionsResponse.json();
-            const existingVariables = await variablesResponse.json();
-            
-            // Combine existing + new items
-            const allFunctionNames = new Set([
-                ...existingFunctions.map(f => f.name),
-                ...parsedData.functions.map(f => f.name)
-            ]);
-            
-            const allVariableNames = new Set([
-                ...existingVariables.map(v => v.name),
-                ...parsedData.variables.map(v => v.name)
-            ]);
-            
-            const allNames = new Set([...allFunctionNames, ...allVariableNames]);
-            
-            // Validate relationships against combined set
-            parsedData.relationships.forEach((rel, index) => {
-                if (!allNames.has(rel.source)) {
-                    errors.push(`Relationship at index ${index}: source '${rel.source}' not found in existing project or current input`);
-                }
-                if (!allNames.has(rel.target)) {
-                    errors.push(`Relationship at index ${index}: target '${rel.target}' not found in existing project or current input`);
-                }
-            });
+            if (functionsResponse.ok && variablesResponse.ok) {
+                const existingFunctions = await functionsResponse.json();
+                const existingVariables = await variablesResponse.json();
+                
+                console.log(`Found ${existingFunctions.length} existing functions and ${existingVariables.length} existing variables`);
+                
+                // Combine existing + new items
+                const allFunctionNames = new Set([
+                    ...existingFunctions.map(f => f.name),
+                    ...parsedData.functions.map(f => f.name)
+                ]);
+                
+                const allVariableNames = new Set([
+                    ...existingVariables.map(v => v.name),
+                    ...parsedData.variables.map(v => v.name)
+                ]);
+                
+                const allNames = new Set([...allFunctionNames, ...allVariableNames]);
+                
+                console.log('All available names for validation:', Array.from(allNames));
+                
+                // Validate relationships against combined set
+                parsedData.relationships.forEach((rel, index) => {
+                    if (!allNames.has(rel.source)) {
+                        errors.push(`Relationship at index ${index}: source '${rel.source}' not found in existing project or current input`);
+                    }
+                    if (!allNames.has(rel.target)) {
+                        errors.push(`Relationship at index ${index}: target '${rel.target}' not found in existing project or current input`);
+                    }
+                });
+            } else {
+                console.warn('Failed to load existing project data, falling back to current input validation');
+                throw new Error('API calls failed');
+            }
             
         } catch (error) {
             console.error('Error loading existing project data for validation:', error);
+            console.log('Falling back to basic validation against current input only');
+            
             // Fallback to basic validation if database check fails
             const functionNames = new Set(parsedData.functions.map(f => f.name));
             const variableNames = new Set(parsedData.variables.map(v => v.name));
             const allNames = new Set([...functionNames, ...variableNames]);
             
+            console.log('Current input names for validation:', Array.from(allNames));
+            
             parsedData.relationships.forEach((rel, index) => {
                 if (!allNames.has(rel.source)) {
-                    errors.push(`Relationship at index ${index}: source '${rel.source}' not found in current input (database check failed)`);
+                    errors.push(`Relationship at index ${index}: source '${rel.source}' not found in current input (Note: Database validation failed - some existing items may not be checked)`);
                 }
                 if (!allNames.has(rel.target)) {
-                    errors.push(`Relationship at index ${index}: target '${rel.target}' not found in current input (database check failed)`);
+                    errors.push(`Relationship at index ${index}: target '${rel.target}' not found in current input (Note: Database validation failed - some existing items may not be checked)`);
                 }
             });
         }
     } else {
+        console.log('No project selected - validating against current input only');
+        
         // No project selected - only validate against current input
         const functionNames = new Set(parsedData.functions.map(f => f.name));
         const variableNames = new Set(parsedData.variables.map(v => v.name));

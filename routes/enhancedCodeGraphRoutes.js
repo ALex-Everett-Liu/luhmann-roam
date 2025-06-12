@@ -54,6 +54,39 @@ router.delete('/dependencies/:dependencyId', enhancedCodeGraphController.deleteD
 router.get('/projects/:projectId/dependencies', enhancedCodeGraphController.getDependenciesByProject);
 
 // =================================================================
+// QUERY ROUTES (for validation and text editor)
+// =================================================================
+// Functions by project (query parameter style)
+router.get('/functions', (req, res) => {
+    const projectId = req.query.projectId;
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId query parameter is required' });
+    }
+    req.params.projectId = projectId;
+    enhancedCodeGraphController.getFunctionsByProject(req, res);
+  });
+  
+  // Variables by project (query parameter style)
+  router.get('/variables', (req, res) => {
+    const projectId = req.query.projectId;
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId query parameter is required' });
+    }
+    req.params.projectId = projectId;
+    enhancedCodeGraphController.getVariablesByProject(req, res);
+  });
+  
+  // Dependencies by project (query parameter style)
+  router.get('/dependencies', (req, res) => {
+    const projectId = req.query.projectId;
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId query parameter is required' });
+    }
+    req.params.projectId = projectId;
+    enhancedCodeGraphController.getDependenciesByProject(req, res);
+  });
+
+// =================================================================
 // TEMPLATE ROUTES
 // =================================================================
 router.get('/templates', enhancedCodeGraphController.getAvailableTemplates);
