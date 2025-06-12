@@ -1708,7 +1708,7 @@ class EnhancedCodeGraphController {
       // Process functions
       const importedFunctionNames = new Set(template.functions.map(f => f.name));
       
-      for (const funcData of template.functions) {
+      for (const funcData of parsedData.variables) {
         const existingFunc = existingFunctionMap.get(funcData.name);
         
         if (existingFunc) {
@@ -1750,7 +1750,7 @@ class EnhancedCodeGraphController {
             tags: funcData.tags,
             metadata: funcData.metadata
           });
-          functionNameToId.set(funcData.name, functionId);
+          functionNameToId.set(funcData.name, existingFunc.id);
           updateStats.functionsAdded++;
           console.log(`Added function: ${funcData.name}`);
         }
@@ -1770,7 +1770,7 @@ class EnhancedCodeGraphController {
       // Process variables
       const importedVariableNames = new Set(template.variables.map(v => v.name));
       
-      for (const varData of template.variables) {
+      for (const varData of parsedData.variables) {
         const existingVar = existingVariableMap.get(varData.name);
         
         // Map function name to function ID
@@ -1816,7 +1816,7 @@ class EnhancedCodeGraphController {
             tags: varData.tags,
             metadata: varData.metadata
           });
-          variableNameToId.set(varData.name, variableId);
+          variableNameToId.set(varData.name, existingVar.id);
           updateStats.variablesAdded++;
           console.log(`Added variable: ${varData.name}`);
         }
@@ -2276,6 +2276,7 @@ class EnhancedCodeGraphController {
     
     try {
         console.log(`Processing text definition for project: ${projectId}`);
+        console.log('Parsed data received:', JSON.stringify(parsedData, null, 2));
         
         const stats = {
             functionsProcessed: 0,
@@ -2289,8 +2290,12 @@ class EnhancedCodeGraphController {
         };
         
         // Get existing project data
+        console.log('Loading existing project data...');
         const existingFunctions = await this.getFunctionsByProject(projectId);
         const existingVariables = await this.getVariablesByProject(projectId);
+        
+        console.log(`Found ${existingFunctions.length} existing functions:`, existingFunctions.map(f => f.name));
+        console.log(`Found ${existingVariables.length} existing variables:`, existingVariables.map(v => v.name));
         
         // Create lookup maps
         const existingFunctionMap = new Map();
@@ -2304,9 +2309,23 @@ class EnhancedCodeGraphController {
             existingVariableMap.set(variable.name, variable);
         });
         
-        // Track new IDs for relationships
+        // Track new IDs for relationships - POPULATE WITH EXISTING ITEMS FIRST
         const functionNameToId = new Map();
         const variableNameToId = new Map();
+        
+        // Populate maps with existing database items
+        existingFunctions.forEach(func => {
+            functionNameToId.set(func.name, func.id);
+            console.log(`Mapped function: ${func.name} -> ${func.id}`);
+        });
+        
+        existingVariables.forEach(variable => {
+            variableNameToId.set(variable.name, variable.id);
+            console.log(`Mapped variable: ${variable.name} -> ${variable.id}`);
+        });
+        
+        console.log('Available functions for relationships:', Array.from(functionNameToId.keys()));
+        console.log('Available variables for relationships:', Array.from(variableNameToId.keys()));
         
         // Process functions
         for (const funcData of parsedData.functions) {
@@ -2395,14 +2414,25 @@ class EnhancedCodeGraphController {
             stats.variablesProcessed++;
         }
         
-        // Process relationships (always create new ones for now, could be enhanced to update existing)
+        // Process relationships
+        console.log(`Processing ${parsedData.relationships.length} relationships...`);
         for (const relData of parsedData.relationships) {
+            console.log(`\n=== Processing relationship ===`);
+            console.log(`Source: '${relData.source}' (type: ${relData.source_type})`);
+            console.log(`Target: '${relData.target}' (type: ${relData.target_type})`);
+            console.log(`Relationship: ${relData.relationship_type}`);
+            
             const sourceId = functionNameToId.get(relData.source) || variableNameToId.get(relData.source);
             const targetId = functionNameToId.get(relData.target) || variableNameToId.get(relData.target);
+            
+            console.log(`Source ID lookup: '${relData.source}' -> ${sourceId}`);
+            console.log(`Target ID lookup: '${relData.target}' -> ${targetId}`);
             
             if (sourceId && targetId) {
                 const sourceType = functionNameToId.has(relData.source) ? 'function' : 'variable';
                 const targetType = functionNameToId.has(relData.target) ? 'function' : 'variable';
+                
+                console.log(`Determined types: source=${sourceType}, target=${targetType}`);
                 
                 // Check if relationship already exists
                 const existingRelationships = await this.getDependenciesByProject(projectId);
@@ -2413,6 +2443,7 @@ class EnhancedCodeGraphController {
                 );
                 
                 if (!relationshipExists) {
+                    console.log('Creating new relationship...');
                     await this.createDependency({
                         project_id: projectId,
                         source_type: sourceType,
@@ -2422,14 +2453,20 @@ class EnhancedCodeGraphController {
                         relationship_type: relData.relationship_type,
                         relationship_strength: 0.8,
                         context: relData.context,
-                        description: `Text definition: ${relData.source} ${relData.relationship_type} ${relData.target}`
+                        description: relData.description || `Text definition: ${relData.source} ${relData.relationship_type} ${relData.target}`
                     });
                     
                     stats.relationshipsCreated++;
-                    console.log(`Created relationship: ${relData.source} -> ${relData.target} (${relData.relationship_type})`);
+                    console.log(`✅ Created relationship: ${relData.source} -> ${relData.target} (${relData.relationship_type})`);
+                } else {
+                    console.log(`⚠️ Relationship already exists: ${relData.source} -> ${relData.target} (${relData.relationship_type})`);
                 }
             } else {
-                console.warn(`Skipping relationship - missing source or target: ${relData.source} -> ${relData.target}`);
+                console.error(`❌ Skipping relationship - missing source or target:`);
+                console.error(`  Source '${relData.source}': ${sourceId ? 'FOUND' : 'NOT FOUND'}`);
+                console.error(`  Target '${relData.target}': ${targetId ? 'FOUND' : 'NOT FOUND'}`);
+                console.error(`  Available functions: [${Array.from(functionNameToId.keys()).join(', ')}]`);
+                console.error(`  Available variables: [${Array.from(variableNameToId.keys()).join(', ')}]`);
             }
             
             stats.relationshipsProcessed++;
