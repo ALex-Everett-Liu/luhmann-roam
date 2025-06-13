@@ -160,6 +160,7 @@ const EnhancedCodeGraphManager = (function() {
                                     <option value="object">Object</option>
                                     <option value="array">Array</option>
                                     <option value="function">Function</option>
+                                    <option value="constructor">Constructor</option>
                                 </select>
                                 <button class="clear-search-btn" onclick="EnhancedCodeGraphManager.clearVariableSearch()">Clear</button>
                             </div>
@@ -598,6 +599,7 @@ const EnhancedCodeGraphManager = (function() {
                                 <option value="object">Object</option>
                                 <option value="array">Array</option>
                                 <option value="function">Function</option>
+                                <option value="constructor">Constructor</option>
                                 <option value="undefined">Undefined</option>
                                 <option value="null">Null</option>
                             </select>

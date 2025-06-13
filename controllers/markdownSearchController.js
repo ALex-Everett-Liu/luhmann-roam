@@ -458,8 +458,8 @@ async function searchMarkdownFilesInternal(req) {
         }
         
         if (matches) {
-          // Get node information from database
-          const node = await db.get('SELECT id, content, content_zh, parent_id FROM nodes WHERE id = ?', fileInfo.nodeId);
+          // Get node information from database including timestamps
+          const node = await db.get('SELECT id, content, content_zh, parent_id, created_at, updated_at FROM nodes WHERE id = ?', fileInfo.nodeId);
           
           if (node) {
             // Get node content based on language
@@ -474,6 +474,27 @@ async function searchMarkdownFilesInternal(req) {
               }
             }
             
+            // Get file stats for timestamps if not available from database
+            let created_at = node.created_at;
+            let updated_at = node.updated_at;
+            
+            if (!created_at || !updated_at) {
+              try {
+                const stats = fs.statSync(fileInfo.filepath);
+                if (!created_at) {
+                  // birthtime is creation time, but may not be available on all systems
+                  // fallback to ctime (status change time) if birthtime is not available
+                  created_at = stats.birthtime.getTime() || stats.ctime.getTime();
+                }
+                if (!updated_at) {
+                  // mtime is modification time
+                  updated_at = stats.mtime.getTime();
+                }
+              } catch (statsError) {
+                console.warn(`Error getting file stats for ${fileInfo.filename}:`, statsError.message);
+              }
+            }
+            
             results.push({
               id: node.id,
               type: 'markdown',
@@ -483,7 +504,9 @@ async function searchMarkdownFilesInternal(req) {
               parent_id: node.parent_id,
               parent_content: parentContent,
               filename: fileInfo.filename,
-              contentLength: content.length
+              contentLength: content.length,
+              created_at: created_at,
+              updated_at: updated_at
             });
           }
         }
