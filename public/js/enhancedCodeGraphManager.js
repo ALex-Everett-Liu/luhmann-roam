@@ -3652,6 +3652,11 @@ async function exportProject(projectId) {
     let highlightedNodes = new Set();
     let selectedSearchResult = -1;
 
+    // Dragging state
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    let searchOverlayPosition = { x: null, y: null }; // Store custom position
+
     function createGraphSearchInterface() {
         // Determine which container to use based on fullscreen state
         const container = isFullscreen ? 
@@ -3662,8 +3667,20 @@ async function exportProject(projectId) {
         
         const searchOverlay = document.createElement('div');
         searchOverlay.className = 'graph-search-overlay';
+        searchOverlay.id = 'graph-search-overlay';
+        
+        // Apply custom position if available, otherwise use default
+        let positionStyle = '';
+        if (searchOverlayPosition.x !== null && searchOverlayPosition.y !== null && !isFullscreen) {
+            positionStyle = `left: ${searchOverlayPosition.x}px; top: ${searchOverlayPosition.y}px; right: auto;`;
+        }
+        
         searchOverlay.innerHTML = `
             <div class="graph-search-container">
+                <div class="graph-search-header" style="cursor: move; padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid #e1e5e9; border-radius: 8px 8px 0 0; margin: -12px -12px 8px -12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; font-weight: 600; color: #24292e;">🔍 Search Nodes</span>
+                    <span style="font-size: 10px; color: #666; cursor: move;">⋮⋮ Drag to move</span>
+                </div>
                 <div class="graph-search-input-group">
                     <input type="text" id="graph-search-input" placeholder="Search nodes by name, type, file..." />
                     <button id="graph-search-clear" class="search-clear-btn" title="Clear search">✕</button>
@@ -3698,13 +3715,132 @@ async function exportProject(projectId) {
                         <div><kbd>Enter</kbd> Next • <kbd>Shift+Enter</kbd> Previous • <kbd>↑↓</kbd> Navigate • <kbd>Esc</kbd> Clear</div>
                     </div>
                 </div>
+                <div class="search-position-controls" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e1e5e9; display: flex; justify-content: space-between; align-items: center;">
+                    <button id="search-reset-position" class="btn-reset-position" title="Reset to default position">📍 Reset Position</button>
+                    <button id="search-minimize" class="btn-minimize" title="Minimize search panel">➖</button>
+                </div>
             </div>
         `;
         
+        // Apply custom positioning if available
+        if (positionStyle) {
+            searchOverlay.style.cssText += positionStyle;
+        }
+        
         container.appendChild(searchOverlay);
+        
+        // Make the overlay draggable
+        makeDraggableSearchOverlay(searchOverlay);
         
         // Bind event handlers
         setupGraphSearchEventHandlers();
+    }
+
+    function makeDraggableSearchOverlay(overlay) {
+        const header = overlay.querySelector('.graph-search-header');
+        if (!header) return;
+        
+        let startX, startY, initialX, initialY;
+        
+        header.addEventListener('mousedown', dragStart);
+        header.addEventListener('touchstart', dragStart, { passive: false });
+        
+        function dragStart(e) {
+            if (isFullscreen) return; // Don't allow dragging in fullscreen mode
+            
+            isDragging = true;
+            overlay.style.transition = 'none'; // Disable transitions during drag
+            
+            if (e.type === 'mousedown') {
+                startX = e.clientX;
+                startY = e.clientY;
+            } else {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
+            
+            const rect = overlay.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+            
+            // Add global event listeners
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('touchend', dragEnd);
+            
+            // Prevent text selection
+            e.preventDefault();
+            
+            // Add dragging class for visual feedback
+            overlay.classList.add('dragging');
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+            
+            let currentX, currentY;
+            if (e.type === 'mousemove') {
+                currentX = e.clientX;
+                currentY = e.clientY;
+            } else {
+                currentX = e.touches[0].clientX;
+                currentY = e.touches[0].clientY;
+            }
+            
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            let newX = initialX + deltaX;
+            let newY = initialY + deltaY;
+            
+            // Constrain to viewport bounds
+            const container = isFullscreen ? 
+                document.getElementById('ecg-fullscreen-graph-container') : 
+                document.getElementById('ecg-graph-container');
+            
+            if (container) {
+                const containerRect = container.getBoundingClientRect();
+                const overlayRect = overlay.getBoundingClientRect();
+                
+                // Keep overlay within container bounds
+                newX = Math.max(containerRect.left, Math.min(newX, containerRect.right - overlayRect.width));
+                newY = Math.max(containerRect.top, Math.min(newY, containerRect.bottom - overlayRect.height));
+            }
+            
+            // Apply new position
+            overlay.style.left = newX + 'px';
+            overlay.style.top = newY + 'px';
+            overlay.style.right = 'auto';
+            overlay.style.bottom = 'auto';
+        }
+        
+        function dragEnd(e) {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            overlay.style.transition = ''; // Re-enable transitions
+            overlay.classList.remove('dragging');
+            
+            // Store the new position for normal mode
+            if (!isFullscreen) {
+                const rect = overlay.getBoundingClientRect();
+                const container = document.getElementById('ecg-graph-container');
+                const containerRect = container.getBoundingClientRect();
+                
+                // Store relative to container
+                searchOverlayPosition.x = rect.left - containerRect.left;
+                searchOverlayPosition.y = rect.top - containerRect.top;
+            }
+            
+            // Remove global event listeners
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('touchend', dragEnd);
+        }
     }
 
     function setupGraphSearchEventHandlers() {
@@ -3715,6 +3851,8 @@ async function exportProject(projectId) {
         const toggleResults = document.getElementById('graph-search-toggle-results');
         const searchPrev = document.getElementById('search-prev');
         const searchNext = document.getElementById('search-next');
+        const resetPosition = document.getElementById('search-reset-position');
+        const minimize = document.getElementById('search-minimize');
         
         if (!searchInput) return; // Safety check
         
@@ -3734,6 +3872,15 @@ async function exportProject(projectId) {
         // Navigation
         if (searchPrev) searchPrev.addEventListener('click', () => navigateSearchResults(-1));
         if (searchNext) searchNext.addEventListener('click', () => navigateSearchResults(1));
+
+        // Position controls
+        if (resetPosition) {
+            resetPosition.addEventListener('click', resetSearchPosition);
+        }
+        
+        if (minimize) {
+            minimize.addEventListener('click', toggleMinimizeSearch);
+        }
         
         // Keyboard shortcuts
         searchInput.addEventListener('keydown', (e) => {
@@ -3759,6 +3906,106 @@ async function exportProject(projectId) {
                     break;
             }
         });
+    }
+
+    function resetSearchPosition() {
+        const overlay = document.getElementById('graph-search-overlay');
+        if (!overlay || isFullscreen) return;
+        
+        // Reset to default position
+        overlay.style.left = '';
+        overlay.style.top = '';
+        overlay.style.right = '10px';
+        overlay.style.bottom = '';
+        
+        // Clear stored position
+        searchOverlayPosition.x = null;
+        searchOverlayPosition.y = null;
+        
+        // Add a brief animation
+        overlay.style.transition = 'all 0.3s ease';
+        setTimeout(() => {
+            overlay.style.transition = '';
+        }, 300);
+    }
+
+    function toggleMinimizeSearch() {
+        const overlay = document.getElementById('graph-search-overlay');
+        const container = overlay.querySelector('.graph-search-container');
+        const minimizeBtn = document.getElementById('search-minimize');
+        
+        if (!overlay || !container || !minimizeBtn) return;
+        
+        const isMinimized = overlay.classList.contains('minimized');
+        
+        if (isMinimized) {
+            // Restore
+            overlay.classList.remove('minimized');
+            container.style.display = 'block';
+            minimizeBtn.innerHTML = '➖';
+            minimizeBtn.title = 'Minimize search panel';
+        } else {
+            // Minimize
+            overlay.classList.add('minimized');
+            container.style.display = 'none';
+            minimizeBtn.innerHTML = '➕';
+            minimizeBtn.title = 'Restore search panel';
+        }
+    }
+
+    // Function to transfer search interface between normal and fullscreen modes
+    function transferSearchInterface() {
+        const existingOverlay = document.querySelector('.graph-search-overlay');
+        if (existingOverlay) {
+            // Store current search state
+            const searchInput = document.getElementById('graph-search-input');
+            const searchType = document.getElementById('graph-search-type');
+            const searchScope = document.getElementById('graph-search-scope');
+            const resultsVisible = document.getElementById('graph-search-results').style.display !== 'none';
+            const isMinimized = existingOverlay.classList.contains('minimized');
+            
+            const searchState = {
+                query: searchInput ? searchInput.value : '',
+                type: searchType ? searchType.value : '',
+                scope: searchScope ? searchScope.value : '',
+                resultsVisible: resultsVisible,
+                isMinimized: isMinimized
+            };
+            
+            // Remove existing overlay
+            existingOverlay.remove();
+            
+            // Create new overlay in appropriate container
+            setTimeout(() => {
+                createGraphSearchInterface();
+                
+                // Restore search state
+                const newSearchInput = document.getElementById('graph-search-input');
+                const newSearchType = document.getElementById('graph-search-type');
+                const newSearchScope = document.getElementById('graph-search-scope');
+                const newResultsPanel = document.getElementById('graph-search-results');
+                const newOverlay = document.getElementById('graph-search-overlay');
+                
+                if (newSearchInput) newSearchInput.value = searchState.query;
+                if (newSearchType) newSearchType.value = searchState.type;
+                if (newSearchScope) newSearchScope.value = searchState.scope;
+                
+                if (searchState.resultsVisible && newResultsPanel) {
+                    newResultsPanel.style.display = 'block';
+                    const toggleBtn = document.getElementById('graph-search-toggle-results');
+                    if (toggleBtn) toggleBtn.classList.add('active');
+                }
+                
+                if (searchState.isMinimized && newOverlay) {
+                    toggleMinimizeSearch();
+                }
+                
+                // Re-perform search if there was a query
+                if (searchState.query || searchState.type || searchState.scope) {
+                    performGraphSearch();
+                }
+            }, 100);
+        }
     }
 
     function performGraphSearch() {
