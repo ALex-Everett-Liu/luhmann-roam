@@ -2371,6 +2371,17 @@ const EnhancedCodeGraphManager = (function() {
             ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} View - 
             ${data.nodes.length} nodes, ${data.edges.length} relationships
         `;
+
+        // Store current graph data for search functionality
+        currentGraphNodes = data.nodes;
+        currentGraphLinks = data.edges;
+        
+        // Create search interface
+        setTimeout(() => createGraphSearchInterface(), 100);
+        
+        // Store references globally for search functionality
+        window.currentGraphSimulation = simulation;
+        window.currentGraphElements = { g, zoom, svg, link, node };
     }
 
     function getNodeColor(node) {
@@ -3629,6 +3640,379 @@ async function exportProject(projectId) {
       showStatus('Error updating project: ' + error.message, 'error');
     }
     }
+
+// =================================================================
+    // GRAPH SEARCH & LOCATE FUNCTIONALITY
+    // =================================================================
+
+    let currentGraphNodes = [];
+    let currentGraphLinks = [];
+    let searchResults = [];
+    let currentSearchQuery = '';
+    let highlightedNodes = new Set();
+    let selectedSearchResult = -1;
+
+    function createGraphSearchInterface() {
+        const container = document.getElementById('ecg-graph-container');
+        if (!container || document.querySelector('.graph-search-overlay')) return;
+        
+        const searchOverlay = document.createElement('div');
+        searchOverlay.className = 'graph-search-overlay';
+        searchOverlay.innerHTML = `
+            <div class="graph-search-container">
+                <div class="graph-search-input-group">
+                    <input type="text" id="graph-search-input" placeholder="Search nodes by name, type, file..." />
+                    <button id="graph-search-clear" class="search-clear-btn" title="Clear search">✕</button>
+                </div>
+                <div class="graph-search-filters">
+                    <select id="graph-search-type" title="Filter by type">
+                        <option value="">All Types</option>
+                        <option value="function">Functions</option>
+                        <option value="variable">Variables</option>
+                    </select>
+                    <select id="graph-search-scope" title="Filter by scope">
+                        <option value="">All Scopes</option>
+                        <option value="global">Global</option>
+                        <option value="local">Local</option>
+                        <option value="parameter">Parameter</option>
+                    </select>
+                    <button id="graph-search-toggle-results" class="toggle-results-btn" title="Toggle results panel">
+                        <span class="results-count">0</span> results
+                    </button>
+                </div>
+                <div id="graph-search-results" class="graph-search-results" style="display: none;">
+                    <div class="search-results-header">
+                        <h4>Search Results</h4>
+                        <div class="search-navigation">
+                            <button id="search-prev" disabled>‹ Prev</button>
+                            <span id="search-position">0 / 0</span>
+                            <button id="search-next" disabled>Next ›</button>
+                        </div>
+                    </div>
+                    <div id="search-results-list" class="search-results-list"></div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(searchOverlay);
+        
+        // Bind event handlers
+        setupGraphSearchEventHandlers();
+    }
+
+    function setupGraphSearchEventHandlers() {
+        const searchInput = document.getElementById('graph-search-input');
+        const searchClear = document.getElementById('graph-search-clear');
+        const searchType = document.getElementById('graph-search-type');
+        const searchScope = document.getElementById('graph-search-scope');
+        const toggleResults = document.getElementById('graph-search-toggle-results');
+        const searchPrev = document.getElementById('search-prev');
+        const searchNext = document.getElementById('search-next');
+        
+        // Live search as user types
+        searchInput.addEventListener('input', debounce(performGraphSearch, 300));
+        
+        // Filter changes
+        searchType.addEventListener('change', performGraphSearch);
+        searchScope.addEventListener('change', performGraphSearch);
+        
+        // Clear search
+        searchClear.addEventListener('click', clearGraphSearch);
+        
+        // Toggle results panel
+        toggleResults.addEventListener('click', toggleSearchResults);
+        
+        // Navigation
+        searchPrev.addEventListener('click', () => navigateSearchResults(-1));
+        searchNext.addEventListener('click', () => navigateSearchResults(1));
+        
+        // Keyboard shortcuts
+        searchInput.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'Enter':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        navigateSearchResults(-1);
+                    } else {
+                        navigateSearchResults(1);
+                    }
+                    break;
+                case 'Escape':
+                    clearGraphSearch();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    navigateSearchResults(1);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    navigateSearchResults(-1);
+                    break;
+            }
+        });
+    }
+
+    function performGraphSearch() {
+        const searchInput = document.getElementById('graph-search-input');
+        const searchType = document.getElementById('graph-search-type');
+        const searchScope = document.getElementById('graph-search-scope');
+        
+        if (!searchInput || !currentGraphNodes) return;
+        
+        const query = searchInput.value.toLowerCase().trim();
+        const typeFilter = searchType.value;
+        const scopeFilter = searchScope.value;
+        
+        currentSearchQuery = query;
+        selectedSearchResult = -1;
+        
+        // Clear previous highlights
+        clearHighlights();
+        
+        if (!query && !typeFilter && !scopeFilter) {
+            searchResults = [];
+            updateSearchResults();
+            return;
+        }
+        
+        // Perform search
+        searchResults = currentGraphNodes.filter(node => {
+            // Text search in name, description, file path
+            const matchesText = !query || (
+                (node.name && node.name.toLowerCase().includes(query)) ||
+                (node.label && node.label.toLowerCase().includes(query)) ||
+                (node.description && node.description.toLowerCase().includes(query)) ||
+                (node.file && node.file.toLowerCase().includes(query)) ||
+                (node.type && node.type.toLowerCase().includes(query))
+            );
+            
+            // Type filter
+            const matchesType = !typeFilter || node.type === typeFilter;
+            
+            // Scope filter (for variables)
+            const matchesScope = !scopeFilter || node.scope === scopeFilter;
+            
+            return matchesText && matchesType && matchesScope;
+        });
+        
+        // Highlight matching nodes
+        highlightSearchResults();
+        
+        // Update results display
+        updateSearchResults();
+        
+        // Auto-navigate to first result if available
+        if (searchResults.length > 0) {
+            selectedSearchResult = 0;
+            focusOnNode(searchResults[0]);
+        }
+    }
+
+    function highlightSearchResults() {
+        if (!window.currentGraphElements) return;
+        
+        const { g } = window.currentGraphElements;
+        
+        // Reset all node styles
+        g.selectAll('.node circle')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2)
+            .style('filter', null);
+        
+        // Highlight search results
+        searchResults.forEach(result => {
+            highlightedNodes.add(result.id);
+            g.selectAll('.node')
+                .filter(d => d.id === result.id)
+                .select('circle')
+                .attr('stroke', '#ff6b6b')
+                .attr('stroke-width', 4)
+                .style('filter', 'drop-shadow(0 0 12px rgba(255, 107, 107, 0.6))');
+        });
+    }
+
+    function updateSearchResults() {
+        const resultsContainer = document.getElementById('search-results-list');
+        const resultsCount = document.querySelector('.results-count');
+        const searchPosition = document.getElementById('search-position');
+        const searchPrev = document.getElementById('search-prev');
+        const searchNext = document.getElementById('search-next');
+        
+        if (!resultsContainer || !resultsCount) return;
+        
+        // Update count
+        resultsCount.textContent = searchResults.length;
+        
+        // Update navigation
+        const position = selectedSearchResult >= 0 ? selectedSearchResult + 1 : 0;
+        searchPosition.textContent = `${position} / ${searchResults.length}`;
+        
+        searchPrev.disabled = searchResults.length === 0 || selectedSearchResult <= 0;
+        searchNext.disabled = searchResults.length === 0 || selectedSearchResult >= searchResults.length - 1;
+        
+        // Render results list
+        if (searchResults.length === 0) {
+            resultsContainer.innerHTML = '<p class="no-search-results">No matching nodes found</p>';
+            return;
+        }
+        
+        resultsContainer.innerHTML = searchResults.map((node, index) => `
+            <div class="search-result-item ${index === selectedSearchResult ? 'selected' : ''}" 
+                 data-node-id="${node.id}" data-index="${index}">
+                <div class="result-header">
+                    <span class="result-name">${escapeHtml(node.name || node.label)}</span>
+                    <span class="result-type badge">${node.type}</span>
+                </div>
+                <div class="result-details">
+                    ${node.file ? `<span class="result-file">${escapeHtml(node.file)}</span>` : ''}
+                    ${node.scope ? `<span class="result-scope">${node.scope}</span>` : ''}
+                    ${node.line ? `<span class="result-line">Line ${node.line}</span>` : ''}
+                </div>
+                ${node.description ? `<div class="result-description">${escapeHtml(node.description)}</div>` : ''}
+            </div>
+        `).join('');
+        
+        // Add click handlers for results
+        resultsContainer.querySelectorAll('.search-result-item').forEach((item, index) => {
+            item.addEventListener('click', () => {
+                selectedSearchResult = index;
+                focusOnNode(searchResults[index]);
+                updateSearchResults();
+            });
+        });
+    }
+
+    function navigateSearchResults(direction) {
+        if (searchResults.length === 0) return;
+        
+        selectedSearchResult += direction;
+        
+        // Wrap around
+        if (selectedSearchResult >= searchResults.length) {
+            selectedSearchResult = 0;
+        } else if (selectedSearchResult < 0) {
+            selectedSearchResult = searchResults.length - 1;
+        }
+        
+        focusOnNode(searchResults[selectedSearchResult]);
+        updateSearchResults();
+    }
+
+    function focusOnNode(node) {
+        if (!node || !window.currentGraphElements || !simulation) return;
+        
+        const { g, zoom } = window.currentGraphElements;
+        const svg = d3.select('#ecg-graph-container svg');
+        
+        // Find the node in the simulation
+        const graphNode = simulation.nodes().find(n => n.id === node.id);
+        if (!graphNode) return;
+        
+        // Calculate center position
+        const svgWidth = parseInt(svg.attr('width'));
+        const svgHeight = parseInt(svg.attr('height'));
+        const centerX = svgWidth / 2;
+        const centerY = svgHeight / 2;
+        
+        // Calculate transform to center the node
+        const scale = 1.5; // Zoom level for focus
+        const translateX = centerX - graphNode.x * scale;
+        const translateY = centerY - graphNode.y * scale;
+        
+        // Animate to the node
+        svg.transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity.translate(translateX, translateY).scale(scale));
+        
+        // Temporarily highlight the focused node
+        const nodeElement = g.selectAll('.node').filter(d => d.id === node.id);
+        nodeElement.select('circle')
+            .transition()
+            .duration(300)
+            .attr('stroke', '#ff0000')
+            .attr('stroke-width', 6)
+            .transition()
+            .duration(300)
+            .attr('stroke', '#ff6b6b')
+            .attr('stroke-width', 4);
+    }
+
+    function clearGraphSearch() {
+        const searchInput = document.getElementById('graph-search-input');
+        const searchType = document.getElementById('graph-search-type');
+        const searchScope = document.getElementById('graph-search-scope');
+        
+        if (searchInput) searchInput.value = '';
+        if (searchType) searchType.value = '';
+        if (searchScope) searchScope.value = '';
+        
+        currentSearchQuery = '';
+        searchResults = [];
+        selectedSearchResult = -1;
+        
+        clearHighlights();
+        updateSearchResults();
+        
+        // Reset graph view
+        if (window.currentGraphElements) {
+            const { zoom } = window.currentGraphElements;
+            const svg = d3.select('#ecg-graph-container svg');
+            svg.transition()
+                .duration(500)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+    }
+
+    function clearHighlights() {
+        if (!window.currentGraphElements) return;
+        
+        const { g } = window.currentGraphElements;
+        
+        g.selectAll('.node circle')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2)
+            .style('filter', null);
+        
+        highlightedNodes.clear();
+    }
+
+    function toggleSearchResults() {
+        const resultsPanel = document.getElementById('graph-search-results');
+        const toggleBtn = document.getElementById('graph-search-toggle-results');
+        
+        if (resultsPanel.style.display === 'none') {
+            resultsPanel.style.display = 'block';
+            toggleBtn.classList.add('active');
+        } else {
+            resultsPanel.style.display = 'none';
+            toggleBtn.classList.remove('active');
+        }
+    }
+
+    // Utility functions
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+    }
+
 
     // =================================================================
     // PAGINATION FUNCTIONS
