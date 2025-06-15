@@ -3653,7 +3653,11 @@ async function exportProject(projectId) {
     let selectedSearchResult = -1;
 
     function createGraphSearchInterface() {
-        const container = document.getElementById('ecg-graph-container');
+        // Determine which container to use based on fullscreen state
+        const container = isFullscreen ? 
+            document.getElementById('ecg-fullscreen-graph-container') : 
+            document.getElementById('ecg-graph-container');
+            
         if (!container || document.querySelector('.graph-search-overlay')) return;
         
         const searchOverlay = document.createElement('div');
@@ -3690,6 +3694,9 @@ async function exportProject(projectId) {
                         </div>
                     </div>
                     <div id="search-results-list" class="search-results-list"></div>
+                    <div class="search-shortcuts">
+                        <div><kbd>Enter</kbd> Next • <kbd>Shift+Enter</kbd> Previous • <kbd>↑↓</kbd> Navigate • <kbd>Esc</kbd> Clear</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -3709,22 +3716,24 @@ async function exportProject(projectId) {
         const searchPrev = document.getElementById('search-prev');
         const searchNext = document.getElementById('search-next');
         
+        if (!searchInput) return; // Safety check
+        
         // Live search as user types
         searchInput.addEventListener('input', debounce(performGraphSearch, 300));
         
         // Filter changes
-        searchType.addEventListener('change', performGraphSearch);
-        searchScope.addEventListener('change', performGraphSearch);
+        if (searchType) searchType.addEventListener('change', performGraphSearch);
+        if (searchScope) searchScope.addEventListener('change', performGraphSearch);
         
         // Clear search
-        searchClear.addEventListener('click', clearGraphSearch);
+        if (searchClear) searchClear.addEventListener('click', clearGraphSearch);
         
         // Toggle results panel
-        toggleResults.addEventListener('click', toggleSearchResults);
+        if (toggleResults) toggleResults.addEventListener('click', toggleSearchResults);
         
         // Navigation
-        searchPrev.addEventListener('click', () => navigateSearchResults(-1));
-        searchNext.addEventListener('click', () => navigateSearchResults(1));
+        if (searchPrev) searchPrev.addEventListener('click', () => navigateSearchResults(-1));
+        if (searchNext) searchNext.addEventListener('click', () => navigateSearchResults(1));
         
         // Keyboard shortcuts
         searchInput.addEventListener('keydown', (e) => {
@@ -3760,8 +3769,8 @@ async function exportProject(projectId) {
         if (!searchInput || !currentGraphNodes) return;
         
         const query = searchInput.value.toLowerCase().trim();
-        const typeFilter = searchType.value;
-        const scopeFilter = searchScope.value;
+        const typeFilter = searchType ? searchType.value : '';
+        const scopeFilter = searchScope ? searchScope.value : '';
         
         currentSearchQuery = query;
         selectedSearchResult = -1;
@@ -3809,12 +3818,16 @@ async function exportProject(projectId) {
     }
 
     function highlightSearchResults() {
-        if (!window.currentGraphElements) return;
+        // Get the correct SVG container based on fullscreen state
+        const svgSelector = isFullscreen ? 
+            '#ecg-fullscreen-graph-container svg' : 
+            '#ecg-graph-container svg';
         
-        const { g } = window.currentGraphElements;
+        const svg = d3.select(svgSelector);
+        if (svg.empty()) return;
         
         // Reset all node styles
-        g.selectAll('.node circle')
+        svg.selectAll('.node circle')
             .attr('stroke', '#fff')
             .attr('stroke-width', 2)
             .style('filter', null);
@@ -3822,7 +3835,7 @@ async function exportProject(projectId) {
         // Highlight search results
         searchResults.forEach(result => {
             highlightedNodes.add(result.id);
-            g.selectAll('.node')
+            svg.selectAll('.node')
                 .filter(d => d.id === result.id)
                 .select('circle')
                 .attr('stroke', '#ff6b6b')
@@ -3845,10 +3858,10 @@ async function exportProject(projectId) {
         
         // Update navigation
         const position = selectedSearchResult >= 0 ? selectedSearchResult + 1 : 0;
-        searchPosition.textContent = `${position} / ${searchResults.length}`;
+        if (searchPosition) searchPosition.textContent = `${position} / ${searchResults.length}`;
         
-        searchPrev.disabled = searchResults.length === 0 || selectedSearchResult <= 0;
-        searchNext.disabled = searchResults.length === 0 || selectedSearchResult >= searchResults.length - 1;
+        if (searchPrev) searchPrev.disabled = searchResults.length === 0 || selectedSearchResult <= 0;
+        if (searchNext) searchNext.disabled = searchResults.length === 0 || selectedSearchResult >= searchResults.length - 1;
         
         // Render results list
         if (searchResults.length === 0) {
@@ -3899,18 +3912,34 @@ async function exportProject(projectId) {
     }
 
     function focusOnNode(node) {
-        if (!node || !window.currentGraphElements || !simulation) return;
+        if (!node || !simulation) return;
         
-        const { g, zoom } = window.currentGraphElements;
-        const svg = d3.select('#ecg-graph-container svg');
+        // Get the correct SVG and zoom based on fullscreen state
+        const svgSelector = isFullscreen ? 
+            '#ecg-fullscreen-graph-container svg' : 
+            '#ecg-graph-container svg';
+        
+        const svg = d3.select(svgSelector);
+        if (svg.empty()) return;
+        
+        // Get zoom behavior from current graph elements
+        const zoom = window.currentGraphElements ? window.currentGraphElements.zoom : null;
+        if (!zoom) return;
         
         // Find the node in the simulation
         const graphNode = simulation.nodes().find(n => n.id === node.id);
         if (!graphNode) return;
         
-        // Calculate center position
-        const svgWidth = parseInt(svg.attr('width'));
-        const svgHeight = parseInt(svg.attr('height'));
+        // Calculate center position based on current container
+        let svgWidth, svgHeight;
+        if (isFullscreen) {
+            svgWidth = window.innerWidth - 40;
+            svgHeight = window.innerHeight - 120;
+        } else {
+            svgWidth = parseInt(svg.attr('width'));
+            svgHeight = parseInt(svg.attr('height'));
+        }
+        
         const centerX = svgWidth / 2;
         const centerY = svgHeight / 2;
         
@@ -3925,7 +3954,7 @@ async function exportProject(projectId) {
             .call(zoom.transform, d3.zoomIdentity.translate(translateX, translateY).scale(scale));
         
         // Temporarily highlight the focused node
-        const nodeElement = g.selectAll('.node').filter(d => d.id === node.id);
+        const nodeElement = svg.selectAll('.node').filter(d => d.id === node.id);
         nodeElement.select('circle')
             .transition()
             .duration(300)
@@ -3954,9 +3983,14 @@ async function exportProject(projectId) {
         updateSearchResults();
         
         // Reset graph view
-        if (window.currentGraphElements) {
-            const { zoom } = window.currentGraphElements;
-            const svg = d3.select('#ecg-graph-container svg');
+        const svgSelector = isFullscreen ? 
+            '#ecg-fullscreen-graph-container svg' : 
+            '#ecg-graph-container svg';
+        
+        const svg = d3.select(svgSelector);
+        const zoom = window.currentGraphElements ? window.currentGraphElements.zoom : null;
+        
+        if (!svg.empty() && zoom) {
             svg.transition()
                 .duration(500)
                 .call(zoom.transform, d3.zoomIdentity);
@@ -3964,11 +3998,14 @@ async function exportProject(projectId) {
     }
 
     function clearHighlights() {
-        if (!window.currentGraphElements) return;
+        const svgSelector = isFullscreen ? 
+            '#ecg-fullscreen-graph-container svg' : 
+            '#ecg-graph-container svg';
         
-        const { g } = window.currentGraphElements;
+        const svg = d3.select(svgSelector);
+        if (svg.empty()) return;
         
-        g.selectAll('.node circle')
+        svg.selectAll('.node circle')
             .attr('stroke', '#fff')
             .attr('stroke-width', 2)
             .style('filter', null);
@@ -3980,6 +4017,8 @@ async function exportProject(projectId) {
         const resultsPanel = document.getElementById('graph-search-results');
         const toggleBtn = document.getElementById('graph-search-toggle-results');
         
+        if (!resultsPanel || !toggleBtn) return;
+        
         if (resultsPanel.style.display === 'none') {
             resultsPanel.style.display = 'block';
             toggleBtn.classList.add('active');
@@ -3989,7 +4028,194 @@ async function exportProject(projectId) {
         }
     }
 
-    // Utility functions
+    // Function to transfer search interface between normal and fullscreen modes
+    function transferSearchInterface() {
+        const existingOverlay = document.querySelector('.graph-search-overlay');
+        if (existingOverlay) {
+            // Store current search state
+            const searchInput = document.getElementById('graph-search-input');
+            const searchType = document.getElementById('graph-search-type');
+            const searchScope = document.getElementById('graph-search-scope');
+            const resultsVisible = document.getElementById('graph-search-results').style.display !== 'none';
+            
+            const searchState = {
+                query: searchInput ? searchInput.value : '',
+                type: searchType ? searchType.value : '',
+                scope: searchScope ? searchScope.value : '',
+                resultsVisible: resultsVisible
+            };
+            
+            // Remove existing overlay
+            existingOverlay.remove();
+            
+            // Create new overlay in appropriate container
+            setTimeout(() => {
+                createGraphSearchInterface();
+                
+                // Restore search state
+                const newSearchInput = document.getElementById('graph-search-input');
+                const newSearchType = document.getElementById('graph-search-type');
+                const newSearchScope = document.getElementById('graph-search-scope');
+                const newResultsPanel = document.getElementById('graph-search-results');
+                
+                if (newSearchInput) newSearchInput.value = searchState.query;
+                if (newSearchType) newSearchType.value = searchState.type;
+                if (newSearchScope) newSearchScope.value = searchState.scope;
+                
+                if (searchState.resultsVisible && newResultsPanel) {
+                    newResultsPanel.style.display = 'block';
+                    const toggleBtn = document.getElementById('graph-search-toggle-results');
+                    if (toggleBtn) toggleBtn.classList.add('active');
+                }
+                
+                // Re-perform search if there was a query
+                if (searchState.query || searchState.type || searchState.scope) {
+                    performGraphSearch();
+                }
+            }, 100);
+        }
+    }
+
+    // Update the enterFullscreen function to include search transfer
+    function enterFullscreen() {
+        const graphContainer = document.getElementById('ecg-graph-container');
+        if (!graphContainer) return;
+        
+        // Store original container reference
+        originalContainer = graphContainer;
+        
+        // Create fullscreen overlay
+        const fullscreenOverlay = document.createElement('div');
+        fullscreenOverlay.id = 'ecg-fullscreen-overlay';
+        fullscreenOverlay.className = 'ecg-fullscreen-overlay';
+        fullscreenOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        // Create fullscreen controls
+        const fullscreenControls = document.createElement('div');
+        fullscreenControls.className = 'ecg-fullscreen-controls';
+        fullscreenControls.style.cssText = `
+            padding: 20px;
+            border-bottom: 1px solid #e1e5e9;
+            background: #f8f9fa;
+        `;
+        fullscreenControls.innerHTML = `
+            <div class="ecg-fullscreen-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Enhanced Code Graph - Fullscreen</h3>
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.exitFullscreen()" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    ✕ Exit Fullscreen
+                </button>
+            </div>
+            <div class="ecg-fullscreen-graph-controls" style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.resetGraphLayout()" style="padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">Reset Layout</button>
+                <button class="btn btn-sm" onclick="EnhancedCodeGraphManager.fitGraphToView()" style="padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">Fit to View</button>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="range" id="ecg-fullscreen-zoom-slider" min="0.1" max="3" step="0.1" value="1" onchange="EnhancedCodeGraphManager.handleZoom(this.value)" style="width: 150px;">
+                    Zoom
+                </label>
+            </div>
+        `;
+        
+        // Create fullscreen graph container
+        const fullscreenGraphContainer = document.createElement('div');
+        fullscreenGraphContainer.id = 'ecg-fullscreen-graph-container';
+        fullscreenGraphContainer.className = 'ecg-fullscreen-graph-container';
+        fullscreenGraphContainer.style.cssText = `
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+        `;
+        
+        // Move the SVG to fullscreen container
+        const svg = graphContainer.querySelector('svg');
+        if (svg) {
+            fullscreenGraphContainer.appendChild(svg);
+        }
+        
+        // Assemble fullscreen overlay
+        fullscreenOverlay.appendChild(fullscreenControls);
+        fullscreenOverlay.appendChild(fullscreenGraphContainer);
+        
+        // Add to document
+        document.body.appendChild(fullscreenOverlay);
+        
+        // Update state
+        isFullscreen = true;
+        
+        // Transfer search interface to fullscreen
+        transferSearchInterface();
+        
+        // Resize graph for fullscreen
+        setTimeout(() => {
+            resizeGraphForFullscreen();
+        }, 100);
+        
+        // Add escape key listener (but don't interfere with search escape)
+        document.addEventListener('keydown', handleFullscreenEscape);
+        
+        console.log('Entered enhanced code graph fullscreen mode with search');
+    }
+
+    // Update the exitFullscreen function to include search transfer
+    function exitFullscreen() {
+        const fullscreenOverlay = document.getElementById('ecg-fullscreen-overlay');
+        const fullscreenGraphContainer = document.getElementById('ecg-fullscreen-graph-container');
+        
+        if (fullscreenOverlay && fullscreenGraphContainer && originalContainer) {
+            // Move SVG back to original container
+            const svg = fullscreenGraphContainer.querySelector('svg');
+            if (svg) {
+                originalContainer.appendChild(svg);
+            }
+            
+            // Update state before transferring search
+            isFullscreen = false;
+            
+            // Transfer search interface back to normal mode
+            transferSearchInterface();
+            
+            // Remove fullscreen overlay
+            document.body.removeChild(fullscreenOverlay);
+            
+            // Clean up
+            originalContainer = null;
+            
+            // Resize graph back to normal
+            setTimeout(() => {
+                resizeGraphForNormal();
+            }, 100);
+            
+            // Remove escape key listener
+            document.removeEventListener('keydown', handleFullscreenEscape);
+            
+            console.log('Exited enhanced code graph fullscreen mode');
+        }
+    }
+
+    // Update the handleFullscreenEscape to not interfere with search
+    function handleFullscreenEscape(event) {
+        if (event.key === 'Escape' && isFullscreen) {
+            // Check if the escape is from search input
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.id === 'graph-search-input') {
+                // Let the search handle the escape
+                return;
+            }
+            exitFullscreen();
+        }
+    }
+
+    // Utility functions (keep existing ones)
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
