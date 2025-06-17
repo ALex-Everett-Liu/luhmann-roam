@@ -770,7 +770,7 @@ try {
     'code_entities',
     'code_relationships',
     'code_projects',
-    'code_project_entities',
+    // 'code_project_entities',
     'code_analysis_results',
     'code_expressions',
     'code_variables',

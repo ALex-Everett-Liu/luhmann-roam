@@ -2504,8 +2504,16 @@ const MetroMapVisualizer = (function() {
         // Create a new element for line selection
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
-        menuContainer.style.left = `${x}px`;
-        menuContainer.style.top = `${y}px`;
+        
+        // Use fixed positioning and center it on screen to ensure it's always visible
+        menuContainer.style.position = 'fixed';
+        menuContainer.style.left = '50%';
+        menuContainer.style.top = '40%';
+        menuContainer.style.transform = 'translate(-50%, -50%)';
+        menuContainer.style.width = '350px';
+        menuContainer.style.maxHeight = '80vh';
+        menuContainer.style.overflowY = 'auto';
+        menuContainer.style.zIndex = '3000';
         
         let lineOptionsHTML = '';
         for (const line of lines) {
@@ -2522,20 +2530,32 @@ const MetroMapVisualizer = (function() {
         }
         
         menuContainer.innerHTML = `
-            <h3>Add to Line</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Add "${station.name}" to Line</h3>
+                <button id="add-to-line-close" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px;">&times;</button>
+            </div>
             <p>Select a line to add this station to:</p>
+            <div style="max-height: 300px; overflow-y: auto; margin: 10px 0;">
             <form id="line-select-form">
                 ${lineOptionsHTML}
             </form>
+            </div>
             <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-                <button id="add-to-line-save">Add</button>
+                <button id="add-to-line-save">Add to Selected Line</button>
                 <button id="add-to-line-cancel">Cancel</button>
             </div>
         `;
         
         container.appendChild(menuContainer);
         
+        // Make the dialog draggable
+        makeDraggable(menuContainer);
+        
         // Add event listeners
+        document.getElementById('add-to-line-close').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+        
         document.getElementById('add-to-line-save').addEventListener('click', async () => {
             const selectedLine = document.querySelector('input[name="line-select"]:checked');
             if (!selectedLine) {
@@ -2575,6 +2595,74 @@ const MetroMapVisualizer = (function() {
         
         document.getElementById('add-to-line-cancel').addEventListener('click', () => {
             menuContainer.remove();
+        });
+        
+        // Close dialog when clicking outside of it
+        document.addEventListener('click', function closeOnOutsideClick(event) {
+            if (!menuContainer.contains(event.target)) {
+            menuContainer.remove();
+                document.removeEventListener('click', closeOnOutsideClick);
+            }
+        });
+        
+        // Prevent closing when clicking inside the dialog
+        menuContainer.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+    }
+    
+    // Helper function to make dialogs draggable
+    function makeDraggable(element) {
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        
+        // Add a drag handle (the header area)
+        const header = element.querySelector('h3').parentElement;
+        header.style.cursor = 'grab';
+        header.style.userSelect = 'none';
+        
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return; // Don't drag when clicking buttons
+            
+            isDragging = true;
+            header.style.cursor = 'grabbing';
+            
+            const rect = element.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            
+            // Remove transform to switch to absolute positioning
+            element.style.transform = 'none';
+            element.style.left = rect.left + 'px';
+            element.style.top = rect.top + 'px';
+            
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
+            
+            // Keep dialog within viewport bounds
+            const rect = element.getBoundingClientRect();
+            const maxX = window.innerWidth - rect.width;
+            const maxY = window.innerHeight - rect.height;
+            
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+            
+            element.style.left = newX + 'px';
+            element.style.top = newY + 'px';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                header.style.cursor = 'grab';
+            }
         });
     }
     

@@ -461,7 +461,11 @@ const TaskManager = (function() {
    */
   async function assignTaskToCategory(taskId, categoryId, applyToAll = false) {
     try {
-      const requestBody = { categoryId };
+      const requestBody = { 
+        categoryId,
+        applyToAll: applyToAll // Always send the applyToAll parameter
+      };
+      console.log(`Debug: Sending applyToAll = ${applyToAll}`); // Add debug logging
       if (applyToAll) {
         requestBody.applyToAll = true;
       }

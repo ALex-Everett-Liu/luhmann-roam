@@ -526,8 +526,10 @@ exports.createTaskCategory = async (req, res) => {
 exports.assignTaskToCategory = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { categoryId, applyToAll = true } = req.body; // Add applyToAll option
+    const { categoryId, applyToAll = false } = req.body; // Add applyToAll option; Change default to false
     const db = req.db;
+
+    console.log(`Debug: applyToAll = ${applyToAll}, categoryId = ${categoryId}`); // Add debug logging
     
     if (!categoryId) {
       return res.status(400).json({ error: 'Category ID is required' });
