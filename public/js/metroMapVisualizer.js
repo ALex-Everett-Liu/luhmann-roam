@@ -2530,15 +2530,15 @@ const MetroMapVisualizer = (function() {
         }
         
         menuContainer.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
                 <h3 style="margin: 0;">Add "${station.name}" to Line</h3>
                 <button id="add-to-line-close" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px;">&times;</button>
             </div>
             <p>Select a line to add this station to:</p>
             <div style="max-height: 300px; overflow-y: auto; margin: 10px 0;">
-            <form id="line-select-form">
-                ${lineOptionsHTML}
-            </form>
+                <form id="line-select-form">
+                    ${lineOptionsHTML}
+                </form>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 15px;">
                 <button id="add-to-line-save">Add to Selected Line</button>
@@ -2548,8 +2548,13 @@ const MetroMapVisualizer = (function() {
         
         container.appendChild(menuContainer);
         
-        // Make the dialog draggable
-        makeDraggable(menuContainer);
+        // Make the dialog draggable (with error handling)
+        try {
+            makeDraggable(menuContainer);
+        } catch (error) {
+            console.warn('Failed to make dialog draggable:', error);
+            // Continue without dragging functionality
+        }
         
         // Add event listeners
         document.getElementById('add-to-line-close').addEventListener('click', () => {
@@ -2597,13 +2602,15 @@ const MetroMapVisualizer = (function() {
             menuContainer.remove();
         });
         
-        // Close dialog when clicking outside of it
-        document.addEventListener('click', function closeOnOutsideClick(event) {
-            if (!menuContainer.contains(event.target)) {
-            menuContainer.remove();
-                document.removeEventListener('click', closeOnOutsideClick);
-            }
-        });
+        // Close dialog when clicking outside of it (with delay to prevent immediate closing)
+        setTimeout(() => {
+            document.addEventListener('click', function closeOnOutsideClick(event) {
+                if (!menuContainer.contains(event.target)) {
+                    menuContainer.remove();
+                    document.removeEventListener('click', closeOnOutsideClick);
+                }
+            });
+        }, 100);
         
         // Prevent closing when clicking inside the dialog
         menuContainer.addEventListener('click', (event) => {
@@ -2617,13 +2624,16 @@ const MetroMapVisualizer = (function() {
         let dragOffsetX = 0;
         let dragOffsetY = 0;
         
-        // Add a drag handle (the header area)
-        const header = element.querySelector('h3').parentElement;
-        header.style.cursor = 'grab';
-        header.style.userSelect = 'none';
+        // Find the drag handle (the header area)
+        const header = element.querySelector('.dialog-header');
+        if (!header) {
+            console.warn('No drag handle found for draggable element');
+            return;
+        }
         
         header.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'BUTTON') return; // Don't drag when clicking buttons
+            // Don't drag when clicking buttons
+            if (e.target.tagName === 'BUTTON') return;
             
             isDragging = true;
             header.style.cursor = 'grabbing';
