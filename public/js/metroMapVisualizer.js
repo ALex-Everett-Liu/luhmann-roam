@@ -943,7 +943,7 @@ const MetroMapVisualizer = (function() {
         }
     }
     
-    // Draw stations
+    // Enhanced drawStations function with debugging for the specific station
     function drawStations() {
         let stationsToRender = stations;
         
@@ -964,11 +964,35 @@ const MetroMapVisualizer = (function() {
             const isTerminal = station.terminal;
             const isSelected = (selectedStation && selectedStation.id === station.id);
             
+            // Add debugging for the specific station
+            if (station.name && station.name.includes('珍珠泉东')) {
+                console.log('Drawing 珍珠泉东:', {
+                    stationName: station.name,
+                    interchange: station.interchange,
+                    isInterchange: isInterchange,
+                    interchangeType: typeof station.interchange,
+                    isInterchangeTruthy: !!station.interchange,
+                    terminal: station.terminal,
+                    isTerminal: isTerminal
+                });
+            }
+            
             // Get style based on transit type
             const stationStyle = STATION_STYLES[transitType] || STATION_STYLES[TRANSIT_TYPES.METRO];
             
             // Determine station radius with scaling
             const radius = (isInterchange ? stationStyle.interchangeRadius : stationStyle.radius) * stationScaleFactor;
+            
+            // Add more debugging for the radius calculation
+            if (station.name && station.name.includes('珍珠泉东')) {
+                console.log('珍珠泉东 radius calculation:', {
+                    isInterchange,
+                    interchangeRadius: stationStyle.interchangeRadius,
+                    regularRadius: stationStyle.radius,
+                    finalRadius: radius,
+                    stationScaleFactor
+                });
+            }
             
             // Draw station based on shape
             ctx.beginPath();
@@ -1416,6 +1440,9 @@ const MetroMapVisualizer = (function() {
             
             updateCityInfo();
             
+            // IMPORTANT: Recalculate interchange status based on current settings after loading data
+            recalculateInterchangeStatus();
+            
             console.log('Loaded metro map data:', { stations, lines });
         } catch (error) {
             console.error('Error loading metro map data:', error);
@@ -1811,6 +1838,14 @@ const MetroMapVisualizer = (function() {
             // Make a copy of the station object to ensure we don't modify the original
             const stationToUpdate = {...station};
             
+            // Log before update for debugging
+            if (station.name && station.name.includes('珍珠泉东')) {
+                console.log('珍珠泉东 before database update:', {
+                    originalInterchange: station.interchange,
+                    updateInterchange: stationToUpdate.interchange
+                });
+            }
+            
             // Ensure boolean values are converted to 0/1 for database
             stationToUpdate.interchange = stationToUpdate.interchange ? 1 : 0;
             stationToUpdate.terminal = stationToUpdate.terminal ? 1 : 0;
@@ -1832,10 +1867,17 @@ const MetroMapVisualizer = (function() {
                     const updatedStation = await response.json();
                     console.log('Server response after update:', updatedStation);
                     
-                    // Update the original station object with the updated values
-                    station.interchange = updatedStation.interchange;
-                    station.terminal = updatedStation.terminal;
-                    station.transit_type = updatedStation.transit_type; // Make sure this gets updated
+                    // CRITICAL: Don't overwrite the local station object with server response
+                    // because it might have different boolean representation
+                    // Just log the server response for debugging
+                    
+                    if (station.name && station.name.includes('珍珠泉东')) {
+                        console.log('珍珠泉东 server response:', {
+                            serverInterchange: updatedStation.interchange,
+                            localInterchange: station.interchange,
+                            localInterchangeType: typeof station.interchange
+                        });
+                    }
                     
                     return updatedStation;
                 }
@@ -4741,146 +4783,90 @@ function shouldMarkAsInterchange(station) {
     const transitTypes = stationLines.map(line => line.transit_type || TRANSIT_TYPES.METRO);
     const uniqueTransitTypes = [...new Set(transitTypes)];
     
+    // Add debugging for the specific station we're interested in
+    if (station.name && station.name.includes('珍珠泉东')) {
+        console.log('Debug for 珍珠泉东:', {
+            stationName: station.name,
+            stationLines: stationLines.map(l => ({ id: l.id, name: l.name, transit_type: l.transit_type })),
+            transitTypes,
+            uniqueTransitTypes,
+            excludeBusInterchanges
+        });
+    }
+    
     // If all lines are bus lines, don't mark as interchange (bus-only interchange)
     if (uniqueTransitTypes.length === 1 && uniqueTransitTypes[0] === TRANSIT_TYPES.BUS) {
+        if (station.name && station.name.includes('珍珠泉东')) {
+            console.log('珍珠泉东: Bus-only interchange, excluding');
+        }
         return false;
     }
     
-    // If it's a mix of bus and other types, and user wants to exclude mixed bus/metro
-    // Only mark as interchange if it involves rail-based transit (metro, streetcar, BRT)
-    const hasRailTransit = uniqueTransitTypes.some(type => 
-        type === TRANSIT_TYPES.METRO || 
-        type === TRANSIT_TYPES.STREETCAR || 
-        type === TRANSIT_TYPES.BRT
-    );
-    
+    // FIXED: If it's a mix of bus and other types, and user wants to exclude mixed bus interchanges
     if (uniqueTransitTypes.includes(TRANSIT_TYPES.BUS) && uniqueTransitTypes.length > 1) {
-        // Mixed bus and other types - only mark as interchange if there's rail transit
-        return hasRailTransit;
+        // Mixed bus and other types - when excluding bus interchanges, return false
+        if (station.name && station.name.includes('珍珠泉东')) {
+            console.log('珍珠泉东: Mixed bus/other types, excluding mixed bus interchanges');
+        }
+        return false; // <-- FIXED: Changed from hasRailTransit to false
     }
     
-    // For all other cases (non-bus interchanges), mark as interchange
+    // For all other cases (pure rail interchanges), mark as interchange
+    if (station.name && station.name.includes('珍珠泉东')) {
+        console.log('珍珠泉东: Pure rail interchange, marking as interchange');
+    }
     return true;
 }
 
-// Modified createScaleSettings to include the new interchange setting
-function createScaleSettings() {
-    // Check if settings panel already exists
-    const existingPanel = container.querySelector('.metro-scale-settings');
-    if (existingPanel) {
-        existingPanel.remove();
-    }
-    
-    // Load saved scale settings
-    loadScaleSettings();
-    loadInterchangeSettings();
-    
-    // Create settings panel
-    const scalePanel = document.createElement('div');
-    scalePanel.className = 'metro-scale-settings';
-    
-    scalePanel.innerHTML = `
-        <h3>Display Settings</h3>
-        
-        <div class="metro-scale-slider">
-            <label for="station-scale">Station Size: <span class="scale-value">${(stationScaleFactor * 100).toFixed(0)}%</span></label>
-            <input type="range" id="station-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${stationScaleFactor * 100}" step="5">
-        </div>
-        
-        <div class="metro-scale-slider">
-            <label for="text-scale">Text Size: <span class="scale-value">${(textScaleFactor * 100).toFixed(0)}%</span></label>
-            <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="5">
-        </div>
-        
-        <div class="metro-interchange-settings" style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
-            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Interchange Station Rules</h4>
-            <label style="display: flex; align-items: center; cursor: pointer; margin: 5px 0;">
-                <input type="checkbox" id="exclude-bus-interchanges" ${excludeBusInterchanges ? 'checked' : ''} style="margin-right: 8px;">
-                <span style="font-size: 13px;">Exclude bus-only and bus/metro mix interchanges</span>
-            </label>
-            <div style="font-size: 11px; color: #666; margin-top: 5px; line-height: 1.3;">
-                When enabled, only rail-based interchanges (metro-metro, metro-streetcar, etc.) will be specially highlighted. 
-                Bus-only interchanges and bus/metro mixed interchanges will appear as regular stations.
-            </div>
-        </div>
-        
-        <div class="metro-scale-actions">
-            <button class="reset">Reset to Default</button>
-            <button class="save">Save Settings</button>
-        </div>
-    `;
-    
-    container.appendChild(scalePanel);
-    
-    // Add event listeners
-    const stationScaleSlider = scalePanel.querySelector('#station-scale');
-    const textScaleSlider = scalePanel.querySelector('#text-scale');
-    const excludeBusCheckbox = scalePanel.querySelector('#exclude-bus-interchanges');
-    const stationScaleValue = scalePanel.querySelector('label[for="station-scale"] .scale-value');
-    const textScaleValue = scalePanel.querySelector('label[for="text-scale"] .scale-value');
-    const resetButton = scalePanel.querySelector('button.reset');
-    const saveButton = scalePanel.querySelector('button.save');
-    
-    // Update values as sliders are moved
-    stationScaleSlider.addEventListener('input', (e) => {
-        stationScaleFactor = parseInt(e.target.value) / 100;
-        stationScaleValue.textContent = `${(stationScaleFactor * 100).toFixed(0)}%`;
-        drawMap();
-    });
-    
-    textScaleSlider.addEventListener('input', (e) => {
-        textScaleFactor = parseInt(e.target.value) / 100;
-        textScaleValue.textContent = `${(textScaleFactor * 100).toFixed(0)}%`;
-        drawMap();
-    });
-    
-    // Interchange exclusion checkbox
-    excludeBusCheckbox.addEventListener('change', (e) => {
-        excludeBusInterchanges = e.target.checked;
-        // Recalculate interchange status for all stations
-        recalculateInterchangeStatus();
-        drawMap();
-    });
-    
-    // Reset button
-    resetButton.addEventListener('click', () => {
-        stationScaleFactor = DEFAULT_SCALE;
-        textScaleFactor = DEFAULT_SCALE;
-        excludeBusInterchanges = false;
-        stationScaleSlider.value = DEFAULT_SCALE * 100;
-        textScaleSlider.value = DEFAULT_SCALE * 100;
-        excludeBusCheckbox.checked = false;
-        stationScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
-        textScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
-        recalculateInterchangeStatus();
-        drawMap();
-    });
-    
-    // Save button
-    saveButton.addEventListener('click', () => {
-        saveScaleSettings();
-        saveInterchangeSettings();
-        // Provide feedback
-        saveButton.textContent = 'Saved!';
-        setTimeout(() => {
-            saveButton.textContent = 'Save Settings';
-        }, 1500);
-    });
-}
-
-// Function to recalculate interchange status for all stations based on current settings
+// Enhanced recalculateInterchangeStatus function with immediate redraw
 function recalculateInterchangeStatus() {
+    console.log('Recalculating interchange status with excludeBusInterchanges:', excludeBusInterchanges);
+    
+    let hasChanges = false;
+    
     for (const station of stations) {
         const wasInterchange = station.interchange;
         const shouldBeInterchange = shouldMarkAsInterchange(station);
         
+        // Add debugging for the specific station
+        if (station.name && station.name.includes('珍珠泉东')) {
+            console.log('珍珠泉东 recalculation:', {
+                stationName: station.name,
+                wasInterchange,
+                wasInterchangeType: typeof wasInterchange,
+                shouldBeInterchange,
+                shouldBeInterchangeType: typeof shouldBeInterchange,
+                willChange: wasInterchange !== shouldBeInterchange
+            });
+        }
+        
         if (wasInterchange !== shouldBeInterchange) {
+            // IMPORTANT: Ensure the change is applied immediately and persistently
             station.interchange = shouldBeInterchange;
-            // Update in database if needed (optional, could be done async)
+            hasChanges = true;
+            
+            // Add logging for changes
+            console.log(`Station ${station.name}: interchange changed from ${wasInterchange} to ${shouldBeInterchange}`);
+            
+            // Add more debugging for the specific station
+            if (station.name && station.name.includes('珍珠泉东')) {
+                console.log('珍珠泉东 after change:', {
+                    newInterchange: station.interchange,
+                    newInterchangeType: typeof station.interchange
+                });
+            }
+            
+            // Update in database asynchronously (don't await to avoid blocking)
             updateStationInDatabase(station).catch(error => {
                 console.error('Error updating station interchange status:', error);
             });
         }
+    }
+    
+    // Force immediate redraw if there were changes
+    if (hasChanges) {
+        console.log('Forcing immediate redraw due to interchange changes');
+        drawMap();
     }
 }
 
