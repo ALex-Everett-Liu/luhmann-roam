@@ -3408,9 +3408,9 @@ function openLineManagerDialog() {
     }
     
     managerContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
             <h2 style="margin: 0; font-size: 18px;">Manage Metro Lines</h2>
-            <button id="close-line-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+            <button id="close-line-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <p>Click "Manage" to edit a line's stations and properties.</p>
         ${linesHTML}
@@ -3420,6 +3420,13 @@ function openLineManagerDialog() {
     `;
     
     container.appendChild(managerContainer);
+    
+    // Make the dialog draggable
+    try {
+        makeDraggable(managerContainer);
+    } catch (error) {
+        console.warn('Failed to make dialog draggable:', error);
+    }
     
     // Add event listeners
     document.getElementById('close-line-manager').addEventListener('click', () => {
@@ -3517,9 +3524,9 @@ function openStationManagerDialog() {
     }
     
     managerContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
             <h2 style="margin: 0; font-size: 18px;">Manage Metro Stations</h2>
-            <button id="close-station-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+            <button id="close-station-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
         <p>Click "Edit" to modify a station's properties.</p>
         ${stationsHTML}
@@ -3529,6 +3536,13 @@ function openStationManagerDialog() {
     `;
     
     container.appendChild(managerContainer);
+    
+    // Make the dialog draggable
+    try {
+        makeDraggable(managerContainer);
+    } catch (error) {
+        console.warn('Failed to make dialog draggable:', error);
+    }
     
     // Add event listeners
     document.getElementById('close-station-manager').addEventListener('click', () => {

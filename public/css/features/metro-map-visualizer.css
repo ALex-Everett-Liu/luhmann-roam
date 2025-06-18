@@ -700,3 +700,66 @@
         gap: 10px;
     }
   }
+
+  /* Updated dialog header styles */
+  .dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    cursor: grab;
+    user-select: none;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .dialog-header:active {
+    cursor: grabbing;
+  }
+
+  .dialog-header h2,
+  .dialog-header h3 {
+    margin: 0;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .dialog-header button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .dialog-header button:hover {
+    background-color: #f0f0f0;
+    color: #c00;
+  }
+
+  /* Ensure manager dialogs are properly styled for dragging */
+  .metro-manager-dialog .dialog-header {
+    cursor: grab;
+    user-select: none;
+  }
+
+  .metro-manager-dialog .dialog-header:active {
+    cursor: grabbing;
+  }
+
+  /* Make sure all edit menus can be dragged */
+  .metro-edit-menu .dialog-header {
+    cursor: grab;
+    user-select: none;
+  }
+
+  .metro-edit-menu .dialog-header:active {
+    cursor: grabbing;
+  }
