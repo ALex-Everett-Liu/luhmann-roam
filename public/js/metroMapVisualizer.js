@@ -3472,9 +3472,9 @@ function openStationManagerDialog() {
     managerContainer.style.left = '50%';
     managerContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
     managerContainer.style.transform = 'translate(-50%, -50%)';
-    managerContainer.style.width = '450px';
-    managerContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport
-    managerContainer.style.overflowY = 'auto'; // Add scrolling if needed
+    managerContainer.style.width = '500px'; // Made wider for search
+    managerContainer.style.maxHeight = '80vh';
+    managerContainer.style.overflowY = 'auto';
     managerContainer.style.background = 'white';
     managerContainer.style.border = '1px solid #ccc';
     managerContainer.style.borderRadius = '8px';
@@ -3488,16 +3488,17 @@ function openStationManagerDialog() {
         stationsHTML = '<p>No stations found. Create a new station first.</p>';
     } else {
         stationsHTML = `
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="max-height: 400px; overflow-y: auto;" id="stations-table-container">
+                <table style="width: 100%; border-collapse: collapse;" id="stations-table">
                     <thead>
                         <tr>
                             <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Station</th>
                             <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Type</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">City</th>
                             <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="stations-table-body">
         `;
         
         for (const station of stations) {
@@ -3505,10 +3506,13 @@ function openStationManagerDialog() {
             if (station.interchange) stationType = 'Interchange';
             else if (station.terminal) stationType = 'Terminal';
             
+            const cityName = station.city || 'Default';
+            
             stationsHTML += `
-                <tr>
+                <tr class="station-row" data-station-name="${station.name.toLowerCase()}" data-station-type="${stationType.toLowerCase()}" data-station-city="${cityName.toLowerCase()}">
                     <td style="padding: 8px; border-bottom: 1px solid #eee;">${station.name}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${stationType}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${cityName}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">
                         <button class="edit-station-btn" data-station-id="${station.id}">Edit</button>
                     </td>
@@ -3525,11 +3529,21 @@ function openStationManagerDialog() {
     
     managerContainer.innerHTML = `
         <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
-            <h2 style="margin: 0; font-size: 18px;">Manage Metro Stations</h2>
+            <h2 style="margin: 0; font-size: 18px;">Manage Metro Stations (${stations.length})</h2>
             <button id="close-station-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
-        <p>Click "Edit" to modify a station's properties.</p>
+        
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="station-search" placeholder="Search stations by name, type, or city..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+            <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                <span id="search-results-count">${stations.length} stations shown</span>
+                <button id="clear-station-search" style="margin-left: 10px; padding: 2px 6px; font-size: 11px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer;">Clear</button>
+            </div>
+        </div>
+        
         ${stationsHTML}
+        
         <div style="margin-top: 15px; text-align: center;">
             <button id="create-new-station-btn">Create New Station</button>
         </div>
@@ -3543,6 +3557,9 @@ function openStationManagerDialog() {
     } catch (error) {
         console.warn('Failed to make dialog draggable:', error);
     }
+    
+    // Set up search functionality
+    setupStationSearch();
     
     // Add event listeners
     document.getElementById('close-station-manager').addEventListener('click', () => {
@@ -3568,8 +3585,8 @@ function openStationManagerDialog() {
         managerContainer.remove();
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const centerMapX = 0; // Center of map in map coordinates
-        const centerMapY = 0; // Center of map in map coordinates
+        const centerMapX = 0;
+        const centerMapY = 0;
         openNodeSelectorForNewStation(centerMapX, centerMapY, centerX, centerY);
     });
 }

@@ -763,3 +763,137 @@
   .metro-edit-menu .dialog-header:active {
     cursor: grabbing;
   }
+
+  /* Search functionality styles */
+  .metro-search-container {
+    margin-bottom: 15px;
+  }
+
+  .metro-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+  }
+
+  .metro-search-input:focus {
+    outline: none;
+    border-color: #4285F4;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+  }
+
+  .metro-search-info {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .metro-search-clear {
+    padding: 2px 6px;
+    font-size: 11px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .metro-search-clear:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+  }
+
+  /* Enhanced line option styling for add to line dialog */
+  .line-option {
+    transition: background-color 0.2s ease;
+    border: 1px solid transparent;
+  }
+
+  .line-option:hover {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+  }
+
+  .line-option label {
+    margin: 0;
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .line-option input[type="radio"]:checked + .metro-line-badge + div {
+    color: #4285F4;
+    font-weight: bold;
+  }
+
+  /* Enhanced table styling for manager dialogs */
+  .metro-manager-dialog table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .metro-manager-dialog th {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .metro-manager-dialog td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+
+  .metro-manager-dialog tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .metro-manager-dialog .edit-station-btn,
+  .metro-manager-dialog .manage-line-btn {
+    background: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .metro-manager-dialog .edit-station-btn:hover,
+  .metro-manager-dialog .manage-line-btn:hover {
+    background: #3b78e7;
+    transform: translateY(-1px);
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .metro-manager-dialog {
+        width: 95% !important;
+        margin: 10px;
+    }
+    
+    .metro-edit-menu {
+        width: 95% !important;
+        margin: 10px;
+    }
+    
+    .metro-manager-dialog table {
+        font-size: 12px;
+    }
+    
+    .metro-manager-dialog th,
+    .metro-manager-dialog td {
+        padding: 6px 4px;
+    }
+  }
