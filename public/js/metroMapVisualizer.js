@@ -133,6 +133,9 @@ const MetroMapVisualizer = (function() {
     let currentCity = 'all';
     let availableCities = [];
     
+    // Add the new setting variable for excluding bus interchanges
+    let excludeBusInterchanges = false;
+    
     // Initialize the visualizer
     function initialize() {
         console.log('Initializing Metro Map Visualizer');
@@ -146,6 +149,9 @@ const MetroMapVisualizer = (function() {
         
         // Load scale settings
         loadScaleSettings();
+        
+        // Load interchange exclusion setting
+        loadInterchangeSettings();
         
         // Set up pan and zoom
         setupPanAndZoom();
@@ -213,13 +219,14 @@ const MetroMapVisualizer = (function() {
         
         // Load saved scale settings
         loadScaleSettings();
+        loadInterchangeSettings();
         
         // Create settings panel
         const scalePanel = document.createElement('div');
         scalePanel.className = 'metro-scale-settings';
         
         scalePanel.innerHTML = `
-            <h3>Scale Settings</h3>
+            <h3>Display Settings</h3>
             
             <div class="metro-scale-slider">
                 <label for="station-scale">Station Size: <span class="scale-value">${(stationScaleFactor * 100).toFixed(0)}%</span></label>
@@ -231,17 +238,30 @@ const MetroMapVisualizer = (function() {
                 <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="5">
             </div>
             
+            <div class="metro-interchange-settings" style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+                <h4 style="margin: 0 0 10px 0; font-size: 14px;">Interchange Station Rules</h4>
+                <label style="display: flex; align-items: center; cursor: pointer; margin: 5px 0;">
+                    <input type="checkbox" id="exclude-bus-interchanges" ${excludeBusInterchanges ? 'checked' : ''} style="margin-right: 8px;">
+                    <span style="font-size: 13px;">Exclude bus-only and bus/metro mix interchanges</span>
+                </label>
+                <div style="font-size: 11px; color: #666; margin-top: 5px; line-height: 1.3;">
+                    When enabled, only rail-based interchanges (metro-metro, metro-streetcar, etc.) will be specially highlighted. 
+                    Bus-only interchanges and bus/metro mixed interchanges will appear as regular stations.
+                </div>
+            </div>
+            
             <div class="metro-scale-actions">
                 <button class="reset">Reset to Default</button>
                 <button class="save">Save Settings</button>
             </div>
         `;
         
-        container.appendChild(scalePanel); // The scalePanel is appended to the main container, making it visible on the page.
+        container.appendChild(scalePanel);
         
         // Add event listeners
         const stationScaleSlider = scalePanel.querySelector('#station-scale');
         const textScaleSlider = scalePanel.querySelector('#text-scale');
+        const excludeBusCheckbox = scalePanel.querySelector('#exclude-bus-interchanges');
         const stationScaleValue = scalePanel.querySelector('label[for="station-scale"] .scale-value');
         const textScaleValue = scalePanel.querySelector('label[for="text-scale"] .scale-value');
         const resetButton = scalePanel.querySelector('button.reset');
@@ -260,20 +280,32 @@ const MetroMapVisualizer = (function() {
             drawMap();
         });
         
+        // Interchange exclusion checkbox
+        excludeBusCheckbox.addEventListener('change', (e) => {
+            excludeBusInterchanges = e.target.checked;
+            // Recalculate interchange status for all stations
+            recalculateInterchangeStatus();
+            drawMap();
+        });
+        
         // Reset button
         resetButton.addEventListener('click', () => {
             stationScaleFactor = DEFAULT_SCALE;
             textScaleFactor = DEFAULT_SCALE;
+            excludeBusInterchanges = false;
             stationScaleSlider.value = DEFAULT_SCALE * 100;
             textScaleSlider.value = DEFAULT_SCALE * 100;
+            excludeBusCheckbox.checked = false;
             stationScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
             textScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
+            recalculateInterchangeStatus();
             drawMap();
         });
         
         // Save button
         saveButton.addEventListener('click', () => {
             saveScaleSettings();
+            saveInterchangeSettings();
             // Provide feedback
             saveButton.textContent = 'Saved!';
             setTimeout(() => {
@@ -1253,23 +1285,23 @@ const MetroMapVisualizer = (function() {
                 return;
             }
             
-               // Add this check before using line.stations.push
-                if (typeof line.stations === 'string') {
-                    line.stations = JSON.parse(line.stations);
-                }
-                
-                // Ensure it's an array
-                if (!Array.isArray(line.stations)) {
-                    line.stations = [];
-                }
-                
-                // Now it's safe to push
-                line.stations.push(stationId);
+            // Add this check before using line.stations.push
+            if (typeof line.stations === 'string') {
+                line.stations = JSON.parse(line.stations);
+            }
             
-            // Check if this is an interchange station
-            const stationLines = findLinesForStation(stationId);
-            if (stationLines.length > 1) {
-                station.interchange = true;
+            // Ensure it's an array
+            if (!Array.isArray(line.stations)) {
+                line.stations = [];
+            }
+            
+            // Now it's safe to push
+            line.stations.push(stationId);
+            
+            // Use the new interchange logic
+            const newInterchangeStatus = shouldMarkAsInterchange(station);
+            if (station.interchange !== newInterchangeStatus) {
+                station.interchange = newInterchangeStatus;
                 await updateStationInDatabase(station);
             }
             
@@ -4657,6 +4689,199 @@ function setupStationSearch() {
             filterStations('');
         }
     });
+}
+
+// Load interchange exclusion settings
+function loadInterchangeSettings() {
+    try {
+        const savedSettings = localStorage.getItem('metroMapInterchangeSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            excludeBusInterchanges = settings.excludeBusInterchanges || false;
+            console.log('Loaded interchange settings:', { excludeBusInterchanges });
+        } else {
+            // Use defaults
+            excludeBusInterchanges = false;
+        }
+    } catch (error) {
+        console.error('Error loading interchange settings:', error);
+        // Use defaults on error
+        excludeBusInterchanges = false;
+    }
+}
+
+// Save interchange exclusion settings
+function saveInterchangeSettings() {
+    try {
+        const settings = {
+            excludeBusInterchanges: excludeBusInterchanges
+        };
+        localStorage.setItem('metroMapInterchangeSettings', JSON.stringify(settings));
+        console.log('Saved interchange settings:', settings);
+    } catch (error) {
+        console.error('Error saving interchange settings:', error);
+    }
+}
+
+// Function to determine if a station should be marked as an interchange
+function shouldMarkAsInterchange(station) {
+    const stationLines = lines.filter(l => l.stations.includes(station.id));
+    
+    // If station is only on one line or no lines, not an interchange
+    if (stationLines.length <= 1) {
+        return false;
+    }
+    
+    // If the exclusion rule is disabled, mark all multi-line stations as interchanges
+    if (!excludeBusInterchanges) {
+        return true;
+    }
+    
+    // Check the transit types of the lines this station belongs to
+    const transitTypes = stationLines.map(line => line.transit_type || TRANSIT_TYPES.METRO);
+    const uniqueTransitTypes = [...new Set(transitTypes)];
+    
+    // If all lines are bus lines, don't mark as interchange (bus-only interchange)
+    if (uniqueTransitTypes.length === 1 && uniqueTransitTypes[0] === TRANSIT_TYPES.BUS) {
+        return false;
+    }
+    
+    // If it's a mix of bus and other types, and user wants to exclude mixed bus/metro
+    // Only mark as interchange if it involves rail-based transit (metro, streetcar, BRT)
+    const hasRailTransit = uniqueTransitTypes.some(type => 
+        type === TRANSIT_TYPES.METRO || 
+        type === TRANSIT_TYPES.STREETCAR || 
+        type === TRANSIT_TYPES.BRT
+    );
+    
+    if (uniqueTransitTypes.includes(TRANSIT_TYPES.BUS) && uniqueTransitTypes.length > 1) {
+        // Mixed bus and other types - only mark as interchange if there's rail transit
+        return hasRailTransit;
+    }
+    
+    // For all other cases (non-bus interchanges), mark as interchange
+    return true;
+}
+
+// Modified createScaleSettings to include the new interchange setting
+function createScaleSettings() {
+    // Check if settings panel already exists
+    const existingPanel = container.querySelector('.metro-scale-settings');
+    if (existingPanel) {
+        existingPanel.remove();
+    }
+    
+    // Load saved scale settings
+    loadScaleSettings();
+    loadInterchangeSettings();
+    
+    // Create settings panel
+    const scalePanel = document.createElement('div');
+    scalePanel.className = 'metro-scale-settings';
+    
+    scalePanel.innerHTML = `
+        <h3>Display Settings</h3>
+        
+        <div class="metro-scale-slider">
+            <label for="station-scale">Station Size: <span class="scale-value">${(stationScaleFactor * 100).toFixed(0)}%</span></label>
+            <input type="range" id="station-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${stationScaleFactor * 100}" step="5">
+        </div>
+        
+        <div class="metro-scale-slider">
+            <label for="text-scale">Text Size: <span class="scale-value">${(textScaleFactor * 100).toFixed(0)}%</span></label>
+            <input type="range" id="text-scale" min="${MIN_SCALE * 100}" max="${MAX_SCALE * 100}" value="${textScaleFactor * 100}" step="5">
+        </div>
+        
+        <div class="metro-interchange-settings" style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Interchange Station Rules</h4>
+            <label style="display: flex; align-items: center; cursor: pointer; margin: 5px 0;">
+                <input type="checkbox" id="exclude-bus-interchanges" ${excludeBusInterchanges ? 'checked' : ''} style="margin-right: 8px;">
+                <span style="font-size: 13px;">Exclude bus-only and bus/metro mix interchanges</span>
+            </label>
+            <div style="font-size: 11px; color: #666; margin-top: 5px; line-height: 1.3;">
+                When enabled, only rail-based interchanges (metro-metro, metro-streetcar, etc.) will be specially highlighted. 
+                Bus-only interchanges and bus/metro mixed interchanges will appear as regular stations.
+            </div>
+        </div>
+        
+        <div class="metro-scale-actions">
+            <button class="reset">Reset to Default</button>
+            <button class="save">Save Settings</button>
+        </div>
+    `;
+    
+    container.appendChild(scalePanel);
+    
+    // Add event listeners
+    const stationScaleSlider = scalePanel.querySelector('#station-scale');
+    const textScaleSlider = scalePanel.querySelector('#text-scale');
+    const excludeBusCheckbox = scalePanel.querySelector('#exclude-bus-interchanges');
+    const stationScaleValue = scalePanel.querySelector('label[for="station-scale"] .scale-value');
+    const textScaleValue = scalePanel.querySelector('label[for="text-scale"] .scale-value');
+    const resetButton = scalePanel.querySelector('button.reset');
+    const saveButton = scalePanel.querySelector('button.save');
+    
+    // Update values as sliders are moved
+    stationScaleSlider.addEventListener('input', (e) => {
+        stationScaleFactor = parseInt(e.target.value) / 100;
+        stationScaleValue.textContent = `${(stationScaleFactor * 100).toFixed(0)}%`;
+        drawMap();
+    });
+    
+    textScaleSlider.addEventListener('input', (e) => {
+        textScaleFactor = parseInt(e.target.value) / 100;
+        textScaleValue.textContent = `${(textScaleFactor * 100).toFixed(0)}%`;
+        drawMap();
+    });
+    
+    // Interchange exclusion checkbox
+    excludeBusCheckbox.addEventListener('change', (e) => {
+        excludeBusInterchanges = e.target.checked;
+        // Recalculate interchange status for all stations
+        recalculateInterchangeStatus();
+        drawMap();
+    });
+    
+    // Reset button
+    resetButton.addEventListener('click', () => {
+        stationScaleFactor = DEFAULT_SCALE;
+        textScaleFactor = DEFAULT_SCALE;
+        excludeBusInterchanges = false;
+        stationScaleSlider.value = DEFAULT_SCALE * 100;
+        textScaleSlider.value = DEFAULT_SCALE * 100;
+        excludeBusCheckbox.checked = false;
+        stationScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
+        textScaleValue.textContent = `${(DEFAULT_SCALE * 100).toFixed(0)}%`;
+        recalculateInterchangeStatus();
+        drawMap();
+    });
+    
+    // Save button
+    saveButton.addEventListener('click', () => {
+        saveScaleSettings();
+        saveInterchangeSettings();
+        // Provide feedback
+        saveButton.textContent = 'Saved!';
+        setTimeout(() => {
+            saveButton.textContent = 'Save Settings';
+        }, 1500);
+    });
+}
+
+// Function to recalculate interchange status for all stations based on current settings
+function recalculateInterchangeStatus() {
+    for (const station of stations) {
+        const wasInterchange = station.interchange;
+        const shouldBeInterchange = shouldMarkAsInterchange(station);
+        
+        if (wasInterchange !== shouldBeInterchange) {
+            station.interchange = shouldBeInterchange;
+            // Update in database if needed (optional, could be done async)
+            updateStationInDatabase(station).catch(error => {
+                console.error('Error updating station interchange status:', error);
+            });
+        }
+    }
 }
 
     
