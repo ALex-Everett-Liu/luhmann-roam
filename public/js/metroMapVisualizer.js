@@ -964,35 +964,11 @@ const MetroMapVisualizer = (function() {
             const isTerminal = station.terminal;
             const isSelected = (selectedStation && selectedStation.id === station.id);
             
-            // Add debugging for the specific station
-            if (station.name && station.name.includes('珍珠泉东')) {
-                console.log('Drawing 珍珠泉东:', {
-                    stationName: station.name,
-                    interchange: station.interchange,
-                    isInterchange: isInterchange,
-                    interchangeType: typeof station.interchange,
-                    isInterchangeTruthy: !!station.interchange,
-                    terminal: station.terminal,
-                    isTerminal: isTerminal
-                });
-            }
-            
             // Get style based on transit type
             const stationStyle = STATION_STYLES[transitType] || STATION_STYLES[TRANSIT_TYPES.METRO];
             
             // Determine station radius with scaling
             const radius = (isInterchange ? stationStyle.interchangeRadius : stationStyle.radius) * stationScaleFactor;
-            
-            // Add more debugging for the radius calculation
-            if (station.name && station.name.includes('珍珠泉东')) {
-                console.log('珍珠泉东 radius calculation:', {
-                    isInterchange,
-                    interchangeRadius: stationStyle.interchangeRadius,
-                    regularRadius: stationStyle.radius,
-                    finalRadius: radius,
-                    stationScaleFactor
-                });
-            }
             
             // Draw station based on shape
             ctx.beginPath();
@@ -1838,21 +1814,13 @@ const MetroMapVisualizer = (function() {
             // Make a copy of the station object to ensure we don't modify the original
             const stationToUpdate = {...station};
             
-            // Log before update for debugging
-            if (station.name && station.name.includes('珍珠泉东')) {
-                console.log('珍珠泉东 before database update:', {
-                    originalInterchange: station.interchange,
-                    updateInterchange: stationToUpdate.interchange
-                });
-            }
-            
             // Ensure boolean values are converted to 0/1 for database
             stationToUpdate.interchange = stationToUpdate.interchange ? 1 : 0;
             stationToUpdate.terminal = stationToUpdate.terminal ? 1 : 0;
             
             // Add console log for debugging
-            console.log('Sending station update to database:', stationToUpdate);
-            console.log('Transit type being sent:', stationToUpdate.transit_type);
+            // console.log('Sending station update to database:', stationToUpdate);
+            // console.log('Transit type being sent:', stationToUpdate.transit_type);
             
             // Try dedicated endpoint first
             try {
@@ -1865,19 +1833,11 @@ const MetroMapVisualizer = (function() {
                 if (response.ok) {
                     // The response will update our local copy too
                     const updatedStation = await response.json();
-                    console.log('Server response after update:', updatedStation);
+                    // console.log('Server response after update:', updatedStation);
                     
                     // CRITICAL: Don't overwrite the local station object with server response
                     // because it might have different boolean representation
                     // Just log the server response for debugging
-                    
-                    if (station.name && station.name.includes('珍珠泉东')) {
-                        console.log('珍珠泉东 server response:', {
-                            serverInterchange: updatedStation.interchange,
-                            localInterchange: station.interchange,
-                            localInterchangeType: typeof station.interchange
-                        });
-                    }
                     
                     return updatedStation;
                 }
@@ -4783,38 +4743,18 @@ function shouldMarkAsInterchange(station) {
     const transitTypes = stationLines.map(line => line.transit_type || TRANSIT_TYPES.METRO);
     const uniqueTransitTypes = [...new Set(transitTypes)];
     
-    // Add debugging for the specific station we're interested in
-    if (station.name && station.name.includes('珍珠泉东')) {
-        console.log('Debug for 珍珠泉东:', {
-            stationName: station.name,
-            stationLines: stationLines.map(l => ({ id: l.id, name: l.name, transit_type: l.transit_type })),
-            transitTypes,
-            uniqueTransitTypes,
-            excludeBusInterchanges
-        });
-    }
-    
     // If all lines are bus lines, don't mark as interchange (bus-only interchange)
     if (uniqueTransitTypes.length === 1 && uniqueTransitTypes[0] === TRANSIT_TYPES.BUS) {
-        if (station.name && station.name.includes('珍珠泉东')) {
-            console.log('珍珠泉东: Bus-only interchange, excluding');
-        }
         return false;
     }
     
-    // FIXED: If it's a mix of bus and other types, and user wants to exclude mixed bus interchanges
+    // If it's a mix of bus and other types, and user wants to exclude mixed bus interchanges
     if (uniqueTransitTypes.includes(TRANSIT_TYPES.BUS) && uniqueTransitTypes.length > 1) {
         // Mixed bus and other types - when excluding bus interchanges, return false
-        if (station.name && station.name.includes('珍珠泉东')) {
-            console.log('珍珠泉东: Mixed bus/other types, excluding mixed bus interchanges');
-        }
-        return false; // <-- FIXED: Changed from hasRailTransit to false
+        return false;
     }
     
     // For all other cases (pure rail interchanges), mark as interchange
-    if (station.name && station.name.includes('珍珠泉东')) {
-        console.log('珍珠泉东: Pure rail interchange, marking as interchange');
-    }
     return true;
 }
 
@@ -4828,33 +4768,13 @@ function recalculateInterchangeStatus() {
         const wasInterchange = station.interchange;
         const shouldBeInterchange = shouldMarkAsInterchange(station);
         
-        // Add debugging for the specific station
-        if (station.name && station.name.includes('珍珠泉东')) {
-            console.log('珍珠泉东 recalculation:', {
-                stationName: station.name,
-                wasInterchange,
-                wasInterchangeType: typeof wasInterchange,
-                shouldBeInterchange,
-                shouldBeInterchangeType: typeof shouldBeInterchange,
-                willChange: wasInterchange !== shouldBeInterchange
-            });
-        }
-        
         if (wasInterchange !== shouldBeInterchange) {
             // IMPORTANT: Ensure the change is applied immediately and persistently
             station.interchange = shouldBeInterchange;
             hasChanges = true;
             
             // Add logging for changes
-            console.log(`Station ${station.name}: interchange changed from ${wasInterchange} to ${shouldBeInterchange}`);
-            
-            // Add more debugging for the specific station
-            if (station.name && station.name.includes('珍珠泉东')) {
-                console.log('珍珠泉东 after change:', {
-                    newInterchange: station.interchange,
-                    newInterchangeType: typeof station.interchange
-                });
-            }
+            // console.log(`Station ${station.name}: interchange changed from ${wasInterchange} to ${shouldBeInterchange}`);
             
             // Update in database asynchronously (don't await to avoid blocking)
             updateStationInDatabase(station).catch(error => {
