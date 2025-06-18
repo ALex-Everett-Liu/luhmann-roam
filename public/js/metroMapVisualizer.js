@@ -3258,37 +3258,66 @@ const MetroMapVisualizer = (function() {
         // Create a new element for adding stations
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
-        menuContainer.style.left = `${x}px`;
-        menuContainer.style.top = `${y}px`;
-        menuContainer.style.width = '300px';  // Make it wider
+        
+        // Use fixed positioning and center it on screen to ensure it's always visible
+        menuContainer.style.position = 'fixed';
+        menuContainer.style.left = '50%';
+        menuContainer.style.top = '40%';
+        menuContainer.style.transform = 'translate(-50%, -50%)';
+        menuContainer.style.width = '400px';  // Made wider for search
+        menuContainer.style.maxHeight = '80vh';
+        menuContainer.style.overflowY = 'auto';
+        menuContainer.style.zIndex = '3000';
         
         // Find stations not on this line
         const availableStations = stations.filter(station => !line.stations.includes(station.id));
         
         if (availableStations.length === 0) {
             alert('All stations are already on this line. Create a new station first.');
-            menuContainer.remove();
             return;
         }
         
-        let stationOptionsHTML = '';
+        let stationOptionsHTML = `
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="add-stations-search" placeholder="Search available stations..." 
+                       style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                    <span id="add-stations-results-count">${availableStations.length} stations available</span>
+                    <button id="clear-add-stations-search" style="margin-left: 10px; padding: 2px 6px; font-size: 11px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; display: none;">Clear</button>
+                </div>
+            </div>
+            <div id="add-stations-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 4px; padding: 10px; background: #fafafa;">
+        `;
+        
         for (const station of availableStations) {
+            let stationType = 'Regular';
+            if (station.interchange) stationType = 'Interchange';
+            else if (station.terminal) stationType = 'Terminal';
+            
+            const cityName = station.city || 'Default';
+            
             stationOptionsHTML += `
-                <div style="margin: 5px 0;">
-                    <label>
-                        <input type="checkbox" name="add-station" value="${station.id}">
-                        ${station.name}
+                <div class="add-station-option" data-station-name="${station.name.toLowerCase()}" data-station-type="${stationType.toLowerCase()}" data-station-city="${cityName.toLowerCase()}" style="margin: 5px 0; padding: 5px; border-radius: 4px; transition: background-color 0.2s ease;">
+                    <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="add-station" value="${station.id}" style="margin-right: 8px;">
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: bold;">${station.name}</div>
+                            <div style="font-size: 12px; color: #666;">${stationType} • ${cityName}</div>
+                        </div>
                     </label>
                 </div>
             `;
         }
         
+        stationOptionsHTML += '</div>';
+        
         menuContainer.innerHTML = `
-            <h3>Add Stations to ${line.name}</h3>
-            <p>Select stations to add:</p>
-            <div style="max-height: 300px; overflow-y: auto;">
-                ${stationOptionsHTML}
+            <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
+                <h3 style="margin: 0;">Add Stations to ${line.name}</h3>
+                <button id="add-stations-close" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 5px;">&times;</button>
             </div>
+            <p>Select stations to add to this line:</p>
+            ${stationOptionsHTML}
             <div style="display: flex; justify-content: space-between; margin-top: 15px;">
                 <button id="add-stations-save">Add Selected</button>
                 <button id="add-stations-cancel">Cancel</button>
@@ -3297,7 +3326,21 @@ const MetroMapVisualizer = (function() {
         
         container.appendChild(menuContainer);
         
+        // Make the dialog draggable
+        try {
+            makeDraggable(menuContainer);
+        } catch (error) {
+            console.warn('Failed to make dialog draggable:', error);
+        }
+        
+        // Set up search functionality
+        setupAddStationsSearch();
+        
         // Add event listeners
+        document.getElementById('add-stations-close').addEventListener('click', () => {
+            menuContainer.remove();
+        });
+        
         document.getElementById('add-stations-save').addEventListener('click', async () => {
             const selectedStations = Array.from(
                 menuContainer.querySelectorAll('input[name="add-station"]:checked')
@@ -3333,6 +3376,69 @@ const MetroMapVisualizer = (function() {
         
         document.getElementById('add-stations-cancel').addEventListener('click', () => {
             menuContainer.remove();
+        });
+    }
+    
+    // Function to set up station search for "Add Stations to Line" dialog
+    function setupAddStationsSearch() {
+        const searchInput = document.getElementById('add-stations-search');
+        const clearButton = document.getElementById('clear-add-stations-search');
+        const resultsCount = document.getElementById('add-stations-results-count');
+        const stationsList = document.getElementById('add-stations-list');
+        
+        if (!searchInput || !clearButton || !resultsCount || !stationsList) {
+            console.warn('Add stations search elements not found');
+            return;
+        }
+        
+        // Function to filter stations based on search term
+        function filterStations(searchTerm) {
+            const term = searchTerm.toLowerCase().trim();
+            const options = stationsList.querySelectorAll('.add-station-option');
+            let visibleCount = 0;
+            
+            options.forEach(option => {
+                const stationName = option.dataset.stationName || '';
+                const stationType = option.dataset.stationType || '';
+                const stationCity = option.dataset.stationCity || '';
+                
+                const matches = stationName.includes(term) || 
+                              stationType.includes(term) || 
+                              stationCity.includes(term);
+                
+                if (matches || term === '') {
+                    option.style.display = '';
+                    visibleCount++;
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+            
+            // Update results count
+            resultsCount.textContent = `${visibleCount} stations available`;
+            
+            // Show/hide clear button
+            clearButton.style.display = term ? 'inline-block' : 'none';
+        }
+        
+        // Set up search input event listener
+        searchInput.addEventListener('input', (e) => {
+            filterStations(e.target.value);
+        });
+        
+        // Set up clear button event listener
+        clearButton.addEventListener('click', () => {
+            searchInput.value = '';
+            filterStations('');
+            searchInput.focus();
+        });
+        
+        // Set up keyboard shortcuts
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                filterStations('');
+            }
         });
     }
     
@@ -3428,7 +3534,7 @@ function openLineManagerDialog() {
     managerContainer.style.left = '50%';
     managerContainer.style.top = '40%'; // Position it at 40% from top rather than 50% to make it higher
     managerContainer.style.transform = 'translate(-50%, -50%)';
-    managerContainer.style.width = '450px';
+    managerContainer.style.width = '500px'; // Made wider for search
     managerContainer.style.maxHeight = '80vh'; // Limit height to 80% of viewport
     managerContainer.style.overflowY = 'auto'; // Add scrolling if needed
     managerContainer.style.background = 'white';
@@ -3444,28 +3550,37 @@ function openLineManagerDialog() {
         linesHTML = '<p>No lines found. Create a new line first.</p>';
     } else {
         linesHTML = `
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="max-height: 400px; overflow-y: auto;" id="lines-table-container">
+                <table style="width: 100%; border-collapse: collapse;" id="lines-table">
                     <thead>
                         <tr>
                             <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Line</th>
-                            <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Stations</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Stations</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Type</th>
                             <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="lines-table-body">
         `;
         
         for (const line of lines) {
+            const transitType = line.transit_type || 'metro';
+            const transitTypeDisplay = transitType.charAt(0).toUpperCase() + transitType.slice(1);
+            const cityName = line.city || 'Default';
+            
             linesHTML += `
-                <tr>
+                <tr class="line-row" data-line-name="${line.name.toLowerCase()}" data-line-type="${transitType.toLowerCase()}" data-line-city="${cityName.toLowerCase()}">
                     <td style="padding: 8px; border-bottom: 1px solid #eee;">
                         <div style="display: flex; align-items: center;">
-                            <span class="metro-line-badge" style="background-color:${line.color}"></span>
-                            ${line.name}
+                            <span class="metro-line-badge" style="background-color:${line.color}; display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 8px;"></span>
+                            <div>
+                                <div style="font-weight: bold;">${line.name}</div>
+                                <div style="font-size: 12px; color: #666;">${cityName}</div>
+                            </div>
                         </div>
                     </td>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${line.stations.length}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${line.stations.length}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${transitTypeDisplay}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">
                         <button class="manage-line-btn" data-line-id="${line.id}">Manage</button>
                     </td>
@@ -3482,9 +3597,19 @@ function openLineManagerDialog() {
     
     managerContainer.innerHTML = `
         <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: grab; user-select: none;">
-            <h2 style="margin: 0; font-size: 18px;">Manage Metro Lines</h2>
+            <h2 style="margin: 0; font-size: 18px;">Manage Metro Lines (${lines.length})</h2>
             <button id="close-line-manager" style="background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
         </div>
+        
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="line-search" placeholder="Search lines by name, type, or city..." 
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+            <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                <span id="line-search-results-count">${lines.length} lines shown</span>
+                <button id="clear-line-search-manager" style="margin-left: 10px; padding: 2px 6px; font-size: 11px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer;">Clear</button>
+            </div>
+        </div>
+        
         <p>Click "Manage" to edit a line's stations and properties.</p>
         ${linesHTML}
         <div style="margin-top: 15px; text-align: center;">
@@ -3500,6 +3625,9 @@ function openLineManagerDialog() {
     } catch (error) {
         console.warn('Failed to make dialog draggable:', error);
     }
+    
+    // Set up search functionality
+    setupLineManagerSearch();
     
     // Add event listeners
     document.getElementById('close-line-manager').addEventListener('click', () => {
@@ -3531,6 +3659,69 @@ function openLineManagerDialog() {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         openCreateLineWithStationsDialog(centerX, centerY);
+    });
+}
+
+// Function to set up line search for line manager dialog
+function setupLineManagerSearch() {
+    const searchInput = document.getElementById('line-search');
+    const clearButton = document.getElementById('clear-line-search-manager');
+    const resultsCount = document.getElementById('line-search-results-count');
+    const tableBody = document.getElementById('lines-table-body');
+    
+    if (!searchInput || !clearButton || !resultsCount || !tableBody) {
+        console.warn('Line manager search elements not found');
+        return;
+    }
+    
+    // Function to filter lines based on search term
+    function filterLines(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        const rows = tableBody.querySelectorAll('.line-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const lineName = row.dataset.lineName || '';
+            const lineType = row.dataset.lineType || '';
+            const lineCity = row.dataset.lineCity || '';
+            
+            const matches = lineName.includes(term) || 
+                          lineType.includes(term) || 
+                          lineCity.includes(term);
+            
+            if (matches || term === '') {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update results count
+        resultsCount.textContent = `${visibleCount} lines shown`;
+        
+        // Show/hide clear button
+        clearButton.style.display = term ? 'inline-block' : 'none';
+    }
+    
+    // Set up search input event listener
+    searchInput.addEventListener('input', (e) => {
+        filterLines(e.target.value);
+    });
+    
+    // Set up clear button event listener
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        filterLines('');
+        searchInput.focus();
+    });
+    
+    // Set up keyboard shortcuts
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            searchInput.value = '';
+            filterLines('');
+        }
     });
 }
 
