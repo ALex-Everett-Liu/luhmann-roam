@@ -354,159 +354,193 @@ const MetroMapVisualizer = (function() {
         const controls = document.createElement('div');
         controls.className = 'metro-controls';
         
-        // Add City Management Section (similar to library management in DCIM)
+        // Create primary controls row (always visible)
+        const primaryControls = document.createElement('div');
+        primaryControls.className = 'metro-primary-controls';
+        
+        // Add City Management Section (compact version)
         const citySection = document.createElement('div');
-        citySection.className = 'metro-city-section';
-        citySection.style.marginBottom = '10px';
-        citySection.style.padding = '8px';
-        citySection.style.border = '1px solid #ddd';
-        citySection.style.borderRadius = '4px';
-        citySection.style.backgroundColor = '#f9f9f9';
-        
-        const cityHeader = document.createElement('div');
-        cityHeader.className = 'metro-city-header';
-        cityHeader.style.display = 'flex';
-        cityHeader.style.justifyContent = 'space-between';
-        cityHeader.style.alignItems = 'center';
-        cityHeader.style.marginBottom = '5px';
-        
-        const cityTitle = document.createElement('div');
-        cityTitle.className = 'metro-city-title';
-        cityTitle.textContent = 'Current City';
-        cityTitle.style.fontWeight = 'bold';
-        cityTitle.style.fontSize = '12px';
-        
-        const cityActions = document.createElement('div');
-        cityActions.className = 'metro-city-actions';
-        
-        const manageCitiesBtn = document.createElement('button');
-        manageCitiesBtn.id = 'metro-manage-cities';
-        manageCitiesBtn.className = 'btn btn-small';
-        manageCitiesBtn.title = 'Manage Cities';
-        manageCitiesBtn.textContent = '⚙️';
-        manageCitiesBtn.style.marginRight = '5px';
-        manageCitiesBtn.addEventListener('click', showCityManager);
-        
-        const newCityBtn = document.createElement('button');
-        newCityBtn.id = 'metro-new-city';
-        newCityBtn.className = 'btn btn-small';
-        newCityBtn.title = 'New City';
-        newCityBtn.textContent = '+';
-        newCityBtn.addEventListener('click', showNewCityDialog);
-        
-        cityActions.appendChild(manageCitiesBtn);
-        cityActions.appendChild(newCityBtn);
-        
-        cityHeader.appendChild(cityTitle);
-        cityHeader.appendChild(cityActions);
+        citySection.className = 'metro-city-section compact';
         
         const citySelector = document.createElement('select');
         citySelector.id = 'metro-city-selector';
-        citySelector.className = 'metro-select';
-        citySelector.style.width = '100%';
-        citySelector.style.marginBottom = '5px';
+        citySelector.className = 'metro-select compact';
         citySelector.innerHTML = '<option value="all">All Cities</option>';
         citySelector.addEventListener('change', switchCity);
         
         const cityInfo = document.createElement('div');
         cityInfo.id = 'metro-current-city-info';
-        cityInfo.className = 'metro-city-info';
-        cityInfo.style.fontSize = '11px';
-        cityInfo.style.color = '#666';
-        cityInfo.textContent = 'Loading cities...';
+        cityInfo.className = 'metro-city-info compact';
+        cityInfo.textContent = 'Loading...';
         
-        citySection.appendChild(cityHeader);
         citySection.appendChild(citySelector);
         citySection.appendChild(cityInfo);
         
-        controls.appendChild(citySection);
-        
-        // Existing reset view button
+        // Primary action buttons (compact)
         const resetButton = document.createElement('button');
         resetButton.innerHTML = '⟲';
+        resetButton.className = 'metro-btn compact';
         resetButton.title = 'Reset view';
         resetButton.addEventListener('click', resetView);
-        controls.appendChild(resetButton);
         
-        // Add zoom controls
         const zoomControls = document.createElement('div');
-        zoomControls.className = 'metro-zoom-controls';
+        zoomControls.className = 'metro-zoom-controls compact';
         
-        // Zoom in button
         const zoomInButton = document.createElement('button');
         zoomInButton.innerHTML = '+';
+        zoomInButton.className = 'metro-btn compact';
         zoomInButton.title = 'Zoom in';
-        zoomInButton.addEventListener('click', () => {
-            setZoom(zoomLevel * 1.2);
-        });
-        zoomControls.appendChild(zoomInButton);
+        zoomInButton.addEventListener('click', () => setZoom(zoomLevel * 1.2));
         
-        // Zoom out button
         const zoomOutButton = document.createElement('button');
         zoomOutButton.innerHTML = '−';
+        zoomOutButton.className = 'metro-btn compact';
         zoomOutButton.title = 'Zoom out';
-        zoomOutButton.addEventListener('click', () => {
-            setZoom(zoomLevel * 0.8);
-        });
-        zoomControls.appendChild(zoomOutButton);
+        zoomOutButton.addEventListener('click', () => setZoom(zoomLevel * 0.8));
         
-        // Zoom level display
         const zoomDisplay = document.createElement('span');
-        zoomDisplay.className = 'metro-zoom-display';
+        zoomDisplay.className = 'metro-zoom-display compact';
         zoomDisplay.id = 'metro-zoom-display';
         zoomDisplay.textContent = '100%';
+        
+        zoomControls.appendChild(zoomInButton);
+        zoomControls.appendChild(zoomOutButton);
         zoomControls.appendChild(zoomDisplay);
         
-        controls.appendChild(zoomControls);
-        
-        // Toggle edit mode button
         const editButton = document.createElement('button');
-        editButton.textContent = 'Edit Map';
+        editButton.textContent = 'Edit';
+        editButton.className = 'metro-btn compact';
         editButton.title = 'Toggle edit mode';
         editButton.addEventListener('click', toggleEditMode);
-        controls.appendChild(editButton);
         
-        // Add a "Manage Line" button for direct access
-        const manageLineButton = document.createElement('button');
-        manageLineButton.textContent = 'Manage Lines';
-        manageLineButton.title = 'List and manage all metro lines';
-        manageLineButton.addEventListener('click', openLineManagerDialog);
-        controls.appendChild(manageLineButton);
-        
-        // Add a "Manage Stations" button for direct access
-        const manageStationsButton = document.createElement('button');
-        manageStationsButton.textContent = 'Manage Stations';
-        manageStationsButton.title = 'List and manage all stations';
-        manageStationsButton.addEventListener('click', openStationManagerDialog);
-        controls.appendChild(manageStationsButton);
+        // Menu toggle button
+        const menuToggleButton = document.createElement('button');
+        menuToggleButton.innerHTML = '☰';
+        menuToggleButton.className = 'metro-btn compact menu-toggle';
+        menuToggleButton.title = 'More options';
+        menuToggleButton.addEventListener('click', toggleSecondaryMenu);
         
         // Close button
         const closeButton = document.createElement('button');
         closeButton.innerHTML = '×';
-        closeButton.className = 'metro-close-button';
+        closeButton.className = 'metro-btn compact close-btn';
         closeButton.title = 'Close metro map';
         closeButton.addEventListener('click', hide);
-        controls.appendChild(closeButton);
         
-        // Settings button
-        const settingsButton = document.createElement('button');
-        settingsButton.innerHTML = '⚙️';
-        settingsButton.title = 'Scale Settings';
-        settingsButton.addEventListener('click', toggleScaleSettings);
-        controls.appendChild(settingsButton);
+        // Assemble primary controls
+        primaryControls.appendChild(citySection);
+        primaryControls.appendChild(resetButton);
+        primaryControls.appendChild(zoomControls);
+        primaryControls.appendChild(editButton);
+        primaryControls.appendChild(menuToggleButton);
+        primaryControls.appendChild(closeButton);
         
-        // Add toggle order view button
+        // Create secondary controls (collapsible)
+        const secondaryControls = document.createElement('div');
+        secondaryControls.className = 'metro-secondary-controls';
+        secondaryControls.id = 'metro-secondary-controls';
+        secondaryControls.style.display = 'none';
+        
+        // Management buttons
+        const managementSection = document.createElement('div');
+        managementSection.className = 'metro-control-section';
+        managementSection.innerHTML = '<span class="section-label">Management:</span>';
+        
+        const manageLineButton = document.createElement('button');
+        manageLineButton.textContent = 'Lines';
+        manageLineButton.className = 'metro-btn secondary';
+        manageLineButton.title = 'Manage metro lines';
+        manageLineButton.addEventListener('click', openLineManagerDialog);
+        
+        const manageStationsButton = document.createElement('button');
+        manageStationsButton.textContent = 'Stations';
+        manageStationsButton.className = 'metro-btn secondary';
+        manageStationsButton.title = 'Manage stations';
+        manageStationsButton.addEventListener('click', openStationManagerDialog);
+        
+        const cityManageButton = document.createElement('button');
+        cityManageButton.textContent = 'Cities';
+        cityManageButton.className = 'metro-btn secondary';
+        cityManageButton.title = 'Manage cities';
+        cityManageButton.addEventListener('click', showCityManager);
+        
+        managementSection.appendChild(manageLineButton);
+        managementSection.appendChild(manageStationsButton);
+        managementSection.appendChild(cityManageButton);
+        
+        // View options
+        const viewSection = document.createElement('div');
+        viewSection.className = 'metro-control-section';
+        viewSection.innerHTML = '<span class="section-label">View:</span>';
+        
         const orderViewButton = document.createElement('button');
         orderViewButton.id = 'toggle-order-view';
-        orderViewButton.textContent = 'Show Order Numbers';
-        orderViewButton.title = 'Toggle showing station order numbers';
+        orderViewButton.textContent = 'Order #';
+        orderViewButton.className = 'metro-btn secondary';
+        orderViewButton.title = 'Toggle station order numbers';
         orderViewButton.addEventListener('click', toggleOrderView);
-        controls.appendChild(orderViewButton);
         
-        // Add transit type filters
-        setupTransitTypeFilters(controls);
+        const settingsButton = document.createElement('button');
+        settingsButton.innerHTML = '⚙️';
+        settingsButton.className = 'metro-btn secondary';
+        settingsButton.title = 'Display settings';
+        settingsButton.addEventListener('click', toggleScaleSettings);
+        
+        viewSection.appendChild(orderViewButton);
+        viewSection.appendChild(settingsButton);
+        
+        // Transit type filters (compact)
+        const transitSection = document.createElement('div');
+        transitSection.className = 'metro-control-section';
+        transitSection.innerHTML = '<span class="section-label">Transit:</span>';
+        
+        setupCompactTransitTypeFilters(transitSection);
+        
+        // Assemble secondary controls
+        secondaryControls.appendChild(managementSection);
+        secondaryControls.appendChild(viewSection);
+        secondaryControls.appendChild(transitSection);
+        
+        // Add both to main controls
+        controls.appendChild(primaryControls);
+        controls.appendChild(secondaryControls);
         
         container.appendChild(controls);
+    }
+
+    // Toggle secondary menu visibility
+    function toggleSecondaryMenu() {
+        const secondaryControls = document.getElementById('metro-secondary-controls');
+        const menuToggle = document.querySelector('.menu-toggle');
+        
+        if (secondaryControls.style.display === 'none') {
+            secondaryControls.style.display = 'block';
+            menuToggle.classList.add('active');
+            menuToggle.title = 'Hide options';
+        } else {
+            secondaryControls.style.display = 'none';
+            menuToggle.classList.remove('active');
+            menuToggle.title = 'More options';
+        }
+    }
+
+    // Compact transit type filters
+    function setupCompactTransitTypeFilters(container) {
+        Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
+            const button = document.createElement('button');
+            button.className = 'metro-btn secondary transit-filter-btn active';
+            button.dataset.type = type;
+            button.textContent = key.charAt(0); // Just first letter for compact view
+            button.title = `Toggle ${key.toLowerCase()} lines visibility`;
+            
+            button.addEventListener('click', () => {
+                button.classList.toggle('active');
+                button.style.opacity = button.classList.contains('active') ? '1' : '0.5';
+                drawMap();
+            });
+            
+            container.appendChild(button);
+        });
     }
     
     // Add this function after toggleScaleSettings or in a similar location
@@ -4117,35 +4151,6 @@ function setupLineStationSearch() {
             filterLineStations('');
         }
     });
-}
-
-// Add this to the setupControls function to add transit type toggle buttons
-function setupTransitTypeFilters(controls) {
-    const transitFiltersDiv = document.createElement('div');
-    transitFiltersDiv.className = 'transit-filters';
-    transitFiltersDiv.style.display = 'flex';
-    transitFiltersDiv.style.gap = '5px';
-    transitFiltersDiv.style.margin = '0 10px';
-    
-    // Create toggle buttons for each transit type
-    Object.entries(TRANSIT_TYPES).forEach(([key, type]) => {
-        const button = document.createElement('button');
-        button.className = 'transit-filter-btn active';
-        button.dataset.type = type;
-        button.textContent = key.charAt(0) + key.slice(1).toLowerCase();
-        button.title = `Toggle ${key.toLowerCase()} lines visibility`;
-        button.style.opacity = '1';
-        
-        button.addEventListener('click', () => {
-            button.classList.toggle('active');
-            button.style.opacity = button.classList.contains('active') ? '1' : '0.5';
-            drawMap(); // Redraw with updated filters
-        });
-        
-        transitFiltersDiv.appendChild(button);
-    });
-    
-    controls.appendChild(transitFiltersDiv);
 }
 
 /**

@@ -12,32 +12,157 @@
   }
   
   .metro-controls {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    z-index: 2001;
-    display: flex;
-    gap: 10px;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 2000;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    max-width: calc(100vw - 20px);
   }
   
-  .metro-controls button {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    padding: 6px 12px;
-    color: #333;
-    font-size: 14px;
-    cursor: pointer;
+  .metro-primary-controls {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
+    gap: 8px;
+    flex-wrap: wrap;
   }
   
-  .metro-controls button:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-2px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  .metro-secondary-controls {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .metro-control-section {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  
+  .section-label {
+    font-size: 11px;
+    color: #666;
+    font-weight: bold;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+  
+  .metro-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  
+  .metro-btn.compact {
+    padding: 4px 8px;
+    min-width: 24px;
+    height: 24px;
+  }
+  
+  .metro-btn.secondary {
+    padding: 2px 6px;
+    min-width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+  
+  .metro-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+  }
+  
+  .metro-btn:active {
+    transform: translateY(1px);
+  }
+  
+  .metro-btn.close-btn {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+  }
+  
+  .metro-btn.close-btn:hover {
+    background: #c82333;
+    border-color: #bd2130;
+  }
+  
+  .metro-btn.menu-toggle.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  .metro-btn.transit-filter-btn.active {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+  }
+  
+  .metro-btn.transit-filter-btn:not(.active) {
+    opacity: 0.5;
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
+  }
+  
+  .metro-city-section.compact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+    max-width: 150px;
+  }
+  
+  .metro-select.compact {
+    font-size: 11px;
+    padding: 2px 4px;
+    height: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    background: white;
+  }
+  
+  .metro-city-info.compact {
+    font-size: 9px;
+    color: #6c757d;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .metro-zoom-controls.compact {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 2px;
+  }
+  
+  .metro-zoom-display.compact {
+    font-size: 10px;
+    color: #6c757d;
+    padding: 0 4px;
+    min-width: 32px;
+    text-align: center;
   }
   
   .metro-close-button {
@@ -896,4 +1021,99 @@
     .metro-manager-dialog td {
         padding: 6px 4px;
     }
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .metro-controls {
+        position: fixed;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        max-width: none;
+    }
+    
+    .metro-primary-controls {
+        justify-content: space-between;
+    }
+    
+    .metro-city-section.compact {
+        min-width: 100px;
+        max-width: 120px;
+    }
+    
+    .section-label {
+        display: none; /* Hide labels on mobile */
+    }
+    
+    .metro-control-section {
+        justify-content: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .metro-btn.compact {
+        padding: 3px 6px;
+        min-width: 20px;
+        height: 20px;
+        font-size: 11px;
+    }
+    
+    .metro-btn.secondary {
+        padding: 2px 4px;
+        min-width: 18px;
+        height: 18px;
+        font-size: 9px;
+    }
+    
+    .metro-zoom-display.compact {
+        font-size: 9px;
+        min-width: 28px;
+    }
+  }
+
+  /* Animation for secondary menu */
+  .metro-secondary-controls {
+    animation: slideDown 0.2s ease-out;
+  }
+
+  @keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+  }
+
+  /* Update existing styles to work with new layout */
+  .metro-info-panel {
+    top: 80px; /* Adjust for compact controls */
+  }
+
+  .metro-edit-mode-banner {
+    top: 60px; /* Adjust for compact controls */
+  }
+
+  /* Override old styles that might conflict */
+  .metro-controls button {
+    /* Remove old button styles */
+    all: unset;
+  }
+
+  .metro-controls .metro-zoom-controls {
+    /* Remove old zoom control styles */
+    all: unset;
+  }
+
+  .metro-controls .metro-zoom-controls button {
+    /* Remove old zoom button styles */
+    all: unset;
+  }
+
+  .metro-controls .metro-zoom-display {
+    /* Remove old zoom display styles */
+    all: unset;
   }
