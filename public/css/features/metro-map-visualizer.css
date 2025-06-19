@@ -38,13 +38,17 @@
 }
 
 .metro-secondary-controls {
-    margin-top: 8px !important;
-    padding-top: 8px !important;
-    border-top: 1px solid #e0e0e0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 6px !important;
-    animation: slideDown 0.2s ease-out;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid #e0e0e0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  animation: slideDown 0.2s ease-out;
+}
+
+.metro-secondary-controls.hidden {
+  display: none !important;
 }
 
 .metro-control-section {
@@ -83,6 +87,15 @@
     min-width: 24px !important;
     height: 24px !important;
     font-size: 11px !important;
+    background: #f8f9fa !important;
+    color: #495057 !important;
+    border-color: #dee2e6 !important;
+}
+
+.metro-visualizer-container .metro-btn.compact:hover {
+    background: #e9ecef !important;
+    border-color: #adb5bd !important;
+    color: #212529 !important;
 }
 
 .metro-visualizer-container .metro-btn.secondary {
@@ -90,6 +103,26 @@
     min-width: 20px !important;
     height: 20px !important;
     font-size: 10px !important;
+    background: #007bff !important;
+    color: white !important;
+    border-color: #007bff !important;
+}
+
+.metro-visualizer-container .metro-btn.secondary:hover {
+    background: #0056b3 !important;
+    border-color: #004085 !important;
+    color: white !important;
+}
+
+.metro-visualizer-container .metro-btn.secondary.active {
+    background: #28a745 !important;
+    color: white !important;
+    border-color: #28a745 !important;
+}
+
+.metro-visualizer-container .metro-btn.secondary.active:hover {
+    background: #1e7e34 !important;
+    border-color: #1c7430 !important;
 }
 
 .metro-visualizer-container .metro-btn:hover {
@@ -112,23 +145,51 @@
     border-color: #bd2130 !important;
 }
 
+.metro-visualizer-container .metro-btn.menu-toggle {
+    background: #6c757d !important;
+    color: white !important;
+    border-color: #6c757d !important;
+}
+
+.metro-visualizer-container .metro-btn.menu-toggle:hover {
+    background: #545b62 !important;
+    border-color: #4e555b !important;
+}
+
 .metro-visualizer-container .metro-btn.menu-toggle.active {
     background: #007bff !important;
     color: white !important;
     border-color: #007bff !important;
 }
 
+.metro-visualizer-container .metro-btn.menu-toggle.active:hover {
+    background: #0056b3 !important;
+    border-color: #004085 !important;
+}
+
+.metro-visualizer-container .metro-btn.transit-filter-btn {
+    font-weight: bold !important;
+    min-width: 24px !important;
+}
+
 .metro-visualizer-container .metro-btn.transit-filter-btn.active {
     background: #28a745 !important;
     color: white !important;
     border-color: #28a745 !important;
+    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25) !important;
 }
 
 .metro-visualizer-container .metro-btn.transit-filter-btn:not(.active) {
-    opacity: 0.5 !important;
-    background: #6c757d !important;
+    background: #dc3545 !important;
     color: white !important;
-    border-color: #6c757d !important;
+    border-color: #dc3545 !important;
+    opacity: 0.8 !important;
+}
+
+.metro-visualizer-container .metro-btn.transit-filter-btn:not(.active):hover {
+    background: #c82333 !important;
+    border-color: #bd2130 !important;
+    opacity: 1 !important;
 }
 
 /* UPDATED: Compact city section */
@@ -205,13 +266,6 @@
 
 .metro-visualizer-container .transit-filters {
     display: none !important;
-}
-
-/* Ensure new buttons have proper styling */
-.metro-visualizer-container .metro-btn.secondary.active {
-    background: #007bff !important;
-    color: white !important;
-    border-color: #007bff !important;
 }
 
 /* Update existing styles to work with new layout */

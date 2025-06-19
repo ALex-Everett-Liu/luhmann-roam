@@ -437,9 +437,9 @@ const MetroMapVisualizer = (function() {
         
         // Create secondary controls (collapsible)
         const secondaryControls = document.createElement('div');
-        secondaryControls.className = 'metro-secondary-controls';
+        secondaryControls.className = 'metro-secondary-controls hidden';
         secondaryControls.id = 'metro-secondary-controls';
-        secondaryControls.style.display = 'none';
+        // secondaryControls.style.display = 'none';
         
         // Management buttons
         const managementSection = document.createElement('div');
@@ -513,12 +513,12 @@ const MetroMapVisualizer = (function() {
         const secondaryControls = document.getElementById('metro-secondary-controls');
         const menuToggle = document.querySelector('.menu-toggle');
         
-        if (secondaryControls.style.display === 'none') {
-            secondaryControls.style.display = 'block';
+        if (secondaryControls.classList.contains('hidden')) {
+            secondaryControls.classList.remove('hidden');
             menuToggle.classList.add('active');
             menuToggle.title = 'Hide options';
         } else {
-            secondaryControls.style.display = 'none';
+            secondaryControls.classList.add('hidden');
             menuToggle.classList.remove('active');
             menuToggle.title = 'More options';
         }
