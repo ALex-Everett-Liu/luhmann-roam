@@ -3076,6 +3076,10 @@ const MetroMapVisualizer = (function() {
     
     // Open menu to manage stations on a line
     function openManageLineStationsMenu(line, x, y) {
+        // CLEANUP: Remove any existing station manager dialogs first
+        const existingDialogs = document.querySelectorAll('.metro-manager-dialog');
+        existingDialogs.forEach(dialog => dialog.remove());
+        
         // Create a new element for managing stations
         const menuContainer = document.createElement('div');
         menuContainer.className = 'metro-edit-menu';
@@ -3795,6 +3799,10 @@ function setupLineManagerSearch() {
 
 // Function to open a dialog showing all stations for management
 function openStationManagerDialog() {
+    // CLEANUP: Remove any existing station manager dialogs first
+    const existingDialogs = document.querySelectorAll('.metro-manager-dialog');
+    existingDialogs.forEach(dialog => dialog.remove());
+    
     // Create a new element for the station manager
     const managerContainer = document.createElement('div');
     managerContainer.className = 'metro-manager-dialog';

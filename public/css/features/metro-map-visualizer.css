@@ -67,7 +67,7 @@
 }
 
 /* UPDATED: Compact button styles with higher specificity */
-.metro-visualizer-container .metro-btn {
+.metro-visualizer-container .metro-controls .metro-btn {
     background: #f8f9fa !important;
     border: 1px solid #dee2e6 !important;
     border-radius: 4px !important;
@@ -82,7 +82,7 @@
     margin: 0 !important;
 }
 
-.metro-visualizer-container .metro-btn.compact {
+.metro-visualizer-container .metro-controls .metro-btn.compact {
     padding: 4px 8px !important;
     min-width: 24px !important;
     height: 24px !important;
@@ -92,13 +92,13 @@
     border-color: #dee2e6 !important;
 }
 
-.metro-visualizer-container .metro-btn.compact:hover {
+.metro-visualizer-container .metro-controls .metro-btn.compact:hover {
     background: #e9ecef !important;
     border-color: #adb5bd !important;
     color: #212529 !important;
 }
 
-.metro-visualizer-container .metro-btn.secondary {
+.metro-visualizer-container .metro-controls .metro-btn.secondary {
     padding: 2px 6px !important;
     min-width: 20px !important;
     height: 20px !important;
@@ -108,85 +108,85 @@
     border-color: #007bff !important;
 }
 
-.metro-visualizer-container .metro-btn.secondary:hover {
+.metro-visualizer-container .metro-controls .metro-btn.secondary:hover {
     background: #0056b3 !important;
     border-color: #004085 !important;
     color: white !important;
 }
 
-.metro-visualizer-container .metro-btn.secondary.active {
+.metro-visualizer-container .metro-controls .metro-btn.secondary.active {
     background: #28a745 !important;
     color: white !important;
     border-color: #28a745 !important;
 }
 
-.metro-visualizer-container .metro-btn.secondary.active:hover {
+.metro-visualizer-container .metro-controls .metro-btn.secondary.active:hover {
     background: #1e7e34 !important;
     border-color: #1c7430 !important;
 }
 
-.metro-visualizer-container .metro-btn:hover {
+.metro-visualizer-container .metro-controls .metro-btn:hover {
     background: #e9ecef !important;
     border-color: #adb5bd !important;
 }
 
-.metro-visualizer-container .metro-btn:active {
+.metro-visualizer-container .metro-controls .metro-btn:active {
     transform: translateY(1px) !important;
 }
 
-.metro-visualizer-container .metro-btn.close-btn {
+.metro-visualizer-container .metro-controls .metro-btn.close-btn {
     background: #dc3545 !important;
     color: white !important;
     border-color: #dc3545 !important;
 }
 
-.metro-visualizer-container .metro-btn.close-btn:hover {
+.metro-visualizer-container .metro-controls .metro-btn.close-btn:hover {
     background: #c82333 !important;
     border-color: #bd2130 !important;
 }
 
-.metro-visualizer-container .metro-btn.menu-toggle {
+.metro-visualizer-container .metro-controls .metro-btn.menu-toggle {
     background: #6c757d !important;
     color: white !important;
     border-color: #6c757d !important;
 }
 
-.metro-visualizer-container .metro-btn.menu-toggle:hover {
+.metro-visualizer-container .metro-controls .metro-btn.menu-toggle:hover {
     background: #545b62 !important;
     border-color: #4e555b !important;
 }
 
-.metro-visualizer-container .metro-btn.menu-toggle.active {
+.metro-visualizer-container .metro-controls .metro-btn.menu-toggle.active {
     background: #007bff !important;
     color: white !important;
     border-color: #007bff !important;
 }
 
-.metro-visualizer-container .metro-btn.menu-toggle.active:hover {
+.metro-visualizer-container .metro-controls .metro-btn.menu-toggle.active:hover {
     background: #0056b3 !important;
     border-color: #004085 !important;
 }
 
-.metro-visualizer-container .metro-btn.transit-filter-btn {
+.metro-visualizer-container .metro-controls .metro-btn.transit-filter-btn {
     font-weight: bold !important;
     min-width: 24px !important;
 }
 
-.metro-visualizer-container .metro-btn.transit-filter-btn.active {
+.metro-visualizer-container .metro-controls .metro-btn.transit-filter-btn.active {
     background: #28a745 !important;
     color: white !important;
     border-color: #28a745 !important;
     box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25) !important;
 }
 
-.metro-visualizer-container .metro-btn.transit-filter-btn:not(.active) {
+.metro-visualizer-container .metro-controls .metro-btn.transit-filter-btn:not(.active) {
     background: #dc3545 !important;
     color: white !important;
     border-color: #dc3545 !important;
     opacity: 0.8 !important;
 }
 
-.metro-visualizer-container .metro-btn.transit-filter-btn:not(.active):hover {
+.metro-visualizer-container .metro-controls .metro-btn.transit-filter-btn:not(.active):hover {
     background: #c82333 !important;
     border-color: #bd2130 !important;
     opacity: 1 !important;
@@ -251,21 +251,30 @@
     }
 }
 
-/* OVERRIDE old styles that might conflict */
-.metro-visualizer-container .metro-controls button:not(.metro-btn) {
+/* Instead, be MUCH more specific - only hide old control buttons */
+.metro-visualizer-container .metro-controls > button:not(.metro-btn) {
     display: none !important;
 }
 
-.metro-visualizer-container .metro-controls .metro-zoom-controls:not(.compact) {
+.metro-visualizer-container .metro-controls > div > button:not(.metro-btn) {
     display: none !important;
 }
 
-.metro-visualizer-container .metro-controls .metro-city-section:not(.compact) {
-    display: none !important;
+/* Ensure ALL dialog buttons are visible with highest priority */
+.metro-visualizer-container .metro-manager-dialog button,
+.metro-visualizer-container .metro-edit-menu button {
+    display: inline-block !important;
 }
 
-.metro-visualizer-container .transit-filters {
-    display: none !important;
+.metro-visualizer-container .metro-manager-dialog .edit-station-btn {
+    display: inline-block !important;
+    background: #007bff !important;
+    color: white !important;
+    border: 1px solid #007bff !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
 }
 
 /* Update existing styles to work with new layout */
@@ -362,14 +371,14 @@
 }
 
 @media (max-width: 480px) {
-    .metro-visualizer-container .metro-btn.compact {
+    .metro-visualizer-container .metro-controls .metro-btn.compact {
         padding: 3px 6px !important;
         min-width: 20px !important;
         height: 20px !important;
         font-size: 10px !important;
     }
     
-    .metro-visualizer-container .metro-btn.secondary {
+    .metro-visualizer-container .metro-controls .metro-btn.secondary {
         padding: 2px 4px !important;
         min-width: 18px !important;
         height: 18px !important;
@@ -408,21 +417,22 @@
 }
 
 .metro-edit-menu button {
-    background: #f8f8f8;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px 12px;
-    color: #333;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s ease;
-    font-size: 14px;
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+    color: #495057 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    margin: 2px !important;
 }
 
 .metro-edit-menu button:hover {
-    background: #e8e8e8;
-    border-color: #ccc;
-    transform: translateY(-1px);
+    background: #e9ecef !important;
+    border-color: #adb5bd !important;
+    color: #212529 !important;
 }
 
 .metro-edit-menu button:active {
@@ -430,38 +440,33 @@
 }
 
 .metro-edit-menu button[id$="-save"], 
-.metro-edit-menu button[id^="add-to-line-save"],
-.metro-edit-menu button[id^="create-line-save"] {
-    background: #4285F4;
-    color: white;
-    border-color: #2c75ea;
-    font-weight: bold;
+.metro-edit-menu button[id$="-create"],
+.metro-edit-menu button.save-btn {
+    background: #28a745 !important;
+    color: white !important;
+    border-color: #28a745 !important;
 }
 
 .metro-edit-menu button[id$="-save"]:hover, 
-.metro-edit-menu button[id^="add-to-line-save"]:hover,
-.metro-edit-menu button[id^="create-line-save"]:hover {
-    background: #3b78e7;
+.metro-edit-menu button[id$="-create"]:hover,
+.metro-edit-menu button.save-btn:hover {
+    background: #218838 !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
 }
 
-.metro-edit-menu button[id$="-close"] {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    padding: 0;
+.metro-edit-menu button[id$="-close"],
+.metro-edit-menu button.close-btn {
+    background: #6c757d !important;
+    color: white !important;
+    border-color: #6c757d !important;
 }
 
-.metro-edit-menu button[id$="-close"]:hover {
-    background: #e0e0e0;
-    color: #c00;
+.metro-edit-menu button[id$="-close"]:hover,
+.metro-edit-menu button.close-btn:hover {
+    background: #5a6268 !important;
+    border-color: #545b62 !important;
+    color: white !important;
 }
 
 .metro-edit-menu input[type="radio"] {
@@ -674,16 +679,13 @@
 }
 
 .metro-manager-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 3000;
+    position: fixed !important;
+    background: white !important;
+    border: 1px solid #ccc !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    padding: 20px !important;
+    z-index: 3000 !important;
 }
 
 .metro-manager-dialog table {
@@ -705,33 +707,41 @@
 }
 
 .metro-manager-dialog button {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    padding: 6px 12px !important;
+    font-size: 14px !important;
+    font-weight: normal !important;
+    color: #495057 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
 }
 
 .metro-manager-dialog button:hover {
-    background: #0056b3;
+    background: #e9ecef !important;
+    border-color: #adb5bd !important;
+    color: #212529 !important;
 }
 
 .metro-manager-dialog .edit-station-btn,
 .metro-manager-dialog .manage-line-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
+    background: #007bff !important;
+    color: white !important;
+    border: 1px solid #007bff !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+    transition: all 0.2s ease !important;
 }
 
 .metro-manager-dialog .edit-station-btn:hover,
 .metro-manager-dialog .manage-line-btn:hover {
-    background: #1e7e34;
+    background: #0056b3 !important;
+    border-color: #004085 !important;
+    color: white !important;
 }
 
 .metro-city-section {
@@ -1122,19 +1132,22 @@
 
 .metro-manager-dialog .edit-station-btn,
 .metro-manager-dialog .manage-line-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: background-color 0.2s ease;
+    background: #007bff !important;
+    color: white !important;
+    border: 1px solid #007bff !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+    transition: all 0.2s ease !important;
 }
 
 .metro-manager-dialog .edit-station-btn:hover,
 .metro-manager-dialog .manage-line-btn:hover {
-    background: #1e7e34;
+    background: #0056b3 !important;
+    border-color: #004085 !important;
+    color: white !important;
 }
 
 @media (max-width: 768px) {
@@ -1155,4 +1168,15 @@
     .metro-manager-dialog td {
         padding: 6px 4px;
     }
+}
+
+/* Add a separate overlay if needed */
+.metro-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2999;
 }
