@@ -807,9 +807,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Indent a node (make it a child of the node above)
   async function indentNode(nodeId) {
     if (window.NodeOperationsManager) {
-      await preserveFocusState(async () => {
-        return NodeOperationsManager.indentNode(nodeId);
-      }, true); // Keep focus restoration for indentation
+      // Remove preserveFocusState wrapper since we handle focus internally now
+      return NodeOperationsManager.indentNode(nodeId);
     } else {
       console.error('NodeOperationsManager not available');
       return false;
@@ -819,9 +818,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Outdent a node (make it a sibling of its parent)
   async function outdentNode(nodeId) {
     if (window.NodeOperationsManager) {
-      await preserveFocusState(async () => {
-        return NodeOperationsManager.outdentNode(nodeId);
-      });
+      // Remove preserveFocusState wrapper since we handle focus internally now
+      return NodeOperationsManager.outdentNode(nodeId);
     } else {
       console.error('NodeOperationsManager not available');
       return false;

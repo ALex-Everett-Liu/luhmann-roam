@@ -229,24 +229,31 @@ const NodeOperationsManager = (function() {
       return false;
     }
     
-    // Indent a node with optimized refresh
+    // Indent a node with direct DOM manipulation (no refresh)
     async function indentNode(nodeId) {
       try {
-        // Save relevant info before the operation
+        // Get the node element and store focus
         const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-        let parentId = null;
+        if (!nodeElement) {
+          console.error(`Node element with ID ${nodeId} not found`);
+          return false;
+        }
         
-        if (nodeElement) {
-          const parentElement = nodeElement.parentElement;
-          if (parentElement && parentElement.classList.contains('children')) {
-            const parentNodeElement = parentElement.parentElement;
-            if (parentNodeElement && parentNodeElement.classList.contains('node')) {
-              parentId = parentNodeElement.dataset.id;
-            }
+        // Store the currently focused element
+        const focusedElement = document.activeElement;
+        const wasTextFocused = focusedElement && focusedElement.classList.contains('node-text');
+        
+        // Store cursor position if we're in a text field
+        let cursorPosition = 0;
+        if (wasTextFocused && focusedElement.closest('.node')?.dataset.id === nodeId) {
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            cursorPosition = range.startOffset;
           }
         }
         
-        // Perform the indent operation
+        // Perform the indent operation on the backend
         const response = await fetch(`/api/nodes/${nodeId}/indent`, {
           method: 'POST'
         });
@@ -257,17 +264,37 @@ const NodeOperationsManager = (function() {
           return false;
         }
         
-        // Get the grandparent ID if we can, otherwise fallback to full refresh
-        if (parentId) {
-          // Refresh only the necessary subtree
-          await refreshSubtree(parentId);
-          return true;
+        // Now perform direct DOM manipulation instead of refreshing
+        await performIndentDOMManipulation(nodeId, nodeElement);
+        
+        // Restore focus and cursor position
+        if (wasTextFocused) {
+          const newNodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+          if (newNodeElement) {
+            const newTextElement = newNodeElement.querySelector('.node-text');
+            if (newTextElement) {
+              newTextElement.focus();
+              
+              // Restore cursor position
+              const selection = window.getSelection();
+              const range = document.createRange();
+              
+              if (newTextElement.childNodes.length > 0) {
+                const textNode = newTextElement.childNodes[0];
+                const maxOffset = textNode.textContent ? textNode.textContent.length : 0;
+                range.setStart(textNode, Math.min(cursorPosition, maxOffset));
+                range.setEnd(textNode, Math.min(cursorPosition, maxOffset));
+              } else {
+                range.setStart(newTextElement, 0);
+                range.setEnd(newTextElement, 0);
+              }
+              
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+          }
         }
         
-        // Fallback to full refresh if we couldn't determine the parent
-        if (window.fetchNodes) {
-          await window.fetchNodes();
-        }
         return true;
       } catch (error) {
         console.error(`Error indenting node ${nodeId}:`, error);
@@ -275,30 +302,31 @@ const NodeOperationsManager = (function() {
       }
     }
     
-    // Outdent a node with optimized refresh
+    // Outdent a node with direct DOM manipulation (no refresh)
     async function outdentNode(nodeId) {
       try {
-        // Save relevant info before the operation
+        // Get the node element and store focus
         const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-        let grandparentId = null;
+        if (!nodeElement) {
+          console.error(`Node element with ID ${nodeId} not found`);
+          return false;
+        }
         
-        if (nodeElement) {
-          const parentElement = nodeElement.parentElement;
-          if (parentElement && parentElement.classList.contains('children')) {
-            const parentNodeElement = parentElement.parentElement;
-            if (parentNodeElement && parentNodeElement.classList.contains('node')) {
-              const grandparentElement = parentNodeElement.parentElement;
-              if (grandparentElement && grandparentElement.classList.contains('children')) {
-                const grandparentNodeElement = grandparentElement.parentElement;
-                if (grandparentNodeElement && grandparentNodeElement.classList.contains('node')) {
-                  grandparentId = grandparentNodeElement.dataset.id;
-                }
-              }
-            }
+        // Store the currently focused element
+        const focusedElement = document.activeElement;
+        const wasTextFocused = focusedElement && focusedElement.classList.contains('node-text');
+        
+        // Store cursor position if we're in a text field
+        let cursorPosition = 0;
+        if (wasTextFocused && focusedElement.closest('.node')?.dataset.id === nodeId) {
+          const selection = window.getSelection();
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            cursorPosition = range.startOffset;
           }
         }
         
-        // Perform the outdent operation
+        // Perform the outdent operation on the backend
         const response = await fetch(`/api/nodes/${nodeId}/outdent`, {
           method: 'POST'
         });
@@ -309,20 +337,180 @@ const NodeOperationsManager = (function() {
           return false;
         }
         
-        // Get the grandparent ID if we can, otherwise fallback to full refresh
-        if (grandparentId) {
-          // Refresh only the necessary subtree
-          await refreshSubtree(grandparentId);
-          return true;
+        // Now perform direct DOM manipulation instead of refreshing
+        await performOutdentDOMManipulation(nodeId, nodeElement);
+        
+        // Restore focus and cursor position
+        if (wasTextFocused) {
+          const newNodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+          if (newNodeElement) {
+            const newTextElement = newNodeElement.querySelector('.node-text');
+            if (newTextElement) {
+              newTextElement.focus();
+              
+              // Restore cursor position
+              const selection = window.getSelection();
+              const range = document.createRange();
+              
+              if (newTextElement.childNodes.length > 0) {
+                const textNode = newTextElement.childNodes[0];
+                const maxOffset = textNode.textContent ? textNode.textContent.length : 0;
+                range.setStart(textNode, Math.min(cursorPosition, maxOffset));
+                range.setEnd(textNode, Math.min(cursorPosition, maxOffset));
+              } else {
+                range.setStart(newTextElement, 0);
+                range.setEnd(newTextElement, 0);
+              }
+              
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+          }
         }
         
-        // Fallback to full refresh if we couldn't determine the grandparent
-        if (window.fetchNodes) {
-          await window.fetchNodes();
-        }
         return true;
       } catch (error) {
         console.error(`Error outdenting node ${nodeId}:`, error);
+        return false;
+      }
+    }
+    
+    // Helper function to perform indent DOM manipulation
+    async function performIndentDOMManipulation(nodeId, nodeElement) {
+      try {
+        // Find the node above this one (future parent)
+        let nodeAbove = null;
+        let currentContainer = nodeElement.parentElement;
+        
+        if (currentContainer.classList.contains('children')) {
+          // This is a child node, find sibling above
+          const siblings = Array.from(currentContainer.children);
+          const currentIndex = siblings.indexOf(nodeElement);
+          if (currentIndex > 0) {
+            nodeAbove = siblings[currentIndex - 1];
+          }
+        } else {
+          // This is a root node, find root node above
+          const rootContainer = document.getElementById('outliner-container');
+          const rootNodes = Array.from(rootContainer.children);
+          const currentIndex = rootNodes.indexOf(nodeElement);
+          if (currentIndex > 0) {
+            nodeAbove = rootNodes[currentIndex - 1];
+          }
+        }
+        
+        if (!nodeAbove) {
+          console.error('No node above found for indenting');
+          return false;
+        }
+        
+        // Remove the node from its current position
+        nodeElement.remove();
+        
+        // Find or create the children container in the node above
+        let childrenContainer = nodeAbove.querySelector('.children');
+        if (!childrenContainer) {
+          childrenContainer = document.createElement('div');
+          childrenContainer.className = 'children';
+          nodeAbove.appendChild(childrenContainer);
+          
+          // Update the node above to show collapse icon instead of bullet
+          const bullet = nodeAbove.querySelector('.bullet');
+          if (bullet) {
+            const collapseIcon = document.createElement('span');
+            collapseIcon.className = 'collapse-icon';
+            collapseIcon.innerHTML = '▼'; // Expanded by default since we're adding a child
+            collapseIcon.addEventListener('click', () => {
+              if (window.toggleNode) {
+                window.toggleNode(nodeAbove.dataset.id);
+              }
+            });
+            bullet.parentNode.replaceChild(collapseIcon, bullet);
+          }
+        }
+        
+        // Add the node to the end of the children container
+        childrenContainer.appendChild(nodeElement);
+        
+        // Setup drag and drop for the moved node
+        if (window.DragDropManager) {
+          window.DragDropManager.setupDragAndDrop();
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error in performIndentDOMManipulation:', error);
+        return false;
+      }
+    }
+    
+    // Helper function to perform outdent DOM manipulation
+    async function performOutdentDOMManipulation(nodeId, nodeElement) {
+      try {
+        // Find the current parent
+        const currentParent = nodeElement.parentElement?.parentElement;
+        if (!currentParent || !currentParent.classList.contains('node')) {
+          console.error('Cannot outdent: not a child node');
+          return false;
+        }
+        
+        // Find the grandparent container
+        const grandparentContainer = currentParent.parentElement;
+        
+        // Remove the node from its current position
+        nodeElement.remove();
+        
+        // Insert the node after its former parent
+        if (grandparentContainer.classList.contains('children')) {
+          // Insert as sibling in the grandparent's children
+          const siblings = Array.from(grandparentContainer.children);
+          const parentIndex = siblings.indexOf(currentParent);
+          
+          if (parentIndex >= 0 && parentIndex < siblings.length - 1) {
+            // Insert after the parent
+            grandparentContainer.insertBefore(nodeElement, siblings[parentIndex + 1]);
+          } else {
+            // Insert at the end
+            grandparentContainer.appendChild(nodeElement);
+          }
+        } else {
+          // Parent was a root node, so insert as new root node
+          const rootContainer = document.getElementById('outliner-container');
+          const rootNodes = Array.from(rootContainer.children);
+          const parentIndex = rootNodes.indexOf(currentParent);
+          
+          if (parentIndex >= 0 && parentIndex < rootNodes.length - 1) {
+            // Insert after the parent
+            rootContainer.insertBefore(nodeElement, rootNodes[parentIndex + 1]);
+          } else {
+            // Insert at the end
+            rootContainer.appendChild(nodeElement);
+          }
+        }
+        
+        // Check if the former parent still has children
+        const formerParentChildrenContainer = currentParent.querySelector('.children');
+        if (formerParentChildrenContainer && formerParentChildrenContainer.children.length === 0) {
+          // Remove empty children container and replace collapse icon with bullet
+          formerParentChildrenContainer.remove();
+          
+          const collapseIcon = currentParent.querySelector('.collapse-icon');
+          if (collapseIcon) {
+            const bullet = document.createElement('span');
+            bullet.className = 'bullet';
+            bullet.innerHTML = '•';
+            collapseIcon.parentNode.replaceChild(bullet, collapseIcon);
+          }
+        }
+        
+        // Setup drag and drop for the moved node
+        if (window.DragDropManager) {
+          window.DragDropManager.setupDragAndDrop();
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error in performOutdentDOMManipulation:', error);
         return false;
       }
     }
