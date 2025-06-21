@@ -285,6 +285,12 @@
     
     // Set up drag and drop
     setupDragAndDrop: function() {
+      // Check if drag and drop is enabled before setting up
+      if (!this.enabled) {
+        console.log('DragDropManager is disabled, skipping setup');
+        return;
+      }
+      
       // First, remove all existing event listeners to prevent duplicates
       this.removeAllEventListeners();
       
@@ -415,6 +421,50 @@
       return this.enabled;
     },
     
+    // Enable drag and drop functionality
+    enable: function() {
+      if (!this.enabled) {
+        this.enabled = true;
+        console.log('DragDropManager enabled');
+        
+        // Save preference to localStorage
+        localStorage.setItem('dragDropEnabled', this.enabled);
+        
+        this.setupDragAndDrop();
+        
+        // Update the toggle button if it exists
+        const toggleButton = document.getElementById('toggle-drag-drop');
+        if (toggleButton) {
+          toggleButton.textContent = 'Disable Drag & Drop';
+          toggleButton.classList.add('active');
+        }
+      }
+      
+      return this.enabled;
+    },
+    
+    // Disable drag and drop functionality
+    disable: function() {
+      if (this.enabled) {
+        this.enabled = false;
+        console.log('DragDropManager disabled');
+        
+        // Save preference to localStorage
+        localStorage.setItem('dragDropEnabled', this.enabled);
+        
+        this.removeAllEventListeners();
+        
+        // Update the toggle button if it exists
+        const toggleButton = document.getElementById('toggle-drag-drop');
+        if (toggleButton) {
+          toggleButton.textContent = 'Enable Drag & Drop';
+          toggleButton.classList.remove('active');
+        }
+      }
+      
+      return this.enabled;
+    },
+
     cleanup: function() {
       console.log('Cleaning up DragDropManager');
       this.removeAllEventListeners();
