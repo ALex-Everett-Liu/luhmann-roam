@@ -795,9 +795,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Toggle node expansion
   async function toggleNode(nodeId) {
     if (window.NodeExpansionManager) {
-      await preserveFocusState(async () => {
-        return NodeExpansionManager.toggleNode(nodeId);
-      });
+      // Remove preserveFocusState wrapper since we handle focus internally now
+      return NodeExpansionManager.toggleNode(nodeId);
     } else {
       console.error('NodeExpansionManager not available');
       return false;
