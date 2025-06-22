@@ -406,6 +406,7 @@ const MarkdownManager = (function() {
     const content = document.getElementById('markdown-editor').value;
     
     try {
+      // PHASE 1: Save to server - this is what actually matters
       const response = await fetch(`/api/nodes/${currentNodeId}/markdown`, {
         method: 'POST',
         headers: {
@@ -463,10 +464,12 @@ const MarkdownManager = (function() {
     const nodeElement = document.querySelector(`[data-id="${currentNodeId}"]`);
     if (nodeElement) {
       const nodeText = nodeElement.querySelector('.node-text');
-      if (content.trim()) {
-        nodeText.classList.add('has-markdown');
-      } else {
-        nodeText.classList.remove('has-markdown');
+      if (nodeText) {
+        if (content.trim()) {
+          nodeText.classList.add('has-markdown');
+        } else {
+          nodeText.classList.remove('has-markdown');
+        }
       }
     }
     
@@ -491,7 +494,9 @@ const MarkdownManager = (function() {
         const nodeElement = document.querySelector(`[data-id="${currentNodeId}"]`);
         if (nodeElement) {
           const nodeText = nodeElement.querySelector('.node-text');
-          nodeText.classList.remove('has-markdown');
+          if (nodeText) {
+            nodeText.classList.remove('has-markdown');
+          }
         }
         
         document.getElementById('markdown-editor').value = '';
@@ -514,10 +519,12 @@ const MarkdownManager = (function() {
     const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
     if (nodeElement) {
       const nodeText = nodeElement.querySelector('.node-text');
-      if (hasMarkdown) {
-        nodeText.classList.add('has-markdown');
-      } else {
-        nodeText.classList.remove('has-markdown');
+      if (nodeText) {
+        if (hasMarkdown) {
+          nodeText.classList.add('has-markdown');
+        } else {
+          nodeText.classList.remove('has-markdown');
+        }
       }
     }
   }

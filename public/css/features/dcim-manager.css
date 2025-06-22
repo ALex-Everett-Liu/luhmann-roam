@@ -899,3 +899,86 @@
   padding: 6px 4px 4px 4px;
   text-align: center;
 }
+
+/* Fix button styling conflicts in DCIM Manager */
+
+/* Override generic button styles for DCIM components */
+.dcim-modal .btn {
+  background-color: #f1f3f4 !important;
+  color: #333 !important;
+  border: 1px solid #dadce0 !important;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.dcim-modal .btn:hover {
+  background-color: #e8eaed !important;
+  border-color: #bdc1c6 !important;
+}
+
+.dcim-modal .btn-primary {
+  background-color: #4285f4 !important;
+  color: white !important;
+  border-color: #4285f4 !important;
+}
+
+.dcim-modal .btn-primary:hover {
+  background-color: #3367d6 !important;
+  border-color: #3367d6 !important;
+}
+
+.dcim-modal .btn-danger {
+  background-color: #ea4335 !important;
+  color: white !important;
+  border-color: #ea4335 !important;
+}
+
+.dcim-modal .btn-danger:hover {
+  background-color: #d73527 !important;
+  border-color: #d73527 !important;
+}
+
+.dcim-modal .btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Specific DCIM action button styling */
+.dcim-actions .btn {
+  margin-bottom: 8px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Dark theme support for DCIM buttons */
+body.dark-theme .dcim-modal .btn {
+  background-color: #2a2a2a !important;
+  color: #e0e0e0 !important;
+  border-color: #444444 !important;
+}
+
+body.dark-theme .dcim-modal .btn:hover {
+  background-color: #444444 !important;
+  border-color: #666666 !important;
+}
+
+body.dark-theme .dcim-modal .btn-primary {
+  background-color: #4285f4 !important;
+  color: white !important;
+}
+
+body.dark-theme .dcim-modal .btn-primary:hover {
+  background-color: #3367d6 !important;
+}
+
+body.dark-theme .dcim-modal .btn-danger {
+  background-color: #ea4335 !important;
+  color: white !important;
+}
+
+body.dark-theme .dcim-modal .btn-danger:hover {
+  background-color: #d73527 !important;
+}
