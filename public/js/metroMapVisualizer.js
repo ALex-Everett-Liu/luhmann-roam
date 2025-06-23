@@ -4761,13 +4761,25 @@ function shouldMarkAsInterchange(station) {
         return false;
     }
     
-    // If it's a mix of bus and other types, and user wants to exclude mixed bus interchanges
-    if (uniqueTransitTypes.includes(TRANSIT_TYPES.BUS) && uniqueTransitTypes.length > 1) {
-        // Mixed bus and other types - when excluding bus interchanges, return false
-        return false;
+    // STEP 1: First identify pure metro interchanges - these should ALWAYS be interchanges
+    // Count non-bus lines (metro, streetcar, BRT, etc.)
+    const nonBusLines = stationLines.filter(line => 
+        (line.transit_type || TRANSIT_TYPES.METRO) !== TRANSIT_TYPES.BUS
+    );
+    
+    // If there are 2+ non-bus lines, this is a pure rail interchange - ALWAYS mark as interchange
+    if (nonBusLines.length >= 2) {
+        return true;
     }
     
-    // For all other cases (pure rail interchanges), mark as interchange
+    // STEP 2: Handle metro+bus mixed cases
+    // If we reach here, there's only 1 non-bus line + some bus lines
+    // When bus exclusion is enabled, these should show as regular stations
+    if (uniqueTransitTypes.includes(TRANSIT_TYPES.BUS) && nonBusLines.length === 1) {
+        return false; // Metro+bus mixed - show as regular station when bus exclusion enabled
+    }
+    
+    // For all other cases (pure rail interchanges with different types), mark as interchange
     return true;
 }
 
