@@ -474,13 +474,13 @@ const LocalGraphIndicators = (function() {
             }
         });
         
-        // Refresh indicators periodically (every 30 seconds)
+        // Refresh indicators periodically (every 300 seconds)
         setInterval(() => {
             if (poolNodes.size > 0) {
                 console.log('Periodic refresh of indicators...');
                 updateVisibleIndicators();
             }
-        }, 30000);
+        }, 300000);
     }
     
     // Public API - OPTIMIZED

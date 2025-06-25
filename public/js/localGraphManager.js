@@ -449,11 +449,19 @@ const LocalGraphManager = (function() {
         let currentZoom = 1;
         let currentPanX = 0;
         let currentPanY = 0;
-        let isDragging = false;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let panStartPanX = 0;
+        let panStartPanY = 0;
+        
+        // Node dragging state
+        let draggedNode = null;
         let dragStartX = 0;
         let dragStartY = 0;
-        let dragStartPanX = 0;
-        let dragStartPanY = 0;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let hasDragged = false;
         
         // Zoom constraints
         const MIN_ZOOM = 0.2;
@@ -626,26 +634,17 @@ const LocalGraphManager = (function() {
             
             // Add hover effects
             circle.addEventListener('mouseenter', () => {
-                circle.setAttribute('stroke-width', '4');
-                circle.style.filter = 'brightness(1.1)';
+                if (!draggedNode) {
+                    circle.setAttribute('stroke-width', '4');
+                    circle.style.filter = 'brightness(1.1)';
+                }
             });
             
             circle.addEventListener('mouseleave', () => {
-                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
-                circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
-            });
-            
-            // Add click handler
-            circle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                selectNode(node);
-            });
-            
-            // Add right-click context menu
-            circle.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showNodeContextMenu(e, node);
+                if (!draggedNode) {
+                    circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
+                    circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
+                }
             });
             
             nodeGroup.appendChild(circle);
@@ -724,45 +723,22 @@ const LocalGraphManager = (function() {
             text.setAttribute('font-weight', isCenter ? '600' : '500');
             text.setAttribute('fill', '#1e293b');
             text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
-            text.style.cursor = 'move';
             text.style.pointerEvents = 'none'; // Let mouse events pass through to the group
             
             nodeGroup.appendChild(text);
             
-            // Add drag functionality to the node group
-            let isDraggingNode = false;
-            let dragOffsetX = 0;
-            let dragOffsetY = 0;
-            
-            nodeGroup.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                isDraggingNode = true;
-                nodeGroup.style.cursor = 'grabbing';
-                
-                const rect = svg.getBoundingClientRect();
-                const svgX = (e.clientX - rect.left) / currentZoom - currentPanX / currentZoom;
-                const svgY = (e.clientY - rect.top) / currentZoom - currentPanY / currentZoom;
-                
-                dragOffsetX = svgX - pos.x;
-                dragOffsetY = svgY - pos.y;
-                
-                // Bring node to front
-                nodesGroup.appendChild(nodeGroup);
-            });
-            
-            // Store node data for drag handling
-            nodeElements.push({
+            // Store node data for easier access
+            const nodeData = {
                 element: nodeGroup,
                 circle: circle,
                 text: text,
                 nodeId: node.id,
                 position: pos,
-                isDragging: () => isDraggingNode,
-                setDragging: (value) => { isDraggingNode = value; }
-            });
+                node: node,
+                poolRings: nodeGroup.querySelectorAll('circle:not(:first-child)')
+            };
             
+            nodeElements.push(nodeData);
             nodesGroup.appendChild(nodeGroup);
         });
         
@@ -796,79 +772,126 @@ const LocalGraphManager = (function() {
             });
         }
         
-        // Mouse event handlers for pan and zoom
-        svg.addEventListener('mousedown', (e) => {
-            // Check if we're dragging a node
-            const isDraggingAnyNode = nodeElements.some(n => n.isDragging());
-            if (isDraggingAnyNode) return;
+        // Function to update node visual position
+        function updateNodePosition(nodeData) {
+            const pos = nodeData.position;
             
-            isDragging = true;
-            svg.style.cursor = 'grabbing';
+            // Update circle position
+            nodeData.circle.setAttribute('cx', pos.x);
+            nodeData.circle.setAttribute('cy', pos.y);
             
+            // Update text position
+            const isCenter = nodeData.nodeId === centerNodeId;
+            nodeData.text.setAttribute('x', pos.x);
+            nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+            
+            // Update pool indicators if they exist
+            nodeData.poolRings.forEach(ring => {
+                ring.setAttribute('cx', pos.x);
+                ring.setAttribute('cy', pos.y);
+            });
+        }
+        
+        // Function to convert screen coordinates to SVG coordinates
+        function screenToSVG(screenX, screenY) {
             const rect = svg.getBoundingClientRect();
-            dragStartX = e.clientX - rect.left;
-            dragStartY = e.clientY - rect.top;
-            dragStartPanX = currentPanX;
-            dragStartPanY = currentPanY;
+            const svgX = (screenX - rect.left - currentPanX) / currentZoom;
+            const svgY = (screenY - rect.top - currentPanY) / currentZoom;
+            return { x: svgX, y: svgY };
+        }
+        
+        // Mouse event handlers
+        svg.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            
+            // Check if we clicked on a node
+            const target = e.target.closest('g[data-node-id]');
+            if (target) {
+                // Start node dragging
+                const nodeId = target.getAttribute('data-node-id');
+                draggedNode = nodeElements.find(n => n.nodeId === nodeId);
+                
+                if (draggedNode) {
+                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragOffsetX = svgCoords.x - draggedNode.position.x;
+                    dragOffsetY = svgCoords.y - draggedNode.position.y;
+                    hasDragged = false;
+                    
+                    draggedNode.element.style.cursor = 'grabbing';
+                    
+                    // Bring node to front
+                    nodesGroup.appendChild(draggedNode.element);
+                }
+            } else {
+                // Start canvas panning
+                isPanning = true;
+                svg.style.cursor = 'grabbing';
+                
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                panStartPanX = currentPanX;
+                panStartPanY = currentPanY;
+            }
         });
         
         svg.addEventListener('mousemove', (e) => {
-            const rect = svg.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
-            // Handle node dragging
-            const draggingNode = nodeElements.find(n => n.isDragging());
-            if (draggingNode) {
-                const svgX = mouseX / currentZoom - currentPanX / currentZoom;
-                const svgY = mouseY / currentZoom - currentPanY / currentZoom;
+            if (draggedNode) {
+                // Handle node dragging
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
                 
-                // Update node position
-                draggingNode.position.x = svgX - (mouseX / currentZoom - currentPanX / currentZoom - draggingNode.position.x);
-                draggingNode.position.y = svgY - (mouseY / currentZoom - currentPanY / currentZoom - draggingNode.position.y);
+                // Check if we've moved enough to consider this a drag
+                if (!hasDragged && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+                    hasDragged = true;
+                }
                 
-                // Update circle position
-                draggingNode.circle.setAttribute('cx', draggingNode.position.x);
-                draggingNode.circle.setAttribute('cy', draggingNode.position.y);
+                if (hasDragged) {
+                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    draggedNode.position.x = svgCoords.x - dragOffsetX;
+                    draggedNode.position.y = svgCoords.y - dragOffsetY;
+                    
+                    updateNodePosition(draggedNode);
+                    updateLinks();
+                }
+            } else if (isPanning) {
+                // Handle canvas panning
+                const deltaX = e.clientX - panStartX;
+                const deltaY = e.clientY - panStartY;
                 
-                // Update text position
-                draggingNode.text.setAttribute('x', draggingNode.position.x);
-                draggingNode.text.setAttribute('y', draggingNode.position.y - (draggingNode.nodeId === centerNodeId ? 20 : 16));
-                
-                // Update pool indicators if they exist
-                const poolRings = draggingNode.element.querySelectorAll('circle:not(:first-child)');
-                poolRings.forEach(ring => {
-                    ring.setAttribute('cx', draggingNode.position.x);
-                    ring.setAttribute('cy', draggingNode.position.y);
-                });
-                
-                // Update links
-                updateLinks();
-                return;
-            }
-            
-            // Handle canvas panning
-            if (isDragging) {
-                const deltaX = mouseX - dragStartX;
-                const deltaY = mouseY - dragStartY;
-                
-                currentPanX = dragStartPanX + deltaX;
-                currentPanY = dragStartPanY + deltaY;
+                currentPanX = panStartPanX + deltaX;
+                currentPanY = panStartPanY + deltaY;
                 
                 updateTransform();
             }
         });
         
         svg.addEventListener('mouseup', (e) => {
-            isDragging = false;
-            svg.style.cursor = 'grab';
-            
-            // Stop node dragging
-            nodeElements.forEach(node => {
-                if (node.isDragging()) {
-                    node.setDragging(false);
-                    node.element.style.cursor = 'move';
+            if (draggedNode) {
+                draggedNode.element.style.cursor = 'move';
+                
+                // If we didn't drag, treat it as a click
+                if (!hasDragged) {
+                    selectNode(draggedNode.node);
                 }
+                
+                draggedNode = null;
+                hasDragged = false;
+            }
+            
+            if (isPanning) {
+                isPanning = false;
+                svg.style.cursor = 'grab';
+            }
+        });
+        
+        // Add right-click context menu to nodes
+        nodeElements.forEach(nodeData => {
+            nodeData.element.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showNodeContextMenu(e, nodeData.node);
             });
         });
         
@@ -893,8 +916,6 @@ const LocalGraphManager = (function() {
                 currentZoom = newZoom;
                 
                 updateTransform();
-                
-                // Update zoom info in UI
                 updateZoomInfo();
             }
         });
