@@ -1,11 +1,11 @@
 /**
- * Local Graph Indicators
- * Provides visual indicators in the main outliner for nodes and links that are part of the local graph pool
+ * Local Graph Indicators - OPTIMIZED VERSION
+ * Only updates specific nodes, not the entire DOM
  */
 const LocalGraphIndicators = (function() {
     let isInitialized = false;
-    let poolNodes = new Set(); // Set of node IDs in the local graph pool
-    let poolLinks = new Set(); // Set of link IDs in the local graph pool
+    let poolNodes = new Set(); 
+    let poolLinks = new Set(); 
     
     function initialize() {
         if (isInitialized) {
@@ -14,8 +14,8 @@ const LocalGraphIndicators = (function() {
         }
         
         try {
-            // Initialize the indicators system
-            loadPoolData();
+            // Load pool data but DON'T update all indicators immediately
+            loadPoolData(false); // false = don't update all DOM
             setupObservers();
             isInitialized = true;
             console.log('LocalGraphIndicators initialized successfully');
@@ -25,60 +25,101 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * Load current pool data from the server
+     * Load pool data - OPTIMIZED: only update DOM if requested
      */
-    async function loadPoolData() {
+    async function loadPoolData(updateDOM = true) {
         try {
-            // Use the single /pool endpoint that returns both nodes and links
             const response = await fetch('/api/local-graph/pool');
             
             if (response.ok) {
                 const data = await response.json();
                 console.log('Pool data loaded:', data);
                 
-                // Extract node IDs and link IDs from the response
+                // Extract node IDs and link IDs
                 poolNodes = new Set(data.nodes.map(node => node.node_id));
                 poolLinks = new Set(data.links.map(link => link.link_id));
                 
                 console.log('Pool nodes set:', Array.from(poolNodes));
                 console.log('Pool links set:', Array.from(poolLinks));
+                
+                // Only update DOM if specifically requested
+                if (updateDOM) {
+                    updateVisibleIndicators();
+                }
             } else {
                 console.error('Failed to load pool data:', response.status);
             }
-            
-            // Apply indicators to existing DOM elements
-            updateAllIndicators();
-            
         } catch (error) {
             console.error('Error loading pool data:', error);
         }
     }
     
     /**
-     * Setup observers to watch for DOM changes and apply indicators
+     * FIXED: Look for data-id instead of data-node-id
+     */
+    function updateVisibleIndicators() {
+        // Look for elements with data-id (not data-node-id)
+        const visibleElements = document.querySelectorAll('[data-id]');
+        
+        // Filter to only visible elements
+        const actuallyVisible = Array.from(visibleElements).filter(el => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
+        
+        console.log(`Updating indicators for ${actuallyVisible.length} visible elements (out of ${visibleElements.length} total)`);
+        
+        actuallyVisible.forEach(applyIndicatorsToElement);
+    }
+    
+    /**
+     * FIXED: Update indicator for a single specific node using data-id
+     */
+    function updateIndicatorForNode(nodeId) {
+        const elements = document.querySelectorAll(`[data-id="${nodeId}"]`);
+        console.log(`Updating indicator for node ${nodeId}: found ${elements.length} elements`);
+        elements.forEach(applyIndicatorsToElement);
+    }
+    
+    /**
+     * OPTIMIZED: Update indicators for multiple specific nodes
+     */
+    function updateIndicatorsForNodes(nodeIds) {
+        console.log(`Updating indicators for ${nodeIds.length} specific nodes`);
+        nodeIds.forEach(nodeId => {
+            const elements = document.querySelectorAll(`[data-node-id="${nodeId}"]`);
+            elements.forEach(applyIndicatorsToElement);
+        });
+    }
+    
+    /**
+     * FIXED: Setup observers to watch for both data-id and data-node-id
      */
     function setupObservers() {
-        // Observer for dynamically added nodes
         const observer = new MutationObserver(function(mutations) {
+            const newNodeElements = [];
+            
             mutations.forEach(function(mutation) {
                 mutation.addedNodes.forEach(function(node) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                        // Check if this is a node element or contains node elements
-                        applyIndicatorsToElement(node);
+                        // Check for both data-id and data-node-id
+                        if (node.getAttribute && (node.getAttribute('data-id') || node.getAttribute('data-node-id'))) {
+                            newNodeElements.push(node);
+                        }
                         
-                        // Also check child elements
-                        const nodeElements = node.querySelectorAll ? node.querySelectorAll('[data-node-id]') : [];
-                        nodeElements.forEach(applyIndicatorsToElement);
-                        
-                        // Check for link elements
-                        const linkElements = node.querySelectorAll ? node.querySelectorAll('[data-link-id]') : [];
-                        linkElements.forEach(applyIndicatorsToElement);
+                        // Check child elements for both attributes
+                        const childElements = node.querySelectorAll ? node.querySelectorAll('[data-id], [data-node-id]') : [];
+                        newNodeElements.push(...childElements);
                     }
                 });
             });
+            
+            if (newNodeElements.length > 0) {
+                console.log(`Processing ${newNodeElements.length} new node elements`);
+                newNodeElements.forEach(applyIndicatorsToElement);
+            }
         });
         
-        // Start observing
         observer.observe(document.body, {
             childList: true,
             subtree: true
@@ -86,33 +127,10 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * Apply indicators to all existing elements
-     */
-    function updateAllIndicators() {
-        // Find all node elements
-        const nodeElements = document.querySelectorAll('[data-node-id]');
-        nodeElements.forEach(applyIndicatorsToElement);
-        
-        // Find all link elements
-        const linkElements = document.querySelectorAll('[data-link-id]');
-        linkElements.forEach(applyIndicatorsToElement);
-        
-        // Also check for elements with class patterns
-        const nodeContentElements = document.querySelectorAll('.node-content, .node-item, .outliner-node');
-        nodeContentElements.forEach(element => {
-            const nodeId = extractNodeIdFromElement(element);
-            if (nodeId) {
-                element.setAttribute('data-node-id', nodeId);
-                applyIndicatorsToElement(element);
-            }
-        });
-    }
-    
-    /**
-     * Apply visual indicators to a specific element
+     * FIXED: Apply indicators to elements with data-id
      */
     function applyIndicatorsToElement(element) {
-        const nodeId = element.getAttribute('data-node-id');
+        const nodeId = element.getAttribute('data-id') || element.getAttribute('data-node-id');
         const linkId = element.getAttribute('data-link-id');
         
         if (nodeId && poolNodes.has(nodeId)) {
@@ -127,7 +145,7 @@ const LocalGraphIndicators = (function() {
             removeLinkIndicator(element);
         }
     }
-    
+
     /**
      * Add visual indicator for nodes in the local graph pool
      */
@@ -172,7 +190,7 @@ const LocalGraphIndicators = (function() {
         
         element.appendChild(indicator);
     }
-    
+
     /**
      * Remove node indicator
      */
@@ -183,7 +201,7 @@ const LocalGraphIndicators = (function() {
             existingIndicator.remove();
         }
     }
-    
+
     /**
      * Add visual indicator for links in the local graph pool
      */
@@ -202,7 +220,7 @@ const LocalGraphIndicators = (function() {
         const originalTitle = element.title || '';
         element.title = originalTitle + (originalTitle ? ' | ' : '') + 'This link is in the Local Graph pool';
     }
-    
+
     /**
      * Remove link indicator
      */
@@ -217,40 +235,7 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * Extract node ID from element (fallback method)
-     */
-    function extractNodeIdFromElement(element) {
-        // Try various methods to extract node ID
-        
-        // 1. Direct data attribute
-        let nodeId = element.getAttribute('data-node-id');
-        if (nodeId) return nodeId;
-        
-        // 2. From ID attribute pattern
-        const id = element.id;
-        if (id && id.startsWith('node-')) {
-            return id.replace('node-', '');
-        }
-        
-        // 3. From class pattern
-        const classes = element.className.split(' ');
-        for (const cls of classes) {
-            if (cls.startsWith('node-id-')) {
-                return cls.replace('node-id-', '');
-            }
-        }
-        
-        // 4. From parent element
-        const parent = element.closest('[data-node-id]');
-        if (parent) {
-            return parent.getAttribute('data-node-id');
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Add a node to the local graph pool and update indicators
+     * OPTIMIZED: Add node to pool and update only that node's indicators
      */
     async function addNodeToPool(nodeId, notes = '') {
         try {
@@ -267,8 +252,8 @@ const LocalGraphIndicators = (function() {
             // Update local state
             poolNodes.add(nodeId);
             
-            // Update indicators
-            updateIndicatorsForNode(nodeId);
+            // OPTIMIZED: Only update indicators for this specific node
+            updateIndicatorForNode(nodeId);
             
             return true;
         } catch (error) {
@@ -278,7 +263,7 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * Remove a node from the local graph pool and update indicators
+     * OPTIMIZED: Remove node from pool and update only that node's indicators
      */
     async function removeNodeFromPool(nodeId) {
         try {
@@ -293,8 +278,8 @@ const LocalGraphIndicators = (function() {
             // Update local state
             poolNodes.delete(nodeId);
             
-            // Update indicators
-            updateIndicatorsForNode(nodeId);
+            // OPTIMIZED: Only update indicators for this specific node
+            updateIndicatorForNode(nodeId);
             
             return true;
         } catch (error) {
@@ -358,14 +343,6 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * Update indicators for a specific node
-     */
-    function updateIndicatorsForNode(nodeId) {
-        const elements = document.querySelectorAll(`[data-node-id="${nodeId}"]`);
-        elements.forEach(applyIndicatorsToElement);
-    }
-    
-    /**
      * Update indicators for a specific link
      */
     function updateIndicatorsForLink(linkId) {
@@ -405,7 +382,7 @@ const LocalGraphIndicators = (function() {
      * Refresh pool data from server
      */
     async function refreshPoolData() {
-        await loadPoolData();
+        await loadPoolData(true);
     }
     
     /**
@@ -432,7 +409,7 @@ const LocalGraphIndicators = (function() {
         });
     }
     
-    // Public API
+    // Public API - OPTIMIZED
     return {
         initialize,
         addNodeToPool,
@@ -444,7 +421,9 @@ const LocalGraphIndicators = (function() {
         getPoolNodes,
         getPoolLinks,
         refreshPoolData,
-        updateAllIndicators,
+        updateIndicatorForNode,           // NEW: Update single node
+        updateIndicatorsForNodes,         // NEW: Update multiple specific nodes
+        updateVisibleIndicators,          // NEW: Update only visible elements
         isInitialized: () => isInitialized
     };
 })();
