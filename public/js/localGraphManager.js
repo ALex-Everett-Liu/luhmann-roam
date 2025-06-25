@@ -215,9 +215,14 @@ const LocalGraphManager = (function() {
                     
                     <div class="form-group">
                         <label>Place in Outliner (from pool):</label>
-                        <select id="parent-node-select">
-                            <option value="">Loading pool nodes...</option>
-                        </select>
+                        <div class="parent-node-search-container">
+                            <input type="text" id="parent-node-search" placeholder="Search pool nodes or leave empty for root..." class="node-search-input">
+                            <div id="parent-node-dropdown" class="node-dropdown">
+                                <div class="dropdown-content">
+                                    <div class="no-results-message">Start typing to search pool nodes or leave empty to create as root node...</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1286,44 +1291,8 @@ const LocalGraphManager = (function() {
     async function openAddNodeModal() {
         const modal = document.getElementById('add-node-modal');
         
-        // CHANGED: Load suggested parents from pool instead of suggested-parents endpoint
-        try {
-            // Get all pool nodes as potential parents
-            const response = await fetch('/api/local-graph/pool');
-            const poolData = await response.json();
-            
-            const select = document.getElementById('parent-node-select');
-            
-            if (poolData.nodes && poolData.nodes.length > 0) {
-                // Add root option first
-                let options = '<option value="">Create as root node</option>';
-                
-                // Add pool nodes as options, prioritizing center node and its ancestors
-                const poolNodes = poolData.nodes;
-                
-                // Sort to put center node first if it exists in pool
-                poolNodes.sort((a, b) => {
-                    if (a.node_id === centerNodeId) return -1;
-                    if (b.node_id === centerNodeId) return 1;
-                    return new Date(b.added_at) - new Date(a.added_at); // Most recent first
-                });
-                
-                options += poolNodes.map(poolNode => `
-                    <option value="${poolNode.node_id}">
-                        ${poolNode.content || poolNode.content_zh || 'Untitled'}
-                        ${poolNode.node_id === centerNodeId ? ' (Center Node)' : ''}
-                    </option>
-                `).join('');
-                
-                select.innerHTML = options;
-            } else {
-                select.innerHTML = '<option value="">No pool nodes available - create as root</option>';
-            }
-            
-        } catch (error) {
-            console.error('Error loading pool nodes for parent suggestions:', error);
-            document.getElementById('parent-node-select').innerHTML = '<option value="">Error loading suggestions</option>';
-        }
+        // Setup parent node search functionality
+        setupParentNodeSearch();
         
         // Populate quick suggestions from pool
         await populateQuickSuggestions();
@@ -1354,6 +1323,17 @@ const LocalGraphManager = (function() {
         if (linkOptions) {
             linkOptions.style.display = 'block';
         }
+        
+        // Reset parent node search
+        const parentSearch = document.getElementById('parent-node-search');
+        const parentDropdown = document.getElementById('parent-node-dropdown');
+        if (parentSearch) {
+            parentSearch.value = '';
+            parentSearch.dataset.selectedNodeId = '';
+        }
+        if (parentDropdown) {
+            parentDropdown.classList.remove('show');
+        }
     }
     
     async function createNewNode(e) {
@@ -1361,7 +1341,7 @@ const LocalGraphManager = (function() {
         
         const content = document.getElementById('node-content').value.trim();
         const content_zh = document.getElementById('node-content-zh').value.trim();
-        const parentNodeId = document.getElementById('parent-node-select').value || null;
+        const parentNodeId = document.getElementById('parent-node-search').dataset.selectedNodeId || null;
         const createLinks = document.getElementById('create-links').checked;
         
         if (!content) {
@@ -2004,6 +1984,104 @@ const LocalGraphManager = (function() {
             console.error('Error loading quick suggestions:', error);
             suggestionsContainer.innerHTML = '<div class="error-message">Error loading suggestions</div>';
         }
+    }
+    
+    // Add new function to handle parent node search
+    async function setupParentNodeSearch() {
+        const parentSearch = document.getElementById('parent-node-search');
+        const parentDropdown = document.getElementById('parent-node-dropdown');
+        
+        if (!parentSearch || !parentDropdown) return;
+        
+        parentSearch.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            const dropdownContent = parentDropdown.querySelector('.dropdown-content');
+            
+            if (query.length === 0) {
+                // Show root option when empty
+                dropdownContent.innerHTML = `
+                    <div class="node-option" data-node-id="">
+                        <div class="node-option-content">(Create as root node)</div>
+                        <div class="node-option-content-zh">创建为根节点</div>
+                    </div>
+                `;
+                
+                // Add click handler for root option
+                dropdownContent.querySelector('.node-option').addEventListener('click', function() {
+                    parentSearch.value = '(Create as root node)';
+                    parentSearch.dataset.selectedNodeId = '';
+                    parentDropdown.classList.remove('show');
+                });
+                
+                parentDropdown.classList.add('show');
+                return;
+            }
+            
+            if (query.length < 2) {
+                dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search pool nodes...</div>';
+                parentDropdown.classList.remove('show');
+                return;
+            }
+            
+            try {
+                // Search within pool nodes
+                const response = await fetch(`/api/local-graph/pool/search?q=${encodeURIComponent(query)}&limit=10`);
+                const results = await response.json();
+                
+                if (results.length === 0) {
+                    dropdownContent.innerHTML = `
+                        <div class="no-results-message">No nodes found in pool matching "${query}"</div>
+                        <div class="node-option" data-node-id="">
+                            <div class="node-option-content">(Create as root node instead)</div>
+                            <div class="node-option-content-zh">改为创建根节点</div>
+                        </div>
+                    `;
+                } else {
+                    // Add root option at the top
+                    let optionsHtml = `
+                        <div class="node-option" data-node-id="">
+                            <div class="node-option-content">(Create as root node)</div>
+                            <div class="node-option-content-zh">创建为根节点</div>
+                        </div>
+                    `;
+                    
+                    // Add search results
+                    optionsHtml += results.map(node => `
+                        <div class="node-option" data-node-id="${node.id}">
+                            <div class="node-option-content">${node.content || 'Untitled'}</div>
+                            ${node.content_zh ? `<div class="node-option-content-zh">${node.content_zh}</div>` : ''}
+                            <div class="node-option-meta">In pool since ${new Date(node.added_at).toLocaleDateString()}</div>
+                        </div>
+                    `).join('');
+                    
+                    dropdownContent.innerHTML = optionsHtml;
+                }
+                
+                // Add click handlers for all options
+                dropdownContent.querySelectorAll('.node-option').forEach(option => {
+                    option.addEventListener('click', function() {
+                        const nodeId = this.dataset.nodeId;
+                        const nodeContent = this.querySelector('.node-option-content').textContent;
+                        
+                        parentSearch.value = nodeContent;
+                        parentSearch.dataset.selectedNodeId = nodeId;
+                        parentDropdown.classList.remove('show');
+                    });
+                });
+                
+                parentDropdown.classList.add('show');
+            } catch (error) {
+                console.error('Error searching pool nodes for parent:', error);
+                dropdownContent.innerHTML = '<div class="error-message">Error searching pool nodes</div>';
+            }
+        });
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!parentSearch.contains(e.target) && !parentDropdown.contains(e.target)) {
+                parentDropdown.classList.remove('show');
+            }
+        });
     }
     
     // Public API

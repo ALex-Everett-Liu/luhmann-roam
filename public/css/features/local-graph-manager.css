@@ -1161,3 +1161,61 @@
   .distance-label-bg {
     pointer-events: none;
   }
+  
+  /* Parent node search styling */
+  .parent-node-search-container {
+    position: relative;
+    margin-bottom: 0;
+  }
+  
+  .parent-node-search-container .node-search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e1e4e8;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  
+  .parent-node-search-container .node-search-input:focus {
+    outline: none;
+    border-color: #0366d6;
+  }
+  
+  .parent-node-search-container .node-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 2px solid #e1e4e8;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  
+  .parent-node-search-container .node-dropdown.show {
+    display: block;
+  }
+  
+  /* Dark mode support for parent node search */
+  @media (prefers-color-scheme: dark) {
+    .parent-node-search-container .node-search-input {
+      background: #0d1117;
+      border-color: #30363d;
+      color: #f0f6fc;
+    }
+    
+    .parent-node-search-container .node-search-input:focus {
+      border-color: #1f6feb;
+    }
+    
+    .parent-node-search-container .node-dropdown {
+      background: #161b22;
+      border-color: #30363d;
+    }
+  }
