@@ -416,7 +416,6 @@ const LocalGraphManager = (function() {
             // Load pool status for all nodes
             if (graphData && graphData.nodes) {
                 graphData.nodes.forEach(node => checkNodePoolStatus(node.id));
-                setTimeout(updateNodePoolIndicators, 500);
             }
             
         } catch (error) {
@@ -722,7 +721,7 @@ const LocalGraphManager = (function() {
                 <h5>${node.content || 'Untitled'}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
                 <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
-                <p class="node-pool-status" style="color: ${isInPool ? '#4CAF50' : '#666'}; font-size: 12px; margin: 5px 0;">
+                <p class="node-pool-status" style="color: ${isInPool ? '#6366f1' : '#666'}; font-size: 12px; margin: 5px 0;">
                     ${isInPool ? '✓ In Local Graph Pool' : '○ Not in Pool'}
                 </p>
                 <div class="node-actions">
@@ -1216,7 +1215,6 @@ const LocalGraphManager = (function() {
             nodePoolStatus.set(nodeId, true);
             
             // Update UI
-            updateNodePoolIndicators();
             showNotification('Node added to Local Graph Pool!', 'success');
             
             return true;
@@ -1242,7 +1240,6 @@ const LocalGraphManager = (function() {
             nodePoolStatus.set(nodeId, false);
             
             // Update UI
-            updateNodePoolIndicators();
             showNotification('Node removed from Local Graph Pool!', 'success');
             
             return true;
@@ -1264,23 +1261,6 @@ const LocalGraphManager = (function() {
             console.error('Error checking node pool status:', error);
             return false;
         }
-    }
-    
-    function updateNodePoolIndicators() {
-        // Add visual indicators to nodes that are in the pool
-        const nodeElements = document.querySelectorAll('#local-graph-canvas circle[data-node-id]');
-        nodeElements.forEach(element => {
-            const nodeId = element.getAttribute('data-node-id');
-            if (nodeId && nodePoolStatus.has(nodeId)) {
-                if (nodePoolStatus.get(nodeId)) {
-                    element.setAttribute('stroke', '#4CAF50');
-                    element.setAttribute('stroke-width', '4');
-                } else {
-                    element.setAttribute('stroke', '#333');
-                    element.setAttribute('stroke-width', '2');
-                }
-            }
-        });
     }
     
     function showNodeContextMenu(event, node) {

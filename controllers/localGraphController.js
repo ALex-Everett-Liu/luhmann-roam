@@ -19,14 +19,24 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
   
   distances.set(centerNodeId, 0);
   
-  // Build adjacency list for faster lookup
+  // Build adjacency list for faster lookup - TREAT ALL LINKS AS BIDIRECTIONAL
   const adjacencyList = new Map();
   links.forEach(link => {
+    // Add forward direction
     if (!adjacencyList.has(link.from_node_id)) {
       adjacencyList.set(link.from_node_id, []);
     }
     adjacencyList.get(link.from_node_id).push({
       nodeId: link.to_node_id,
+      weight: link.weight || 1.0
+    });
+    
+    // Add reverse direction for bidirectional graph traversal
+    if (!adjacencyList.has(link.to_node_id)) {
+      adjacencyList.set(link.to_node_id, []);
+    }
+    adjacencyList.get(link.to_node_id).push({
+      nodeId: link.from_node_id,
       weight: link.weight || 1.0
     });
   });
