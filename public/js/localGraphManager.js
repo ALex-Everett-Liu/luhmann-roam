@@ -36,8 +36,32 @@ const LocalGraphManager = (function() {
             </div>
             
             <div class="local-graph-content">
+                <!-- Empty State Phase -->
+                <div id="empty-state-phase" class="phase-content">
+                    <div class="empty-state-container">
+                        <div class="empty-state-icon">🌱</div>
+                        <h3>No Nodes Found</h3>
+                        <p>Your knowledge graph is empty. To use the Local Graph Explorer, you need to create some nodes first.</p>
+                        
+                        <div class="empty-state-actions">
+                            <button id="create-first-node-btn" class="primary-btn">Create Your First Node</button>
+                            <button id="go-to-outliner-btn" class="secondary-btn">Go to Main Outliner</button>
+                            <button id="check-nodes-again-btn" class="secondary-btn">Check Again</button>
+                        </div>
+                        
+                        <div class="empty-state-help">
+                            <h4>Getting Started:</h4>
+                            <ol>
+                                <li>Create at least 2-3 nodes in your outliner</li>
+                                <li>Add some links between nodes using the Graph Management tool</li>
+                                <li>Return here to explore local neighborhoods around any node</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Center Node Selection Phase -->
-                <div id="center-selection-phase" class="phase-content active">
+                <div id="center-selection-phase" class="phase-content">
                     <div class="center-selection-container">
                         <h3>Select Center Node</h3>
                         <p>Choose a node to explore its local neighborhood:</p>
@@ -212,6 +236,11 @@ const LocalGraphManager = (function() {
         // Close button
         document.getElementById('close-local-graph').addEventListener('click', hide);
         
+        // Empty state handlers
+        document.getElementById('create-first-node-btn').addEventListener('click', createFirstNode);
+        document.getElementById('go-to-outliner-btn').addEventListener('click', goToOutliner);
+        document.getElementById('check-nodes-again-btn').addEventListener('click', checkNodesAgain);
+        
         // Center node search
         document.getElementById('center-node-search').addEventListener('input', handleCenterNodeSearch);
         
@@ -257,7 +286,14 @@ const LocalGraphManager = (function() {
             const results = await response.json();
             
             if (results.length === 0) {
-                dropdownContent.innerHTML = '<div class="no-results-message">No nodes found</div>';
+                dropdownContent.innerHTML = `
+                    <div class="no-results-message">No nodes found matching "${query}"</div>
+                    <div class="create-node-suggestion">
+                        <button onclick="LocalGraphManager.createNodeFromSearch('${query.replace(/'/g, '\\\'')}')" class="create-suggestion-btn">
+                            Create node: "${query}"
+                        </button>
+                    </div>
+                `;
             } else {
                 dropdownContent.innerHTML = results.map(node => `
                     <div class="node-option" data-node-id="${node.id}">
@@ -651,14 +687,30 @@ const LocalGraphManager = (function() {
         }
     }
     
-    function show() {
+    async function show() {
         container.style.display = 'block';
         
-        // Reset to selection phase
+        // Check if there are any nodes in the database
+        try {
+            const response = await fetch('/api/nodes/search?q=&limit=1');
+            const results = await response.json();
+            
+            if (results.length === 0) {
+                // No nodes found, show empty state
+                switchToEmptyState();
+            } else {
+                // Nodes exist, show center selection
+                switchToCenterSelection();
+            }
+        } catch (error) {
+            console.error('Error checking for nodes:', error);
+            // Default to center selection phase
+            switchToCenterSelection();
+        }
+        
+        // Reset state
         centerNodeId = null;
         graphData = null;
-        document.getElementById('graph-visualization-phase').classList.remove('active');
-        document.getElementById('center-selection-phase').classList.add('active');
         document.getElementById('center-node-search').value = '';
         document.getElementById('explore-graph-btn').disabled = true;
     }
@@ -713,13 +765,123 @@ const LocalGraphManager = (function() {
         }, 3000);
     }
     
+    // Add new functions for empty state handling
+    async function createFirstNode() {
+        try {
+            // Create a simple first node
+            const response = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: 'My First Node',
+                    content_zh: '我的第一个节点',
+                    parent_id: null,
+                    position: 0
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create first node');
+            }
+            
+            const newNode = await response.json();
+            
+            showNotification('First node created! You can now create more nodes and links.', 'success');
+            
+            // Switch to center selection phase and pre-select the new node
+            switchToCenterSelection();
+            centerNodeId = newNode.id;
+            document.getElementById('center-node-search').value = newNode.content;
+            document.getElementById('explore-graph-btn').disabled = false;
+            
+        } catch (error) {
+            console.error('Error creating first node:', error);
+            showNotification('Error creating first node', 'error');
+        }
+    }
+    
+    function goToOutliner() {
+        // Close local graph manager and focus on main outliner
+        hide();
+        
+        // If there's a global function to focus the outliner, call it
+        if (window.focusMainOutliner) {
+            window.focusMainOutliner();
+        } else {
+            showNotification('Please use the main outliner to create nodes', 'info');
+        }
+    }
+    
+    async function checkNodesAgain() {
+        try {
+            const response = await fetch('/api/nodes/search?q=&limit=1');
+            const results = await response.json();
+            
+            if (results.length > 0) {
+                switchToCenterSelection();
+                showNotification('Great! Nodes found. You can now select a center node.', 'success');
+            } else {
+                showNotification('Still no nodes found. Please create some nodes first.', 'warning');
+            }
+        } catch (error) {
+            console.error('Error checking for nodes:', error);
+            showNotification('Error checking for nodes', 'error');
+        }
+    }
+    
+    function switchToCenterSelection() {
+        document.getElementById('empty-state-phase').classList.remove('active');
+        document.getElementById('center-selection-phase').classList.add('active');
+        document.getElementById('graph-visualization-phase').classList.remove('active');
+    }
+    
+    function switchToEmptyState() {
+        document.getElementById('empty-state-phase').classList.add('active');
+        document.getElementById('center-selection-phase').classList.remove('active');
+        document.getElementById('graph-visualization-phase').classList.remove('active');
+    }
+    
+    // Add function to create node from search
+    async function createNodeFromSearch(content) {
+        try {
+            const response = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: content,
+                    parent_id: null,
+                    position: 0
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to create node');
+            }
+            
+            const newNode = await response.json();
+            
+            // Select the new node as center
+            selectCenterNode(newNode.id, newNode.content);
+            
+            // Hide dropdown
+            document.getElementById('center-node-dropdown').classList.remove('show');
+            
+            showNotification('Node created and selected as center!', 'success');
+            
+        } catch (error) {
+            console.error('Error creating node from search:', error);
+            showNotification('Error creating node', 'error');
+        }
+    }
+    
     // Public API
     return {
         initialize,
         show,
         hide,
         isVisible,
-        focusInOutliner
+        focusInOutliner,
+        createNodeFromSearch
     };
 })();
 
