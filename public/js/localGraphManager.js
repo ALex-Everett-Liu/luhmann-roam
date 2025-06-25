@@ -427,9 +427,6 @@ const LocalGraphManager = (function() {
     function renderGraph() {
         const canvasArea = document.getElementById('local-graph-canvas');
         
-        // Create a simple network visualization using D3 or similar
-        // For now, we'll create a simple HTML-based visualization
-        
         const nodes = graphData.nodes || [];
         const links = graphData.links || [];
         const distances = graphData.distances || {};
@@ -437,11 +434,30 @@ const LocalGraphManager = (function() {
         // Clear canvas
         canvasArea.innerHTML = '';
         
-        // Create SVG
+        // Create SVG with zoom and pan capabilities
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '100%');
         svg.setAttribute('height', '100%');
         svg.style.background = '#fff';
+        svg.style.cursor = 'grab';
+        
+        // Create main group for zoom/pan transformations
+        const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        mainGroup.setAttribute('id', 'main-graph-group');
+        
+        // Zoom and pan state
+        let currentZoom = 1;
+        let currentPanX = 0;
+        let currentPanY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartPanX = 0;
+        let dragStartPanY = 0;
+        
+        // Zoom constraints
+        const MIN_ZOOM = 0.2;
+        const MAX_ZOOM = 5;
         
         // Add gradient definitions for elegant styling
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -500,7 +516,7 @@ const LocalGraphManager = (function() {
         
         svg.appendChild(defs);
         
-        // Simple circular layout based on distance
+        // Initial layout based on distance
         const centerX = 400;
         const centerY = 300;
         const maxRadius = 250;
@@ -515,7 +531,7 @@ const LocalGraphManager = (function() {
             nodesByDistance[distance].push(node);
         });
         
-        // Position nodes
+        // Position nodes - this will be our initial layout
         const nodePositions = {};
         Object.keys(nodesByDistance).forEach(distance => {
             const dist = parseFloat(distance);
@@ -537,7 +553,16 @@ const LocalGraphManager = (function() {
             });
         });
         
+        // Create links group
+        const linksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        linksGroup.setAttribute('id', 'links-group');
+        
+        // Create nodes group
+        const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        nodesGroup.setAttribute('id', 'nodes-group');
+        
         // Draw links
+        const linkElements = [];
         links.forEach(link => {
             const sourcePos = nodePositions[link.from_node_id];
             const targetPos = nodePositions[link.to_node_id];
@@ -551,11 +576,19 @@ const LocalGraphManager = (function() {
                 line.setAttribute('stroke', '#e2e8f0');
                 line.setAttribute('stroke-width', Math.max(0.8, link.weight * 0.8));
                 line.setAttribute('opacity', '0.6');
-                svg.appendChild(line);
+                line.setAttribute('data-from-node', link.from_node_id);
+                line.setAttribute('data-to-node', link.to_node_id);
+                linksGroup.appendChild(line);
+                linkElements.push({
+                    element: line,
+                    fromNodeId: link.from_node_id,
+                    toNodeId: link.to_node_id
+                });
             }
         });
         
-        // Draw nodes
+        // Draw nodes with drag functionality
+        const nodeElements = [];
         nodes.forEach(node => {
             const pos = nodePositions[node.id];
             if (!pos) return;
@@ -563,6 +596,11 @@ const LocalGraphManager = (function() {
             const isCenter = node.id === centerNodeId;
             const distance = distances[node.id] || 0;
             const isInPool = nodePoolStatus.get(node.id) || false;
+            
+            // Create node group for easier dragging
+            const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            nodeGroup.setAttribute('data-node-id', node.id);
+            nodeGroup.style.cursor = 'move';
             
             // Node circle with improved styling
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -584,8 +622,6 @@ const LocalGraphManager = (function() {
                 }
             }
             
-            circle.setAttribute('data-node-id', node.id);
-            circle.style.cursor = 'pointer';
             circle.style.transition = 'all 0.2s ease';
             
             // Add hover effects
@@ -600,17 +636,21 @@ const LocalGraphManager = (function() {
             });
             
             // Add click handler
-            circle.addEventListener('click', () => selectNode(node));
+            circle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectNode(node);
+            });
             
             // Add right-click context menu
             circle.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 showNodeContextMenu(e, node);
             });
             
-            svg.appendChild(circle);
+            nodeGroup.appendChild(circle);
             
-            // Elegant pool indicator - sophisticated silver ring with subtle animation
+            // Add pool indicators
             if (isInPool && !isCenter) {
                 // Create a subtle outer glow effect
                 const glowRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -621,7 +661,7 @@ const LocalGraphManager = (function() {
                 glowRing.setAttribute('stroke', '#e2e8f0');
                 glowRing.setAttribute('stroke-width', '0.5');
                 glowRing.setAttribute('opacity', '0.4');
-                svg.appendChild(glowRing);
+                nodeGroup.appendChild(glowRing);
                 
                 // Main elegant silver ring
                 const poolRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -644,7 +684,7 @@ const LocalGraphManager = (function() {
                 animateTransform.setAttribute('repeatCount', 'indefinite');
                 
                 poolRing.appendChild(animateTransform);
-                svg.appendChild(poolRing);
+                nodeGroup.appendChild(poolRing);
                 
                 // Add small accent dots for extra elegance
                 for (let i = 0; i < 3; i++) {
@@ -670,7 +710,7 @@ const LocalGraphManager = (function() {
                     dotAnimate.setAttribute('repeatCount', 'indefinite');
                     
                     accentDot.appendChild(dotAnimate);
-                    svg.appendChild(accentDot);
+                    nodeGroup.appendChild(accentDot);
                 }
             }
             
@@ -684,15 +724,328 @@ const LocalGraphManager = (function() {
             text.setAttribute('font-weight', isCenter ? '600' : '500');
             text.setAttribute('fill', '#1e293b');
             text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
-            text.style.cursor = 'pointer';
+            text.style.cursor = 'move';
+            text.style.pointerEvents = 'none'; // Let mouse events pass through to the group
             
-            // Add click handler
-            text.addEventListener('click', () => selectNode(node));
+            nodeGroup.appendChild(text);
             
-            svg.appendChild(text);
+            // Add drag functionality to the node group
+            let isDraggingNode = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+            
+            nodeGroup.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                isDraggingNode = true;
+                nodeGroup.style.cursor = 'grabbing';
+                
+                const rect = svg.getBoundingClientRect();
+                const svgX = (e.clientX - rect.left) / currentZoom - currentPanX / currentZoom;
+                const svgY = (e.clientY - rect.top) / currentZoom - currentPanY / currentZoom;
+                
+                dragOffsetX = svgX - pos.x;
+                dragOffsetY = svgY - pos.y;
+                
+                // Bring node to front
+                nodesGroup.appendChild(nodeGroup);
+            });
+            
+            // Store node data for drag handling
+            nodeElements.push({
+                element: nodeGroup,
+                circle: circle,
+                text: text,
+                nodeId: node.id,
+                position: pos,
+                isDragging: () => isDraggingNode,
+                setDragging: (value) => { isDraggingNode = value; }
+            });
+            
+            nodesGroup.appendChild(nodeGroup);
         });
         
+        // Add groups to main group
+        mainGroup.appendChild(linksGroup);
+        mainGroup.appendChild(nodesGroup);
+        svg.appendChild(mainGroup);
+        
+        // Function to update transform
+        function updateTransform() {
+            mainGroup.setAttribute('transform', 
+                `translate(${currentPanX}, ${currentPanY}) scale(${currentZoom})`
+            );
+        }
+        
+        // Function to update link positions
+        function updateLinks() {
+            linkElements.forEach(linkData => {
+                const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
+                const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
+                
+                if (fromNode && toNode) {
+                    const fromPos = fromNode.position;
+                    const toPos = toNode.position;
+                    
+                    linkData.element.setAttribute('x1', fromPos.x);
+                    linkData.element.setAttribute('y1', fromPos.y);
+                    linkData.element.setAttribute('x2', toPos.x);
+                    linkData.element.setAttribute('y2', toPos.y);
+                }
+            });
+        }
+        
+        // Mouse event handlers for pan and zoom
+        svg.addEventListener('mousedown', (e) => {
+            // Check if we're dragging a node
+            const isDraggingAnyNode = nodeElements.some(n => n.isDragging());
+            if (isDraggingAnyNode) return;
+            
+            isDragging = true;
+            svg.style.cursor = 'grabbing';
+            
+            const rect = svg.getBoundingClientRect();
+            dragStartX = e.clientX - rect.left;
+            dragStartY = e.clientY - rect.top;
+            dragStartPanX = currentPanX;
+            dragStartPanY = currentPanY;
+        });
+        
+        svg.addEventListener('mousemove', (e) => {
+            const rect = svg.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Handle node dragging
+            const draggingNode = nodeElements.find(n => n.isDragging());
+            if (draggingNode) {
+                const svgX = mouseX / currentZoom - currentPanX / currentZoom;
+                const svgY = mouseY / currentZoom - currentPanY / currentZoom;
+                
+                // Update node position
+                draggingNode.position.x = svgX - (mouseX / currentZoom - currentPanX / currentZoom - draggingNode.position.x);
+                draggingNode.position.y = svgY - (mouseY / currentZoom - currentPanY / currentZoom - draggingNode.position.y);
+                
+                // Update circle position
+                draggingNode.circle.setAttribute('cx', draggingNode.position.x);
+                draggingNode.circle.setAttribute('cy', draggingNode.position.y);
+                
+                // Update text position
+                draggingNode.text.setAttribute('x', draggingNode.position.x);
+                draggingNode.text.setAttribute('y', draggingNode.position.y - (draggingNode.nodeId === centerNodeId ? 20 : 16));
+                
+                // Update pool indicators if they exist
+                const poolRings = draggingNode.element.querySelectorAll('circle:not(:first-child)');
+                poolRings.forEach(ring => {
+                    ring.setAttribute('cx', draggingNode.position.x);
+                    ring.setAttribute('cy', draggingNode.position.y);
+                });
+                
+                // Update links
+                updateLinks();
+                return;
+            }
+            
+            // Handle canvas panning
+            if (isDragging) {
+                const deltaX = mouseX - dragStartX;
+                const deltaY = mouseY - dragStartY;
+                
+                currentPanX = dragStartPanX + deltaX;
+                currentPanY = dragStartPanY + deltaY;
+                
+                updateTransform();
+            }
+        });
+        
+        svg.addEventListener('mouseup', (e) => {
+            isDragging = false;
+            svg.style.cursor = 'grab';
+            
+            // Stop node dragging
+            nodeElements.forEach(node => {
+                if (node.isDragging()) {
+                    node.setDragging(false);
+                    node.element.style.cursor = 'move';
+                }
+            });
+        });
+        
+        // Zoom functionality
+        svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const rect = svg.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate zoom
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
+            
+            if (newZoom !== currentZoom) {
+                // Zoom towards mouse position
+                const zoomRatio = newZoom / currentZoom;
+                
+                currentPanX = mouseX - (mouseX - currentPanX) * zoomRatio;
+                currentPanY = mouseY - (mouseY - currentPanY) * zoomRatio;
+                currentZoom = newZoom;
+                
+                updateTransform();
+                
+                // Update zoom info in UI
+                updateZoomInfo();
+            }
+        });
+        
+        // Touch support for mobile
+        let touchStartDistance = 0;
+        let touchStartZoom = 1;
+        let touchStartPan = { x: 0, y: 0 };
+        
+        svg.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                // Pinch zoom start
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                touchStartDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                touchStartZoom = currentZoom;
+                touchStartPan = { x: currentPanX, y: currentPanY };
+            }
+        });
+        
+        svg.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                
+                if (touchStartDistance > 0) {
+                    const zoomRatio = currentDistance / touchStartDistance;
+                    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, touchStartZoom * zoomRatio));
+                    
+                    if (newZoom !== currentZoom) {
+                        currentZoom = newZoom;
+                        updateTransform();
+                        updateZoomInfo();
+                    }
+                }
+            }
+        });
+        
+        // Function to update zoom info in UI
+        function updateZoomInfo() {
+            const zoomPercent = Math.round(currentZoom * 100);
+            const distanceDisplay = document.getElementById('distance-display');
+            if (distanceDisplay) {
+                const originalText = distanceDisplay.textContent.split(' | ')[0];
+                distanceDisplay.textContent = `${originalText} | Zoom: ${zoomPercent}%`;
+            }
+        }
+        
+        // Add zoom controls to the UI
+        addZoomControls();
+        
+        // Initial transform
+        updateTransform();
+        updateZoomInfo();
+        
         canvasArea.appendChild(svg);
+        
+        // Add zoom controls function
+        function addZoomControls() {
+            const graphActions = document.querySelector('.graph-actions');
+            if (!graphActions) return;
+            
+            // Check if zoom controls already exist
+            if (graphActions.querySelector('.zoom-controls')) return;
+            
+            const zoomControls = document.createElement('div');
+            zoomControls.className = 'zoom-controls';
+            zoomControls.style.cssText = `
+                display: flex;
+                gap: 5px;
+                align-items: center;
+                margin-left: 10px;
+            `;
+            
+            const zoomInBtn = document.createElement('button');
+            zoomInBtn.className = 'secondary-btn';
+            zoomInBtn.textContent = '+';
+            zoomInBtn.title = 'Zoom In';
+            zoomInBtn.style.cssText = `
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                font-size: 16px;
+                font-weight: bold;
+            `;
+            
+            const zoomOutBtn = document.createElement('button');
+            zoomOutBtn.className = 'secondary-btn';
+            zoomOutBtn.textContent = '−';
+            zoomOutBtn.title = 'Zoom Out';
+            zoomOutBtn.style.cssText = `
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                font-size: 16px;
+                font-weight: bold;
+            `;
+            
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'secondary-btn';
+            resetBtn.textContent = '⌂';
+            resetBtn.title = 'Reset View';
+            resetBtn.style.cssText = `
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                font-size: 14px;
+            `;
+            
+            // Event handlers
+            zoomInBtn.addEventListener('click', () => {
+                const newZoom = Math.min(MAX_ZOOM, currentZoom * 1.2);
+                if (newZoom !== currentZoom) {
+                    currentZoom = newZoom;
+                    updateTransform();
+                    updateZoomInfo();
+                }
+            });
+            
+            zoomOutBtn.addEventListener('click', () => {
+                const newZoom = Math.max(MIN_ZOOM, currentZoom / 1.2);
+                if (newZoom !== currentZoom) {
+                    currentZoom = newZoom;
+                    updateTransform();
+                    updateZoomInfo();
+                }
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                currentZoom = 1;
+                currentPanX = 0;
+                currentPanY = 0;
+                updateTransform();
+                updateZoomInfo();
+            });
+            
+            zoomControls.appendChild(zoomOutBtn);
+            zoomControls.appendChild(resetBtn);
+            zoomControls.appendChild(zoomInBtn);
+            
+            graphActions.appendChild(zoomControls);
+        }
     }
     
     function getDistanceColor(distance) {

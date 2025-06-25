@@ -339,6 +339,18 @@
     width: 100%;
     height: 100%;
     position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+  
+  #local-graph-canvas svg {
+    cursor: grab;
+  }
+  
+  #local-graph-canvas svg:active {
+    cursor: grabbing;
   }
   
   /* Modals */
@@ -1013,4 +1025,49 @@
     margin-top: 12px;
     display: flex;
     gap: 8px;
+  }
+  
+  /* Zoom Controls */
+  .zoom-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-left: 10px;
+  }
+  
+  .zoom-controls button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .zoom-controls button:hover {
+    transform: scale(1.1);
+  }
+  
+  .zoom-controls button:active {
+    transform: scale(0.95);
+  }
+  
+  /* Node dragging styles */
+  .dragging-node {
+    cursor: grabbing !important;
+  }
+  
+  /* Improved responsive design for zoom controls */
+  @media (max-width: 768px) {
+    .zoom-controls {
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .zoom-controls button {
+      width: 25px;
+      height: 25px;
+      font-size: 14px;
+    }
   }
