@@ -507,16 +507,37 @@ const LocalGraphManager = (function() {
             const distance = distances[node.id] || 0;
             const isInPool = nodePoolStatus.get(node.id) || false;
             
-            // Node circle
+            // Node circle with improved styling
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             circle.setAttribute('cx', pos.x);
             circle.setAttribute('cy', pos.y);
-            circle.setAttribute('r', isCenter ? 12 : 8);
-            circle.setAttribute('fill', isCenter ? '#e74c3c' : getDistanceColor(distance));
-            circle.setAttribute('stroke', isInPool ? '#4CAF50' : '#333');
-            circle.setAttribute('stroke-width', isInPool ? '3' : '2');
+            circle.setAttribute('r', isCenter ? 14 : 10); // Slightly larger for better visibility
+            
+            // Improved color scheme
+            if (isCenter) {
+                circle.setAttribute('fill', '#6366f1'); // Modern indigo instead of harsh red
+                circle.setAttribute('stroke', '#4f46e5');
+                circle.setAttribute('stroke-width', '3');
+            } else {
+                circle.setAttribute('fill', getDistanceColor(distance));
+                circle.setAttribute('stroke', isInPool ? '#6366f1' : '#64748b'); // Subtle colors
+                circle.setAttribute('stroke-width', isInPool ? '2.5' : '1.5');
+            }
+            
             circle.setAttribute('data-node-id', node.id);
             circle.style.cursor = 'pointer';
+            circle.style.transition = 'all 0.2s ease';
+            
+            // Add hover effects
+            circle.addEventListener('mouseenter', () => {
+                circle.setAttribute('stroke-width', '4');
+                circle.style.filter = 'brightness(1.1)';
+            });
+            
+            circle.addEventListener('mouseleave', () => {
+                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2.5' : '1.5'));
+                circle.style.filter = 'none';
+            });
             
             // Add click handler
             circle.addEventListener('click', () => selectNode(node));
@@ -529,25 +550,29 @@ const LocalGraphManager = (function() {
             
             svg.appendChild(circle);
             
-            // Pool indicator
-            if (isInPool) {
-                const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                indicator.setAttribute('cx', pos.x + 8);
-                indicator.setAttribute('cy', pos.y - 8);
-                indicator.setAttribute('r', 3);
-                indicator.setAttribute('fill', '#4CAF50');
-                indicator.setAttribute('stroke', '#fff');
-                indicator.setAttribute('stroke-width', '1');
-                svg.appendChild(indicator);
+            // Improved pool indicator - subtle ring instead of separate circle
+            if (isInPool && !isCenter) {
+                const poolRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                poolRing.setAttribute('cx', pos.x);
+                poolRing.setAttribute('cy', pos.y);
+                poolRing.setAttribute('r', 13);
+                poolRing.setAttribute('fill', 'none');
+                poolRing.setAttribute('stroke', '#6366f1');
+                poolRing.setAttribute('stroke-width', '1');
+                poolRing.setAttribute('stroke-dasharray', '2,2');
+                poolRing.setAttribute('opacity', '0.6');
+                svg.appendChild(poolRing);
             }
             
-            // Node label
+            // Node label with improved styling
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', pos.x);
-            text.setAttribute('y', pos.y - 15);
+            text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
             text.setAttribute('text-anchor', 'middle');
-            text.setAttribute('font-size', '10');
-            text.setAttribute('font-family', 'Arial, sans-serif');
+            text.setAttribute('font-size', isCenter ? '11' : '9');
+            text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+            text.setAttribute('font-weight', isCenter ? '600' : '500');
+            text.setAttribute('fill', '#1e293b');
             text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
             text.style.cursor = 'pointer';
             
@@ -561,10 +586,19 @@ const LocalGraphManager = (function() {
     }
     
     function getDistanceColor(distance) {
-        // Color nodes based on distance from center
+        // Improved color scheme - softer, more professional
         const normalizedDistance = Math.min(distance / maxDistance, 1);
-        const hue = (1 - normalizedDistance) * 240; // Blue to red
-        return `hsl(${hue}, 70%, 60%)`;
+        
+        // Use a more sophisticated color palette
+        if (normalizedDistance < 0.3) {
+            return '#10b981'; // Emerald for close nodes
+        } else if (normalizedDistance < 0.6) {
+            return '#3b82f6'; // Blue for medium distance
+        } else if (normalizedDistance < 0.8) {
+            return '#8b5cf6'; // Purple for far nodes
+        } else {
+            return '#ef4444'; // Red for very far nodes
+        }
     }
     
     function selectNode(node) {

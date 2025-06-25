@@ -1723,8 +1723,13 @@ document.addEventListener('DOMContentLoaded', () => {
         PluginAwareInitializer.handlePluginStateChange(pluginId, enabled);
       }
     };
+
+    // ADDED: Initialize all enabled plugins after PluginManager is ready
+    if (window.PluginAwareInitializer) {
+      console.log('Initializing enabled modules via PluginAwareInitializer...');
+      PluginAwareInitializer.initializeEnabledModules();
+    }
   }
-  
 
 });
 

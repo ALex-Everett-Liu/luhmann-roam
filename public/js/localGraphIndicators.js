@@ -159,32 +159,39 @@ const LocalGraphIndicators = (function() {
         // Add CSS class
         element.classList.add('local-graph-pool-node');
         
-        // Add visual indicator badge
+        // Add subtle visual indicator - using a small dot instead of emoji
         const indicator = document.createElement('span');
         indicator.className = 'local-graph-node-indicator';
-        indicator.innerHTML = '🌐';
         indicator.title = 'This node is in the Local Graph pool';
         
-        // Position the indicator
+        // More elegant styling
         const style = {
             position: 'absolute',
-            top: '-5px',
-            right: '-5px',
-            fontSize: '12px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
+            top: '2px',
+            right: '2px',
+            width: '8px',
+            height: '8px',
+            backgroundColor: '#6366f1', // Modern indigo color
             borderRadius: '50%',
-            width: '18px',
-            height: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            border: '2px solid white',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             zIndex: '10',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            cursor: 'help'
+            cursor: 'help',
+            transition: 'all 0.2s ease'
         };
         
         Object.assign(indicator.style, style);
+        
+        // Add hover effect
+        indicator.addEventListener('mouseenter', () => {
+            indicator.style.transform = 'scale(1.3)';
+            indicator.style.backgroundColor = '#4f46e5';
+        });
+        
+        indicator.addEventListener('mouseleave', () => {
+            indicator.style.transform = 'scale(1)';
+            indicator.style.backgroundColor = '#6366f1';
+        });
         
         // Make sure parent has relative positioning
         if (getComputedStyle(element).position === 'static') {
@@ -215,9 +222,10 @@ const LocalGraphIndicators = (function() {
         // Add CSS class
         element.classList.add('local-graph-pool-link');
         
-        // Add subtle border or background change
-        element.style.borderLeft = '3px solid #4CAF50';
-        element.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+        // More subtle styling
+        element.style.borderLeft = '2px solid #6366f1'; // Matching indigo
+        element.style.backgroundColor = 'rgba(99, 102, 241, 0.05)'; // Very subtle background
+        element.style.transition = 'all 0.2s ease';
         
         // Add tooltip
         const originalTitle = element.title || '';
