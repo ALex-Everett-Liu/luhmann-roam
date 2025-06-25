@@ -648,5 +648,26 @@ exports.getNodeBySequenceId = async (req, res) => {
   }
 };
 
+/**
+ * Check if any nodes exist in the database
+ * GET /api/nodes/exists
+ */
+exports.checkNodesExist = async (req, res) => {
+  try {
+    const db = req.db;
+    
+    // Simple count query to check if any nodes exist
+    const result = await db.get('SELECT COUNT(*) as count FROM nodes LIMIT 1');
+    
+    res.json({ 
+      exists: result.count > 0,
+      count: result.count 
+    });
+  } catch (error) {
+    console.error('Error checking if nodes exist:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Add additional controller functions for other node operations...
 // (Remaining operations like indenting, outdenting, fixing positions, etc.)

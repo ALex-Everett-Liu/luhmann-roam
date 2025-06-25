@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const localGraphController = require('../controllers/localGraphController');
 
+router.get('/exists', nodeController.checkNodesExist);
+
 // Get local graph data centered around a specific node
 router.get('/center/:centerNodeId', localGraphController.getLocalGraph);
 

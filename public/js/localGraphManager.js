@@ -729,15 +729,15 @@ const LocalGraphManager = (function() {
         
         // Check if there are any nodes in the database
         try {
-            const response = await fetch('/api/nodes/search?q=&limit=1');
-            const results = await response.json();
+            const response = await fetch('/api/nodes/exists');
+            const result = await response.json();
             
-            if (results.length === 0) {
-                // No nodes found, show empty state
-                switchToEmptyState();
-            } else {
+            if (result.exists) {
                 // Nodes exist, show center selection
                 switchToCenterSelection();
+            } else {
+                // No nodes found, show empty state
+                switchToEmptyState();
             }
         } catch (error) {
             console.error('Error checking for nodes:', error);
@@ -863,12 +863,12 @@ const LocalGraphManager = (function() {
     
     async function checkNodesAgain() {
         try {
-            const response = await fetch('/api/nodes/search?q=&limit=1');
-            const results = await response.json();
+            const response = await fetch('/api/nodes/exists');
+            const result = await response.json();
             
-            if (results.length > 0) {
+            if (result.exists) {
                 switchToCenterSelection();
-                showNotification('Great! Nodes found. You can now select a center node.', 'success');
+                showNotification(`Great! Found ${result.count} nodes. You can now select a center node.`, 'success');
             } else {
                 showNotification('Still no nodes found. Please create some nodes first.', 'warning');
             }
