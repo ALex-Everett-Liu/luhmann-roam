@@ -873,6 +873,31 @@ try {
     CREATE INDEX IF NOT EXISTS idx_local_graph_pool_links_link ON local_graph_pool_links(link_id);
   `);
 
+  // Add triggers for local graph pool tables
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS assign_sequence_id_local_graph_pool
+    AFTER INSERT ON local_graph_pool
+    FOR EACH ROW
+    WHEN NEW.sequence_id IS NULL
+    BEGIN
+      UPDATE local_graph_pool 
+      SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM local_graph_pool)
+      WHERE id = NEW.id;
+    END;
+  `);
+
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS assign_sequence_id_local_graph_pool_links
+    AFTER INSERT ON local_graph_pool_links
+    FOR EACH ROW
+    WHEN NEW.sequence_id IS NULL
+    BEGIN
+      UPDATE local_graph_pool_links 
+      SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM local_graph_pool_links)
+      WHERE id = NEW.id;
+    END;
+  `);
+
   return db;
 }
 

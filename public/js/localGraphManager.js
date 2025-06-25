@@ -77,13 +77,13 @@ const LocalGraphManager = (function() {
                 <div id="center-selection-phase" class="phase-content">
                     <div class="center-selection-container">
                         <h3>Select Center Node</h3>
-                        <p>Choose a node to explore its local neighborhood:</p>
+                        <p>Choose a node from your Local Graph pool to explore its neighborhood:</p>
                         
                         <div class="node-search-container">
-                            <input type="text" id="center-node-search" placeholder="Search for center node..." class="node-search-input">
+                            <input type="text" id="center-node-search" placeholder="Search pool nodes..." class="node-search-input">
                             <div id="center-node-dropdown" class="node-dropdown">
                                 <div class="node-dropdown-content">
-                                    <div class="no-results-message">Start typing to search nodes...</div>
+                                    <div class="no-results-message">Start typing to search pool nodes...</div>
                                 </div>
                             </div>
                         </div>
@@ -214,9 +214,9 @@ const LocalGraphManager = (function() {
                     </div>
                     
                     <div class="form-group">
-                        <label>Place in Outliner:</label>
+                        <label>Place in Outliner (from pool):</label>
                         <select id="parent-node-select">
-                            <option value="">Loading suggestions...</option>
+                            <option value="">Loading pool nodes...</option>
                         </select>
                     </div>
                     
@@ -327,21 +327,22 @@ const LocalGraphManager = (function() {
         const dropdownContent = dropdown.querySelector('.node-dropdown-content');
         
         if (query.length < 2) {
-            dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search nodes...</div>';
+            dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search pool nodes...</div>';
             dropdown.classList.remove('show');
             return;
         }
         
         try {
-            const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&limit=10`);
+            // CHANGED: Search only within pool nodes instead of all nodes
+            const response = await fetch(`/api/local-graph/pool/search?q=${encodeURIComponent(query)}&limit=10`);
             const results = await response.json();
             
             if (results.length === 0) {
                 dropdownContent.innerHTML = `
-                    <div class="no-results-message">No nodes found matching "${query}"</div>
+                    <div class="no-results-message">No nodes found in pool matching "${query}"</div>
                     <div class="create-node-suggestion">
                         <button onclick="LocalGraphManager.createNodeFromSearch('${query.replace(/'/g, '\\\'')}')" class="create-suggestion-btn">
-                            Create node: "${query}"
+                            Create node: "${query}" and add to pool
                         </button>
                     </div>
                 `;
@@ -350,6 +351,7 @@ const LocalGraphManager = (function() {
                     <div class="node-option" data-node-id="${node.id}">
                         <div class="node-option-content">${node.content || 'Untitled'}</div>
                         ${node.content_zh ? `<div class="node-option-content-zh">${node.content_zh}</div>` : ''}
+                        <div class="node-option-meta">In pool since ${new Date(node.added_at).toLocaleDateString()}</div>
                     </div>
                 `).join('');
                 
@@ -363,8 +365,8 @@ const LocalGraphManager = (function() {
             
             dropdown.classList.add('show');
         } catch (error) {
-            console.error('Error searching nodes:', error);
-            dropdownContent.innerHTML = '<div class="error-message">Error searching nodes</div>';
+            console.error('Error searching pool nodes:', error);
+            dropdownContent.innerHTML = '<div class="error-message">Error searching pool nodes</div>';
         }
     }
     
@@ -666,18 +668,42 @@ const LocalGraphManager = (function() {
     async function openAddNodeModal() {
         const modal = document.getElementById('add-node-modal');
         
-        // Load suggested parents
+        // CHANGED: Load suggested parents from pool instead of suggested-parents endpoint
         try {
-            const response = await fetch(`/api/local-graph/suggested-parents/${centerNodeId}`);
-            const suggestions = await response.json();
+            // Get all pool nodes as potential parents
+            const response = await fetch('/api/local-graph/pool');
+            const poolData = await response.json();
             
             const select = document.getElementById('parent-node-select');
-            select.innerHTML = suggestions.map(node => `
-                <option value="${node.id || ''}">${node.content || node.content_zh || 'Untitled'}</option>
-            `).join('');
+            
+            if (poolData.nodes && poolData.nodes.length > 0) {
+                // Add root option first
+                let options = '<option value="">Create as root node</option>';
+                
+                // Add pool nodes as options, prioritizing center node and its ancestors
+                const poolNodes = poolData.nodes;
+                
+                // Sort to put center node first if it exists in pool
+                poolNodes.sort((a, b) => {
+                    if (a.node_id === centerNodeId) return -1;
+                    if (b.node_id === centerNodeId) return 1;
+                    return new Date(b.added_at) - new Date(a.added_at); // Most recent first
+                });
+                
+                options += poolNodes.map(poolNode => `
+                    <option value="${poolNode.node_id}">
+                        ${poolNode.content || poolNode.content_zh || 'Untitled'}
+                        ${poolNode.node_id === centerNodeId ? ' (Center Node)' : ''}
+                    </option>
+                `).join('');
+                
+                select.innerHTML = options;
+            } else {
+                select.innerHTML = '<option value="">No pool nodes available - create as root</option>';
+            }
             
         } catch (error) {
-            console.error('Error loading parent suggestions:', error);
+            console.error('Error loading pool nodes for parent suggestions:', error);
             document.getElementById('parent-node-select').innerHTML = '<option value="">Error loading suggestions</option>';
         }
         
@@ -1006,13 +1032,20 @@ const LocalGraphManager = (function() {
             
             const newNode = await response.json();
             
+            // ADDED: Automatically add the new node to the pool
+            try {
+                await addNodeToPool(newNode.id, 'Created from center node search');
+                showNotification('Node created and added to pool!', 'success');
+            } catch (poolError) {
+                console.error('Error adding node to pool:', poolError);
+                showNotification('Node created but failed to add to pool', 'warning');
+            }
+            
             // Select the new node as center
             selectCenterNode(newNode.id, newNode.content);
             
             // Hide dropdown
             document.getElementById('center-node-dropdown').classList.remove('show');
-            
-            showNotification('Node created and selected as center!', 'success');
             
         } catch (error) {
             console.error('Error creating node from search:', error);

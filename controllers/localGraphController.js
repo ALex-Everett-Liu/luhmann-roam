@@ -203,6 +203,7 @@ exports.createNodeInLocalGraph = async (req, res) => {
     const nodeId = uuidv4();
     const now = Date.now();
     
+    // Start transaction for ALL operations
     await db.run('BEGIN TRANSACTION');
     
     try {
@@ -229,6 +230,17 @@ exports.createNodeInLocalGraph = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [nodeId, content, content_zh, parentNodeId, position, now, now, true]);
       
+      // Add node to pool within the same transaction
+      console.log('Adding node to local graph pool:', nodeId);
+      const poolId = uuidv4();
+      
+      await db.run(`
+        INSERT INTO local_graph_pool (id, node_id, added_at, notes)
+        VALUES (?, ?, ?, ?)
+      `, [poolId, nodeId, now, 'Created via Local Graph Manager']);
+      
+      console.log('Successfully added node to pool with ID:', poolId);
+      
       // Create multiple links if specified
       const createdLinks = [];
       for (const linkTarget of linkTargets) {
@@ -237,6 +249,13 @@ exports.createNodeInLocalGraph = async (req, res) => {
           INSERT INTO links (id, from_node_id, to_node_id, weight, description, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [linkId, linkTarget.targetNodeId, nodeId, linkTarget.weight, linkTarget.description, now, now]);
+        
+        // Add the link to the pool within the same transaction
+        const poolLinkId = uuidv4();
+        await db.run(`
+          INSERT INTO local_graph_pool_links (id, link_id, added_at)
+          VALUES (?, ?, ?)
+        `, [poolLinkId, linkId, now]);
         
         createdLinks.push({
           id: linkId,
@@ -247,11 +266,12 @@ exports.createNodeInLocalGraph = async (req, res) => {
         });
       }
       
+      // Commit all operations together
+      await db.run('COMMIT');
+      
       if (createdLinks.length > 0) {
         invalidateDistanceCache();
       }
-      
-      await db.run('COMMIT');
       
       const newNode = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
       
@@ -259,7 +279,9 @@ exports.createNodeInLocalGraph = async (req, res) => {
         node: newNode,
         links: createdLinks
       });
+      
     } catch (error) {
+      console.error('Error in transaction:', error);
       await db.run('ROLLBACK');
       throw error;
     }
