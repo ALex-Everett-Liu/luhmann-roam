@@ -8,10 +8,22 @@ const LocalGraphManager = (function() {
     let graphData = null;
     let maxDistance = 5;
     let maxDepth = 3;
+    let isInitialized = false;
     
     function initialize() {
-        createContainer();
-        setupEventHandlers();
+        if (isInitialized) {
+            console.log('LocalGraphManager already initialized');
+            return;
+        }
+        
+        try {
+            createContainer();
+            setupEventHandlers();
+            isInitialized = true;
+            console.log('LocalGraphManager initialized successfully');
+        } catch (error) {
+            console.error('Error initializing LocalGraphManager:', error);
+        }
     }
     
     function createContainer() {
@@ -233,41 +245,52 @@ const LocalGraphManager = (function() {
     }
     
     function setupEventHandlers() {
-        // Close button
-        document.getElementById('close-local-graph').addEventListener('click', hide);
+        // Add null checks for all DOM elements
+        const closeBtn = document.getElementById('close-local-graph');
+        const createFirstBtn = document.getElementById('create-first-node-btn');
+        const goToOutlinerBtn = document.getElementById('go-to-outliner-btn');
+        const checkAgainBtn = document.getElementById('check-nodes-again-btn');
+        const centerSearch = document.getElementById('center-node-search');
+        const exploreBtn = document.getElementById('explore-graph-btn');
+        const changeCenterBtn = document.getElementById('change-center-btn');
+        const adjustDistanceBtn = document.getElementById('adjust-distance-btn');
+        const addNodeBtn = document.getElementById('add-node-btn');
+        const refreshBtn = document.getElementById('refresh-graph-btn');
+        const distanceForm = document.getElementById('distance-adjustment-form');
+        const cancelDistanceBtn = document.getElementById('cancel-distance-adjustment');
+        const addNodeForm = document.getElementById('add-node-form');
+        const cancelAddNodeBtn = document.getElementById('cancel-add-node');
+        const linkToCenterCheckbox = document.getElementById('link-to-center');
+        const maxDistanceInput = document.getElementById('max-distance-input');
+        const maxDepthInput = document.getElementById('max-depth-input');
         
-        // Empty state handlers
-        document.getElementById('create-first-node-btn').addEventListener('click', createFirstNode);
-        document.getElementById('go-to-outliner-btn').addEventListener('click', goToOutliner);
-        document.getElementById('check-nodes-again-btn').addEventListener('click', checkNodesAgain);
+        // Only add event listeners if elements exist
+        if (closeBtn) closeBtn.addEventListener('click', hide);
+        if (createFirstBtn) createFirstBtn.addEventListener('click', createFirstNode);
+        if (goToOutlinerBtn) goToOutlinerBtn.addEventListener('click', goToOutliner);
+        if (checkAgainBtn) checkAgainBtn.addEventListener('click', checkNodesAgain);
+        if (centerSearch) centerSearch.addEventListener('input', handleCenterNodeSearch);
+        if (exploreBtn) exploreBtn.addEventListener('click', exploreGraph);
+        if (changeCenterBtn) changeCenterBtn.addEventListener('click', changeCenterNode);
+        if (adjustDistanceBtn) adjustDistanceBtn.addEventListener('click', openDistanceModal);
+        if (addNodeBtn) addNodeBtn.addEventListener('click', openAddNodeModal);
+        if (refreshBtn) refreshBtn.addEventListener('click', refreshGraph);
+        if (distanceForm) distanceForm.addEventListener('submit', applyDistanceAdjustment);
+        if (cancelDistanceBtn) cancelDistanceBtn.addEventListener('click', closeDistanceModal);
+        if (addNodeForm) addNodeForm.addEventListener('submit', createNewNode);
+        if (cancelAddNodeBtn) cancelAddNodeBtn.addEventListener('click', closeAddNodeModal);
         
-        // Center node search
-        document.getElementById('center-node-search').addEventListener('input', handleCenterNodeSearch);
+        if (linkToCenterCheckbox) {
+            linkToCenterCheckbox.addEventListener('change', function(e) {
+                const linkOptions = document.getElementById('link-options');
+                if (linkOptions) {
+                    linkOptions.style.display = e.target.checked ? 'block' : 'none';
+                }
+            });
+        }
         
-        // Phase navigation
-        document.getElementById('explore-graph-btn').addEventListener('click', exploreGraph);
-        document.getElementById('change-center-btn').addEventListener('click', changeCenterNode);
-        document.getElementById('adjust-distance-btn').addEventListener('click', openDistanceModal);
-        
-        // Graph actions
-        document.getElementById('add-node-btn').addEventListener('click', openAddNodeModal);
-        document.getElementById('refresh-graph-btn').addEventListener('click', refreshGraph);
-        
-        // Modal handling
-        document.getElementById('distance-adjustment-form').addEventListener('submit', applyDistanceAdjustment);
-        document.getElementById('cancel-distance-adjustment').addEventListener('click', closeDistanceModal);
-        
-        document.getElementById('add-node-form').addEventListener('submit', createNewNode);
-        document.getElementById('cancel-add-node').addEventListener('click', closeAddNodeModal);
-        
-        // Link options toggle
-        document.getElementById('link-to-center').addEventListener('change', function(e) {
-            document.getElementById('link-options').style.display = e.target.checked ? 'block' : 'none';
-        });
-        
-        // Distance input changes
-        document.getElementById('max-distance-input').addEventListener('change', updateDistanceFromInput);
-        document.getElementById('max-depth-input').addEventListener('change', updateDepthFromInput);
+        if (maxDistanceInput) maxDistanceInput.addEventListener('change', updateDistanceFromInput);
+        if (maxDepthInput) maxDepthInput.addEventListener('change', updateDepthFromInput);
     }
     
     async function handleCenterNodeSearch(e) {
@@ -320,9 +343,13 @@ const LocalGraphManager = (function() {
     function selectCenterNode(nodeId, nodeContent) {
         centerNodeId = nodeId;
         
-        document.getElementById('center-node-search').value = nodeContent;
-        document.getElementById('center-node-dropdown').classList.remove('show');
-        document.getElementById('explore-graph-btn').disabled = false;
+        const centerSearch = document.getElementById('center-node-search');
+        const dropdown = document.getElementById('center-node-dropdown');
+        const exploreBtn = document.getElementById('explore-graph-btn');
+        
+        if (centerSearch) centerSearch.value = nodeContent;
+        if (dropdown) dropdown.classList.remove('show');
+        if (exploreBtn) exploreBtn.disabled = false;
     }
     
     function updateDistanceFromInput(e) {
@@ -688,6 +715,16 @@ const LocalGraphManager = (function() {
     }
     
     async function show() {
+        if (!isInitialized) {
+            console.error('LocalGraphManager not initialized');
+            return;
+        }
+        
+        if (!container) {
+            console.error('Container not found');
+            return;
+        }
+        
         container.style.display = 'block';
         
         // Check if there are any nodes in the database
@@ -708,14 +745,22 @@ const LocalGraphManager = (function() {
             switchToCenterSelection();
         }
         
-        // Reset state
+        // Reset state with null checks
         centerNodeId = null;
         graphData = null;
-        document.getElementById('center-node-search').value = '';
-        document.getElementById('explore-graph-btn').disabled = true;
+        
+        const centerSearch = document.getElementById('center-node-search');
+        const exploreBtn = document.getElementById('explore-graph-btn');
+        
+        if (centerSearch) centerSearch.value = '';
+        if (exploreBtn) exploreBtn.disabled = true;
     }
     
     function hide() {
+        if (!container) {
+            console.warn('Container not found, cannot hide');
+            return;
+        }
         container.style.display = 'none';
     }
     
@@ -791,8 +836,12 @@ const LocalGraphManager = (function() {
             // Switch to center selection phase and pre-select the new node
             switchToCenterSelection();
             centerNodeId = newNode.id;
-            document.getElementById('center-node-search').value = newNode.content;
-            document.getElementById('explore-graph-btn').disabled = false;
+            
+            const centerSearch = document.getElementById('center-node-search');
+            const exploreBtn = document.getElementById('explore-graph-btn');
+            
+            if (centerSearch) centerSearch.value = newNode.content;
+            if (exploreBtn) exploreBtn.disabled = false;
             
         } catch (error) {
             console.error('Error creating first node:', error);
@@ -830,15 +879,23 @@ const LocalGraphManager = (function() {
     }
     
     function switchToCenterSelection() {
-        document.getElementById('empty-state-phase').classList.remove('active');
-        document.getElementById('center-selection-phase').classList.add('active');
-        document.getElementById('graph-visualization-phase').classList.remove('active');
+        const emptyPhase = document.getElementById('empty-state-phase');
+        const centerPhase = document.getElementById('center-selection-phase');
+        const graphPhase = document.getElementById('graph-visualization-phase');
+        
+        if (emptyPhase) emptyPhase.classList.remove('active');
+        if (centerPhase) centerPhase.classList.add('active');
+        if (graphPhase) graphPhase.classList.remove('active');
     }
     
     function switchToEmptyState() {
-        document.getElementById('empty-state-phase').classList.add('active');
-        document.getElementById('center-selection-phase').classList.remove('active');
-        document.getElementById('graph-visualization-phase').classList.remove('active');
+        const emptyPhase = document.getElementById('empty-state-phase');
+        const centerPhase = document.getElementById('center-selection-phase');
+        const graphPhase = document.getElementById('graph-visualization-phase');
+        
+        if (emptyPhase) emptyPhase.classList.add('active');
+        if (centerPhase) centerPhase.classList.remove('active');
+        if (graphPhase) graphPhase.classList.remove('active');
     }
     
     // Add function to create node from search
@@ -881,8 +938,12 @@ const LocalGraphManager = (function() {
         hide,
         isVisible,
         focusInOutliner,
-        createNodeFromSearch
+        createNodeFromSearch,
+        isInitialized: () => isInitialized
     };
 })();
+
+// Add initialization flag to prevent multiple initializations
+LocalGraphManager.isInitialized = false;
 
 window.LocalGraphManager = LocalGraphManager;
