@@ -30,6 +30,7 @@ const wordFrequencyRoutes = require('./routes/wordFrequencyRoutes');
 const wordGroupRoutes = require('./routes/wordGroupRoutes');
 const graphRoutes = require('./routes/graphRoutes');
 const graphManagementRoutes = require('./routes/graphManagementRoutes');
+const localGraphRoutes = require('./routes/localGraphRoutes');
 const codeGraphRoutes = require('./routes/codeGraphRoutes');
 const newCodeGraphRoutes = require('./routes/newCodeGraphRoutes');
 const enhancedCodeGraphRoutes = require('./routes/enhancedCodeGraphRoutes');
@@ -777,6 +778,7 @@ app.use('/api/word-frequency', wordFrequencyRoutes);
 app.use('/api/word-groups', wordGroupRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/graph-management', graphManagementRoutes);
+app.use('/api/local-graph', localGraphRoutes); 
 
 // Add this after the database initialization
 // Create vaults directory if it doesn't exist

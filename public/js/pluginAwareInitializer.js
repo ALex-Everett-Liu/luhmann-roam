@@ -251,6 +251,20 @@ const PluginAwareInitializer = (function() {
     }
     
     /**
+     * Initialize Local Graph Manager only if plugin is enabled
+     */
+    function initializeLocalGraphManager() {
+        if (window.LocalGraphManager && !window.LocalGraphManager.isInitialized) {
+            try {
+                LocalGraphManager.initialize();
+                addLocalGraphButton();
+            } catch (error) {
+                console.error('Failed to initialize LocalGraphManager:', error);
+            }
+        }
+    }
+    
+    /**
      * Helper functions to add sidebar buttons
      */
     function addCodeGraphButton() {
@@ -503,6 +517,33 @@ const PluginAwareInitializer = (function() {
         window.addButtonToSidebar(toggleEnhancedCodeGraphButton);
     }
     
+    function addLocalGraphButton() {
+        // Check if addButtonToSidebar is available
+        if (!window.addButtonToSidebar) {
+            console.error('addButtonToSidebar not available, deferring button creation');
+            setTimeout(() => addLocalGraphButton(), 100);
+            return;
+        }
+        
+        const toggleLocalGraphButton = document.createElement('button');
+        toggleLocalGraphButton.id = 'toggle-local-graph';
+        toggleLocalGraphButton.className = 'feature-toggle';
+        toggleLocalGraphButton.textContent = 'Local Graph';
+        toggleLocalGraphButton.title = 'Explore local graph neighborhoods around a center node';
+        
+        toggleLocalGraphButton.addEventListener('click', function() {
+            if (window.LocalGraphManager) {
+                if (LocalGraphManager.isVisible()) {
+                    LocalGraphManager.hide();
+                } else {
+                    LocalGraphManager.show();
+                }
+            }
+        });
+        
+        window.addButtonToSidebar(toggleLocalGraphButton);
+    }
+    
     /**
      * Handle plugin state changes (when user enables/disables plugins)
      */
@@ -535,6 +576,9 @@ const PluginAwareInitializer = (function() {
                     break;
                 case 'enhancedCodeGraphManager':
                     initializeEnhancedCodeGraphManager();
+                    break;
+                case 'localGraphManager':
+                    initializeLocalGraphManager();
                     break;
                 default:
                     console.log(`No specific initialization handler for plugin: ${pluginId}`);
@@ -580,6 +624,11 @@ const PluginAwareInitializer = (function() {
                 case 'enhancedCodeGraphManager':
                     if (window.EnhancedCodeGraphManager) {
                         EnhancedCodeGraphManager.hide();
+                    }
+                    break;
+                case 'localGraphManager':
+                    if (window.LocalGraphManager) {
+                        LocalGraphManager.hide();
                     }
                     break;
                 default:

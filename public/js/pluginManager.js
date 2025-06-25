@@ -102,6 +102,14 @@
           defaultEnabled: true,
           category: 'analysis'
         });
+
+        // Register LocalGraphManager
+        this.registerPlugin('localGraphManager', {
+          name: 'Local Graph Explorer',
+          description: 'Explore local graph neighborhoods around a center node with distance-based filtering',
+          defaultEnabled: true,
+          category: 'analysis'
+        });
         
         // Register StyleSettingsManager
         this.registerPlugin('styleSettingsManager', {

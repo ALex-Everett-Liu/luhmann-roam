@@ -1369,6 +1369,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+   // Function to focus a node in the outliner (for Local Graph Manager integration)
+   window.focusNodeInOutliner = async function(pathToRoot) {
+    try {
+      if (!pathToRoot || pathToRoot.length === 0) {
+        console.warn('No path provided to focus node');
+        return;
+      }
+      
+      const targetNodeId = pathToRoot[pathToRoot.length - 1];
+      
+      // If BreadcrumbManager is available, use it
+      if (window.BreadcrumbManager && BreadcrumbManager.focusOnNode) {
+        console.log('Using BreadcrumbManager to focus node:', targetNodeId);
+        BreadcrumbManager.focusOnNode(targetNodeId);
+        return;
+      }
+      
+      // Fallback: manually expand the path and scroll to node
+      console.log('Using manual focus for node:', targetNodeId);
+      
+      // Expand all nodes in the path
+      for (let i = 0; i < pathToRoot.length - 1; i++) {
+        const nodeId = pathToRoot[i];
+        const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+        if (nodeElement) {
+          const expandButton = nodeElement.querySelector('.expand-button');
+          if (expandButton && !nodeElement.classList.contains('expanded')) {
+            expandButton.click();
+            // Wait a bit for expansion
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      }
+      
+      // Wait a bit more and then scroll to target
+      setTimeout(() => {
+        const targetElement = document.querySelector(`.node[data-id="${targetNodeId}"]`);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight effect
+          targetElement.classList.add('highlight-focus');
+          setTimeout(() => {
+            targetElement.classList.remove('highlight-focus');
+          }, 2000);
+          
+          // Update global last focused node
+          updateGlobalLastFocusedNodeId(targetNodeId);
+        }
+      }, 200);
+      
+    } catch (error) {
+      console.error('Error focusing node in outliner:', error);
+    }
+  };
+
   // Add to sidebar using helper function
   addButtonToSidebar(toggleMetroMapButton);
 

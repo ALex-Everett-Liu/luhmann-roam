@@ -1,0 +1,376 @@
+const { v4: uuidv4 } = require('uuid');
+
+/**
+ * Local Graph Controller
+ * Manages distance-based local graph visualization
+ */
+
+// Distance calculation cache
+let distanceCache = new Map(); // centerNodeId -> { distances: Map, timestamp: number }
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Calculate distances from center node using Dijkstra's algorithm
+ */
+function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5) {
+  const distances = new Map();
+  const visited = new Set();
+  const queue = [{ nodeId: centerNodeId, distance: 0, depth: 0 }];
+  
+  distances.set(centerNodeId, 0);
+  
+  // Build adjacency list for faster lookup
+  const adjacencyList = new Map();
+  links.forEach(link => {
+    if (!adjacencyList.has(link.from_node_id)) {
+      adjacencyList.set(link.from_node_id, []);
+    }
+    adjacencyList.get(link.from_node_id).push({
+      nodeId: link.to_node_id,
+      weight: link.weight || 1.0
+    });
+  });
+  
+  while (queue.length > 0) {
+    // Sort by distance to get shortest path first
+    queue.sort((a, b) => a.distance - b.distance);
+    const current = queue.shift();
+    
+    if (visited.has(current.nodeId) || 
+        current.distance > maxDistance || 
+        current.depth >= maxDepth) {
+      continue;
+    }
+    
+    visited.add(current.nodeId);
+    
+    // Get neighbors
+    const neighbors = adjacencyList.get(current.nodeId) || [];
+    
+    for (const neighbor of neighbors) {
+      const newDistance = current.distance + neighbor.weight;
+      
+      if (newDistance <= maxDistance && 
+          (!distances.has(neighbor.nodeId) || newDistance < distances.get(neighbor.nodeId))) {
+        distances.set(neighbor.nodeId, newDistance);
+        queue.push({
+          nodeId: neighbor.nodeId,
+          distance: newDistance,
+          depth: current.depth + 1
+        });
+      }
+    }
+  }
+  
+  return distances;
+}
+
+/**
+ * Get cached distances or calculate new ones
+ */
+function getCachedDistances(centerNodeId, links, maxDistance, maxDepth) {
+  const cacheKey = centerNodeId;
+  const now = Date.now();
+  
+  // Check if cache exists and is still valid
+  if (distanceCache.has(cacheKey)) {
+    const cached = distanceCache.get(cacheKey);
+    if (now - cached.timestamp < CACHE_DURATION) {
+      return cached.distances;
+    }
+  }
+  
+  // Calculate new distances
+  const distances = calculateDistances(centerNodeId, links, maxDistance, maxDepth);
+  
+  // Update cache
+  distanceCache.set(cacheKey, {
+    distances,
+    timestamp: now
+  });
+  
+  return distances;
+}
+
+/**
+ * Invalidate distance cache (call when links are modified)
+ */
+function invalidateDistanceCache() {
+  distanceCache.clear();
+}
+
+/**
+ * Get local graph data centered around a specific node
+ */
+exports.getLocalGraph = async (req, res) => {
+  try {
+    const { centerNodeId } = req.params;
+    const { 
+      maxDistance = 5, 
+      maxDepth = 3,
+      includeNodeContent = true 
+    } = req.query;
+    
+    const db = req.db;
+    
+    // Validate center node exists
+    const centerNode = await db.get('SELECT * FROM nodes WHERE id = ?', centerNodeId);
+    if (!centerNode) {
+      return res.status(404).json({ error: 'Center node not found' });
+    }
+    
+    // Get all links for distance calculation
+    const links = await db.all('SELECT * FROM links');
+    
+    // Calculate distances from center node
+    const distances = getCachedDistances(
+      centerNodeId, 
+      links, 
+      parseFloat(maxDistance), 
+      parseInt(maxDepth)
+    );
+    
+    // Get node IDs within distance threshold
+    const nodeIdsInRange = Array.from(distances.keys());
+    
+    if (nodeIdsInRange.length === 0) {
+      return res.json({
+        centerNode,
+        nodes: [centerNode],
+        links: [],
+        distances: { [centerNodeId]: 0 },
+        stats: {
+          nodeCount: 1,
+          linkCount: 0,
+          maxDistance: parseFloat(maxDistance),
+          maxDepth: parseInt(maxDepth)
+        }
+      });
+    }
+    
+    // Get nodes within distance threshold
+    const placeholders = nodeIdsInRange.map(() => '?').join(',');
+    let nodesQuery = `SELECT * FROM nodes WHERE id IN (${placeholders})`;
+    const nodes = await db.all(nodesQuery, nodeIdsInRange);
+    
+    // Get links between nodes in range
+    const linksInRange = links.filter(link => 
+      distances.has(link.from_node_id) && distances.has(link.to_node_id)
+    );
+    
+    // Convert distances Map to object for JSON response
+    const distancesObject = {};
+    distances.forEach((distance, nodeId) => {
+      distancesObject[nodeId] = distance;
+    });
+    
+    res.json({
+      centerNode,
+      nodes,
+      links: linksInRange,
+      distances: distancesObject,
+      stats: {
+        nodeCount: nodes.length,
+        linkCount: linksInRange.length,
+        maxDistance: parseFloat(maxDistance),
+        maxDepth: parseInt(maxDepth)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting local graph:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Create a new node in the local graph and main outliner
+ */
+exports.createNodeInLocalGraph = async (req, res) => {
+  try {
+    const { 
+      content, 
+      content_zh, 
+      parentNodeId, // Optional: where to place in main outliner
+      linkToCenterNode, // Whether to create a link to center node
+      centerNodeId,
+      linkWeight = 1.0,
+      linkDescription = ''
+    } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const db = req.db;
+    const nodeId = uuidv4();
+    const now = Date.now();
+    
+    // Start transaction
+    await db.run('BEGIN TRANSACTION');
+    
+    try {
+      // Determine position in outliner
+      let position = 0;
+      if (parentNodeId) {
+        // Get children count for position
+        const childrenCount = await db.get(
+          'SELECT COUNT(*) as count FROM nodes WHERE parent_id = ?', 
+          parentNodeId
+        );
+        position = childrenCount.count;
+      } else {
+        // Get root nodes count for position
+        const rootCount = await db.get(
+          'SELECT COUNT(*) as count FROM nodes WHERE parent_id IS NULL'
+        );
+        position = rootCount.count;
+      }
+      
+      // Create the node in outliner
+      await db.run(`
+        INSERT INTO nodes (id, content, content_zh, parent_id, position, created_at, updated_at, is_expanded)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [nodeId, content, content_zh, parentNodeId, position, now, now, true]);
+      
+      // Create link to center node if requested
+      let linkId = null;
+      if (linkToCenterNode && centerNodeId) {
+        linkId = uuidv4();
+        await db.run(`
+          INSERT INTO links (id, from_node_id, to_node_id, weight, description, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [linkId, centerNodeId, nodeId, linkWeight, linkDescription, now, now]);
+        
+        // Invalidate distance cache since we added a link
+        invalidateDistanceCache();
+      }
+      
+      await db.run('COMMIT');
+      
+      // Get the created node with full data
+      const newNode = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+      
+      res.status(201).json({
+        node: newNode,
+        link: linkId ? {
+          id: linkId,
+          from_node_id: centerNodeId,
+          to_node_id: nodeId,
+          weight: linkWeight,
+          description: linkDescription
+        } : null
+      });
+    } catch (error) {
+      await db.run('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating node in local graph:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Get suggested parent nodes for placing new nodes
+ */
+exports.getSuggestedParents = async (req, res) => {
+  try {
+    const { centerNodeId } = req.params;
+    const db = req.db;
+    
+    // Get center node and its ancestors
+    const centerNode = await db.get('SELECT * FROM nodes WHERE id = ?', centerNodeId);
+    if (!centerNode) {
+      return res.status(404).json({ error: 'Center node not found' });
+    }
+    
+    const suggestions = [centerNode];
+    
+    // Get parent chain
+    let currentNode = centerNode;
+    while (currentNode.parent_id) {
+      const parent = await db.get('SELECT * FROM nodes WHERE id = ?', currentNode.parent_id);
+      if (parent) {
+        suggestions.unshift(parent); // Add to beginning
+        currentNode = parent;
+      } else {
+        break;
+      }
+    }
+    
+    // Get direct children of center node
+    const children = await db.all(
+      'SELECT * FROM nodes WHERE parent_id = ? ORDER BY position LIMIT 5',
+      centerNodeId
+    );
+    suggestions.push(...children);
+    
+    // Get siblings of center node
+    if (centerNode.parent_id) {
+      const siblings = await db.all(
+        'SELECT * FROM nodes WHERE parent_id = ? AND id != ? ORDER BY position LIMIT 3',
+        [centerNode.parent_id, centerNodeId]
+      );
+      suggestions.push(...siblings);
+    }
+    
+    // Remove duplicates and add root option
+    const uniqueSuggestions = suggestions.filter((node, index, array) => 
+      array.findIndex(n => n.id === node.id) === index
+    );
+    
+    // Add "Create as root" option
+    uniqueSuggestions.push({
+      id: null,
+      content: '(Create as root node)',
+      content_zh: '(创建为根节点)',
+      isRootOption: true
+    });
+    
+    res.json(uniqueSuggestions);
+  } catch (error) {
+    console.error('Error getting suggested parents:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Focus a node in the main outliner (returns navigation info)
+ */
+exports.focusNodeInOutliner = async (req, res) => {
+  try {
+    const { nodeId } = req.params;
+    const db = req.db;
+    
+    // Get the node and its path to root
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Build path to root for expansion
+    const pathToRoot = [];
+    let currentNode = node;
+    
+    while (currentNode) {
+      pathToRoot.unshift(currentNode.id);
+      if (currentNode.parent_id) {
+        currentNode = await db.get('SELECT * FROM nodes WHERE id = ?', currentNode.parent_id);
+      } else {
+        break;
+      }
+    }
+    
+    res.json({
+      nodeId,
+      pathToRoot,
+      node
+    });
+  } catch (error) {
+    console.error('Error focusing node in outliner:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Export cache invalidation function for use by link routes
+exports.invalidateDistanceCache = invalidateDistanceCache;
