@@ -222,17 +222,41 @@ const LocalGraphManager = (function() {
                     
                     <div class="form-group">
                         <label>
-                            <input type="checkbox" id="link-to-center" checked>
-                            Link to center node
+                            <input type="checkbox" id="create-links" checked>
+                            Create links to other nodes
                         </label>
                     </div>
                     
                     <div id="link-options" class="form-group">
-                        <label>Link Weight:</label>
-                        <input type="number" id="link-weight" min="0.1" max="100" step="0.1" value="1.0">
+                        <div class="link-targets-container">
+                            <div class="link-target-item">
+                                <div class="link-target-search">
+                                    <input type="text" class="link-target-input" placeholder="Search for node to link to..." data-index="0">
+                                    <div class="link-target-dropdown" data-index="0">
+                                        <div class="dropdown-content">
+                                            <div class="no-results-message">Start typing to search nodes...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="link-options-row">
+                                    <input type="number" class="link-weight-input" min="0.1" max="100" step="0.1" value="1.0" placeholder="Weight">
+                                    <input type="text" class="link-description-input" placeholder="Optional description...">
+                                    <button type="button" class="remove-link-btn" style="display: none;">×</button>
+                                </div>
+                            </div>
+                        </div>
                         
-                        <label>Link Description:</label>
-                        <input type="text" id="link-description" placeholder="Optional description...">
+                        <div class="link-actions">
+                            <button type="button" id="add-another-link" class="secondary-btn">+ Add Another Link</button>
+                            <button type="button" id="link-to-center-quick" class="secondary-btn">Quick Link to Center</button>
+                        </div>
+                        
+                        <div class="link-suggestions">
+                            <label>Quick suggestions:</label>
+                            <div id="link-suggestions-list">
+                                <!-- Will be populated with current graph nodes -->
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="modal-actions">
@@ -292,6 +316,9 @@ const LocalGraphManager = (function() {
         
         if (maxDistanceInput) maxDistanceInput.addEventListener('change', updateDistanceFromInput);
         if (maxDepthInput) maxDepthInput.addEventListener('change', updateDepthFromInput);
+        
+        // Add these new functions to handle flexible linking
+        setupLinkingHandlers();
     }
     
     async function handleCenterNodeSearch(e) {
@@ -678,13 +705,30 @@ const LocalGraphManager = (function() {
         const content = document.getElementById('node-content').value.trim();
         const content_zh = document.getElementById('node-content-zh').value.trim();
         const parentNodeId = document.getElementById('parent-node-select').value || null;
-        const linkToCenterNode = document.getElementById('link-to-center').checked;
-        const linkWeight = parseFloat(document.getElementById('link-weight').value) || 1.0;
-        const linkDescription = document.getElementById('link-description').value.trim();
+        const createLinks = document.getElementById('create-links').checked;
         
         if (!content) {
             alert('Please enter content for the node');
             return;
+        }
+        
+        // Collect all link targets
+        const linkTargets = [];
+        if (createLinks) {
+            const linkInputs = document.querySelectorAll('.link-target-input');
+            const weightInputs = document.querySelectorAll('.link-weight-input');
+            const descriptionInputs = document.querySelectorAll('.link-description-input');
+            
+            for (let i = 0; i < linkInputs.length; i++) {
+                const targetNodeId = linkInputs[i].dataset.selectedNodeId;
+                if (targetNodeId && linkInputs[i].value.trim()) {
+                    linkTargets.push({
+                        targetNodeId,
+                        weight: parseFloat(weightInputs[i].value) || 1.0,
+                        description: descriptionInputs[i].value.trim()
+                    });
+                }
+            }
         }
         
         try {
@@ -695,10 +739,8 @@ const LocalGraphManager = (function() {
                     content,
                     content_zh,
                     parentNodeId,
-                    linkToCenterNode,
-                    centerNodeId,
-                    linkWeight,
-                    linkDescription
+                    linkTargets, // Send array of link targets instead of single center node link
+                    centerNodeId // Still send for context
                 })
             });
             
@@ -709,11 +751,9 @@ const LocalGraphManager = (function() {
             const result = await response.json();
             
             closeAddNodeModal();
-            
-            // Refresh the graph to show the new node
             await refreshGraph();
             
-            showNotification('Node created successfully!', 'success');
+            showNotification(`Node created successfully with ${linkTargets.length} link(s)!`, 'success');
             
         } catch (error) {
             console.error('Error creating node:', error);
@@ -1128,6 +1168,140 @@ const LocalGraphManager = (function() {
                 document.removeEventListener('click', removeMenu);
             });
         }, 100);
+    }
+    
+    // Add these new functions to handle flexible linking
+    function setupLinkingHandlers() {
+        const createLinksCheckbox = document.getElementById('create-links');
+        const linkOptions = document.getElementById('link-options');
+        const addAnotherLinkBtn = document.getElementById('add-another-link');
+        const linkToCenterBtn = document.getElementById('link-to-center-quick');
+        
+        if (createLinksCheckbox) {
+            createLinksCheckbox.addEventListener('change', function(e) {
+                if (linkOptions) {
+                    linkOptions.style.display = e.target.checked ? 'block' : 'none';
+                }
+            });
+        }
+        
+        if (addAnotherLinkBtn) {
+            addAnotherLinkBtn.addEventListener('click', addAnotherLinkTarget);
+        }
+        
+        if (linkToCenterBtn) {
+            linkToCenterBtn.addEventListener('click', addCenterNodeAsTarget);
+        }
+        
+        // Setup initial link target search
+        setupLinkTargetSearch(0);
+    }
+    
+    function addAnotherLinkTarget() {
+        const container = document.querySelector('.link-targets-container');
+        const existingItems = container.querySelectorAll('.link-target-item');
+        const newIndex = existingItems.length;
+        
+        const newItem = document.createElement('div');
+        newItem.className = 'link-target-item';
+        newItem.innerHTML = `
+            <div class="link-target-search">
+                <input type="text" class="link-target-input" placeholder="Search for node to link to..." data-index="${newIndex}">
+                <div class="link-target-dropdown" data-index="${newIndex}">
+                    <div class="dropdown-content">
+                        <div class="no-results-message">Start typing to search nodes...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="link-options-row">
+                <input type="number" class="link-weight-input" min="0.1" max="100" step="0.1" value="1.0" placeholder="Weight">
+                <input type="text" class="link-description-input" placeholder="Optional description...">
+                <button type="button" class="remove-link-btn">×</button>
+            </div>
+        `;
+        
+        container.appendChild(newItem);
+        
+        // Setup search for the new item
+        setupLinkTargetSearch(newIndex);
+        
+        // Add remove handler
+        const removeBtn = newItem.querySelector('.remove-link-btn');
+        removeBtn.addEventListener('click', () => {
+            newItem.remove();
+            updateRemoveButtonVisibility();
+        });
+        
+        updateRemoveButtonVisibility();
+    }
+    
+    function addCenterNodeAsTarget() {
+        if (!centerNodeId || !graphData?.centerNode) return;
+        
+        // Find the first empty link target input
+        const linkInputs = document.querySelectorAll('.link-target-input');
+        for (let input of linkInputs) {
+            if (!input.value.trim()) {
+                input.value = graphData.centerNode.content || 'Untitled';
+                input.dataset.selectedNodeId = centerNodeId;
+                break;
+            }
+        }
+    }
+    
+    function updateRemoveButtonVisibility() {
+        const removeButtons = document.querySelectorAll('.remove-link-btn');
+        removeButtons.forEach((btn, index) => {
+            btn.style.display = removeButtons.length > 1 ? 'inline-block' : 'none';
+        });
+    }
+    
+    async function setupLinkTargetSearch(index) {
+        const input = document.querySelector(`.link-target-input[data-index="${index}"]`);
+        const dropdown = document.querySelector(`.link-target-dropdown[data-index="${index}"]`);
+        
+        if (!input || !dropdown) return;
+        
+        input.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            const dropdownContent = dropdown.querySelector('.dropdown-content');
+            
+            if (query.length < 2) {
+                dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search nodes...</div>';
+                dropdown.classList.remove('show');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&limit=10`);
+                const results = await response.json();
+                
+                if (results.length === 0) {
+                    dropdownContent.innerHTML = `<div class="no-results-message">No nodes found matching "${query}"</div>`;
+                } else {
+                    dropdownContent.innerHTML = results.map(node => `
+                        <div class="node-option" data-node-id="${node.id}">
+                            <div class="node-option-content">${node.content || 'Untitled'}</div>
+                            ${node.content_zh ? `<div class="node-option-content-zh">${node.content_zh}</div>` : ''}
+                        </div>
+                    `).join('');
+                    
+                    // Add click handlers
+                    dropdownContent.querySelectorAll('.node-option').forEach(option => {
+                        option.addEventListener('click', function() {
+                            input.value = this.querySelector('.node-option-content').textContent;
+                            input.dataset.selectedNodeId = this.dataset.nodeId;
+                            dropdown.classList.remove('show');
+                        });
+                    });
+                }
+                
+                dropdown.classList.add('show');
+            } catch (error) {
+                console.error('Error searching nodes:', error);
+                dropdownContent.innerHTML = '<div class="error-message">Error searching nodes</div>';
+            }
+        });
     }
     
     // Public API

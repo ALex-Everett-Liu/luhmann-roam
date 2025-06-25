@@ -113,6 +113,42 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Restoring scroll position to: ${scrollPosition}px`);
         window.scrollTo(0, scrollPosition);
       }, 10);
+
+      // Trigger LocalGraphIndicators refresh after outliner loads
+      if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
+        console.log('Outliner loaded, scheduling LocalGraphIndicators refresh...');
+        
+        // Use a longer delay and multiple attempts
+        setTimeout(() => {
+          console.log('=== First LocalGraphIndicators attempt ===');
+          const elementsWithDataId = document.querySelectorAll('[data-id]');
+          console.log('Elements with data-id found:', elementsWithDataId.length);
+          
+          if (elementsWithDataId.length > 0) {
+            console.log('Found elements with data-id, refreshing indicators...');
+            LocalGraphIndicators.refreshPoolData();
+          } else {
+            console.log('No elements with data-id found, trying again in 500ms...');
+            
+            // Try again after another delay
+            setTimeout(() => {
+              console.log('=== Second LocalGraphIndicators attempt ===');
+              const elementsWithDataId2 = document.querySelectorAll('[data-id]');
+              console.log('Elements with data-id found (2nd attempt):', elementsWithDataId2.length);
+              
+              if (elementsWithDataId2.length > 0) {
+                LocalGraphIndicators.refreshPoolData();
+              } else {
+                console.log('Still no elements found, trying manual trigger...');
+                // Force a manual check
+                setTimeout(() => {
+                  LocalGraphIndicators.updateVisibleIndicators();
+                }, 1000);
+              }
+            }, 500);
+          }
+        }, 500); // Increased from 200ms to 500ms
+      }
     } catch (error) {
       console.error('Error fetching nodes:', error);
       isInitialLoading = false;
@@ -178,6 +214,28 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log(`Restoring scroll position to: ${scrollPosition}px`);
       window.scrollTo(0, scrollPosition);
     }, 10);
+
+    // Trigger LocalGraphIndicators refresh after outliner renders
+    if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
+      console.log('Outliner rendered, scheduling LocalGraphIndicators refresh...');
+      
+      // Wait for DOM to be fully ready
+      setTimeout(() => {
+        console.log('=== RenderOutliner LocalGraphIndicators attempt ===');
+        const elementsWithDataId = document.querySelectorAll('[data-id]');
+        console.log('Elements with data-id after render:', elementsWithDataId.length);
+        
+        // Also check for breadcrumb elements specifically
+        const breadcrumbElements = document.querySelectorAll('.breadcrumb-item[data-id]');
+        console.log('Breadcrumb elements with data-id:', breadcrumbElements.length);
+        
+        if (elementsWithDataId.length > 0 || breadcrumbElements.length > 0) {
+          LocalGraphIndicators.refreshPoolData();
+        } else {
+          console.log('No elements ready yet, will try again...');
+        }
+      }, 300);
+    }
   }
   
   // Add this function to detect Chinese text
@@ -639,7 +697,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.BreadcrumbManager) {
       BreadcrumbManager.addNodeFocusHandler(nodeDiv, node.id);
     }
-    
+
+    // Trigger LocalGraphIndicators for this specific node if it's a breadcrumb
+    if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
+      // Check if this node might be in the pool and trigger a specific update
+      setTimeout(() => {
+        LocalGraphIndicators.updateIndicatorForNode(node.id);
+      }, 50);
+    }
+
     return nodeDiv;
   }
   

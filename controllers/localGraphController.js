@@ -190,11 +190,9 @@ exports.createNodeInLocalGraph = async (req, res) => {
     const { 
       content, 
       content_zh, 
-      parentNodeId, // Optional: where to place in main outliner
-      linkToCenterNode, // Whether to create a link to center node
-      centerNodeId,
-      linkWeight = 1.0,
-      linkDescription = ''
+      parentNodeId,
+      linkTargets = [], // Array of {targetNodeId, weight, description}
+      centerNodeId // For context
     } = req.body;
     
     if (!content) {
@@ -205,7 +203,6 @@ exports.createNodeInLocalGraph = async (req, res) => {
     const nodeId = uuidv4();
     const now = Date.now();
     
-    // Start transaction
     await db.run('BEGIN TRANSACTION');
     
     try {
@@ -232,33 +229,35 @@ exports.createNodeInLocalGraph = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [nodeId, content, content_zh, parentNodeId, position, now, now, true]);
       
-      // Create link to center node if requested
-      let linkId = null;
-      if (linkToCenterNode && centerNodeId) {
-        linkId = uuidv4();
+      // Create multiple links if specified
+      const createdLinks = [];
+      for (const linkTarget of linkTargets) {
+        const linkId = uuidv4();
         await db.run(`
           INSERT INTO links (id, from_node_id, to_node_id, weight, description, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [linkId, centerNodeId, nodeId, linkWeight, linkDescription, now, now]);
+        `, [linkId, linkTarget.targetNodeId, nodeId, linkTarget.weight, linkTarget.description, now, now]);
         
-        // Invalidate distance cache since we added a link
+        createdLinks.push({
+          id: linkId,
+          from_node_id: linkTarget.targetNodeId,
+          to_node_id: nodeId,
+          weight: linkTarget.weight,
+          description: linkTarget.description
+        });
+      }
+      
+      if (createdLinks.length > 0) {
         invalidateDistanceCache();
       }
       
       await db.run('COMMIT');
       
-      // Get the created node with full data
       const newNode = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
       
       res.status(201).json({
         node: newNode,
-        link: linkId ? {
-          id: linkId,
-          from_node_id: centerNodeId,
-          to_node_id: nodeId,
-          weight: linkWeight,
-          description: linkDescription
-        } : null
+        links: createdLinks
       });
     } catch (error) {
       await db.run('ROLLBACK');

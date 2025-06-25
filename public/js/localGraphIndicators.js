@@ -14,11 +14,14 @@ const LocalGraphIndicators = (function() {
         }
         
         try {
-            // Load pool data but DON'T update all indicators immediately
-            loadPoolData(false); // false = don't update all DOM
+            // FIXED: Load pool data AND update DOM immediately
+            loadPoolData(true); // true = update DOM
             setupObservers();
             isInitialized = true;
             console.log('LocalGraphIndicators initialized successfully');
+            
+            // ADDED: Also set up automatic refresh when outliner changes
+            setupAutomaticRefresh();
         } catch (error) {
             console.error('Error initializing LocalGraphIndicators:', error);
         }
@@ -409,6 +412,69 @@ const LocalGraphIndicators = (function() {
         });
     }
     
+    /**
+     * NEW: Set up automatic refresh of indicators
+     */
+    function setupAutomaticRefresh() {
+        // Refresh indicators when DOM changes significantly
+        let refreshTimeout;
+        
+        const debouncedRefresh = () => {
+            clearTimeout(refreshTimeout);
+            refreshTimeout = setTimeout(() => {
+                console.log('Auto-refreshing pool indicators...');
+                updateVisibleIndicators();
+            }, 500); // Wait 500ms after DOM changes stop
+        };
+        
+        // Watch for outliner changes
+        const outlinerObserver = new MutationObserver((mutations) => {
+            let shouldRefresh = false;
+            
+            mutations.forEach(mutation => {
+                // Check if new elements with data-id were added
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.querySelector && node.querySelector('[data-id]')) {
+                            shouldRefresh = true;
+                        }
+                        if (node.getAttribute && node.getAttribute('data-id')) {
+                            shouldRefresh = true;
+                        }
+                    }
+                });
+            });
+            
+            if (shouldRefresh) {
+                debouncedRefresh();
+            }
+        });
+        
+        // Observe the entire document for outliner changes
+        outlinerObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Also refresh when page becomes visible (tab switching)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('Page became visible, refreshing indicators...');
+                setTimeout(() => {
+                    refreshPoolData();
+                }, 100);
+            }
+        });
+        
+        // Refresh indicators periodically (every 30 seconds)
+        setInterval(() => {
+            if (poolNodes.size > 0) {
+                console.log('Periodic refresh of indicators...');
+                updateVisibleIndicators();
+            }
+        }, 30000);
+    }
+    
     // Public API - OPTIMIZED
     return {
         initialize,
@@ -424,8 +490,20 @@ const LocalGraphIndicators = (function() {
         updateIndicatorForNode,           // NEW: Update single node
         updateIndicatorsForNodes,         // NEW: Update multiple specific nodes
         updateVisibleIndicators,          // NEW: Update only visible elements
+        setupAutomaticRefresh,          // NEW: Set up automatic refresh
+        onOutlinerLoaded,               // NEW: Call when outliner loads
         isInitialized: () => isInitialized
     };
+
+    /**
+     * NEW: Call this when the outliner finishes loading
+     */
+    function onOutlinerLoaded() {
+        console.log('Outliner loaded, refreshing pool indicators...');
+        setTimeout(() => {
+            refreshPoolData();
+        }, 100);
+    }
 })();
 
 // Add to global scope
