@@ -23,9 +23,9 @@ router.get('/suggested-parents/:centerNodeId', localGraphController.getSuggested
 // Focus a node in the main outliner
 router.get('/focus/:nodeId', localGraphController.focusNodeInOutliner);
 
-// Add this line temporarily for testing
-router.get('/test', (req, res) => {
-    res.json({ message: 'Local graph routes working!' });
-  });
+router.get('/quick-access', localGraphController.getQuickAccessNodes);
+router.post('/quick-access', localGraphController.addToQuickAccess);
+router.delete('/quick-access/:quickAccessId', localGraphController.removeFromQuickAccess);
+router.post('/quick-access/:nodeId/use', localGraphController.useQuickAccessNode);
 
 module.exports = router;

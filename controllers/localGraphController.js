@@ -676,3 +676,130 @@ exports.searchPoolNodes = async (req, res) => {
   }
 };
 
+/**
+ * Get all quick access nodes for the user
+ * GET /api/local-graph/quick-access
+ */
+exports.getQuickAccessNodes = async (req, res) => {
+  try {
+    const db = req.db;
+    
+    // Get quick access nodes with node details, ordered by usage count and last used
+    const quickAccessNodes = await db.all(`
+      SELECT 
+        qa.*,
+        n.content,
+        n.content_zh,
+        n.parent_id,
+        n.position
+      FROM local_graph_quick_access qa
+      JOIN nodes n ON qa.node_id = n.id
+      ORDER BY qa.usage_count DESC, qa.last_used_at DESC
+      LIMIT 10
+    `);
+    
+    res.json(quickAccessNodes);
+  } catch (error) {
+    console.error('Error getting quick access nodes:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Add a node to quick access
+ * POST /api/local-graph/quick-access
+ */
+exports.addToQuickAccess = async (req, res) => {
+  try {
+    const { nodeId, maxDistance, maxDepth } = req.body;
+    
+    if (!nodeId) {
+      return res.status(400).json({ error: 'Node ID is required' });
+    }
+    
+    const db = req.db;
+    const now = Date.now();
+    
+    // Check if node exists
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Check if already in quick access
+    const existing = await db.get('SELECT * FROM local_graph_quick_access WHERE node_id = ?', nodeId);
+    
+    if (existing) {
+      // Update existing entry
+      await db.run(`
+        UPDATE local_graph_quick_access 
+        SET max_distance = ?, max_depth = ?, last_used_at = ?, usage_count = usage_count + 1
+        WHERE node_id = ?
+      `, [maxDistance || 5, maxDepth || 3, now, nodeId]);
+      
+      res.json({ message: 'Quick access updated!' });
+    } else {
+      // Create new entry
+      const quickAccessId = uuidv4();
+      await db.run(`
+        INSERT INTO local_graph_quick_access (id, node_id, max_distance, max_depth, created_at, last_used_at, usage_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [quickAccessId, nodeId, maxDistance || 5, maxDepth || 3, now, now, 1]);
+      
+      res.json({ message: 'Added to quick access!' });
+    }
+  } catch (error) {
+    console.error('Error adding to quick access:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Remove a node from quick access
+ * DELETE /api/local-graph/quick-access/:quickAccessId
+ */
+exports.removeFromQuickAccess = async (req, res) => {
+  try {
+    const { quickAccessId } = req.params;
+    const db = req.db;
+    
+    const result = await db.run('DELETE FROM local_graph_quick_access WHERE id = ?', quickAccessId);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Quick access entry not found' });
+    }
+    
+    res.json({ success: true, message: 'Removed from quick access' });
+  } catch (error) {
+    console.error('Error removing from quick access:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Update usage count for a quick access node
+ * POST /api/local-graph/quick-access/:nodeId/use
+ */
+exports.useQuickAccessNode = async (req, res) => {
+  try {
+    const { nodeId } = req.params;
+    const db = req.db;
+    const now = Date.now();
+    
+    const result = await db.run(`
+      UPDATE local_graph_quick_access 
+      SET usage_count = usage_count + 1, last_used_at = ?
+      WHERE node_id = ?
+    `, [now, nodeId]);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Quick access entry not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating quick access usage:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+

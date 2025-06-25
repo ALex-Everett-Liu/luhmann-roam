@@ -1219,3 +1219,272 @@
       border-color: #30363d;
     }
   }
+  
+  /* Quick Access Section Styles */
+  .quick-access-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  
+  .quick-access-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .quick-access-header h4 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .quick-access-subtitle {
+    color: #64748b;
+    font-size: 12px;
+    font-style: italic;
+  }
+  
+  .quick-access-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .quick-access-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+  
+  .quick-access-item:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+  }
+  
+  .quick-access-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .quick-access-title {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .quick-access-subtitle {
+    color: #64748b;
+    font-size: 12px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .quick-access-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: #64748b;
+    flex-wrap: wrap;
+  }
+  
+  .quick-access-meta span {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  
+  .quick-access-date {
+    margin-left: auto;
+  }
+  
+  .quick-access-actions {
+    display: flex;
+    gap: 5px;
+    margin-left: 15px;
+  }
+  
+  .quick-access-use-btn,
+  .quick-access-remove-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .quick-access-use-btn {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  .quick-access-use-btn:hover {
+    background: #2563eb;
+    transform: scale(1.05);
+  }
+  
+  .quick-access-remove-btn {
+    background: #ef4444;
+    color: white;
+    font-weight: bold;
+  }
+  
+  .quick-access-remove-btn:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+  }
+  
+  .quick-access-empty {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 20px;
+    background: white;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
+  }
+  
+  .quick-access-error {
+    text-align: center;
+    color: #ef4444;
+    padding: 15px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+  }
+  
+  .search-section {
+    margin-bottom: 30px;
+  }
+  
+  .search-section h4 {
+    margin: 0 0 15px 0;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  /* Save to quick access button styling */
+  #save-to-quick-access-btn {
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 5px;
+  }
+  
+  #save-to-quick-access-btn:hover {
+    background: #d97706;
+    transform: scale(1.05);
+  }
+  
+  /* Responsive design for quick access */
+  @media (max-width: 768px) {
+    .quick-access-item {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    
+    .quick-access-content {
+      margin-bottom: 10px;
+    }
+    
+    .quick-access-actions {
+      justify-content: center;
+      margin-left: 0;
+    }
+    
+    .quick-access-meta {
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .quick-access-date {
+      margin-left: 0;
+    }
+  }
+  
+  /* Dark mode support for quick access */
+  @media (prefers-color-scheme: dark) {
+    .quick-access-section {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    
+    .quick-access-header h4 {
+      color: #f1f5f9;
+    }
+    
+    .quick-access-subtitle {
+      color: #94a3b8;
+    }
+    
+    .quick-access-item {
+      background: #0f172a;
+      border-color: #334155;
+    }
+    
+    .quick-access-item:hover {
+      border-color: #3b82f6;
+    }
+    
+    .quick-access-title {
+      color: #f1f5f9;
+    }
+    
+    .quick-access-subtitle {
+      color: #94a3b8;
+    }
+    
+    .quick-access-meta {
+      color: #94a3b8;
+    }
+    
+    .quick-access-meta span {
+      background: #334155;
+    }
+    
+    .quick-access-empty {
+      background: #0f172a;
+      border-color: #475569;
+      color: #94a3b8;
+    }
+    
+    .quick-access-error {
+      background: #1e1b1b;
+      border-color: #7f1d1d;
+      color: #fca5a5;
+    }
+    
+    .search-section h4 {
+      color: #f1f5f9;
+    }
+  }

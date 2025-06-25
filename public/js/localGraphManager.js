@@ -79,11 +79,25 @@ const LocalGraphManager = (function() {
                         <h3>Select Center Node</h3>
                         <p>Choose a node from your Local Graph pool to explore its neighborhood:</p>
                         
-                        <div class="node-search-container">
-                            <input type="text" id="center-node-search" placeholder="Search pool nodes..." class="node-search-input">
-                            <div id="center-node-dropdown" class="node-dropdown">
-                                <div class="node-dropdown-content">
-                                    <div class="no-results-message">Start typing to search pool nodes...</div>
+                        <!-- Quick Access Section -->
+                        <div class="quick-access-section">
+                            <div class="quick-access-header">
+                                <h4>Quick Access</h4>
+                                <span class="quick-access-subtitle">Recently used center nodes</span>
+                            </div>
+                            <div id="quick-access-list" class="quick-access-list">
+                                <!-- Will be populated with quick access nodes -->
+                            </div>
+                        </div>
+                        
+                        <div class="search-section">
+                            <h4>Search Pool Nodes</h4>
+                            <div class="node-search-container">
+                                <input type="text" id="center-node-search" placeholder="Search pool nodes..." class="node-search-input">
+                                <div id="center-node-dropdown" class="node-dropdown">
+                                    <div class="node-dropdown-content">
+                                        <div class="no-results-message">Start typing to search pool nodes...</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -112,6 +126,7 @@ const LocalGraphManager = (function() {
                             <div class="center-info">
                                 <strong>Center:</strong> <span id="current-center-node">None</span>
                                 <button id="change-center-btn" class="secondary-btn">Change Center</button>
+                                <button id="save-to-quick-access-btn" class="secondary-btn" title="Save to Quick Access">⭐</button>
                             </div>
                             <div class="distance-info">
                                 <span id="distance-display">Distance: 5, Depth: 3</span>
@@ -293,6 +308,7 @@ const LocalGraphManager = (function() {
         const linkToCenterCheckbox = document.getElementById('link-to-center');
         const maxDistanceInput = document.getElementById('max-distance-input');
         const maxDepthInput = document.getElementById('max-depth-input');
+        const saveToQuickAccessBtn = document.getElementById('save-to-quick-access-btn');
         
         // Only add event listeners if elements exist
         if (closeBtn) closeBtn.addEventListener('click', hide);
@@ -309,6 +325,7 @@ const LocalGraphManager = (function() {
         if (cancelDistanceBtn) cancelDistanceBtn.addEventListener('click', closeDistanceModal);
         if (addNodeForm) addNodeForm.addEventListener('submit', createNewNode);
         if (cancelAddNodeBtn) cancelAddNodeBtn.addEventListener('click', closeAddNodeModal);
+        if (saveToQuickAccessBtn) saveToQuickAccessBtn.addEventListener('click', saveCurrentCenterToQuickAccess);
         
         if (linkToCenterCheckbox) {
             linkToCenterCheckbox.addEventListener('change', function(e) {
@@ -1448,6 +1465,8 @@ const LocalGraphManager = (function() {
             if (result.exists) {
                 // Nodes exist, show center selection
                 switchToCenterSelection();
+                // Load quick access nodes
+                await loadQuickAccessNodes();
             } else {
                 // No nodes found, show empty state
                 switchToEmptyState();
@@ -1456,6 +1475,7 @@ const LocalGraphManager = (function() {
             console.error('Error checking for nodes:', error);
             // Default to center selection phase
             switchToCenterSelection();
+            await loadQuickAccessNodes();
         }
         
         // Reset state with null checks
@@ -2084,6 +2104,154 @@ const LocalGraphManager = (function() {
         });
     }
     
+    // Add new functions for quick access management
+    
+    async function loadQuickAccessNodes() {
+        try {
+            const response = await fetch('/api/local-graph/quick-access');
+            const quickAccessNodes = await response.json();
+            
+            const quickAccessList = document.getElementById('quick-access-list');
+            if (!quickAccessList) return;
+            
+            if (quickAccessNodes.length === 0) {
+                quickAccessList.innerHTML = `
+                    <div class="quick-access-empty">
+                        <span>No quick access nodes yet. Explore a graph and save it using the ⭐ button.</span>
+                    </div>
+                `;
+                return;
+            }
+            
+            quickAccessList.innerHTML = quickAccessNodes.map(item => `
+                <div class="quick-access-item" data-node-id="${item.node_id}">
+                    <div class="quick-access-content">
+                        <div class="quick-access-title">${item.content || item.content_zh || 'Untitled'}</div>
+                        ${item.content_zh && item.content ? `<div class="quick-access-subtitle">${item.content_zh}</div>` : ''}
+                        <div class="quick-access-meta">
+                            <span>Distance: ${item.max_distance}</span>
+                            <span>Depth: ${item.max_depth}</span>
+                            <span>Used ${item.usage_count} times</span>
+                            <span class="quick-access-date">Last: ${new Date(item.last_used_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="quick-access-actions">
+                        <button class="quick-access-use-btn" onclick="LocalGraphManager.useQuickAccess('${item.node_id}', ${item.max_distance}, ${item.max_depth})" title="Use this center node">
+                            🚀
+                        </button>
+                        <button class="quick-access-remove-btn" onclick="LocalGraphManager.removeFromQuickAccess('${item.id}')" title="Remove from quick access">
+                            ×
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+        } catch (error) {
+            console.error('Error loading quick access nodes:', error);
+            const quickAccessList = document.getElementById('quick-access-list');
+            if (quickAccessList) {
+                quickAccessList.innerHTML = '<div class="quick-access-error">Error loading quick access nodes</div>';
+            }
+        }
+    }
+    
+    async function saveCurrentCenterToQuickAccess() {
+        if (!centerNodeId) {
+            showNotification('No center node selected', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/local-graph/quick-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nodeId: centerNodeId,
+                    maxDistance: maxDistance,
+                    maxDepth: maxDepth
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to save to quick access');
+            }
+            
+            const result = await response.json();
+            showNotification(result.message || 'Saved to quick access!', 'success');
+            
+            // Update the button appearance to show it's saved
+            const saveBtn = document.getElementById('save-to-quick-access-btn');
+            if (saveBtn) {
+                saveBtn.textContent = '⭐';
+                saveBtn.style.backgroundColor = '#fbbf24';
+                saveBtn.style.color = 'white';
+                setTimeout(() => {
+                    saveBtn.style.backgroundColor = '';
+                    saveBtn.style.color = '';
+                }, 2000);
+            }
+            
+        } catch (error) {
+            console.error('Error saving to quick access:', error);
+            showNotification(error.message || 'Error saving to quick access', 'error');
+        }
+    }
+    
+    async function useQuickAccess(nodeId, distance, depth) {
+        try {
+            // Set the parameters
+            centerNodeId = nodeId;
+            maxDistance = distance;
+            maxDepth = depth;
+            
+            // Update input fields
+            const maxDistanceInput = document.getElementById('max-distance-input');
+            const maxDepthInput = document.getElementById('max-depth-input');
+            if (maxDistanceInput) maxDistanceInput.value = distance;
+            if (maxDepthInput) maxDepthInput.value = depth;
+            
+            // Update usage count
+            await fetch(`/api/local-graph/quick-access/${nodeId}/use`, {
+                method: 'POST'
+            });
+            
+            // Explore the graph
+            await exploreGraph();
+            
+            showNotification('Quick access center loaded!', 'success');
+            
+        } catch (error) {
+            console.error('Error using quick access:', error);
+            showNotification('Error loading quick access center', 'error');
+        }
+    }
+    
+    async function removeFromQuickAccess(quickAccessId) {
+        if (!confirm('Remove this node from quick access?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/local-graph/quick-access/${quickAccessId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to remove from quick access');
+            }
+            
+            showNotification('Removed from quick access', 'success');
+            
+            // Reload quick access list
+            await loadQuickAccessNodes();
+            
+        } catch (error) {
+            console.error('Error removing from quick access:', error);
+            showNotification('Error removing from quick access', 'error');
+        }
+    }
+    
     // Public API
     return {
         initialize,
@@ -2094,6 +2262,8 @@ const LocalGraphManager = (function() {
         createNodeFromSearch,
         addNodeToPool,
         removeNodeFromPool,
+        useQuickAccess,
+        removeFromQuickAccess,
         isInitialized: () => isInitialized
     };
 })();
