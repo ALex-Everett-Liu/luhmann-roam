@@ -595,3 +595,52 @@ exports.getLocalGraphPool = async (req, res) => {
 // Export cache invalidation function for use by link routes
 exports.invalidateDistanceCache = invalidateDistanceCache;
 
+/**
+ * Search nodes within the local graph pool
+ * GET /api/local-graph/pool/search?q=query&limit=10
+ */
+exports.searchPoolNodes = async (req, res) => {
+  try {
+    const { q: query, limit = 10 } = req.query;
+    
+    if (!query || query.trim().length < 2) {
+      return res.json([]);
+    }
+    
+    const db = req.db;
+    
+    // Search only within nodes that are in the local graph pool
+    const poolNodes = await db.all(`
+      SELECT 
+        n.id,
+        n.content,
+        n.content_zh,
+        n.parent_id,
+        n.position,
+        lgp.added_at,
+        lgp.notes
+      FROM local_graph_pool lgp
+      JOIN nodes n ON lgp.node_id = n.id
+      WHERE (
+        n.content LIKE ? OR 
+        n.content_zh LIKE ? OR
+        LOWER(n.content) LIKE ? OR
+        LOWER(n.content_zh) LIKE ?
+      )
+      ORDER BY lgp.added_at DESC
+      LIMIT ?
+    `, [
+      `%${query}%`,
+      `%${query}%`, 
+      `%${query.toLowerCase()}%`,
+      `%${query.toLowerCase()}%`,
+      parseInt(limit)
+    ]);
+    
+    res.json(poolNodes);
+  } catch (error) {
+    console.error('Error searching pool nodes:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+

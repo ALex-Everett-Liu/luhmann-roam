@@ -4,6 +4,7 @@ const localGraphController = require('../controllers/localGraphController');
 
 // Pool management routes
 router.get('/pool', localGraphController.getLocalGraphPool);
+router.get('/pool/search', localGraphController.searchPoolNodes);
 router.post('/pool/nodes', localGraphController.addNodeToPool);
 router.delete('/pool/nodes/:nodeId', localGraphController.removeNodeFromPool);
 router.post('/pool/links', localGraphController.addLinkToPool);
@@ -21,5 +22,10 @@ router.get('/suggested-parents/:centerNodeId', localGraphController.getSuggested
 
 // Focus a node in the main outliner
 router.get('/focus/:nodeId', localGraphController.focusNodeInOutliner);
+
+// Add this line temporarily for testing
+router.get('/test', (req, res) => {
+    res.json({ message: 'Local graph routes working!' });
+  });
 
 module.exports = router;

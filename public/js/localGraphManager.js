@@ -681,6 +681,9 @@ const LocalGraphManager = (function() {
             document.getElementById('parent-node-select').innerHTML = '<option value="">Error loading suggestions</option>';
         }
         
+        // Populate quick suggestions from pool
+        await populateQuickSuggestions();
+        
         modal.classList.add('show');
         modal.style.display = 'flex';
         
@@ -695,8 +698,18 @@ const LocalGraphManager = (function() {
         
         // Reset form
         document.getElementById('add-node-form').reset();
-        document.getElementById('link-to-center').checked = true;
-        document.getElementById('link-options').style.display = 'block';
+        
+        // Reset the create-links checkbox to checked
+        const createLinksCheckbox = document.getElementById('create-links');
+        if (createLinksCheckbox) {
+            createLinksCheckbox.checked = true;
+        }
+        
+        // Make sure link options are visible
+        const linkOptions = document.getElementById('link-options');
+        if (linkOptions) {
+            linkOptions.style.display = 'block';
+        }
     }
     
     async function createNewNode(e) {
@@ -1273,16 +1286,18 @@ const LocalGraphManager = (function() {
             }
             
             try {
-                const response = await fetch(`/api/nodes/search?q=${encodeURIComponent(query)}&limit=10`);
+                // CHANGED: Search only within pool nodes instead of all nodes
+                const response = await fetch(`/api/local-graph/pool/search?q=${encodeURIComponent(query)}&limit=10`);
                 const results = await response.json();
                 
                 if (results.length === 0) {
-                    dropdownContent.innerHTML = `<div class="no-results-message">No nodes found matching "${query}"</div>`;
+                    dropdownContent.innerHTML = `<div class="no-results-message">No nodes found in pool matching "${query}"</div>`;
                 } else {
                     dropdownContent.innerHTML = results.map(node => `
                         <div class="node-option" data-node-id="${node.id}">
                             <div class="node-option-content">${node.content || 'Untitled'}</div>
                             ${node.content_zh ? `<div class="node-option-content-zh">${node.content_zh}</div>` : ''}
+                            <div class="node-option-meta">In pool since ${new Date(node.added_at).toLocaleDateString()}</div>
                         </div>
                     `).join('');
                     
@@ -1298,10 +1313,65 @@ const LocalGraphManager = (function() {
                 
                 dropdown.classList.add('show');
             } catch (error) {
-                console.error('Error searching nodes:', error);
-                dropdownContent.innerHTML = '<div class="error-message">Error searching nodes</div>';
+                console.error('Error searching pool nodes:', error);
+                dropdownContent.innerHTML = '<div class="error-message">Error searching pool nodes</div>';
             }
         });
+    }
+    
+    // Add function to populate quick suggestions from current graph
+    async function populateQuickSuggestions() {
+        const suggestionsContainer = document.getElementById('link-suggestions-list');
+        if (!suggestionsContainer) return;
+        
+        try {
+            // Get nodes from current local graph pool
+            const response = await fetch('/api/local-graph/pool');
+            const poolData = await response.json();
+            
+            if (poolData.nodes && poolData.nodes.length > 0) {
+                // Show up to 6 most recent pool nodes as quick suggestions
+                const recentNodes = poolData.nodes.slice(0, 6);
+                
+                suggestionsContainer.innerHTML = recentNodes.map(poolNode => `
+                    <button type="button" class="suggestion-btn" data-node-id="${poolNode.node_id}">
+                        ${poolNode.content || poolNode.content_zh || 'Untitled'}
+                    </button>
+                `).join('');
+                
+                // Add click handlers for quick suggestions
+                suggestionsContainer.querySelectorAll('.suggestion-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const nodeId = this.dataset.nodeId;
+                        const nodeContent = this.textContent;
+                        
+                        // Find the first empty link target input
+                        const linkInputs = document.querySelectorAll('.link-target-input');
+                        for (let input of linkInputs) {
+                            if (!input.value.trim()) {
+                                input.value = nodeContent;
+                                input.dataset.selectedNodeId = nodeId;
+                                break;
+                            }
+                        }
+                        
+                        // If all inputs are filled, add a new one
+                        if (Array.from(linkInputs).every(input => input.value.trim())) {
+                            addAnotherLinkTarget();
+                            const newInputs = document.querySelectorAll('.link-target-input');
+                            const lastInput = newInputs[newInputs.length - 1];
+                            lastInput.value = nodeContent;
+                            lastInput.dataset.selectedNodeId = nodeId;
+                        }
+                    });
+                });
+            } else {
+                suggestionsContainer.innerHTML = '<div class="no-suggestions">No nodes in pool yet. Add some nodes to the pool first.</div>';
+            }
+        } catch (error) {
+            console.error('Error loading quick suggestions:', error);
+            suggestionsContainer.innerHTML = '<div class="error-message">Error loading suggestions</div>';
+        }
     }
     
     // Public API

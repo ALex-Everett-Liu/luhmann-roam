@@ -842,3 +842,103 @@
     z-index: 1000;
     margin-bottom: 5px;
   }
+  
+  /* Add to your local graph CSS file */
+  .link-suggestions {
+    margin-top: 15px;
+  }
+  
+  .link-suggestions label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  #link-suggestions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .suggestion-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .suggestion-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+  }
+  
+  .suggestion-btn:active {
+    background: #dee2e6;
+  }
+  
+  .no-suggestions, .error-message {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 12px;
+  }
+  
+  .node-option-meta {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+  }
+  
+  .link-target-item {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    background: #f8f9fa;
+  }
+  
+  .link-options-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  
+  .link-weight-input, .link-description-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  
+  .remove-link-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .remove-link-btn:hover {
+    background: #c82333;
+  }
+  
+  .link-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+  }
