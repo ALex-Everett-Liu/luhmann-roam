@@ -79,7 +79,7 @@ const PluginAwareInitializer = (function() {
             'localGraphIndicators': {
                 name: 'Local Graph Indicators',
                 initialize: initializeLocalGraphIndicators,
-                pluginId: 'localGraphManager' // Same plugin ID as the main manager
+                enabled: true // Always enable indicators when LocalGraphManager exists
             },
             
             'enhancedCodeGraphManager': {

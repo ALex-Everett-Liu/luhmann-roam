@@ -29,19 +29,21 @@ const LocalGraphIndicators = (function() {
      */
     async function loadPoolData() {
         try {
-            const [nodesResponse, linksResponse] = await Promise.all([
-                fetch('/api/local-graph/pool/nodes'),
-                fetch('/api/local-graph/pool/links')
-            ]);
+            // Use the single /pool endpoint that returns both nodes and links
+            const response = await fetch('/api/local-graph/pool');
             
-            if (nodesResponse.ok) {
-                const nodes = await nodesResponse.json();
-                poolNodes = new Set(nodes.map(node => node.node_id));
-            }
-            
-            if (linksResponse.ok) {
-                const links = await linksResponse.json();
-                poolLinks = new Set(links.map(link => link.link_id));
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Pool data loaded:', data);
+                
+                // Extract node IDs and link IDs from the response
+                poolNodes = new Set(data.nodes.map(node => node.node_id));
+                poolLinks = new Set(data.links.map(link => link.link_id));
+                
+                console.log('Pool nodes set:', Array.from(poolNodes));
+                console.log('Pool links set:', Array.from(poolLinks));
+            } else {
+                console.error('Failed to load pool data:', response.status);
             }
             
             // Apply indicators to existing DOM elements
