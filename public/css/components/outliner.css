@@ -284,5 +284,47 @@ body.dark-theme .node-actions button:hover {
   background-color: #3367d6;
 }
 
+/* Node in local graph pool indicator */
+.node-in-local-graph {
+  position: relative;
+}
 
+.node-in-local-graph::before {
+  content: "🔗";
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.7;
+  color: #0366d6;
+}
+
+.node-in-local-graph .node-content {
+  border-left: 3px solid #0366d6;
+  padding-left: 8px;
+}
+
+/* Link in local graph pool indicator */
+.link-in-local-graph {
+  background: linear-gradient(90deg, transparent 0%, rgba(3, 102, 214, 0.1) 50%, transparent 100%);
+  border-left: 2px solid #0366d6;
+}
+
+/* Hover effects */
+.node-in-local-graph:hover .node-content {
+  background-color: rgba(3, 102, 214, 0.05);
+}
+
+/* Badge for pool items */
+.local-graph-badge {
+  display: inline-block;
+  background: #0366d6;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: bold;
+}
 

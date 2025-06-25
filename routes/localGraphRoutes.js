@@ -2,7 +2,13 @@ const express = require('express');
 const router = express.Router();
 const localGraphController = require('../controllers/localGraphController');
 
-router.get('/exists', nodeController.checkNodesExist);
+// Pool management routes
+router.get('/pool', localGraphController.getLocalGraphPool);
+router.post('/pool/nodes', localGraphController.addNodeToPool);
+router.delete('/pool/nodes/:nodeId', localGraphController.removeNodeFromPool);
+router.post('/pool/links', localGraphController.addLinkToPool);
+router.delete('/pool/links/:linkId', localGraphController.removeLinkFromPool);
+router.get('/pool/check-node/:nodeId', localGraphController.checkNodeInPool);
 
 // Get local graph data centered around a specific node
 router.get('/center/:centerNodeId', localGraphController.getLocalGraph);

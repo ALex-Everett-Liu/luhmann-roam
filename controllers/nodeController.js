@@ -653,16 +653,22 @@ exports.getNodeBySequenceId = async (req, res) => {
  * GET /api/nodes/exists
  */
 exports.checkNodesExist = async (req, res) => {
+  console.log('checkNodesExist function called!');
   try {
     const db = req.db;
+    console.log('Database connection:', !!db);
     
     // Simple count query to check if any nodes exist
     const result = await db.get('SELECT COUNT(*) as count FROM nodes LIMIT 1');
+    console.log('Query result:', result);
     
-    res.json({ 
+    const response = { 
       exists: result.count > 0,
       count: result.count 
-    });
+    };
+    console.log('Sending response:', response);
+    
+    res.json(response);
   } catch (error) {
     console.error('Error checking if nodes exist:', error);
     res.status(500).json({ error: error.message });

@@ -372,5 +372,227 @@ exports.focusNodeInOutliner = async (req, res) => {
   }
 };
 
+/**
+ * Get all nodes and links in the local graph pool
+ * GET /api/local-graph/pool
+ */
+exports.getLocalGraphPool = async (req, res) => {
+    try {
+      const db = req.db;
+      
+      // Get all nodes in the pool with their details
+      const poolNodes = await db.all(`
+        SELECT 
+          lgp.*,
+          n.content,
+          n.content_zh,
+          n.parent_id,
+          n.position,
+          n.created_at as node_created_at,
+          n.updated_at as node_updated_at
+        FROM local_graph_pool lgp
+        JOIN nodes n ON lgp.node_id = n.id
+        ORDER BY lgp.added_at DESC
+      `);
+      
+      // Get all links in the pool with their details
+      const poolLinks = await db.all(`
+        SELECT 
+          lgpl.*,
+          l.from_node_id,
+          l.to_node_id,
+          COALESCE(lgpl.weight_override, l.weight) as effective_weight,
+          l.description,
+          l.created_at as link_created_at,
+          l.updated_at as link_updated_at
+        FROM local_graph_pool_links lgpl
+        JOIN links l ON lgpl.link_id = l.id
+        ORDER BY lgpl.added_at DESC
+      `);
+      
+      // Filter links to only include those where both nodes are in the pool
+      const poolNodeIds = new Set(poolNodes.map(pn => pn.node_id));
+      const validPoolLinks = poolLinks.filter(link => 
+        poolNodeIds.has(link.from_node_id) && poolNodeIds.has(link.to_node_id)
+      );
+      
+      res.json({
+        nodes: poolNodes,
+        links: validPoolLinks,
+        stats: {
+          nodeCount: poolNodes.length,
+          linkCount: validPoolLinks.length
+        }
+      });
+    } catch (error) {
+      console.error('Error getting local graph pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  /**
+   * Add a node to the local graph pool
+   * POST /api/local-graph/pool/nodes
+   */
+  exports.addNodeToPool = async (req, res) => {
+    try {
+      const { nodeId, notes } = req.body;
+      
+      if (!nodeId) {
+        return res.status(400).json({ error: 'Node ID is required' });
+      }
+      
+      const db = req.db;
+      const now = Date.now();
+      
+      // Check if node exists
+      const node = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+      if (!node) {
+        return res.status(404).json({ error: 'Node not found' });
+      }
+      
+      // Check if already in pool
+      const existing = await db.get('SELECT id FROM local_graph_pool WHERE node_id = ?', nodeId);
+      if (existing) {
+        return res.status(409).json({ error: 'Node already in local graph pool' });
+      }
+      
+      // Add to pool
+      const poolId = uuidv4();
+      await db.run(`
+        INSERT INTO local_graph_pool (id, node_id, added_at, notes)
+        VALUES (?, ?, ?, ?)
+      `, [poolId, nodeId, now, notes]);
+      
+      // Get the created pool entry
+      const poolEntry = await db.get('SELECT * FROM local_graph_pool WHERE id = ?', poolId);
+      
+      res.status(201).json(poolEntry);
+    } catch (error) {
+      console.error('Error adding node to pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  /**
+   * Remove a node from the local graph pool
+   * DELETE /api/local-graph/pool/nodes/:nodeId
+   */
+  exports.removeNodeFromPool = async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const db = req.db;
+      
+      // Remove from pool
+      const result = await db.run('DELETE FROM local_graph_pool WHERE node_id = ?', nodeId);
+      
+      if (result.changes === 0) {
+        return res.status(404).json({ error: 'Node not found in pool' });
+      }
+      
+      res.json({ success: true, message: 'Node removed from local graph pool' });
+    } catch (error) {
+      console.error('Error removing node from pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  /**
+   * Add a link to the local graph pool
+   * POST /api/local-graph/pool/links
+   */
+  exports.addLinkToPool = async (req, res) => {
+    try {
+      const { linkId, weightOverride } = req.body;
+      
+      if (!linkId) {
+        return res.status(400).json({ error: 'Link ID is required' });
+      }
+      
+      const db = req.db;
+      const now = Date.now();
+      
+      // Check if link exists
+      const link = await db.get('SELECT * FROM links WHERE id = ?', linkId);
+      if (!link) {
+        return res.status(404).json({ error: 'Link not found' });
+      }
+      
+      // Check if both nodes are in the pool
+      const fromNodeInPool = await db.get('SELECT id FROM local_graph_pool WHERE node_id = ?', link.from_node_id);
+      const toNodeInPool = await db.get('SELECT id FROM local_graph_pool WHERE node_id = ?', link.to_node_id);
+      
+      if (!fromNodeInPool || !toNodeInPool) {
+        return res.status(400).json({ error: 'Both nodes must be in the pool before adding the link' });
+      }
+      
+      // Check if already in pool
+      const existing = await db.get('SELECT id FROM local_graph_pool_links WHERE link_id = ?', linkId);
+      if (existing) {
+        return res.status(409).json({ error: 'Link already in local graph pool' });
+      }
+      
+      // Add to pool
+      const poolLinkId = uuidv4();
+      await db.run(`
+        INSERT INTO local_graph_pool_links (id, link_id, added_at, weight_override)
+        VALUES (?, ?, ?, ?)
+      `, [poolLinkId, linkId, now, weightOverride]);
+      
+      // Get the created pool entry
+      const poolEntry = await db.get('SELECT * FROM local_graph_pool_links WHERE id = ?', poolLinkId);
+      
+      res.status(201).json(poolEntry);
+    } catch (error) {
+      console.error('Error adding link to pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  /**
+   * Remove a link from the local graph pool
+   * DELETE /api/local-graph/pool/links/:linkId
+   */
+  exports.removeLinkFromPool = async (req, res) => {
+    try {
+      const { linkId } = req.params;
+      const db = req.db;
+      
+      // Remove from pool
+      const result = await db.run('DELETE FROM local_graph_pool_links WHERE link_id = ?', linkId);
+      
+      if (result.changes === 0) {
+        return res.status(404).json({ error: 'Link not found in pool' });
+      }
+      
+      res.json({ success: true, message: 'Link removed from local graph pool' });
+    } catch (error) {
+      console.error('Error removing link from pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  /**
+   * Check if a node is in the local graph pool
+   * GET /api/local-graph/pool/check-node/:nodeId
+   */
+  exports.checkNodeInPool = async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const db = req.db;
+      
+      const poolEntry = await db.get('SELECT * FROM local_graph_pool WHERE node_id = ?', nodeId);
+      
+      res.json({
+        inPool: !!poolEntry,
+        poolEntry: poolEntry || null
+      });
+    } catch (error) {
+      console.error('Error checking node in pool:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+
 // Export cache invalidation function for use by link routes
 exports.invalidateDistanceCache = invalidateDistanceCache;
+

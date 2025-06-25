@@ -521,285 +521,6 @@ try {
     console.log('Some sequence_id indices may already exist:', error.message);
   }
 
-  // Add indices for better performance
-  await db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_task_categories_name ON task_categories(name);
-    CREATE INDEX IF NOT EXISTS idx_task_category_assignments_task_id ON task_category_assignments(task_id);
-    CREATE INDEX IF NOT EXISTS idx_task_category_assignments_category_id ON task_category_assignments(category_id);
-  `);
-
-  // Create code_entities table - stores code elements (functions, variables, classes)
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_entities (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL, -- 'function', 'variable', 'class', 'method', 'property', 'module'
-      file_path TEXT NOT NULL,
-      line_number INTEGER,
-      column_number INTEGER,
-      scope TEXT, -- 'global', 'local', 'class', 'module'
-      language TEXT DEFAULT 'javascript',
-      signature TEXT, -- function signature, variable type, etc.
-      documentation TEXT, -- comments, JSDoc, etc.
-      complexity_score REAL DEFAULT 0,
-      parameters TEXT, -- JSON string for function parameters
-      return_type TEXT,
-      access_modifier TEXT, -- 'public', 'private', 'protected'
-      is_async BOOLEAN DEFAULT 0,
-      is_static BOOLEAN DEFAULT 0,
-      is_exported BOOLEAN DEFAULT 0,
-      properties TEXT, -- JSON string for additional metadata
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER
-    )
-  `);
-
-  // Create code_relationships table - stores relationships between code entities
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_relationships (
-      id TEXT PRIMARY KEY,
-      source_entity_id TEXT NOT NULL,
-      target_entity_id TEXT NOT NULL,
-      relationship_type TEXT NOT NULL, -- 'calls', 'inherits', 'implements', 'imports', 'uses', 'defines', 'modifies'
-      relationship_strength REAL DEFAULT 1.0, -- How strong the relationship is (1-10)
-      context TEXT, -- Additional context about the relationship
-      file_path TEXT, -- Where this relationship occurs
-      line_number INTEGER, -- Where in the file
-      call_count INTEGER DEFAULT 1, -- How many times this relationship occurs
-      properties TEXT, -- JSON string for additional metadata
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (source_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE,
-      FOREIGN KEY (target_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE,
-      UNIQUE(source_entity_id, target_entity_id, relationship_type, file_path, line_number)
-    )
-  `);
-
-  // Create code_projects table - group entities by project/module
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_projects (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT,
-      base_path TEXT NOT NULL,
-      language TEXT DEFAULT 'javascript',
-      framework TEXT, -- 'react', 'vue', 'node', etc.
-      version TEXT,
-      dependencies TEXT, -- JSON string of dependencies
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER
-    )
-  `);
-
-  // Create code_project_entities table - link entities to projects
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_project_entities (
-      id TEXT PRIMARY KEY,
-      project_id TEXT NOT NULL,
-      entity_id TEXT NOT NULL,
-      created_at INTEGER,
-      FOREIGN KEY (project_id) REFERENCES code_projects (id) ON DELETE CASCADE,
-      FOREIGN KEY (entity_id) REFERENCES code_entities (id) ON DELETE CASCADE,
-      UNIQUE(project_id, entity_id)
-    )
-  `);
-
-  // Create code_analysis_results table - store computed metrics
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_analysis_results (
-      id TEXT PRIMARY KEY,
-      entity_id TEXT,
-      project_id TEXT,
-      analysis_type TEXT NOT NULL, -- 'centrality', 'complexity', 'coupling', 'cohesion'
-      metric_name TEXT NOT NULL, -- 'fan_in', 'fan_out', 'cyclomatic_complexity', etc.
-      metric_value REAL,
-      analysis_data TEXT, -- JSON string with detailed analysis
-      computed_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (entity_id) REFERENCES code_entities (id) ON DELETE CASCADE,
-      FOREIGN KEY (project_id) REFERENCES code_projects (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Add indices for code graph tables
-  await db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_code_entities_type ON code_entities(type);
-    CREATE INDEX IF NOT EXISTS idx_code_entities_file_path ON code_entities(file_path);
-    CREATE INDEX IF NOT EXISTS idx_code_entities_name ON code_entities(name);
-    CREATE INDEX IF NOT EXISTS idx_code_relationships_source ON code_relationships(source_entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_relationships_target ON code_relationships(target_entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_relationships_type ON code_relationships(relationship_type);
-    CREATE INDEX IF NOT EXISTS idx_code_project_entities_project ON code_project_entities(project_id);
-    CREATE INDEX IF NOT EXISTS idx_code_project_entities_entity ON code_project_entities(entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_analysis_entity ON code_analysis_results(entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_analysis_type ON code_analysis_results(analysis_type);
-  `);
-
-  // Create code_expressions table - stores individual expressions within code
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_expressions (
-      id TEXT PRIMARY KEY,
-      parent_entity_id TEXT NOT NULL, -- Links to the function/method containing this expression
-      expression_text TEXT NOT NULL, -- The actual code expression
-      expression_type TEXT NOT NULL, -- 'assignment', 'method_call', 'binary_operation', 'unary_operation', 'literal'
-      line_number INTEGER NOT NULL,
-      column_start INTEGER,
-      column_end INTEGER,
-      complexity_level TEXT DEFAULT 'simple', -- 'simple', 'medium', 'complex'
-      side_effects TEXT DEFAULT 'none', -- 'none', 'local', 'external'
-      data_type TEXT, -- 'string', 'number', 'boolean', 'object', 'array', 'function'
-      properties TEXT, -- JSON string for additional metadata
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create code_variables table - stores variable declarations and references
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_variables (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      declaration_type TEXT, -- 'const', 'let', 'var', 'parameter', 'property'
-      data_type TEXT, -- 'string', 'number', 'boolean', 'object', 'array', 'function'
-      scope_type TEXT, -- 'global', 'local', 'parameter', 'closure'
-      parent_entity_id TEXT NOT NULL,
-      line_number INTEGER,
-      column_start INTEGER,
-      column_end INTEGER,
-      initial_value_type TEXT, -- 'literal', 'function_call', 'expression', 'parameter'
-      mutability TEXT DEFAULT 'mutable', -- 'immutable', 'mutable'
-      is_exported BOOLEAN DEFAULT 0,
-      properties TEXT, -- JSON string for additional metadata
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create code_method_calls table - stores method/function calls
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_method_calls (
-      id TEXT PRIMARY KEY,
-      method_name TEXT NOT NULL,
-      call_type TEXT, -- 'direct', 'chained', 'nested'
-      expression_type TEXT, -- Move this OUT of properties - it's important!
-      module_source TEXT, -- 'built-in', 'external', 'local', 'third-party'
-      chain_position TEXT, -- 'first', 'intermediate', 'last', 'standalone'
-      arguments_count INTEGER DEFAULT 0,
-      parent_expression_id TEXT,
-      parent_entity_id TEXT NOT NULL,
-      line_number INTEGER,
-      column_start INTEGER,
-      column_end INTEGER,
-      return_type TEXT,
-      is_async BOOLEAN DEFAULT 0,
-      parameters_used TEXT, -- Move this OUT of properties
-      external_dependencies TEXT, -- Move this OUT of properties  
-      builtin_dependencies TEXT, -- Move this OUT of properties
-      properties TEXT, -- JSON string for truly optional metadata only
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (parent_expression_id) REFERENCES code_expressions (id) ON DELETE CASCADE,
-      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create code_data_flow table - tracks data flow between variables and expressions
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS code_data_flow (
-      id TEXT PRIMARY KEY,
-      source_type TEXT NOT NULL, -- 'variable', 'method_call', 'expression', 'parameter'
-      source_id TEXT NOT NULL, -- ID of the source (variable, method call, etc.)
-      target_type TEXT NOT NULL, -- 'variable', 'method_call', 'expression'
-      target_id TEXT NOT NULL, -- ID of the target
-      flow_type TEXT NOT NULL, -- 'assignment', 'parameter_passing', 'return_value', 'transformation'
-      transformation_applied TEXT, -- Description of any transformation (e.g., 'toLowerCase', 'parseInt')
-      line_number INTEGER,
-      parent_entity_id TEXT NOT NULL,
-      properties TEXT, -- JSON string for additional metadata
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER,
-      FOREIGN KEY (parent_entity_id) REFERENCES code_entities (id) ON DELETE CASCADE
-    )
-  `);
-
-  // ADD THE NEW TABLE HERE - RIGHT AFTER code_data_flow
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS expression_relationships (
-      id TEXT PRIMARY KEY,
-      source_type TEXT NOT NULL,
-      source_name TEXT NOT NULL,
-      target_type TEXT NOT NULL,
-      target_name TEXT NOT NULL,
-      relationship_type TEXT NOT NULL,
-      description TEXT,
-      transformation TEXT,
-      order_sequence INTEGER DEFAULT 1,
-      entity_id TEXT,
-      line_number INTEGER,
-      project_id TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      sequence_id INTEGER,
-      FOREIGN KEY (entity_id) REFERENCES code_entities(id) ON DELETE CASCADE,
-      FOREIGN KEY (project_id) REFERENCES code_projects(id) ON DELETE CASCADE
-    )
-  `);
-
-  // Add indices for expression analysis tables
-  await db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_code_expressions_parent ON code_expressions(parent_entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_expressions_line ON code_expressions(line_number);
-    CREATE INDEX IF NOT EXISTS idx_code_variables_parent ON code_variables(parent_entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_variables_name ON code_variables(name);
-    CREATE INDEX IF NOT EXISTS idx_code_method_calls_parent ON code_method_calls(parent_entity_id);
-    CREATE INDEX IF NOT EXISTS idx_code_method_calls_method ON code_method_calls(method_name);
-    CREATE INDEX IF NOT EXISTS idx_code_data_flow_source ON code_data_flow(source_type, source_id);
-    CREATE INDEX IF NOT EXISTS idx_code_data_flow_target ON code_data_flow(target_type, target_id);
-  `);
-
-  // NOW create triggers and indices for ALL code graph tables (including the ones we just created)
-  const codeGraphTables = [
-    'code_entities',
-    'code_relationships',
-    'code_projects',
-    // 'code_project_entities',
-    'code_analysis_results',
-    'code_expressions',
-    'code_variables',
-    'code_method_calls',
-    'code_data_flow'
-  ];
-
-  // Create triggers for auto-assigning sequence IDs
-  for (const table of codeGraphTables) {
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
-      AFTER INSERT ON ${table}
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE ${table} 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
-        WHERE id = NEW.id;
-      END;
-    `);
-    console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
-  }
-
-  // Create sequence_id indices for all code graph tables
-  for (const table of codeGraphTables) {
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
-    console.log(`Created sequence_id index for ${table} table`);
-  }
-
   // Run migration for existing databases
   await migrateCodeMethodCallsTable(vaultName);
 
@@ -1117,6 +838,40 @@ try {
   } catch (error) {
     console.log('Enhanced code graph triggers may already exist:', error.message);
   }
+
+  // Create local graph pool tables
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS local_graph_pool (
+      id TEXT PRIMARY KEY,
+      node_id TEXT NOT NULL,
+      added_at INTEGER DEFAULT (strftime('%s', 'now')),
+      added_by TEXT,
+      notes TEXT,
+      sequence_id INTEGER,
+      FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE,
+      UNIQUE(node_id)
+    )
+  `);
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS local_graph_pool_links (
+      id TEXT PRIMARY KEY,
+      link_id TEXT NOT NULL,
+      added_at INTEGER DEFAULT (strftime('%s', 'now')),
+      added_by TEXT,
+      weight_override REAL,
+      sequence_id INTEGER,
+      FOREIGN KEY (link_id) REFERENCES links (id) ON DELETE CASCADE,
+      UNIQUE(link_id)
+    )
+  `);
+
+  // Add indices
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_local_graph_pool_node ON local_graph_pool(node_id);
+    CREATE INDEX IF NOT EXISTS idx_local_graph_pool_added_at ON local_graph_pool(added_at);
+    CREATE INDEX IF NOT EXISTS idx_local_graph_pool_links_link ON local_graph_pool_links(link_id);
+  `);
 
   return db;
 }

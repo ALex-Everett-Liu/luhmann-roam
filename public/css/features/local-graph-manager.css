@@ -791,3 +791,54 @@
       font-size: 48px;
     }
   }
+  
+  /* Local Graph Pool Indicators */
+  .local-graph-pool-node {
+    position: relative;
+  }
+  
+  .local-graph-pool-node::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, #4CAF50, #45a049);
+    border-radius: 0 2px 2px 0;
+  }
+  
+  .local-graph-pool-link {
+    transition: all 0.2s ease;
+  }
+  
+  .local-graph-pool-link:hover {
+    background-color: rgba(76, 175, 80, 0.2) !important;
+  }
+  
+  .local-graph-node-indicator {
+    animation: pulse-indicator 2s infinite;
+  }
+  
+  @keyframes pulse-indicator {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  
+  /* Tooltip styles for pool indicators */
+  .local-graph-pool-node .local-graph-node-indicator:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 5px;
+  }

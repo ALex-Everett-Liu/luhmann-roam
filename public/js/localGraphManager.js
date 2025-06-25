@@ -9,6 +9,7 @@ const LocalGraphManager = (function() {
     let maxDistance = 5;
     let maxDepth = 3;
     let isInitialized = false;
+    let nodePoolStatus = new Map(); // Track which nodes are in pool
     
     function initialize() {
         if (isInitialized) {
@@ -383,6 +384,12 @@ const LocalGraphManager = (function() {
             updateStats();
             updateDistanceLevels();
             
+            // Load pool status for all nodes
+            if (graphData && graphData.nodes) {
+                graphData.nodes.forEach(node => checkNodePoolStatus(node.id));
+                setTimeout(updateNodePoolIndicators, 500);
+            }
+            
         } catch (error) {
             console.error('Error exploring graph:', error);
             alert('Error loading graph data');
@@ -469,6 +476,7 @@ const LocalGraphManager = (function() {
             
             const isCenter = node.id === centerNodeId;
             const distance = distances[node.id] || 0;
+            const isInPool = nodePoolStatus.get(node.id) || false;
             
             // Node circle
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -476,14 +484,33 @@ const LocalGraphManager = (function() {
             circle.setAttribute('cy', pos.y);
             circle.setAttribute('r', isCenter ? 12 : 8);
             circle.setAttribute('fill', isCenter ? '#e74c3c' : getDistanceColor(distance));
-            circle.setAttribute('stroke', '#333');
-            circle.setAttribute('stroke-width', '2');
+            circle.setAttribute('stroke', isInPool ? '#4CAF50' : '#333');
+            circle.setAttribute('stroke-width', isInPool ? '3' : '2');
+            circle.setAttribute('data-node-id', node.id);
             circle.style.cursor = 'pointer';
             
             // Add click handler
             circle.addEventListener('click', () => selectNode(node));
             
+            // Add right-click context menu
+            circle.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showNodeContextMenu(e, node);
+            });
+            
             svg.appendChild(circle);
+            
+            // Pool indicator
+            if (isInPool) {
+                const indicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                indicator.setAttribute('cx', pos.x + 8);
+                indicator.setAttribute('cy', pos.y - 8);
+                indicator.setAttribute('r', 3);
+                indicator.setAttribute('fill', '#4CAF50');
+                indicator.setAttribute('stroke', '#fff');
+                indicator.setAttribute('stroke-width', '1');
+                svg.appendChild(indicator);
+            }
             
             // Node label
             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -514,15 +541,24 @@ const LocalGraphManager = (function() {
     function selectNode(node) {
         const infoDiv = document.getElementById('selected-node-info');
         const distance = graphData.distances[node.id] || 0;
+        const isInPool = nodePoolStatus.get(node.id) || false;
         
         infoDiv.innerHTML = `
             <div class="selected-node">
                 <h5>${node.content || 'Untitled'}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
                 <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
+                <p class="node-pool-status" style="color: ${isInPool ? '#4CAF50' : '#666'}; font-size: 12px; margin: 5px 0;">
+                    ${isInPool ? '✓ In Local Graph Pool' : '○ Not in Pool'}
+                </p>
                 <div class="node-actions">
                     <button onclick="LocalGraphManager.focusInOutliner('${node.id}')" class="focus-btn">
                         Focus in Outliner
+                    </button>
+                    <button onclick="LocalGraphManager.${isInPool ? 'removeNodeFromPool' : 'addNodeToPool'}('${node.id}')" 
+                            class="${isInPool ? 'secondary-btn' : 'primary-btn'}" 
+                            style="margin-left: 8px; padding: 6px 12px; font-size: 12px;">
+                        ${isInPool ? 'Remove from Pool' : 'Add to Pool'}
                     </button>
                 </div>
             </div>
@@ -931,6 +967,169 @@ const LocalGraphManager = (function() {
         }
     }
     
+    // Add pool management functions
+    async function addNodeToPool(nodeId, notes = '') {
+        try {
+            const response = await fetch('/api/local-graph/pool/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nodeId, notes })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to add node to pool');
+            }
+            
+            // Update local status
+            nodePoolStatus.set(nodeId, true);
+            
+            // Update UI
+            updateNodePoolIndicators();
+            showNotification('Node added to Local Graph Pool!', 'success');
+            
+            return true;
+        } catch (error) {
+            console.error('Error adding node to pool:', error);
+            showNotification(error.message || 'Error adding node to pool', 'error');
+            return false;
+        }
+    }
+    
+    async function removeNodeFromPool(nodeId) {
+        try {
+            const response = await fetch(`/api/local-graph/pool/nodes/${nodeId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to remove node from pool');
+            }
+            
+            // Update local status
+            nodePoolStatus.set(nodeId, false);
+            
+            // Update UI
+            updateNodePoolIndicators();
+            showNotification('Node removed from Local Graph Pool!', 'success');
+            
+            return true;
+        } catch (error) {
+            console.error('Error removing node from pool:', error);
+            showNotification(error.message || 'Error removing node from pool', 'error');
+            return false;
+        }
+    }
+    
+    async function checkNodePoolStatus(nodeId) {
+        try {
+            const response = await fetch(`/api/local-graph/pool/check-node/${nodeId}`);
+            const result = await response.json();
+            
+            nodePoolStatus.set(nodeId, result.inPool);
+            return result.inPool;
+        } catch (error) {
+            console.error('Error checking node pool status:', error);
+            return false;
+        }
+    }
+    
+    function updateNodePoolIndicators() {
+        // Add visual indicators to nodes that are in the pool
+        const nodeElements = document.querySelectorAll('#local-graph-canvas circle[data-node-id]');
+        nodeElements.forEach(element => {
+            const nodeId = element.getAttribute('data-node-id');
+            if (nodeId && nodePoolStatus.has(nodeId)) {
+                if (nodePoolStatus.get(nodeId)) {
+                    element.setAttribute('stroke', '#4CAF50');
+                    element.setAttribute('stroke-width', '4');
+                } else {
+                    element.setAttribute('stroke', '#333');
+                    element.setAttribute('stroke-width', '2');
+                }
+            }
+        });
+    }
+    
+    function showNodeContextMenu(event, node) {
+        // Remove existing context menu
+        const existingMenu = document.getElementById('node-context-menu');
+        if (existingMenu) {
+            existingMenu.remove();
+        }
+        
+        const isInPool = nodePoolStatus.get(node.id) || false;
+        
+        // Create context menu
+        const menu = document.createElement('div');
+        menu.id = 'node-context-menu';
+        menu.style.cssText = `
+            position: fixed;
+            top: ${event.clientY}px;
+            left: ${event.clientX}px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            padding: 5px 0;
+            min-width: 150px;
+        `;
+        
+        const menuItems = [
+            {
+                text: isInPool ? 'Remove from Pool' : 'Add to Pool',
+                action: () => isInPool ? removeNodeFromPool(node.id) : addNodeToPool(node.id),
+                style: `color: ${isInPool ? '#d73a49' : '#28a745'};`
+            },
+            {
+                text: 'Focus in Outliner',
+                action: () => focusInOutliner(node.id)
+            },
+            {
+                text: 'Set as Center',
+                action: () => {
+                    centerNodeId = node.id;
+                    document.getElementById('current-center-node').textContent = node.content || 'Untitled';
+                    exploreGraph();
+                }
+            }
+        ];
+        
+        menuItems.forEach(item => {
+            const menuItem = document.createElement('div');
+            menuItem.style.cssText = `
+                padding: 8px 16px;
+                cursor: pointer;
+                font-size: 14px;
+                ${item.style || ''}
+            `;
+            menuItem.textContent = item.text;
+            menuItem.addEventListener('click', () => {
+                item.action();
+                menu.remove();
+            });
+            menuItem.addEventListener('mouseenter', () => {
+                menuItem.style.backgroundColor = '#f5f5f5';
+            });
+            menuItem.addEventListener('mouseleave', () => {
+                menuItem.style.backgroundColor = '';
+            });
+            menu.appendChild(menuItem);
+        });
+        
+        document.body.appendChild(menu);
+        
+        // Remove menu when clicking elsewhere
+        setTimeout(() => {
+            document.addEventListener('click', function removeMenu() {
+                menu.remove();
+                document.removeEventListener('click', removeMenu);
+            });
+        }, 100);
+    }
+    
     // Public API
     return {
         initialize,
@@ -939,6 +1138,8 @@ const LocalGraphManager = (function() {
         isVisible,
         focusInOutliner,
         createNodeFromSearch,
+        addNodeToPool,
+        removeNodeFromPool,
         isInitialized: () => isInitialized
     };
 })();

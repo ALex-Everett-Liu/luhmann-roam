@@ -75,6 +75,12 @@ const PluginAwareInitializer = (function() {
                 initialize: initializeGraphAnalysisVisualizer,
                 pluginId: 'graphAnalysisVisualizer'
             },
+
+            'localGraphIndicators': {
+                name: 'Local Graph Indicators',
+                initialize: initializeLocalGraphIndicators,
+                pluginId: 'localGraphManager' // Same plugin ID as the main manager
+            },
             
             'enhancedCodeGraphManager': {
                 name: 'Enhanced Code Graph Manager',
@@ -260,6 +266,16 @@ const PluginAwareInitializer = (function() {
                 addLocalGraphButton();
             } catch (error) {
                 console.error('Failed to initialize LocalGraphManager:', error);
+            }
+        }
+    }
+
+    function initializeLocalGraphIndicators() {
+        if (window.LocalGraphIndicators && !window.LocalGraphIndicators.isInitialized()) {
+            try {
+                LocalGraphIndicators.initialize();
+            } catch (error) {
+                console.error('Failed to initialize LocalGraphIndicators:', error);
             }
         }
     }
