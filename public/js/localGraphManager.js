@@ -1243,25 +1243,107 @@ const LocalGraphManager = (function() {
     function updateDistanceLevels() {
         const levelsDiv = document.getElementById('distance-levels');
         const distances = graphData.distances || {};
+        const depths = graphData.depths || {}; // Get depths from response
         
-        // Group nodes by distance
-        const levelGroups = {};
-        Object.entries(distances).forEach(([nodeId, distance]) => {
-            const level = Math.round(distance * 2) / 2; // Round to nearest 0.5
-            if (!levelGroups[level]) {
-                levelGroups[level] = 0;
+        // Group nodes by depth (integer)
+        const depthGroups = {};
+        Object.entries(depths).forEach(([nodeId, depth]) => {
+            if (!depthGroups[depth]) {
+                depthGroups[depth] = 0;
             }
-            levelGroups[level]++;
+            depthGroups[depth]++;
         });
         
-        const sortedLevels = Object.keys(levelGroups).sort((a, b) => parseFloat(a) - parseFloat(b));
+        // Group nodes by distance (decimal, rounded to nearest 0.1)
+        const distanceGroups = {};
+        Object.entries(distances).forEach(([nodeId, distance]) => {
+            const level = Math.round(distance * 10) / 10; // Round to nearest 0.1
+            if (!distanceGroups[level]) {
+                distanceGroups[level] = 0;
+            }
+            distanceGroups[level]++;
+        });
         
-        levelsDiv.innerHTML = sortedLevels.map(level => `
-            <div class="distance-level">
-                <span class="level-label">${level}:</span>
-                <span class="level-count">${levelGroups[level]} nodes</span>
+        const sortedDepths = Object.keys(depthGroups).sort((a, b) => parseInt(a) - parseInt(b));
+        const sortedDistances = Object.keys(distanceGroups).sort((a, b) => parseFloat(a) - parseFloat(b));
+        
+        // Create depth levels section
+        const depthLevelsHtml = `
+            <div class="levels-section">
+                <h5 style="margin: 0 0 8px 0; color: #24292e; font-size: 14px; font-weight: 600;">
+                    Depth Levels (Hops)
+                </h5>
+                <div class="depth-levels">
+                    ${sortedDepths.map(depth => `
+                        <div class="distance-level">
+                            <span class="level-label">${depth}:</span>
+                            <span class="level-count">${depthGroups[depth]} nodes</span>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-        `).join('');
+        `;
+        
+        // Create distance levels section with collapsible functionality
+        const showTop = 10;
+        const visibleDistances = sortedDistances.slice(0, showTop);
+        const hiddenDistances = sortedDistances.slice(showTop);
+        
+        const distanceLevelsHtml = `
+            <div class="levels-section" style="margin-top: 20px;">
+                <h5 style="margin: 0 0 8px 0; color: #24292e; font-size: 14px; font-weight: 600;">
+                    Distance Levels (Weights)
+                </h5>
+                <div class="distance-levels">
+                    ${visibleDistances.map(distance => `
+                        <div class="distance-level">
+                            <span class="level-label">${distance}:</span>
+                            <span class="level-count">${distanceGroups[distance]} nodes</span>
+                        </div>
+                    `).join('')}
+                    
+                    ${hiddenDistances.length > 0 ? `
+                        <div id="hidden-distance-levels" style="display: none;">
+                            ${hiddenDistances.map(distance => `
+                                <div class="distance-level">
+                                    <span class="level-label">${distance}:</span>
+                                    <span class="level-count">${distanceGroups[distance]} nodes</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button id="toggle-distance-levels" class="secondary-btn" style="
+                            width: 100%; 
+                            margin-top: 8px; 
+                            padding: 4px 8px; 
+                            font-size: 12px;
+                            text-align: center;
+                        ">
+                            Show ${hiddenDistances.length} More
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        levelsDiv.innerHTML = depthLevelsHtml + distanceLevelsHtml;
+        
+        // Add click handler for toggle button
+        const toggleBtn = document.getElementById('toggle-distance-levels');
+        const hiddenLevels = document.getElementById('hidden-distance-levels');
+        
+        if (toggleBtn && hiddenLevels) {
+            let isExpanded = false;
+            toggleBtn.addEventListener('click', () => {
+                isExpanded = !isExpanded;
+                if (isExpanded) {
+                    hiddenLevels.style.display = 'block';
+                    toggleBtn.textContent = 'Show Less';
+                } else {
+                    hiddenLevels.style.display = 'none';
+                    toggleBtn.textContent = `Show ${hiddenDistances.length} More`;
+                }
+            });
+        }
     }
     
     function changeCenterNode() {

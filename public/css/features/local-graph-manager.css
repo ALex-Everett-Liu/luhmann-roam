@@ -1488,3 +1488,105 @@
       color: #f1f5f9;
     }
   }
+  
+  /* Enhanced Distance Levels Styling */
+  .levels-section {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+  }
+  
+  .levels-section h5 {
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .levels-section h5::before {
+    content: '';
+    width: 3px;
+    height: 12px;
+    background: linear-gradient(to bottom, #3b82f6, #1e40af);
+    border-radius: 2px;
+  }
+  
+  .depth-levels .distance-level,
+  .distance-levels .distance-level {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  
+  .depth-levels .level-label {
+    font-weight: 600;
+    color: #059669;
+  }
+  
+  .distance-levels .level-label {
+    font-weight: 600;
+    color: #3b82f6;
+  }
+  
+  .level-count {
+    color: #64748b;
+    font-size: 12px;
+  }
+  
+  #toggle-distance-levels {
+    transition: all 0.2s ease;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+  }
+  
+  #toggle-distance-levels:hover {
+    background: #cbd5e1;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+  }
+  
+  /* Dark mode support for new sections */
+  @media (prefers-color-scheme: dark) {
+    .levels-section {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    
+    .levels-section h5 {
+      color: #f1f5f9;
+    }
+    
+    .levels-section h5::before {
+      background: linear-gradient(to bottom, #60a5fa, #3b82f6);
+    }
+    
+    .depth-levels .level-label {
+      color: #10b981;
+    }
+    
+    .distance-levels .level-label {
+      color: #60a5fa;
+    }
+    
+    .level-count {
+      color: #94a3b8;
+    }
+    
+    #toggle-distance-levels {
+      background: #334155;
+      border-color: #475569;
+      color: #f1f5f9;
+    }
+    
+    #toggle-distance-levels:hover {
+      background: #475569;
+      border-color: #64748b;
+    }
+  }

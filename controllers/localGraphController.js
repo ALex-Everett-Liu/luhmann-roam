@@ -11,13 +11,16 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Calculate distances from center node using Dijkstra's algorithm
+ * Modified to use OR condition: include nodes that satisfy distance <= maxDistance OR depth < maxDepth
  */
 function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5) {
   const distances = new Map();
+  const depths = new Map(); // Track depth separately
   const visited = new Set();
   const queue = [{ nodeId: centerNodeId, distance: 0, depth: 0 }];
   
   distances.set(centerNodeId, 0);
+  depths.set(centerNodeId, 0);
   
   // Build adjacency list for faster lookup - TREAT ALL LINKS AS BIDIRECTIONAL
   const adjacencyList = new Map();
@@ -46,33 +49,38 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
     queue.sort((a, b) => a.distance - b.distance);
     const current = queue.shift();
     
+    // CHANGED: Use OR condition - exclude only if BOTH distance and depth exceed limits
     if (visited.has(current.nodeId) || 
-        current.distance > maxDistance || 
-        current.depth >= maxDepth) {
+        (current.distance > maxDistance && current.depth >= maxDepth)) {
       continue;
     }
     
     visited.add(current.nodeId);
+    depths.set(current.nodeId, current.depth);
     
     // Get neighbors
     const neighbors = adjacencyList.get(current.nodeId) || [];
     
     for (const neighbor of neighbors) {
       const newDistance = current.distance + neighbor.weight;
+      const newDepth = current.depth + 1;
       
-      if (newDistance <= maxDistance && 
+      // CHANGED: Include neighbor if it satisfies either condition
+      if ((newDistance <= maxDistance || newDepth < maxDepth) && 
           (!distances.has(neighbor.nodeId) || newDistance < distances.get(neighbor.nodeId))) {
         distances.set(neighbor.nodeId, newDistance);
+        depths.set(neighbor.nodeId, newDepth);
         queue.push({
           nodeId: neighbor.nodeId,
           distance: newDistance,
-          depth: current.depth + 1
+          depth: newDepth
         });
       }
     }
   }
   
-  return distances;
+  // Return both distances and depths
+  return { distances, depths };
 }
 
 /**
@@ -86,20 +94,20 @@ function getCachedDistances(centerNodeId, links, maxDistance, maxDepth) {
   if (distanceCache.has(cacheKey)) {
     const cached = distanceCache.get(cacheKey);
     if (now - cached.timestamp < CACHE_DURATION) {
-      return cached.distances;
+      return cached.result;
     }
   }
   
-  // Calculate new distances
-  const distances = calculateDistances(centerNodeId, links, maxDistance, maxDepth);
+  // Calculate new distances and depths
+  const result = calculateDistances(centerNodeId, links, maxDistance, maxDepth);
   
   // Update cache
   distanceCache.set(cacheKey, {
-    distances,
+    result,
     timestamp: now
   });
   
-  return distances;
+  return result;
 }
 
 /**
@@ -132,8 +140,8 @@ exports.getLocalGraph = async (req, res) => {
     // Get all links for distance calculation
     const links = await db.all('SELECT * FROM links');
     
-    // Calculate distances from center node
-    const distances = getCachedDistances(
+    // Calculate distances and depths from center node
+    const { distances, depths } = getCachedDistances(
       centerNodeId, 
       links, 
       parseFloat(maxDistance), 
@@ -149,6 +157,7 @@ exports.getLocalGraph = async (req, res) => {
         nodes: [centerNode],
         links: [],
         distances: { [centerNodeId]: 0 },
+        depths: { [centerNodeId]: 0 },
         stats: {
           nodeCount: 1,
           linkCount: 0,
@@ -168,10 +177,14 @@ exports.getLocalGraph = async (req, res) => {
       distances.has(link.from_node_id) && distances.has(link.to_node_id)
     );
     
-    // Convert distances Map to object for JSON response
+    // Convert distances and depths Maps to objects for JSON response
     const distancesObject = {};
+    const depthsObject = {};
     distances.forEach((distance, nodeId) => {
       distancesObject[nodeId] = distance;
+    });
+    depths.forEach((depth, nodeId) => {
+      depthsObject[nodeId] = depth;
     });
     
     res.json({
@@ -179,6 +192,7 @@ exports.getLocalGraph = async (req, res) => {
       nodes,
       links: linksInRange,
       distances: distancesObject,
+      depths: depthsObject, // Include depths in response
       stats: {
         nodeCount: nodes.length,
         linkCount: linksInRange.length,
