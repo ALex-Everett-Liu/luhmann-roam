@@ -569,13 +569,14 @@ const LocalGraphManager = (function() {
         const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         nodesGroup.setAttribute('id', 'nodes-group');
         
-        // Draw links
+        // Draw links with distance labels
         const linkElements = [];
         links.forEach(link => {
             const sourcePos = nodePositions[link.from_node_id];
             const targetPos = nodePositions[link.to_node_id];
             
             if (sourcePos && targetPos) {
+                // Create link line
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', sourcePos.x);
                 line.setAttribute('y1', sourcePos.y);
@@ -587,10 +588,82 @@ const LocalGraphManager = (function() {
                 line.setAttribute('data-from-node', link.from_node_id);
                 line.setAttribute('data-to-node', link.to_node_id);
                 linksGroup.appendChild(line);
+                
+                // Create distance label
+                const midX = (sourcePos.x + targetPos.x) / 2;
+                const midY = (sourcePos.y + targetPos.y) / 2;
+                
+                // Create background rectangle for better readability
+                const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                const weight = link.weight || 1.0;
+                const labelText = weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
+                
+                // Estimate text width (rough approximation)
+                const textWidth = labelText.length * 6 + 4;
+                const textHeight = 12;
+                
+                labelBg.setAttribute('x', midX - textWidth / 2);
+                labelBg.setAttribute('y', midY - textHeight / 2);
+                labelBg.setAttribute('width', textWidth);
+                labelBg.setAttribute('height', textHeight);
+                labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+                labelBg.setAttribute('stroke', '#d1d5da');
+                labelBg.setAttribute('stroke-width', '0.5');
+                labelBg.setAttribute('rx', '2');
+                labelBg.setAttribute('ry', '2');
+                labelBg.style.opacity = '0.8';
+                
+                // Create distance text
+                const distanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                distanceText.setAttribute('x', midX);
+                distanceText.setAttribute('y', midY + 3); // Slight vertical offset for better centering
+                distanceText.setAttribute('text-anchor', 'middle');
+                distanceText.setAttribute('font-size', '9');
+                distanceText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+                distanceText.setAttribute('font-weight', '600');
+                distanceText.setAttribute('fill', '#374151');
+                distanceText.textContent = labelText;
+                distanceText.style.pointerEvents = 'none'; // Don't interfere with interactions
+                distanceText.style.userSelect = 'none';
+                
+                // Add hover effects to show/hide labels more prominently
+                const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                linkGroup.setAttribute('class', 'link-group');
+                linkGroup.appendChild(line);
+                linkGroup.appendChild(labelBg);
+                linkGroup.appendChild(distanceText);
+                
+                // Hover effects for the entire link group
+                linkGroup.addEventListener('mouseenter', () => {
+                    line.setAttribute('stroke', '#94a3b8');
+                    line.setAttribute('opacity', '0.9');
+                    labelBg.style.opacity = '1';
+                    labelBg.setAttribute('fill', 'rgba(255, 255, 255, 1)');
+                    labelBg.setAttribute('stroke', '#6b7280');
+                    distanceText.setAttribute('fill', '#111827');
+                    distanceText.setAttribute('font-weight', '700');
+                });
+                
+                linkGroup.addEventListener('mouseleave', () => {
+                    line.setAttribute('stroke', '#e2e8f0');
+                    line.setAttribute('opacity', '0.6');
+                    labelBg.style.opacity = '0.8';
+                    labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+                    labelBg.setAttribute('stroke', '#d1d5da');
+                    distanceText.setAttribute('fill', '#374151');
+                    distanceText.setAttribute('font-weight', '600');
+                });
+                
+                linksGroup.appendChild(linkGroup);
+                
                 linkElements.push({
                     element: line,
+                    labelBg: labelBg,
+                    labelText: distanceText,
+                    linkGroup: linkGroup,
                     fromNodeId: link.from_node_id,
-                    toNodeId: link.to_node_id
+                    toNodeId: link.to_node_id,
+                    weight: weight
                 });
             }
         });
@@ -764,10 +837,27 @@ const LocalGraphManager = (function() {
                     const fromPos = fromNode.position;
                     const toPos = toNode.position;
                     
+                    // Update line position
                     linkData.element.setAttribute('x1', fromPos.x);
                     linkData.element.setAttribute('y1', fromPos.y);
                     linkData.element.setAttribute('x2', toPos.x);
                     linkData.element.setAttribute('y2', toPos.y);
+                    
+                    // Update label position
+                    const midX = (fromPos.x + toPos.x) / 2;
+                    const midY = (fromPos.y + toPos.y) / 2;
+                    
+                    // Update label background position
+                    const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
+                    const textWidth = labelText.length * 6 + 4;
+                    const textHeight = 12;
+                    
+                    linkData.labelBg.setAttribute('x', midX - textWidth / 2);
+                    linkData.labelBg.setAttribute('y', midY - textHeight / 2);
+                    
+                    // Update label text position
+                    linkData.labelText.setAttribute('x', midX);
+                    linkData.labelText.setAttribute('y', midY + 3);
                 }
             });
         }
