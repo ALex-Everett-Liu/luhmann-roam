@@ -444,6 +444,63 @@ const LocalGraphManager = (function() {
         svg.setAttribute('height', '100%');
         svg.style.background = '#fff';
         
+        // Add gradient definitions for elegant styling
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        
+        // Silver gradient for pool rings
+        const silverGradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        silverGradient.setAttribute('id', 'silverGradient');
+        silverGradient.setAttribute('x1', '0%');
+        silverGradient.setAttribute('y1', '0%');
+        silverGradient.setAttribute('x2', '100%');
+        silverGradient.setAttribute('y2', '100%');
+        
+        const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop1.setAttribute('offset', '0%');
+        stop1.setAttribute('stop-color', '#f8fafc');
+        stop1.setAttribute('stop-opacity', '1');
+        
+        const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop2.setAttribute('offset', '50%');
+        stop2.setAttribute('stop-color', '#cbd5e1');
+        stop2.setAttribute('stop-opacity', '1');
+        
+        const stop3 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop3.setAttribute('offset', '100%');
+        stop3.setAttribute('stop-color', '#94a3b8');
+        stop3.setAttribute('stop-opacity', '1');
+        
+        silverGradient.appendChild(stop1);
+        silverGradient.appendChild(stop2);
+        silverGradient.appendChild(stop3);
+        defs.appendChild(silverGradient);
+        
+        // Subtle glow filter for pool nodes
+        const glowFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        glowFilter.setAttribute('id', 'poolGlow');
+        glowFilter.setAttribute('x', '-50%');
+        glowFilter.setAttribute('y', '-50%');
+        glowFilter.setAttribute('width', '200%');
+        glowFilter.setAttribute('height', '200%');
+        
+        const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+        feGaussianBlur.setAttribute('stdDeviation', '2');
+        feGaussianBlur.setAttribute('result', 'coloredBlur');
+        
+        const feMerge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge');
+        const feMergeNode1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+        feMergeNode1.setAttribute('in', 'coloredBlur');
+        const feMergeNode2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+        feMergeNode2.setAttribute('in', 'SourceGraphic');
+        
+        feMerge.appendChild(feMergeNode1);
+        feMerge.appendChild(feMergeNode2);
+        glowFilter.appendChild(feGaussianBlur);
+        glowFilter.appendChild(feMerge);
+        defs.appendChild(glowFilter);
+        
+        svg.appendChild(defs);
+        
         // Simple circular layout based on distance
         const centerX = 400;
         const centerY = 300;
@@ -492,8 +549,9 @@ const LocalGraphManager = (function() {
                 line.setAttribute('y1', sourcePos.y);
                 line.setAttribute('x2', targetPos.x);
                 line.setAttribute('y2', targetPos.y);
-                line.setAttribute('stroke', '#ccc');
-                line.setAttribute('stroke-width', Math.max(1, link.weight));
+                line.setAttribute('stroke', '#e2e8f0');
+                line.setAttribute('stroke-width', Math.max(0.8, link.weight * 0.8));
+                line.setAttribute('opacity', '0.6');
                 svg.appendChild(line);
             }
         });
@@ -511,17 +569,20 @@ const LocalGraphManager = (function() {
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             circle.setAttribute('cx', pos.x);
             circle.setAttribute('cy', pos.y);
-            circle.setAttribute('r', isCenter ? 14 : 10); // Slightly larger for better visibility
+            circle.setAttribute('r', isCenter ? 14 : 10);
             
             // Improved color scheme
             if (isCenter) {
-                circle.setAttribute('fill', '#6366f1'); // Modern indigo instead of harsh red
+                circle.setAttribute('fill', '#6366f1');
                 circle.setAttribute('stroke', '#4f46e5');
                 circle.setAttribute('stroke-width', '3');
             } else {
                 circle.setAttribute('fill', getDistanceColor(distance));
-                circle.setAttribute('stroke', isInPool ? '#6366f1' : '#64748b'); // Subtle colors
-                circle.setAttribute('stroke-width', isInPool ? '2.5' : '1.5');
+                circle.setAttribute('stroke', isInPool ? '#94a3b8' : '#64748b');
+                circle.setAttribute('stroke-width', isInPool ? '2' : '1.5');
+                if (isInPool) {
+                    circle.setAttribute('filter', 'url(#poolGlow)');
+                }
             }
             
             circle.setAttribute('data-node-id', node.id);
@@ -535,8 +596,8 @@ const LocalGraphManager = (function() {
             });
             
             circle.addEventListener('mouseleave', () => {
-                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2.5' : '1.5'));
-                circle.style.filter = 'none';
+                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
+                circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
             });
             
             // Add click handler
@@ -550,18 +611,68 @@ const LocalGraphManager = (function() {
             
             svg.appendChild(circle);
             
-            // Improved pool indicator - subtle ring instead of separate circle
+            // Elegant pool indicator - sophisticated silver ring with subtle animation
             if (isInPool && !isCenter) {
+                // Create a subtle outer glow effect
+                const glowRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                glowRing.setAttribute('cx', pos.x);
+                glowRing.setAttribute('cy', pos.y);
+                glowRing.setAttribute('r', 14);
+                glowRing.setAttribute('fill', 'none');
+                glowRing.setAttribute('stroke', '#e2e8f0');
+                glowRing.setAttribute('stroke-width', '0.5');
+                glowRing.setAttribute('opacity', '0.4');
+                svg.appendChild(glowRing);
+                
+                // Main elegant silver ring
                 const poolRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 poolRing.setAttribute('cx', pos.x);
                 poolRing.setAttribute('cy', pos.y);
-                poolRing.setAttribute('r', 13);
+                poolRing.setAttribute('r', 12.5);
                 poolRing.setAttribute('fill', 'none');
-                poolRing.setAttribute('stroke', '#6366f1');
-                poolRing.setAttribute('stroke-width', '1');
-                poolRing.setAttribute('stroke-dasharray', '2,2');
-                poolRing.setAttribute('opacity', '0.6');
+                poolRing.setAttribute('stroke', 'url(#silverGradient)');
+                poolRing.setAttribute('stroke-width', '0.8');
+                poolRing.setAttribute('opacity', '0.8');
+                
+                // Add subtle rotation animation
+                const animateTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+                animateTransform.setAttribute('attributeName', 'transform');
+                animateTransform.setAttribute('attributeType', 'XML');
+                animateTransform.setAttribute('type', 'rotate');
+                animateTransform.setAttribute('from', `0 ${pos.x} ${pos.y}`);
+                animateTransform.setAttribute('to', `360 ${pos.x} ${pos.y}`);
+                animateTransform.setAttribute('dur', '12s');
+                animateTransform.setAttribute('repeatCount', 'indefinite');
+                
+                poolRing.appendChild(animateTransform);
                 svg.appendChild(poolRing);
+                
+                // Add small accent dots for extra elegance
+                for (let i = 0; i < 3; i++) {
+                    const angle = (i * 120) * (Math.PI / 180);
+                    const dotX = pos.x + Math.cos(angle) * 12.5;
+                    const dotY = pos.y + Math.sin(angle) * 12.5;
+                    
+                    const accentDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    accentDot.setAttribute('cx', dotX);
+                    accentDot.setAttribute('cy', dotY);
+                    accentDot.setAttribute('r', '0.8');
+                    accentDot.setAttribute('fill', '#94a3b8');
+                    accentDot.setAttribute('opacity', '0.6');
+                    
+                    // Counter-rotate the dots so they stay in place while ring rotates
+                    const dotAnimate = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+                    dotAnimate.setAttribute('attributeName', 'transform');
+                    dotAnimate.setAttribute('attributeType', 'XML');
+                    dotAnimate.setAttribute('type', 'rotate');
+                    dotAnimate.setAttribute('from', `0 ${pos.x} ${pos.y}`);
+                    dotAnimate.setAttribute('to', `-360 ${pos.x} ${pos.y}`);
+                    dotAnimate.setAttribute('dur', '12s');
+                    dotAnimate.setAttribute('repeatCount', 'indefinite');
+                    
+                    accentDot.appendChild(dotAnimate);
+                    svg.appendChild(accentDot);
+                }
             }
             
             // Node label with improved styling
