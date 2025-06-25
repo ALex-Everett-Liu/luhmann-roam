@@ -688,6 +688,7 @@ const LocalGraphManager = (function() {
             circle.setAttribute('cx', pos.x);
             circle.setAttribute('cy', pos.y);
             circle.setAttribute('r', isCenter ? 14 : 10);
+            circle.setAttribute('class', 'main-node-circle'); // Add class to identify main circle
             
             // Improved color scheme
             if (isCenter) {
@@ -722,6 +723,9 @@ const LocalGraphManager = (function() {
             
             nodeGroup.appendChild(circle);
             
+            // Store pool ring elements for easier access
+            const poolRingElements = [];
+            
             // Add pool indicators
             if (isInPool && !isCenter) {
                 // Create a subtle outer glow effect
@@ -733,7 +737,9 @@ const LocalGraphManager = (function() {
                 glowRing.setAttribute('stroke', '#e2e8f0');
                 glowRing.setAttribute('stroke-width', '0.5');
                 glowRing.setAttribute('opacity', '0.4');
+                glowRing.setAttribute('class', 'pool-ring'); // Add class for identification
                 nodeGroup.appendChild(glowRing);
+                poolRingElements.push(glowRing);
                 
                 // Main elegant silver ring
                 const poolRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -744,6 +750,7 @@ const LocalGraphManager = (function() {
                 poolRing.setAttribute('stroke', 'url(#silverGradient)');
                 poolRing.setAttribute('stroke-width', '0.8');
                 poolRing.setAttribute('opacity', '0.8');
+                poolRing.setAttribute('class', 'pool-ring'); // Add class for identification
                 
                 // Add subtle rotation animation
                 const animateTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
@@ -757,6 +764,7 @@ const LocalGraphManager = (function() {
                 
                 poolRing.appendChild(animateTransform);
                 nodeGroup.appendChild(poolRing);
+                poolRingElements.push(poolRing);
                 
                 // Add small accent dots for extra elegance
                 for (let i = 0; i < 3; i++) {
@@ -770,6 +778,7 @@ const LocalGraphManager = (function() {
                     accentDot.setAttribute('r', '0.8');
                     accentDot.setAttribute('fill', '#94a3b8');
                     accentDot.setAttribute('opacity', '0.6');
+                    accentDot.setAttribute('class', 'pool-accent-dot'); // Add class for identification
                     
                     // Counter-rotate the dots so they stay in place while ring rotates
                     const dotAnimate = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
@@ -783,6 +792,7 @@ const LocalGraphManager = (function() {
                     
                     accentDot.appendChild(dotAnimate);
                     nodeGroup.appendChild(accentDot);
+                    poolRingElements.push(accentDot);
                 }
             }
             
@@ -800,7 +810,7 @@ const LocalGraphManager = (function() {
             
             nodeGroup.appendChild(text);
             
-            // Store node data for easier access
+            // Store node data for easier access - use the specific pool ring elements
             const nodeData = {
                 element: nodeGroup,
                 circle: circle,
@@ -808,7 +818,7 @@ const LocalGraphManager = (function() {
                 nodeId: node.id,
                 position: pos,
                 node: node,
-                poolRings: nodeGroup.querySelectorAll('circle:not(:first-child)')
+                poolRings: poolRingElements // Use the specific array instead of query selector
             };
             
             nodeElements.push(nodeData);

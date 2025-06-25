@@ -1142,3 +1142,22 @@
       stroke: #6b7280;
     }
   }
+  
+  /* Pool ring specific styling */
+  .pool-ring {
+    pointer-events: none;
+  }
+  
+  .pool-accent-dot {
+    pointer-events: none;
+  }
+  
+  .main-node-circle {
+    cursor: move;
+  }
+  
+  /* Ensure distance labels don't interfere with pool animations */
+  .distance-label,
+  .distance-label-bg {
+    pointer-events: none;
+  }
