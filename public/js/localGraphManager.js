@@ -698,6 +698,7 @@ const LocalGraphManager = (function() {
             
             const isCenter = node.id === centerNodeId;
             const distance = distances[node.id] || 0;
+            const depth = graphData.depths[node.id] || 0; // Get depth from graphData
             const isInPool = nodePoolStatus.get(node.id) || false;
             
             // Create node group for easier dragging
@@ -1210,13 +1211,17 @@ const LocalGraphManager = (function() {
     function selectNode(node) {
         const infoDiv = document.getElementById('selected-node-info');
         const distance = graphData.distances[node.id] || 0;
+        const depth = graphData.depths[node.id] || 0; // Get depth from graphData
         const isInPool = nodePoolStatus.get(node.id) || false;
         
         infoDiv.innerHTML = `
             <div class="selected-node">
                 <h5>${node.content || 'Untitled'}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
-                <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
+                <div class="node-metrics">
+                    <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
+                    <p class="node-depth">Depth: ${depth} hops</p>
+                </div>
                 <p class="node-pool-status" style="color: ${isInPool ? '#6366f1' : '#666'}; font-size: 12px; margin: 5px 0;">
                     ${isInPool ? '✓ In Local Graph Pool' : '○ Not in Pool'}
                 </p>

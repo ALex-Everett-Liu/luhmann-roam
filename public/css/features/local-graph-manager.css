@@ -1590,3 +1590,51 @@
       border-color: #64748b;
     }
   }
+  
+  /* Node metrics styling */
+  .node-metrics {
+    display: flex;
+    gap: 15px;
+    margin: 8px 0;
+    padding: 8px 0;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .node-distance {
+    color: #3b82f6 !important;
+    font-weight: 600;
+    margin: 0;
+    font-size: 13px;
+  }
+  
+  .node-depth {
+    color: #059669 !important;
+    font-weight: 600;
+    margin: 0;
+    font-size: 13px;
+  }
+  
+  /* Dark mode support for node metrics */
+  @media (prefers-color-scheme: dark) {
+    .node-metrics {
+      border-top-color: #334155;
+      border-bottom-color: #334155;
+    }
+    
+    .node-distance {
+      color: #60a5fa !important;
+    }
+    
+    .node-depth {
+      color: #10b981 !important;
+    }
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .node-metrics {
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
