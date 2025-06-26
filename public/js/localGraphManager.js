@@ -305,6 +305,84 @@ const LocalGraphManager = (function() {
             </div>
         `;
         document.body.appendChild(addNodeModal);
+
+        // Edit node modal
+        const editNodeModal = document.createElement('div');
+        editNodeModal.id = 'edit-node-modal';
+        editNodeModal.className = 'local-graph-modal';
+        editNodeModal.innerHTML = `
+            <div class="local-graph-modal-content">
+                <h3>Edit Node</h3>
+                <form id="edit-node-form">
+                    <div class="form-group">
+                        <label>Content (English)*:</label>
+                        <textarea id="edit-node-content" required placeholder="Enter node content..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Content (Chinese):</label>
+                        <textarea id="edit-node-content-zh" placeholder="输入中文内容..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <h4>Manage Links</h4>
+                        <div class="tabs-container">
+                            <div class="tab active" data-tab="outgoing">Outgoing Links</div>
+                            <div class="tab" data-tab="incoming">Incoming Links</div>
+                            <div class="tab" data-tab="add-new">Add New Link</div>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <div class="tab-pane active" data-tab="outgoing">
+                                <div id="outgoing-links-list" class="links-list">
+                                    <!-- Will be populated with outgoing links -->
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane" data-tab="incoming">
+                                <div id="incoming-links-list" class="links-list">
+                                    <!-- Will be populated with incoming links -->
+                                </div>
+                            </div>
+                            
+                            <div class="tab-pane" data-tab="add-new">
+                                <div class="add-link-section">
+                                    <div class="form-group">
+                                        <label>Link to Node:</label>
+                                        <div class="link-target-search">
+                                            <input type="text" id="new-link-target" placeholder="Search for node to link to..." class="node-search-input">
+                                            <div id="new-link-dropdown" class="node-dropdown">
+                                                <div class="dropdown-content">
+                                                    <div class="no-results-message">Start typing to search pool nodes...</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Weight:</label>
+                                        <input type="number" id="new-link-weight" min="0.1" max="100" step="0.1" value="1.0" class="form-control">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Description:</label>
+                                        <input type="text" id="new-link-description" placeholder="Optional description..." class="form-control">
+                                    </div>
+                                    
+                                    <button type="button" id="add-new-link-btn" class="primary-btn">Add Link</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="primary-btn">Save Changes</button>
+                        <button type="button" id="cancel-edit-node" class="secondary-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(editNodeModal);
     }
     
     function setupEventHandlers() {
@@ -365,6 +443,15 @@ const LocalGraphManager = (function() {
         if (graphSearchInput) {
             graphSearchInput.addEventListener('input', handleGraphNodeSearch);
         }
+        
+        // Edit node modal handlers
+        const editNodeForm = document.getElementById('edit-node-form');
+        const cancelEditNodeBtn = document.getElementById('cancel-edit-node');
+        const addNewLinkBtn = document.getElementById('add-new-link-btn');
+        
+        if (editNodeForm) editNodeForm.addEventListener('submit', saveNodeEdits);
+        if (cancelEditNodeBtn) cancelEditNodeBtn.addEventListener('click', closeEditNodeModal);
+        if (addNewLinkBtn) addNewLinkBtn.addEventListener('click', addNewLink);
     }
     
     async function handleCenterNodeSearch(e) {
@@ -1250,6 +1337,9 @@ const LocalGraphManager = (function() {
                     ${isInPool ? '✓ In Local Graph Pool' : '○ Not in Pool'}
                 </p>
                 <div class="node-actions">
+                    <button onclick="LocalGraphManager.editNode('${node.id}')" class="primary-btn" style="margin-right: 8px; padding: 6px 12px; font-size: 12px;">
+                        Edit Node
+                    </button>
                     <button onclick="LocalGraphManager.focusInOutliner('${node.id}')" class="focus-btn">
                         Focus in Outliner
                     </button>
@@ -1874,6 +1964,11 @@ const LocalGraphManager = (function() {
         `;
         
         const menuItems = [
+            {
+                text: 'Edit Node',
+                action: () => editNode(node.id),
+                style: 'color: #0366d6; font-weight: 600;'
+            },
             {
                 text: isInPool ? 'Remove from Pool' : 'Add to Pool',
                 action: () => isInPool ? removeNodeFromPool(node.id) : addNodeToPool(node.id),
@@ -2606,6 +2701,349 @@ const LocalGraphManager = (function() {
         });
     }
     
+    // Add these edit node functions before the return statement
+    
+    // Edit Node Functions
+    async function editNode(nodeId) {
+        const node = graphData.nodes.find(n => n.id === nodeId);
+        if (!node) {
+            showNotification('Node not found', 'error');
+            return;
+        }
+
+        currentEditingNode = node;
+        
+        // Load node content
+        document.getElementById('edit-node-content').value = node.content || '';
+        document.getElementById('edit-node-content-zh').value = node.content_zh || '';
+        
+        // Load node links
+        await loadNodeLinks(nodeId);
+        
+        // Setup new link target search
+        setupNewLinkTargetSearch();
+        
+        // Setup tab switching
+        setupEditModalTabs();
+        
+        // Show modal
+        const modal = document.getElementById('edit-node-modal');
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        
+        // Focus on content field
+        setTimeout(() => document.getElementById('edit-node-content').focus(), 100);
+    }
+
+    async function loadNodeLinks(nodeId) {
+        try {
+            const response = await fetch(`/api/nodes/${nodeId}/links`);
+            currentNodeLinks = await response.json();
+            
+            // Update the links lists
+            updateEditModalLinksList();
+        } catch (error) {
+            console.error('Error fetching node links:', error);
+            showNotification('Error loading node links', 'error');
+        }
+    }
+
+    function updateEditModalLinksList() {
+        const outgoingList = document.getElementById('outgoing-links-list');
+        const incomingList = document.getElementById('incoming-links-list');
+        
+        // Clear existing lists
+        outgoingList.innerHTML = '';
+        incomingList.innerHTML = '';
+        
+        // Add outgoing links
+        if (currentNodeLinks.outgoing.length === 0) {
+            outgoingList.innerHTML = '<div class="no-links">No outgoing links</div>';
+        } else {
+            currentNodeLinks.outgoing.forEach(link => {
+                const linkItem = document.createElement('div');
+                linkItem.className = 'link-item';
+                linkItem.innerHTML = `
+                    <div class="link-info">
+                        <div class="link-target">${link.content || link.content_zh || 'Untitled'}</div>
+                        <div class="link-details">
+                            <span class="link-weight">Weight: ${link.weight}</span>
+                            <span class="link-description">${link.description || 'No description'}</span>
+                        </div>
+                    </div>
+                    <div class="link-actions">
+                        <button class="edit-link-btn" data-link-id="${link.id}">Edit</button>
+                        <button class="delete-link-btn" data-link-id="${link.id}">Delete</button>
+                    </div>
+                `;
+                
+                // Add event listeners
+                linkItem.querySelector('.edit-link-btn').addEventListener('click', () => editLink(link));
+                linkItem.querySelector('.delete-link-btn').addEventListener('click', () => deleteLink(link.id));
+                
+                outgoingList.appendChild(linkItem);
+            });
+        }
+        
+        // Add incoming links (read-only)
+        if (currentNodeLinks.incoming.length === 0) {
+            incomingList.innerHTML = '<div class="no-links">No incoming links</div>';
+        } else {
+            currentNodeLinks.incoming.forEach(link => {
+                const linkItem = document.createElement('div');
+                linkItem.className = 'link-item';
+                linkItem.innerHTML = `
+                    <div class="link-info">
+                        <div class="link-source">From: ${link.content || link.content_zh || 'Untitled'}</div>
+                        <div class="link-details">
+                            <span class="link-weight">Weight: ${link.weight}</span>
+                            <span class="link-description">${link.description || 'No description'}</span>
+                        </div>
+                    </div>
+                `;
+                incomingList.appendChild(linkItem);
+            });
+        }
+    }
+
+    function setupEditModalTabs() {
+        const tabs = document.querySelectorAll('#edit-node-modal .tab');
+        const tabPanes = document.querySelectorAll('#edit-node-modal .tab-pane');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Remove active class from all tabs and panes
+                tabs.forEach(t => t.classList.remove('active'));
+                tabPanes.forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding pane
+                tab.classList.add('active');
+                document.querySelector(`#edit-node-modal .tab-pane[data-tab="${tabName}"]`).classList.add('active');
+            });
+        });
+    }
+
+    async function setupNewLinkTargetSearch() {
+        const input = document.getElementById('new-link-target');
+        const dropdown = document.getElementById('new-link-dropdown');
+        
+        input.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            const dropdownContent = dropdown.querySelector('.dropdown-content');
+            
+            if (query.length < 2) {
+                dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search pool nodes...</div>';
+                dropdown.classList.remove('show');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/local-graph/pool/search?q=${encodeURIComponent(query)}&limit=10`);
+                const results = await response.json();
+                
+                // Filter out the current node being edited
+                const filteredResults = results.filter(node => node.id !== currentEditingNode.id);
+                
+                if (filteredResults.length === 0) {
+                    dropdownContent.innerHTML = `<div class="no-results-message">No nodes found in pool matching "${query}"</div>`;
+                } else {
+                    dropdownContent.innerHTML = filteredResults.map(node => `
+                        <div class="node-option" data-node-id="${node.id}">
+                            <div class="node-option-content">${node.content || 'Untitled'}</div>
+                            ${node.content_zh ? `<div class="node-option-content-zh">${node.content_zh}</div>` : ''}
+                            <div class="node-option-meta">In pool since ${new Date(node.added_at).toLocaleDateString()}</div>
+                        </div>
+                    `).join('');
+                    
+                    // Add click handlers
+                    dropdownContent.querySelectorAll('.node-option').forEach(option => {
+                        option.addEventListener('click', function() {
+                            input.value = this.querySelector('.node-option-content').textContent;
+                            input.dataset.selectedNodeId = this.dataset.nodeId;
+                            dropdown.classList.remove('show');
+                        });
+                    });
+                }
+                
+                dropdown.classList.add('show');
+            } catch (error) {
+                console.error('Error searching pool nodes:', error);
+                dropdownContent.innerHTML = '<div class="error-message">Error searching pool nodes</div>';
+            }
+        });
+    }
+
+    async function addNewLink() {
+        const targetInput = document.getElementById('new-link-target');
+        const weightInput = document.getElementById('new-link-weight');
+        const descriptionInput = document.getElementById('new-link-description');
+        
+        const targetNodeId = targetInput.dataset.selectedNodeId;
+        const weight = parseFloat(weightInput.value) || 1.0;
+        const description = descriptionInput.value.trim();
+        
+        if (!targetNodeId) {
+            showNotification('Please select a target node', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from_node_id: currentEditingNode.id,
+                    to_node_id: targetNodeId,
+                    weight,
+                    description
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create link');
+            }
+            
+            // Clear form
+            targetInput.value = '';
+            targetInput.dataset.selectedNodeId = '';
+            weightInput.value = '1.0';
+            descriptionInput.value = '';
+            
+            // Reload links
+            await loadNodeLinks(currentEditingNode.id);
+            
+            // Switch to outgoing links tab
+            document.querySelector('#edit-node-modal .tab[data-tab="outgoing"]').click();
+            
+            showNotification('Link added successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error adding link:', error);
+            showNotification(error.message || 'Error adding link', 'error');
+        }
+    }
+
+    async function editLink(link) {
+        const newWeight = prompt('Enter new weight:', link.weight);
+        if (newWeight === null) return;
+        
+        const newDescription = prompt('Enter new description:', link.description || '');
+        if (newDescription === null) return;
+        
+        try {
+            const response = await fetch(`/api/links/${link.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    weight: parseFloat(newWeight) || 1.0,
+                    description: newDescription
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update link');
+            }
+            
+            // Reload links
+            await loadNodeLinks(currentEditingNode.id);
+            
+            showNotification('Link updated successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error updating link:', error);
+            showNotification(error.message || 'Error updating link', 'error');
+        }
+    }
+
+    async function deleteLink(linkId) {
+        if (!confirm('Are you sure you want to delete this link?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/links/${linkId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete link');
+            }
+            
+            // Reload links
+            await loadNodeLinks(currentEditingNode.id);
+            
+            showNotification('Link deleted successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error deleting link:', error);
+            showNotification(error.message || 'Error deleting link', 'error');
+        }
+    }
+
+    async function saveNodeEdits(e) {
+        e.preventDefault();
+        
+        const content = document.getElementById('edit-node-content').value.trim();
+        const content_zh = document.getElementById('edit-node-content-zh').value.trim();
+        
+        if (!content) {
+            showNotification('Content cannot be empty', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/nodes/${currentEditingNode.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content,
+                    content_zh
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update node');
+            }
+            
+            // Update local node data
+            currentEditingNode.content = content;
+            currentEditingNode.content_zh = content_zh;
+            
+            // Update the node in graphData
+            const nodeInGraph = graphData.nodes.find(n => n.id === currentEditingNode.id);
+            if (nodeInGraph) {
+                nodeInGraph.content = content;
+                nodeInGraph.content_zh = content_zh;
+            }
+            
+            closeEditNodeModal();
+            await refreshGraph();
+            
+            showNotification('Node updated successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error updating node:', error);
+            showNotification(error.message || 'Error updating node', 'error');
+        }
+    }
+
+    function closeEditNodeModal() {
+        const modal = document.getElementById('edit-node-modal');
+        modal.classList.remove('show');
+        setTimeout(() => modal.style.display = 'none', 200);
+        
+        // Reset form
+        document.getElementById('edit-node-form').reset();
+        currentEditingNode = null;
+        currentNodeLinks = { outgoing: [], incoming: [] };
+    }
+
     // Public API
     return {
         initialize,
@@ -2618,7 +3056,8 @@ const LocalGraphManager = (function() {
         removeNodeFromPool,
         useQuickAccess,
         removeFromQuickAccess,
-        locateNodeInGraph, // Add this
+        locateNodeInGraph,
+        editNode, // This function is now defined above
         isInitialized: () => isInitialized
     };
 })();
