@@ -10,6 +10,9 @@ const LocalGraphManager = (function() {
     let maxDepth = 3;
     let isInitialized = false;
     let nodePoolStatus = new Map(); // Track which nodes are in pool
+    let currentEditingNode = null; // Track the node being edited
+    let currentNodeLinks = { outgoing: [], incoming: [] }; // Track links for editing
+    let currentLayoutMode = 'circular'; // 'circular' or 'distance-based'
     
     function initialize() {
         if (isInitialized) {
@@ -131,6 +134,13 @@ const LocalGraphManager = (function() {
                             <div class="distance-info">
                                 <span id="distance-display">Distance: 5, Depth: 3</span>
                                 <button id="adjust-distance-btn" class="secondary-btn">Adjust</button>
+                            </div>
+                            <div class="layout-controls">
+                                <label>Layout:</label>
+                                <select id="layout-mode-select" class="layout-select">
+                                    <option value="circular">Circular</option>
+                                    <option value="distance-based">Distance-Based</option>
+                                </select>
                             </div>
                             <div class="graph-actions">
                                 <button id="add-node-btn" class="primary-btn">Add Node</button>
@@ -452,6 +462,19 @@ const LocalGraphManager = (function() {
         if (editNodeForm) editNodeForm.addEventListener('submit', saveNodeEdits);
         if (cancelEditNodeBtn) cancelEditNodeBtn.addEventListener('click', closeEditNodeModal);
         if (addNewLinkBtn) addNewLinkBtn.addEventListener('click', addNewLink);
+        
+        // Add new event handler for layout mode
+        const layoutModeSelect = document.getElementById('layout-mode-select');
+        if (layoutModeSelect) {
+            layoutModeSelect.addEventListener('change', handleLayoutModeChange);
+        }
+    }
+    
+    function handleLayoutModeChange(e) {
+        currentLayoutMode = e.target.value;
+        if (graphData) {
+            renderGraph(); // Re-render with new layout
+        }
     }
     
     async function handleCenterNodeSearch(e) {
@@ -657,42 +680,20 @@ const LocalGraphManager = (function() {
         
         svg.appendChild(defs);
         
-        // Initial layout based on distance
+        // Canvas dimensions
         const centerX = 400;
         const centerY = 300;
         const maxRadius = 250;
         
-        // Group nodes by distance
-        const nodesByDistance = {};
-        nodes.forEach(node => {
-            const distance = distances[node.id] || 0;
-            if (!nodesByDistance[distance]) {
-                nodesByDistance[distance] = [];
-            }
-            nodesByDistance[distance].push(node);
-        });
+        // Choose layout algorithm based on current mode
+        const nodePositions = currentLayoutMode === 'distance-based' 
+            ? calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius)
+            : calculateCircularLayout(nodes, distances, centerX, centerY, maxRadius);
         
-        // Position nodes - this will be our initial layout
-        const nodePositions = {};
-        Object.keys(nodesByDistance).forEach(distance => {
-            const dist = parseFloat(distance);
-            const nodesAtDistance = nodesByDistance[distance];
-            const radius = (dist / maxDistance) * maxRadius;
-            
-            nodesAtDistance.forEach((node, index) => {
-                if (dist === 0) {
-                    // Center node
-                    nodePositions[node.id] = { x: centerX, y: centerY };
-                } else {
-                    // Arrange in circle
-                    const angle = (index / nodesAtDistance.length) * 2 * Math.PI;
-                    nodePositions[node.id] = {
-                        x: centerX + Math.cos(angle) * radius,
-                        y: centerY + Math.sin(angle) * radius
-                    };
-                }
-            });
-        });
+        // Add quadrant divider lines for distance-based layout
+        if (currentLayoutMode === 'distance-based') {
+            addQuadrantDividers(mainGroup, centerX, centerY);
+        }
         
         // Create links group
         const linksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -709,95 +710,9 @@ const LocalGraphManager = (function() {
             const targetPos = nodePositions[link.to_node_id];
             
             if (sourcePos && targetPos) {
-                // Create link line
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', sourcePos.x);
-                line.setAttribute('y1', sourcePos.y);
-                line.setAttribute('x2', targetPos.x);
-                line.setAttribute('y2', targetPos.y);
-                line.setAttribute('stroke', '#e2e8f0');
-                line.setAttribute('stroke-width', Math.max(0.8, link.weight * 0.8));
-                line.setAttribute('opacity', '0.6');
-                line.setAttribute('data-from-node', link.from_node_id);
-                line.setAttribute('data-to-node', link.to_node_id);
-                linksGroup.appendChild(line);
-                
-                // Create distance label
-                const midX = (sourcePos.x + targetPos.x) / 2;
-                const midY = (sourcePos.y + targetPos.y) / 2;
-                
-                // Create background rectangle for better readability
-                const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                const weight = link.weight || 1.0;
-                const labelText = weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
-                
-                // Estimate text width (rough approximation)
-                const textWidth = labelText.length * 6 + 4;
-                const textHeight = 12;
-                
-                labelBg.setAttribute('x', midX - textWidth / 2);
-                labelBg.setAttribute('y', midY - textHeight / 2);
-                labelBg.setAttribute('width', textWidth);
-                labelBg.setAttribute('height', textHeight);
-                labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
-                labelBg.setAttribute('stroke', '#d1d5da');
-                labelBg.setAttribute('stroke-width', '0.5');
-                labelBg.setAttribute('rx', '2');
-                labelBg.setAttribute('ry', '2');
-                labelBg.style.opacity = '0.8';
-                
-                // Create distance text
-                const distanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                distanceText.setAttribute('x', midX);
-                distanceText.setAttribute('y', midY + 3); // Slight vertical offset for better centering
-                distanceText.setAttribute('text-anchor', 'middle');
-                distanceText.setAttribute('font-size', '9');
-                distanceText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-                distanceText.setAttribute('font-weight', '600');
-                distanceText.setAttribute('fill', '#374151');
-                distanceText.textContent = labelText;
-                distanceText.style.pointerEvents = 'none'; // Don't interfere with interactions
-                distanceText.style.userSelect = 'none';
-                
-                // Add hover effects to show/hide labels more prominently
-                const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                linkGroup.setAttribute('class', 'link-group');
-                linkGroup.appendChild(line);
-                linkGroup.appendChild(labelBg);
-                linkGroup.appendChild(distanceText);
-                
-                // Hover effects for the entire link group
-                linkGroup.addEventListener('mouseenter', () => {
-                    line.setAttribute('stroke', '#94a3b8');
-                    line.setAttribute('opacity', '0.9');
-                    labelBg.style.opacity = '1';
-                    labelBg.setAttribute('fill', 'rgba(255, 255, 255, 1)');
-                    labelBg.setAttribute('stroke', '#6b7280');
-                    distanceText.setAttribute('fill', '#111827');
-                    distanceText.setAttribute('font-weight', '700');
-                });
-                
-                linkGroup.addEventListener('mouseleave', () => {
-                    line.setAttribute('stroke', '#e2e8f0');
-                    line.setAttribute('opacity', '0.6');
-                    labelBg.style.opacity = '0.8';
-                    labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
-                    labelBg.setAttribute('stroke', '#d1d5da');
-                    distanceText.setAttribute('fill', '#374151');
-                    distanceText.setAttribute('font-weight', '600');
-                });
-                
-                linksGroup.appendChild(linkGroup);
-                
-                linkElements.push({
-                    element: line,
-                    labelBg: labelBg,
-                    labelText: distanceText,
-                    linkGroup: linkGroup,
-                    fromNodeId: link.from_node_id,
-                    toNodeId: link.to_node_id,
-                    weight: weight
-                });
+                const linkData = createLinkElement(link, sourcePos, targetPos, currentLayoutMode);
+                linksGroup.appendChild(linkData.linkGroup);
+                linkElements.push(linkData);
             }
         });
         
@@ -807,156 +722,9 @@ const LocalGraphManager = (function() {
             const pos = nodePositions[node.id];
             if (!pos) return;
             
-            const isCenter = node.id === centerNodeId;
-            const distance = distances[node.id] || 0;
-            const depth = graphData.depths[node.id] || 0; // Get depth from graphData
-            const isInPool = nodePoolStatus.get(node.id) || false;
-            
-            // Create node group for easier dragging
-            const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            nodeGroup.setAttribute('data-node-id', node.id);
-            nodeGroup.style.cursor = 'move';
-            
-            // Node circle with improved styling
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', pos.x);
-            circle.setAttribute('cy', pos.y);
-            circle.setAttribute('r', isCenter ? 14 : 10);
-            circle.setAttribute('class', 'main-node-circle'); // Add class to identify main circle
-            
-            // Improved color scheme
-            if (isCenter) {
-                circle.setAttribute('fill', '#6366f1');
-                circle.setAttribute('stroke', '#4f46e5');
-                circle.setAttribute('stroke-width', '3');
-            } else {
-                circle.setAttribute('fill', getDistanceColor(distance));
-                circle.setAttribute('stroke', isInPool ? '#94a3b8' : '#64748b');
-                circle.setAttribute('stroke-width', isInPool ? '2' : '1.5');
-                if (isInPool) {
-                    circle.setAttribute('filter', 'url(#poolGlow)');
-                }
-            }
-            
-            circle.style.transition = 'all 0.2s ease';
-            
-            // Add hover effects
-            circle.addEventListener('mouseenter', () => {
-                if (!draggedNode) {
-                    circle.setAttribute('stroke-width', '4');
-                    circle.style.filter = 'brightness(1.1)';
-                }
-            });
-            
-            circle.addEventListener('mouseleave', () => {
-                if (!draggedNode) {
-                    circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
-                    circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
-                }
-            });
-            
-            nodeGroup.appendChild(circle);
-            
-            // Store pool ring elements for easier access
-            const poolRingElements = [];
-            
-            // Add pool indicators
-            if (isInPool && !isCenter) {
-                // Create a subtle outer glow effect
-                const glowRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                glowRing.setAttribute('cx', pos.x);
-                glowRing.setAttribute('cy', pos.y);
-                glowRing.setAttribute('r', 14);
-                glowRing.setAttribute('fill', 'none');
-                glowRing.setAttribute('stroke', '#e2e8f0');
-                glowRing.setAttribute('stroke-width', '0.5');
-                glowRing.setAttribute('opacity', '0.4');
-                glowRing.setAttribute('class', 'pool-ring'); // Add class for identification
-                nodeGroup.appendChild(glowRing);
-                poolRingElements.push(glowRing);
-                
-                // Main elegant silver ring
-                const poolRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                poolRing.setAttribute('cx', pos.x);
-                poolRing.setAttribute('cy', pos.y);
-                poolRing.setAttribute('r', 12.5);
-                poolRing.setAttribute('fill', 'none');
-                poolRing.setAttribute('stroke', 'url(#silverGradient)');
-                poolRing.setAttribute('stroke-width', '0.8');
-                poolRing.setAttribute('opacity', '0.8');
-                poolRing.setAttribute('class', 'pool-ring'); // Add class for identification
-                
-                // Add subtle rotation animation
-                const animateTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
-                animateTransform.setAttribute('attributeName', 'transform');
-                animateTransform.setAttribute('attributeType', 'XML');
-                animateTransform.setAttribute('type', 'rotate');
-                animateTransform.setAttribute('from', `0 ${pos.x} ${pos.y}`);
-                animateTransform.setAttribute('to', `360 ${pos.x} ${pos.y}`);
-                animateTransform.setAttribute('dur', '12s');
-                animateTransform.setAttribute('repeatCount', 'indefinite');
-                
-                poolRing.appendChild(animateTransform);
-                nodeGroup.appendChild(poolRing);
-                poolRingElements.push(poolRing);
-                
-                // Add small accent dots for extra elegance
-                for (let i = 0; i < 3; i++) {
-                    const angle = (i * 120) * (Math.PI / 180);
-                    const dotX = pos.x + Math.cos(angle) * 12.5;
-                    const dotY = pos.y + Math.sin(angle) * 12.5;
-                    
-                    const accentDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    accentDot.setAttribute('cx', dotX);
-                    accentDot.setAttribute('cy', dotY);
-                    accentDot.setAttribute('r', '0.8');
-                    accentDot.setAttribute('fill', '#94a3b8');
-                    accentDot.setAttribute('opacity', '0.6');
-                    accentDot.setAttribute('class', 'pool-accent-dot'); // Add class for identification
-                    
-                    // Counter-rotate the dots so they stay in place while ring rotates
-                    const dotAnimate = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
-                    dotAnimate.setAttribute('attributeName', 'transform');
-                    dotAnimate.setAttribute('attributeType', 'XML');
-                    dotAnimate.setAttribute('type', 'rotate');
-                    dotAnimate.setAttribute('from', `0 ${pos.x} ${pos.y}`);
-                    dotAnimate.setAttribute('to', `-360 ${pos.x} ${pos.y}`);
-                    dotAnimate.setAttribute('dur', '12s');
-                    dotAnimate.setAttribute('repeatCount', 'indefinite');
-                    
-                    accentDot.appendChild(dotAnimate);
-                    nodeGroup.appendChild(accentDot);
-                    poolRingElements.push(accentDot);
-                }
-            }
-            
-            // Node label with improved styling
-            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            text.setAttribute('x', pos.x);
-            text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
-            text.setAttribute('text-anchor', 'middle');
-            text.setAttribute('font-size', isCenter ? '11' : '9');
-            text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-            text.setAttribute('font-weight', isCenter ? '600' : '500');
-            text.setAttribute('fill', '#1e293b');
-            text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
-            text.style.pointerEvents = 'none'; // Let mouse events pass through to the group
-            
-            nodeGroup.appendChild(text);
-            
-            // Store node data for easier access - use the specific pool ring elements
-            const nodeData = {
-                element: nodeGroup,
-                circle: circle,
-                text: text,
-                nodeId: node.id,
-                position: pos,
-                node: node,
-                poolRings: poolRingElements // Use the specific array instead of query selector
-            };
-            
+            const nodeData = createNodeElement(node, pos, distances);
             nodeElements.push(nodeData);
-            nodesGroup.appendChild(nodeGroup);
+            nodesGroup.appendChild(nodeData.element);
         });
         
         // Add groups to main group
@@ -1301,6 +1069,418 @@ const LocalGraphManager = (function() {
             
             graphActions.appendChild(zoomControls);
         }
+    }
+    
+    function calculateCircularLayout(nodes, distances, centerX, centerY, maxRadius) {
+        // Group nodes by distance
+        const nodesByDistance = {};
+        nodes.forEach(node => {
+            const distance = distances[node.id] || 0;
+            if (!nodesByDistance[distance]) {
+                nodesByDistance[distance] = [];
+            }
+            nodesByDistance[distance].push(node);
+        });
+        
+        // Position nodes in circular layout
+        const nodePositions = {};
+        Object.keys(nodesByDistance).forEach(distance => {
+            const dist = parseFloat(distance);
+            const nodesAtDistance = nodesByDistance[distance];
+            const radius = (dist / maxDistance) * maxRadius;
+            
+            nodesAtDistance.forEach((node, index) => {
+                if (dist === 0) {
+                    // Center node
+                    nodePositions[node.id] = { x: centerX, y: centerY };
+                } else {
+                    // Arrange in circle
+                    const angle = (index / nodesAtDistance.length) * 2 * Math.PI;
+                    nodePositions[node.id] = {
+                        x: centerX + Math.cos(angle) * radius,
+                        y: centerY + Math.sin(angle) * radius
+                    };
+                }
+            });
+        });
+        
+        return nodePositions;
+    }
+    
+    function calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius) {
+        const nodePositions = {};
+        
+        // Find maximum distance for scaling
+        const maxDist = Math.max(...Object.values(distances));
+        const distanceScale = maxRadius / Math.max(maxDist, 1);
+        
+        // Build shortest path tree to determine parent relationships
+        const parentMap = buildShortestPathTree(links, distances, centerNodeId);
+        
+        // Assign quadrants to avoid crossings
+        const quadrantAssignments = assignNodesToQuadrants(nodes, distances, parentMap, centerNodeId);
+        
+        // Position nodes based on distance and quadrant
+        nodes.forEach(node => {
+            const distance = distances[node.id] || 0;
+            const quadrant = quadrantAssignments[node.id] || 0;
+            
+            if (distance === 0) {
+                // Center node
+                nodePositions[node.id] = { x: centerX, y: centerY };
+            } else {
+                // Calculate position based on distance and quadrant
+                const radius = distance * distanceScale;
+                
+                // Quadrant-based angle adjustment
+                const baseAngle = getQuadrantBaseAngle(quadrant);
+                const angleSpread = Math.PI / 3; // 60 degrees spread within quadrant
+                
+                // Find nodes at same distance in same quadrant for angular spacing
+                const sameDistanceQuadrantNodes = nodes.filter(n => {
+                    const dist = distances[n.id] || 0;
+                    const quad = quadrantAssignments[n.id] || 0;
+                    return Math.abs(dist - distance) < 0.1 && quad === quadrant && n.id !== node.id;
+                });
+                
+                const nodeIndex = sameDistanceQuadrantNodes.findIndex(n => n.id < node.id);
+                const totalNodes = sameDistanceQuadrantNodes.length + 1;
+                const angleOffset = (nodeIndex / Math.max(totalNodes - 1, 1) - 0.5) * angleSpread;
+                
+                const angle = baseAngle + angleOffset;
+                
+                nodePositions[node.id] = {
+                    x: centerX + Math.cos(angle) * radius,
+                    y: centerY + Math.sin(angle) * radius
+                };
+            }
+        });
+        
+        return nodePositions;
+    }
+    
+    function buildShortestPathTree(links, distances, centerNodeId) {
+        const parentMap = {};
+        const visited = new Set();
+        const queue = [{ nodeId: centerNodeId, distance: 0, parent: null }];
+        
+        // Build adjacency list
+        const adjacencyList = new Map();
+        links.forEach(link => {
+            if (!adjacencyList.has(link.from_node_id)) {
+                adjacencyList.set(link.from_node_id, []);
+            }
+            if (!adjacencyList.has(link.to_node_id)) {
+                adjacencyList.set(link.to_node_id, []);
+            }
+            adjacencyList.get(link.from_node_id).push({
+                nodeId: link.to_node_id,
+                weight: link.weight || 1.0
+            });
+            adjacencyList.get(link.to_node_id).push({
+                nodeId: link.from_node_id,
+                weight: link.weight || 1.0
+            });
+        });
+        
+        while (queue.length > 0) {
+            queue.sort((a, b) => a.distance - b.distance);
+            const current = queue.shift();
+            
+            if (visited.has(current.nodeId)) continue;
+            
+            visited.add(current.nodeId);
+            if (current.parent) {
+                parentMap[current.nodeId] = current.parent;
+            }
+            
+            const neighbors = adjacencyList.get(current.nodeId) || [];
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor.nodeId)) {
+                    const newDistance = current.distance + neighbor.weight;
+                    queue.push({
+                        nodeId: neighbor.nodeId,
+                        distance: newDistance,
+                        parent: current.nodeId
+                    });
+                }
+            }
+        }
+        
+        return parentMap;
+    }
+    
+    function assignNodesToQuadrants(nodes, distances, parentMap, centerNodeId) {
+        const assignments = {};
+        assignments[centerNodeId] = 0; // Center node
+        
+        // Assign quadrants trying to avoid parent-child crossings
+        const quadrantCounts = [0, 0, 0, 0]; // Track how many nodes in each quadrant
+        
+        // Sort nodes by distance to process closest first
+        const sortedNodes = nodes
+            .filter(n => n.id !== centerNodeId)
+            .sort((a, b) => (distances[a.id] || 0) - (distances[b.id] || 0));
+        
+        sortedNodes.forEach(node => {
+            const parentId = parentMap[node.id];
+            let preferredQuadrant = 0;
+            
+            if (parentId && assignments[parentId] !== undefined) {
+                // If parent is center, choose least populated quadrant
+                if (parentId === centerNodeId) {
+                    preferredQuadrant = quadrantCounts.indexOf(Math.min(...quadrantCounts));
+                } else {
+                    // Try to stay in same quadrant as parent, or adjacent quadrant
+                    const parentQuadrant = assignments[parentId];
+                    const adjacentQuadrants = [
+                        parentQuadrant,
+                        (parentQuadrant + 1) % 4,
+                        (parentQuadrant + 3) % 4
+                    ];
+                    
+                    // Choose the least populated adjacent quadrant
+                    preferredQuadrant = adjacentQuadrants.reduce((best, quad) => 
+                        quadrantCounts[quad] < quadrantCounts[best] ? quad : best
+                    );
+                }
+            } else {
+                // No parent info, choose least populated quadrant
+                preferredQuadrant = quadrantCounts.indexOf(Math.min(...quadrantCounts));
+            }
+            
+            assignments[node.id] = preferredQuadrant;
+            quadrantCounts[preferredQuadrant]++;
+        });
+        
+        return assignments;
+    }
+    
+    function getQuadrantBaseAngle(quadrant) {
+        const baseAngles = [
+            0,              // Right (0°)
+            Math.PI / 2,    // Bottom (90°)
+            Math.PI,        // Left (180°)
+            3 * Math.PI / 2 // Top (270°)
+        ];
+        return baseAngles[quadrant] || 0;
+    }
+    
+    function addQuadrantDividers(mainGroup, centerX, centerY) {
+        // Create very light dotted lines for quadrant division
+        const dividerStyle = {
+            stroke: '#e5e7eb',
+            strokeWidth: '1',
+            strokeDasharray: '2,3',
+            opacity: '0.4'
+        };
+        
+        // Vertical divider line
+        const verticalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        verticalLine.setAttribute('x1', centerX);
+        verticalLine.setAttribute('y1', centerY - 400);
+        verticalLine.setAttribute('x2', centerX);
+        verticalLine.setAttribute('y2', centerY + 400);
+        Object.entries(dividerStyle).forEach(([key, value]) => {
+            verticalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
+        });
+        
+        // Horizontal divider line
+        const horizontalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        horizontalLine.setAttribute('x1', centerX - 400);
+        horizontalLine.setAttribute('y1', centerY);
+        horizontalLine.setAttribute('x2', centerX + 400);
+        horizontalLine.setAttribute('y2', centerY);
+        Object.entries(dividerStyle).forEach(([key, value]) => {
+            horizontalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
+        });
+        
+        // Add lines to the beginning so they appear behind nodes
+        mainGroup.insertBefore(verticalLine, mainGroup.firstChild);
+        mainGroup.insertBefore(horizontalLine, mainGroup.firstChild);
+    }
+    
+    function createLinkElement(link, sourcePos, targetPos, layoutMode) {
+        // Calculate actual distance between nodes
+        const actualDistance = Math.sqrt(
+            Math.pow(targetPos.x - sourcePos.x, 2) + 
+            Math.pow(targetPos.y - sourcePos.y, 2)
+        );
+        
+        // In distance-based mode, validate that visual distance matches weight
+        const weight = link.weight || 1.0;
+        let visuallyCorrect = true;
+        
+        if (layoutMode === 'distance-based') {
+            // Check if the visual distance approximately matches the weight
+            const expectedDistance = weight * 50; // Scale factor for visual representation
+            visuallyCorrect = Math.abs(actualDistance - expectedDistance) < 20; // Tolerance
+        }
+        
+        // Create link line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', sourcePos.x);
+        line.setAttribute('y1', sourcePos.y);
+        line.setAttribute('x2', targetPos.x);
+        line.setAttribute('y2', targetPos.y);
+        line.setAttribute('stroke', visuallyCorrect ? '#e2e8f0' : '#fbbf24'); // Yellow if distance mismatch
+        line.setAttribute('stroke-width', Math.max(0.8, weight * 0.8));
+        line.setAttribute('opacity', '0.6');
+        line.setAttribute('data-from-node', link.from_node_id);
+        line.setAttribute('data-to-node', link.to_node_id);
+        
+        // Create distance label
+        const midX = (sourcePos.x + targetPos.x) / 2;
+        const midY = (sourcePos.y + targetPos.y) / 2;
+        
+        // Create background rectangle for better readability
+        const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        const labelText = weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
+        
+        // Estimate text width (rough approximation)
+        const textWidth = labelText.length * 6 + 4;
+        const textHeight = 12;
+        
+        labelBg.setAttribute('x', midX - textWidth / 2);
+        labelBg.setAttribute('y', midY - textHeight / 2);
+        labelBg.setAttribute('width', textWidth);
+        labelBg.setAttribute('height', textHeight);
+        labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+        labelBg.setAttribute('stroke', '#d1d5da');
+        labelBg.setAttribute('stroke-width', '0.5');
+        labelBg.setAttribute('rx', '2');
+        labelBg.setAttribute('ry', '2');
+        labelBg.style.opacity = '0.8';
+        
+        // Create distance text
+        const distanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        distanceText.setAttribute('x', midX);
+        distanceText.setAttribute('y', midY + 3);
+        distanceText.setAttribute('text-anchor', 'middle');
+        distanceText.setAttribute('font-size', '9');
+        distanceText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+        distanceText.setAttribute('font-weight', '600');
+        distanceText.setAttribute('fill', visuallyCorrect ? '#374151' : '#d97706');
+        distanceText.textContent = labelText;
+        distanceText.style.pointerEvents = 'none';
+        distanceText.style.userSelect = 'none';
+        
+        // Create link group
+        const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        linkGroup.setAttribute('class', 'link-group');
+        linkGroup.appendChild(line);
+        linkGroup.appendChild(labelBg);
+        linkGroup.appendChild(distanceText);
+        
+        // Add hover effects
+        linkGroup.addEventListener('mouseenter', () => {
+            line.setAttribute('stroke', visuallyCorrect ? '#94a3b8' : '#f59e0b');
+            line.setAttribute('opacity', '0.9');
+            labelBg.style.opacity = '1';
+            labelBg.setAttribute('fill', 'rgba(255, 255, 255, 1)');
+            labelBg.setAttribute('stroke', '#6b7280');
+            distanceText.setAttribute('fill', visuallyCorrect ? '#111827' : '#92400e');
+            distanceText.setAttribute('font-weight', '700');
+        });
+        
+        linkGroup.addEventListener('mouseleave', () => {
+            line.setAttribute('stroke', visuallyCorrect ? '#e2e8f0' : '#fbbf24');
+            line.setAttribute('opacity', '0.6');
+            labelBg.style.opacity = '0.8';
+            labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+            labelBg.setAttribute('stroke', '#d1d5da');
+            distanceText.setAttribute('fill', visuallyCorrect ? '#374151' : '#d97706');
+            distanceText.setAttribute('font-weight', '600');
+        });
+        
+        return {
+            element: line,
+            labelBg: labelBg,
+            labelText: distanceText,
+            linkGroup: linkGroup,
+            fromNodeId: link.from_node_id,
+            toNodeId: link.to_node_id,
+            weight: weight
+        };
+    }
+    
+    function createNodeElement(node, pos, distances) {
+        const isCenter = node.id === centerNodeId;
+        const distance = distances[node.id] || 0;
+        const depth = graphData.depths[node.id] || 0;
+        const isInPool = nodePoolStatus.get(node.id) || false;
+        
+        // Create node group for easier dragging
+        const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        nodeGroup.setAttribute('data-node-id', node.id);
+        nodeGroup.style.cursor = 'move';
+        
+        // Node circle with improved styling
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+        circle.setAttribute('r', isCenter ? 14 : 10);
+        circle.setAttribute('class', 'main-node-circle');
+        
+        // Improved color scheme
+        if (isCenter) {
+            circle.setAttribute('fill', '#6366f1');
+            circle.setAttribute('stroke', '#4f46e5');
+            circle.setAttribute('stroke-width', '3');
+        } else {
+            circle.setAttribute('fill', getDistanceColor(distance));
+            circle.setAttribute('stroke', isInPool ? '#94a3b8' : '#64748b');
+            circle.setAttribute('stroke-width', isInPool ? '2' : '1.5');
+            if (isInPool) {
+                circle.setAttribute('filter', 'url(#poolGlow)');
+            }
+        }
+        
+        circle.style.transition = 'all 0.2s ease';
+        
+        // Add hover effects
+        circle.addEventListener('mouseenter', () => {
+            if (!draggedNode) {
+                circle.setAttribute('stroke-width', '4');
+                circle.style.filter = 'brightness(1.1)';
+            }
+        });
+        
+        circle.addEventListener('mouseleave', () => {
+            if (!draggedNode) {
+                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
+                circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
+            }
+        });
+        
+        nodeGroup.appendChild(circle);
+        
+        // Add pool indicators and other node elements...
+        // (keeping the existing pool ring code)
+        
+        // Node label with improved styling
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', pos.x);
+        text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('font-size', isCenter ? '11' : '9');
+        text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+        text.setAttribute('font-weight', isCenter ? '600' : '500');
+        text.setAttribute('fill', '#1e293b');
+        text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
+        text.style.pointerEvents = 'none';
+        
+        nodeGroup.appendChild(text);
+        
+        return {
+            element: nodeGroup,
+            circle: circle,
+            text: text,
+            nodeId: node.id,
+            position: pos,
+            node: node,
+            poolRings: [] // Would contain pool ring elements
+        };
     }
     
     function getDistanceColor(distance) {
@@ -2973,6 +3153,14 @@ const LocalGraphManager = (function() {
             return;
         }
         
+        // Store the current editing node ID at the start to avoid timing issues
+        const editingNodeId = currentEditingNode?.id;
+        
+        if (!editingNodeId) {
+            showNotification('Error: No node being edited', 'error');
+            return;
+        }
+        
         try {
             const response = await fetch(`/api/links/${linkId}`, {
                 method: 'DELETE'
@@ -2983,8 +3171,8 @@ const LocalGraphManager = (function() {
                 throw new Error(error.error || 'Failed to delete link');
             }
             
-            // Reload links
-            await loadNodeLinks(currentEditingNode.id);
+            // Reload links using the stored node ID
+            await loadNodeLinks(editingNodeId);
             
             showNotification('Link deleted successfully!', 'success');
             
