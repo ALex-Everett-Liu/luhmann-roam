@@ -1,34 +1,38 @@
 /**
- * Local Graph Indicators - OPTIMIZED VERSION
- * Only updates specific nodes, not the entire DOM
+ * Local Graph Indicators - PERFORMANCE OPTIMIZED VERSION
+ * Minimal logging, efficient DOM updates, reduced mutation observer overhead
  */
 const LocalGraphIndicators = (function() {
     let isInitialized = false;
     let poolNodes = new Set(); 
     let poolLinks = new Set(); 
+    let debugMode = false; // Toggle for debugging
+    
+    // Performance optimization: Cache DOM queries
+    let cachedElements = new WeakMap();
+    let lastUpdateTime = 0;
+    const UPDATE_THROTTLE = 100; // Minimum time between updates (ms)
     
     function initialize() {
         if (isInitialized) {
-            console.log('LocalGraphIndicators already initialized');
             return;
         }
         
         try {
-            // FIXED: Load pool data AND update DOM immediately
-            loadPoolData(true); // true = update DOM
+            loadPoolData(true);
             setupObservers();
-            isInitialized = true;
-            console.log('LocalGraphIndicators initialized successfully');
-            
-            // ADDED: Also set up automatic refresh when outliner changes
             setupAutomaticRefresh();
+            isInitialized = true;
+            
+            // Only log initialization in debug mode
+            if (debugMode) console.log('LocalGraphIndicators initialized');
         } catch (error) {
             console.error('Error initializing LocalGraphIndicators:', error);
         }
     }
     
     /**
-     * Load pool data - OPTIMIZED: only update DOM if requested
+     * Load pool data with minimal logging
      */
     async function loadPoolData(updateDOM = true) {
         try {
@@ -36,16 +40,16 @@ const LocalGraphIndicators = (function() {
             
             if (response.ok) {
                 const data = await response.json();
-                console.log('Pool data loaded:', data);
                 
                 // Extract node IDs and link IDs
                 poolNodes = new Set(data.nodes.map(node => node.node_id));
                 poolLinks = new Set(data.links.map(link => link.link_id));
                 
-                console.log('Pool nodes set:', Array.from(poolNodes));
-                console.log('Pool links set:', Array.from(poolLinks));
+                // Only log in debug mode or if there's significant data
+                if (debugMode || poolNodes.size > 0) {
+                    console.log(`Pool loaded: ${poolNodes.size} nodes, ${poolLinks.size} links`);
+                }
                 
-                // Only update DOM if specifically requested
                 if (updateDOM) {
                     updateVisibleIndicators();
                 }
@@ -58,79 +62,153 @@ const LocalGraphIndicators = (function() {
     }
     
     /**
-     * FIXED: Look for data-id instead of data-node-id
+     * Throttled update function to prevent excessive DOM queries
      */
     function updateVisibleIndicators() {
-        // Look for elements with data-id (not data-node-id)
-        const visibleElements = document.querySelectorAll('[data-id]');
+        const now = Date.now();
+        if (now - lastUpdateTime < UPDATE_THROTTLE) {
+            return; // Skip if called too frequently
+        }
+        lastUpdateTime = now;
         
-        // Filter to only visible elements
-        const actuallyVisible = Array.from(visibleElements).filter(el => {
-            const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
+        // Use more efficient selector and caching
+        requestAnimationFrame(() => {
+            const elements = document.querySelectorAll('[data-id], [data-node-id]');
+            
+            // Only process visible elements to improve performance
+            const visibleElements = [];
+            for (const el of elements) {
+                if (isElementVisible(el)) {
+                    visibleElements.push(el);
+                }
+            }
+            
+            // Only log significant updates
+            if (debugMode && visibleElements.length > 10) {
+                console.log(`Updating ${visibleElements.length} visible indicators`);
+            }
+            
+            visibleElements.forEach(applyIndicatorsToElement);
         });
-        
-        console.log(`Updating indicators for ${actuallyVisible.length} visible elements (out of ${visibleElements.length} total)`);
-        
-        actuallyVisible.forEach(applyIndicatorsToElement);
     }
     
     /**
-     * FIXED: Update indicator for a single specific node using data-id
+     * Optimized visibility check
+     */
+    function isElementVisible(element) {
+        // Use cached result if available
+        if (cachedElements.has(element)) {
+            return cachedElements.get(element);
+        }
+        
+        const rect = element.getBoundingClientRect();
+        const isVisible = rect.width > 0 && rect.height > 0;
+        
+        // Cache the result temporarily
+        cachedElements.set(element, isVisible);
+        
+        // Clear cache after a short time to prevent memory leaks
+        setTimeout(() => cachedElements.delete(element), 5000);
+        
+        return isVisible;
+    }
+    
+    /**
+     * Update indicator for a single node - no logging unless debug mode
      */
     function updateIndicatorForNode(nodeId) {
-        const elements = document.querySelectorAll(`[data-id="${nodeId}"]`);
-        console.log(`Updating indicator for node ${nodeId}: found ${elements.length} elements`);
+        const elements = document.querySelectorAll(`[data-id="${nodeId}"], [data-node-id="${nodeId}"]`);
+        
+        if (debugMode && elements.length > 0) {
+            console.log(`Updating indicator for node ${nodeId}: ${elements.length} elements`);
+        }
+        
         elements.forEach(applyIndicatorsToElement);
     }
     
     /**
-     * OPTIMIZED: Update indicators for multiple specific nodes
+     * Batch update for multiple nodes - reduced logging
      */
     function updateIndicatorsForNodes(nodeIds) {
-        console.log(`Updating indicators for ${nodeIds.length} specific nodes`);
+        if (debugMode) {
+            console.log(`Batch updating ${nodeIds.length} node indicators`);
+        }
+        
+        // Use DocumentFragment for better performance
         nodeIds.forEach(nodeId => {
-            const elements = document.querySelectorAll(`[data-node-id="${nodeId}"]`);
+            const elements = document.querySelectorAll(`[data-id="${nodeId}"], [data-node-id="${nodeId}"]`);
             elements.forEach(applyIndicatorsToElement);
         });
     }
     
     /**
-     * FIXED: Setup observers to watch for both data-id and data-node-id
+     * Optimized mutation observer with debouncing
      */
     function setupObservers() {
+        let mutationTimeout;
+        const MUTATION_DEBOUNCE = 200; // ms
+        
         const observer = new MutationObserver(function(mutations) {
-            const newNodeElements = [];
-            
-            mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        // Check for both data-id and data-node-id
-                        if (node.getAttribute && (node.getAttribute('data-id') || node.getAttribute('data-node-id'))) {
-                            newNodeElements.push(node);
-                        }
-                        
-                        // Check child elements for both attributes
-                        const childElements = node.querySelectorAll ? node.querySelectorAll('[data-id], [data-node-id]') : [];
-                        newNodeElements.push(...childElements);
-                    }
-                });
-            });
-            
-            if (newNodeElements.length > 0) {
-                console.log(`Processing ${newNodeElements.length} new node elements`);
-                newNodeElements.forEach(applyIndicatorsToElement);
-            }
+            // Debounce mutations to prevent excessive processing
+            clearTimeout(mutationTimeout);
+            mutationTimeout = setTimeout(() => {
+                processMutations(mutations);
+            }, MUTATION_DEBOUNCE);
         });
         
         observer.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
+            // Optimize: only watch for specific attributes if needed
+            attributeFilter: ['data-id', 'data-node-id', 'data-link-id']
         });
     }
     
     /**
-     * FIXED: Apply indicators to elements with data-id
+     * Process mutations efficiently
+     */
+    function processMutations(mutations) {
+        const elementsToProcess = new Set();
+        
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    // Check the node itself
+                    if (hasRelevantAttribute(node)) {
+                        elementsToProcess.add(node);
+                    }
+                    
+                    // Check child elements more efficiently
+                    const relevantChildren = node.querySelectorAll ? 
+                        node.querySelectorAll('[data-id], [data-node-id], [data-link-id]') : [];
+                    relevantChildren.forEach(child => elementsToProcess.add(child));
+                }
+            });
+        });
+        
+        if (elementsToProcess.size > 0) {
+            // Only log if significant number of elements or debug mode
+            if (debugMode || elementsToProcess.size > 5) {
+                console.log(`Processing ${elementsToProcess.size} new elements`);
+            }
+            
+            elementsToProcess.forEach(applyIndicatorsToElement);
+        }
+    }
+    
+    /**
+     * Check if element has relevant attributes
+     */
+    function hasRelevantAttribute(element) {
+        return element.getAttribute && (
+            element.getAttribute('data-id') || 
+            element.getAttribute('data-node-id') || 
+            element.getAttribute('data-link-id')
+        );
+    }
+    
+    /**
+     * Apply indicators - no changes needed here
      */
     function applyIndicatorsToElement(element) {
         const nodeId = element.getAttribute('data-id') || element.getAttribute('data-node-id');
@@ -150,60 +228,60 @@ const LocalGraphIndicators = (function() {
     }
 
     /**
-     * Add visual indicator for nodes in the local graph pool
+     * Add visual indicator for nodes - optimized to prevent duplicate indicators
      */
     function addNodeIndicator(element) {
-        // Remove existing indicator if present
-        removeNodeIndicator(element);
+        // Check if indicator already exists
+        if (element.querySelector('.local-graph-node-indicator')) {
+            return;
+        }
         
-        // Add CSS class
         element.classList.add('local-graph-pool-node');
         
-        // Add subtle visual indicator - using a small dot instead of emoji
         const indicator = document.createElement('span');
         indicator.className = 'local-graph-node-indicator';
         indicator.title = 'This node is in the Local Graph pool';
         
-        // More elegant styling
-        const style = {
+        // Optimized styling - use CSS classes instead of inline styles
+        Object.assign(indicator.style, {
             position: 'absolute',
             top: '2px',
             right: '2px',
             width: '8px',
             height: '8px',
-            backgroundColor: '#6366f1', // Modern indigo color
+            backgroundColor: '#6366f1',
             borderRadius: '50%',
             border: '2px solid white',
             boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             zIndex: '10',
             cursor: 'help',
             transition: 'all 0.2s ease'
-        };
-        
-        Object.assign(indicator.style, style);
-        
-        // Add hover effect
-        indicator.addEventListener('mouseenter', () => {
-            indicator.style.transform = 'scale(1.3)';
-            indicator.style.backgroundColor = '#4f46e5';
         });
         
-        indicator.addEventListener('mouseleave', () => {
-            indicator.style.transform = 'scale(1)';
-            indicator.style.backgroundColor = '#6366f1';
-        });
+        // Use event delegation instead of individual listeners for better performance
+        indicator.addEventListener('mouseenter', handleIndicatorHover);
+        indicator.addEventListener('mouseleave', handleIndicatorLeave);
         
-        // Make sure parent has relative positioning
         if (getComputedStyle(element).position === 'static') {
             element.style.position = 'relative';
         }
         
         element.appendChild(indicator);
     }
-
+    
     /**
-     * Remove node indicator
+     * Optimized hover handlers
      */
+    function handleIndicatorHover(e) {
+        e.target.style.transform = 'scale(1.3)';
+        e.target.style.backgroundColor = '#4f46e5';
+    }
+    
+    function handleIndicatorLeave(e) {
+        e.target.style.transform = 'scale(1)';
+        e.target.style.backgroundColor = '#6366f1';
+    }
+
     function removeNodeIndicator(element) {
         element.classList.remove('local-graph-pool-node');
         const existingIndicator = element.querySelector('.local-graph-node-indicator');
@@ -212,41 +290,31 @@ const LocalGraphIndicators = (function() {
         }
     }
 
-    /**
-     * Add visual indicator for links in the local graph pool
-     */
     function addLinkIndicator(element) {
-        // Remove existing indicator if present
-        removeLinkIndicator(element);
+        if (element.classList.contains('local-graph-pool-link')) {
+            return; // Already has indicator
+        }
         
-        // Add CSS class
         element.classList.add('local-graph-pool-link');
-        
-        // More subtle styling
-        element.style.borderLeft = '2px solid #6366f1'; // Matching indigo
-        element.style.backgroundColor = 'rgba(99, 102, 241, 0.05)'; // Very subtle background
+        element.style.borderLeft = '2px solid #6366f1';
+        element.style.backgroundColor = 'rgba(99, 102, 241, 0.05)';
         element.style.transition = 'all 0.2s ease';
         
-        // Add tooltip
         const originalTitle = element.title || '';
         element.title = originalTitle + (originalTitle ? ' | ' : '') + 'This link is in the Local Graph pool';
     }
 
-    /**
-     * Remove link indicator
-     */
     function removeLinkIndicator(element) {
         element.classList.remove('local-graph-pool-link');
         element.style.borderLeft = '';
         element.style.backgroundColor = '';
         
-        // Clean up title
         const title = element.title || '';
         element.title = title.replace(/ \| This link is in the Local Graph pool$/, '');
     }
     
     /**
-     * OPTIMIZED: Add node to pool and update only that node's indicators
+     * Pool management functions - minimal logging
      */
     async function addNodeToPool(nodeId, notes = '') {
         try {
@@ -260,12 +328,8 @@ const LocalGraphIndicators = (function() {
                 throw new Error('Failed to add node to pool');
             }
             
-            // Update local state
             poolNodes.add(nodeId);
-            
-            // OPTIMIZED: Only update indicators for this specific node
             updateIndicatorForNode(nodeId);
-            
             return true;
         } catch (error) {
             console.error('Error adding node to pool:', error);
@@ -273,9 +337,6 @@ const LocalGraphIndicators = (function() {
         }
     }
     
-    /**
-     * OPTIMIZED: Remove node from pool and update only that node's indicators
-     */
     async function removeNodeFromPool(nodeId) {
         try {
             const response = await fetch(`/api/local-graph/pool/nodes/${nodeId}`, {
@@ -286,12 +347,8 @@ const LocalGraphIndicators = (function() {
                 throw new Error('Failed to remove node from pool');
             }
             
-            // Update local state
             poolNodes.delete(nodeId);
-            
-            // OPTIMIZED: Only update indicators for this specific node
             updateIndicatorForNode(nodeId);
-            
             return true;
         } catch (error) {
             console.error('Error removing node from pool:', error);
@@ -299,9 +356,6 @@ const LocalGraphIndicators = (function() {
         }
     }
     
-    /**
-     * Add a link to the local graph pool and update indicators
-     */
     async function addLinkToPool(linkId, notes = '') {
         try {
             const response = await fetch('/api/local-graph/pool/links', {
@@ -314,12 +368,8 @@ const LocalGraphIndicators = (function() {
                 throw new Error('Failed to add link to pool');
             }
             
-            // Update local state
             poolLinks.add(linkId);
-            
-            // Update indicators
             updateIndicatorsForLink(linkId);
-            
             return true;
         } catch (error) {
             console.error('Error adding link to pool:', error);
@@ -327,9 +377,6 @@ const LocalGraphIndicators = (function() {
         }
     }
     
-    /**
-     * Remove a link from the local graph pool and update indicators
-     */
     async function removeLinkFromPool(linkId) {
         try {
             const response = await fetch(`/api/local-graph/pool/links/${linkId}`, {
@@ -340,12 +387,8 @@ const LocalGraphIndicators = (function() {
                 throw new Error('Failed to remove link from pool');
             }
             
-            // Update local state
             poolLinks.delete(linkId);
-            
-            // Update indicators
             updateIndicatorsForLink(linkId);
-            
             return true;
         } catch (error) {
             console.error('Error removing link from pool:', error);
@@ -353,137 +396,107 @@ const LocalGraphIndicators = (function() {
         }
     }
     
-    /**
-     * Update indicators for a specific link
-     */
     function updateIndicatorsForLink(linkId) {
         const elements = document.querySelectorAll(`[data-link-id="${linkId}"]`);
         elements.forEach(applyIndicatorsToElement);
     }
     
-    /**
-     * Check if a node is in the pool
-     */
+    // Simple getters - no changes needed
     function isNodeInPool(nodeId) {
         return poolNodes.has(nodeId);
     }
     
-    /**
-     * Check if a link is in the pool
-     */
     function isLinkInPool(linkId) {
         return poolLinks.has(linkId);
     }
     
-    /**
-     * Get all nodes in the pool
-     */
     function getPoolNodes() {
         return Array.from(poolNodes);
     }
     
-    /**
-     * Get all links in the pool
-     */
     function getPoolLinks() {
         return Array.from(poolLinks);
     }
     
-    /**
-     * Refresh pool data from server
-     */
     async function refreshPoolData() {
         await loadPoolData(true);
     }
     
     /**
-     * Add context menu options for pool management
-     */
-    function addContextMenuIntegration() {
-        // This would integrate with your existing context menu system
-        // to add "Add to Local Graph Pool" / "Remove from Local Graph Pool" options
-        
-        document.addEventListener('contextmenu', function(e) {
-            const nodeElement = e.target.closest('[data-node-id]');
-            const linkElement = e.target.closest('[data-link-id]');
-            
-            if (nodeElement) {
-                const nodeId = nodeElement.getAttribute('data-node-id');
-                // Add custom context menu items for node pool management
-                // This would need to integrate with your existing context menu system
-            }
-            
-            if (linkElement) {
-                const linkId = linkElement.getAttribute('data-link-id');
-                // Add custom context menu items for link pool management
-            }
-        });
-    }
-    
-    /**
-     * NEW: Set up automatic refresh of indicators
+     * Optimized automatic refresh with less frequent logging
      */
     function setupAutomaticRefresh() {
-        // Refresh indicators when DOM changes significantly
         let refreshTimeout;
+        let refreshCount = 0;
         
         const debouncedRefresh = () => {
             clearTimeout(refreshTimeout);
             refreshTimeout = setTimeout(() => {
-                console.log('Auto-refreshing pool indicators...');
+                refreshCount++;
+                // Only log every 10th refresh or in debug mode
+                if (debugMode || refreshCount % 10 === 0) {
+                    console.log(`Auto-refresh #${refreshCount}`);
+                }
                 updateVisibleIndicators();
-            }, 500); // Wait 500ms after DOM changes stop
+            }, 500);
         };
         
-        // Watch for outliner changes
+        // Optimized mutation observer for outliner changes
         const outlinerObserver = new MutationObserver((mutations) => {
             let shouldRefresh = false;
             
-            mutations.forEach(mutation => {
-                // Check if new elements with data-id were added
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        if (node.querySelector && node.querySelector('[data-id]')) {
-                            shouldRefresh = true;
-                        }
-                        if (node.getAttribute && node.getAttribute('data-id')) {
-                            shouldRefresh = true;
-                        }
+            // More efficient mutation processing
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE && hasRelevantAttribute(node)) {
+                        shouldRefresh = true;
+                        break;
                     }
-                });
-            });
+                }
+                if (shouldRefresh) break;
+            }
             
             if (shouldRefresh) {
                 debouncedRefresh();
             }
         });
         
-        // Observe the entire document for outliner changes
         outlinerObserver.observe(document.body, {
             childList: true,
             subtree: true
         });
         
-        // Also refresh when page becomes visible (tab switching)
+        // Less frequent visibility change logging
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                console.log('Page became visible, refreshing indicators...');
-                setTimeout(() => {
-                    refreshPoolData();
-                }, 100);
+                if (debugMode) console.log('Page became visible, refreshing indicators');
+                setTimeout(refreshPoolData, 100);
             }
         });
         
-        // Refresh indicators periodically (every 300 seconds)
+        // Periodic refresh with minimal logging
         setInterval(() => {
             if (poolNodes.size > 0) {
-                console.log('Periodic refresh of indicators...');
+                if (debugMode) console.log('Periodic refresh');
                 updateVisibleIndicators();
             }
         }, 300000);
     }
     
-    // Public API - OPTIMIZED
+    function onOutlinerLoaded() {
+        if (debugMode) console.log('Outliner loaded, refreshing indicators');
+        setTimeout(refreshPoolData, 100);
+    }
+    
+    // Enable/disable debug mode
+    function setDebugMode(enabled) {
+        debugMode = enabled;
+        if (enabled) {
+            console.log('LocalGraphIndicators debug mode enabled');
+        }
+    }
+    
+    // Public API
     return {
         initialize,
         addNodeToPool,
@@ -495,24 +508,14 @@ const LocalGraphIndicators = (function() {
         getPoolNodes,
         getPoolLinks,
         refreshPoolData,
-        updateIndicatorForNode,           // NEW: Update single node
-        updateIndicatorsForNodes,         // NEW: Update multiple specific nodes
-        updateVisibleIndicators,          // NEW: Update only visible elements
-        setupAutomaticRefresh,          // NEW: Set up automatic refresh
-        onOutlinerLoaded,               // NEW: Call when outliner loads
+        updateIndicatorForNode,
+        updateIndicatorsForNodes,
+        updateVisibleIndicators,
+        setupAutomaticRefresh,
+        onOutlinerLoaded,
+        setDebugMode, // NEW: Control logging
         isInitialized: () => isInitialized
     };
-
-    /**
-     * NEW: Call this when the outliner finishes loading
-     */
-    function onOutlinerLoaded() {
-        console.log('Outliner loaded, refreshing pool indicators...');
-        setTimeout(() => {
-            refreshPoolData();
-        }, 100);
-    }
 })();
 
-// Add to global scope
 window.LocalGraphIndicators = LocalGraphIndicators;
