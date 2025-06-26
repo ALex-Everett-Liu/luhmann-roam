@@ -345,7 +345,7 @@ const LinkManager = (function() {
       });
     }
     
-    // Add incoming links
+    // Add incoming links (NOW WITH EDIT/DELETE ACTIONS!)
     if (currentNodeLinks.incoming.length === 0) {
       incomingLinksList.innerHTML = `<li class="no-links">${window.I18n ? I18n.t('noIncomingLinks') : 'No incoming links'}</li>`;
     } else {
@@ -361,7 +361,20 @@ const LinkManager = (function() {
             <div class="link-weight">${window.I18n ? I18n.t('weightLabel', {weight: link.weight}) : `Weight: ${link.weight}`}</div>
             <div class="link-description">${link.description || (window.I18n ? I18n.t('noDescription') : 'No description')}</div>
           </div>
+          <div class="link-actions">
+            <button class="link-edit" data-id="${link.id}">${window.I18n ? I18n.t('edit') : 'Edit'}</button>
+            <button class="link-delete" data-id="${link.id}">${window.I18n ? I18n.t('delete') : 'Delete'}</button>
+          </div>
         `;
+        
+        // Add event listeners (same as outgoing links)
+        li.querySelector('.link-edit').addEventListener('click', () => {
+          editLink(link.id, link.weight, link.description);
+        });
+        
+        li.querySelector('.link-delete').addEventListener('click', () => {
+          deleteLink(link.id);
+        });
         
         incomingLinksList.appendChild(li);
       });

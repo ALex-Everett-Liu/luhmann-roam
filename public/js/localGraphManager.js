@@ -2765,7 +2765,7 @@ const LocalGraphManager = (function() {
                 linkItem.className = 'link-item';
                 linkItem.innerHTML = `
                     <div class="link-info">
-                        <div class="link-target">${link.content || link.content_zh || 'Untitled'}</div>
+                        <div class="link-target">To: ${link.content || link.content_zh || 'Untitled'}</div>
                         <div class="link-details">
                             <span class="link-weight">Weight: ${link.weight}</span>
                             <span class="link-description">${link.description || 'No description'}</span>
@@ -2785,7 +2785,7 @@ const LocalGraphManager = (function() {
             });
         }
         
-        // Add incoming links (read-only)
+        // Add incoming links (NOW WITH EDIT/DELETE ACTIONS!)
         if (currentNodeLinks.incoming.length === 0) {
             incomingList.innerHTML = '<div class="no-links">No incoming links</div>';
         } else {
@@ -2800,7 +2800,16 @@ const LocalGraphManager = (function() {
                             <span class="link-description">${link.description || 'No description'}</span>
                         </div>
                     </div>
+                    <div class="link-actions">
+                        <button class="edit-link-btn" data-link-id="${link.id}">Edit</button>
+                        <button class="delete-link-btn" data-link-id="${link.id}">Delete</button>
+                    </div>
                 `;
+                
+                // Add event listeners (same as outgoing links)
+                linkItem.querySelector('.edit-link-btn').addEventListener('click', () => editLink(link));
+                linkItem.querySelector('.delete-link-btn').addEventListener('click', () => deleteLink(link.id));
+                
                 incomingList.appendChild(linkItem);
             });
         }
