@@ -143,9 +143,9 @@ const LocalGraphManager = (function() {
                         <div class="graph-sidebar" id="local-graph-sidebar">
                             <div class="sidebar-section">
                                 <h4>Search in Graph</h4>
-                                <div class="graph-search-container">
-                                    <input type="text" id="graph-node-search" placeholder="Search nodes in current graph..." class="graph-search-input">
-                                    <div id="graph-search-results" class="graph-search-results">
+                                <div class="local-graph-search-container">
+                                    <input type="text" id="graph-node-search" placeholder="Search nodes in current graph..." class="local-graph-search-input">
+                                    <div id="graph-search-results" class="local-graph-search-results">
                                         <!-- Search results will appear here -->
                                     </div>
                                 </div>
@@ -2370,12 +2370,12 @@ const LocalGraphManager = (function() {
         const resultsContainer = document.getElementById('graph-search-results');
         
         if (!graphData || !graphData.nodes) {
-            resultsContainer.innerHTML = '<div class="search-no-results">No graph loaded</div>';
+            resultsContainer.innerHTML = '<div class="local-graph-search-no-results">No graph loaded</div>';
             return;
         }
         
         if (query.length < 2) {
-            resultsContainer.innerHTML = '<div class="search-hint">Type at least 2 characters to search</div>';
+            resultsContainer.innerHTML = '<div class="local-graph-search-hint">Type at least 2 characters to search</div>';
             clearSearchHighlight();
             return;
         }
@@ -2390,39 +2390,39 @@ const LocalGraphManager = (function() {
         });
         
         if (matchingNodes.length === 0) {
-            resultsContainer.innerHTML = `<div class="search-no-results">No nodes found matching "${query}"</div>`;
+            resultsContainer.innerHTML = `<div class="local-graph-search-no-results">No nodes found matching "${query}"</div>`;
             clearSearchHighlight();
             return;
         }
         
-        // Display search results
+        // Display search results with updated class names
         resultsContainer.innerHTML = matchingNodes.map(node => {
             const distance = graphData.distances[node.id] || 0;
             const depth = graphData.depths[node.id] || 0;
             const isInPool = nodePoolStatus.get(node.id) || false;
             
             return `
-                <div class="search-result-item" data-node-id="${node.id}">
-                    <div class="search-result-content">
-                        <div class="search-result-title">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
-                        ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
-                        <div class="search-result-meta">
-                            <span class="search-distance">Distance: ${distance.toFixed(2)}</span>
-                            <span class="search-depth">Depth: ${depth}</span>
-                            ${isInPool ? '<span class="search-pool-status">In Pool</span>' : ''}
+                <div class="local-graph-search-result-item" data-node-id="${node.id}">
+                    <div class="local-graph-search-result-content">
+                        <div class="local-graph-search-result-title">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
+                        ${node.content_zh ? `<div class="local-graph-search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
+                        <div class="local-graph-search-result-meta">
+                            <span class="local-graph-search-distance">Distance: ${distance.toFixed(2)}</span>
+                            <span class="local-graph-search-depth">Depth: ${depth}</span>
+                            ${isInPool ? '<span class="local-graph-search-pool-status">In Pool</span>' : ''}
                         </div>
                     </div>
-                    <button class="search-locate-btn" onclick="LocalGraphManager.locateNodeInGraph('${node.id}')" title="Locate in graph">
+                    <button class="local-graph-search-locate-btn" onclick="LocalGraphManager.locateNodeInGraph('${node.id}')" title="Locate in graph">
                         🎯
                     </button>
                 </div>
             `;
         }).join('');
         
-        // Add click handlers for result items
-        resultsContainer.querySelectorAll('.search-result-item').forEach(item => {
+        // Add click handlers for result items with updated class names
+        resultsContainer.querySelectorAll('.local-graph-search-result-item').forEach(item => {
             item.addEventListener('click', function(e) {
-                if (!e.target.classList.contains('search-locate-btn')) {
+                if (!e.target.classList.contains('local-graph-search-locate-btn')) {
                     const nodeId = this.dataset.nodeId;
                     const node = graphData.nodes.find(n => n.id === nodeId);
                     if (node) {
@@ -2457,8 +2457,8 @@ const LocalGraphManager = (function() {
         const circle = nodeElement.querySelector('circle.main-node-circle');
         if (!circle) return;
         
-        // Add highlight effect
-        circle.classList.add('search-highlighted');
+        // Add highlight effect with updated class name
+        circle.classList.add('local-graph-search-highlighted');
         searchHighlightedNode = nodeId;
         
         // Get node position for centering
@@ -2471,7 +2471,7 @@ const LocalGraphManager = (function() {
         // Select the node to show details
         selectNode(node);
         
-        // Add pulsing animation
+        // Add pulsing animation with updated animation name
         animateNodeHighlight(circle);
         
         // Auto-clear highlight after 5 seconds
@@ -2486,7 +2486,7 @@ const LocalGraphManager = (function() {
         if (searchHighlightedNode) {
             const highlightedElement = document.querySelector(`g[data-node-id="${searchHighlightedNode}"] circle.main-node-circle`);
             if (highlightedElement) {
-                highlightedElement.classList.remove('search-highlighted');
+                highlightedElement.classList.remove('local-graph-search-highlighted');
             }
             searchHighlightedNode = null;
         }
@@ -2524,8 +2524,8 @@ const LocalGraphManager = (function() {
     }
     
     function animateNodeHighlight(circleElement) {
-        // Add pulsing animation
-        circleElement.style.animation = 'searchPulse 2s ease-in-out 3';
+        // Add pulsing animation with updated animation name
+        circleElement.style.animation = 'localGraphSearchPulse 2s ease-in-out 3';
     }
 
     // Add the resizable sidebar functionality:
