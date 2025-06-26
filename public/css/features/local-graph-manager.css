@@ -1638,3 +1638,250 @@
       gap: 4px;
     }
   }
+
+  /* Graph Search Styling */
+  .graph-search-container {
+    position: relative;
+  }
+
+  .graph-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    transition: border-color 0.2s ease;
+  }
+
+  .graph-search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .graph-search-results {
+    margin-top: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 4px;
+  }
+
+  .search-result-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+    margin-bottom: 4px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .search-result-item:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    transform: translateX(2px);
+  }
+
+  .search-result-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-result-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1e293b;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search-result-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search-result-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .search-result-meta span {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  .search-distance {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .search-depth {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .search-pool-status {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
+  .search-locate-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .search-locate-btn:hover {
+    background: #2563eb;
+    transform: scale(1.1);
+  }
+
+  .search-hint, .search-no-results {
+    padding: 12px;
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+    font-style: italic;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 4px;
+  }
+
+  .search-no-results {
+    color: #ef4444;
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+
+  /* Search highlight styling */
+  .search-highlighted {
+    stroke: #f59e0b !important;
+    stroke-width: 4 !important;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6)) !important;
+  }
+
+  /* Search highlight animation */
+  @keyframes searchPulse {
+    0%, 100% {
+      stroke-width: 4;
+      stroke-opacity: 1;
+    }
+    50% {
+      stroke-width: 6;
+      stroke-opacity: 0.7;
+    }
+  }
+
+  /* Highlight search terms */
+  mark {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+
+  /* Dark mode support for search */
+  @media (prefers-color-scheme: dark) {
+    .graph-search-input {
+      background: #0f172a;
+      border-color: #334155;
+      color: #f1f5f9;
+    }
+    
+    .graph-search-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    }
+    
+    .search-result-item {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    
+    .search-result-item:hover {
+      background: #334155;
+      border-color: #60a5fa;
+    }
+    
+    .search-result-title {
+      color: #f1f5f9;
+    }
+    
+    .search-result-subtitle {
+      color: #94a3b8;
+    }
+    
+    .search-distance {
+      background: #1e3a8a;
+      color: #93c5fd;
+    }
+    
+    .search-depth {
+      background: #064e3b;
+      color: #6ee7b7;
+    }
+    
+    .search-pool-status {
+      background: #312e81;
+      color: #c7d2fe;
+    }
+    
+    .search-hint, .search-no-results {
+      background: #1e293b;
+      color: #94a3b8;
+      border-color: #475569;
+    }
+    
+    .search-no-results {
+      background: #1e1b1b;
+      color: #fca5a5;
+      border-color: #7f1d1d;
+    }
+    
+    mark {
+      background: #451a03;
+      color: #fbbf24;
+    }
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .search-result-meta {
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .search-result-meta span {
+      font-size: 9px;
+    }
+    
+    .search-locate-btn {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+    }
+  }

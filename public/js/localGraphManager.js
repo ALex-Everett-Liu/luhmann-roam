@@ -142,6 +142,16 @@ const LocalGraphManager = (function() {
                     <div class="graph-main-area">
                         <div class="graph-sidebar">
                             <div class="sidebar-section">
+                                <h4>Search in Graph</h4>
+                                <div class="graph-search-container">
+                                    <input type="text" id="graph-node-search" placeholder="Search nodes in current graph..." class="graph-search-input">
+                                    <div id="graph-search-results" class="graph-search-results">
+                                        <!-- Search results will appear here -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="sidebar-section">
                                 <h4>Graph Statistics</h4>
                                 <div id="graph-stats">
                                     <div class="stat-item">
@@ -341,6 +351,12 @@ const LocalGraphManager = (function() {
         
         // Add these new functions to handle flexible linking
         setupLinkingHandlers();
+        
+        // Add graph search handler
+        const graphSearchInput = document.getElementById('graph-node-search');
+        if (graphSearchInput) {
+            graphSearchInput.addEventListener('input', handleGraphNodeSearch);
+        }
     }
     
     async function handleCenterNodeSearch(e) {
@@ -2339,6 +2355,171 @@ const LocalGraphManager = (function() {
         }
     }
     
+    let searchHighlightedNode = null; // Track currently highlighted search result
+    
+    async function handleGraphNodeSearch(e) {
+        const query = e.target.value.trim();
+        const resultsContainer = document.getElementById('graph-search-results');
+        
+        if (!graphData || !graphData.nodes) {
+            resultsContainer.innerHTML = '<div class="search-no-results">No graph loaded</div>';
+            return;
+        }
+        
+        if (query.length < 2) {
+            resultsContainer.innerHTML = '<div class="search-hint">Type at least 2 characters to search</div>';
+            clearSearchHighlight();
+            return;
+        }
+        
+        // Search within current graph nodes
+        const matchingNodes = graphData.nodes.filter(node => {
+            const content = (node.content || '').toLowerCase();
+            const content_zh = (node.content_zh || '').toLowerCase();
+            const searchTerm = query.toLowerCase();
+            
+            return content.includes(searchTerm) || content_zh.includes(searchTerm);
+        });
+        
+        if (matchingNodes.length === 0) {
+            resultsContainer.innerHTML = `<div class="search-no-results">No nodes found matching "${query}"</div>`;
+            clearSearchHighlight();
+            return;
+        }
+        
+        // Display search results
+        resultsContainer.innerHTML = matchingNodes.map(node => {
+            const distance = graphData.distances[node.id] || 0;
+            const depth = graphData.depths[node.id] || 0;
+            const isInPool = nodePoolStatus.get(node.id) || false;
+            
+            return `
+                <div class="search-result-item" data-node-id="${node.id}">
+                    <div class="search-result-content">
+                        <div class="search-result-title">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
+                        ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
+                        <div class="search-result-meta">
+                            <span class="search-distance">Distance: ${distance.toFixed(2)}</span>
+                            <span class="search-depth">Depth: ${depth}</span>
+                            ${isInPool ? '<span class="search-pool-status">In Pool</span>' : ''}
+                        </div>
+                    </div>
+                    <button class="search-locate-btn" onclick="LocalGraphManager.locateNodeInGraph('${node.id}')" title="Locate in graph">
+                        🎯
+                    </button>
+                </div>
+            `;
+        }).join('');
+        
+        // Add click handlers for result items
+        resultsContainer.querySelectorAll('.search-result-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('search-locate-btn')) {
+                    const nodeId = this.dataset.nodeId;
+                    const node = graphData.nodes.find(n => n.id === nodeId);
+                    if (node) {
+                        selectNode(node);
+                        locateNodeInGraph(nodeId);
+                    }
+                }
+            });
+        });
+    }
+    
+    function highlightSearchTerm(text, searchTerm) {
+        if (!text || !searchTerm) return text || '';
+        
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
+    }
+    
+    function locateNodeInGraph(nodeId) {
+        if (!graphData || !graphData.nodes) return;
+        
+        const node = graphData.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        
+        // Clear previous highlight
+        clearSearchHighlight();
+        
+        // Find the node element in the SVG
+        const nodeElement = document.querySelector(`g[data-node-id="${nodeId}"]`);
+        if (!nodeElement) return;
+        
+        const circle = nodeElement.querySelector('circle.main-node-circle');
+        if (!circle) return;
+        
+        // Add highlight effect
+        circle.classList.add('search-highlighted');
+        searchHighlightedNode = nodeId;
+        
+        // Get node position for centering
+        const cx = parseFloat(circle.getAttribute('cx'));
+        const cy = parseFloat(circle.getAttribute('cy'));
+        
+        // Center the view on the node
+        centerViewOnNode(cx, cy);
+        
+        // Select the node to show details
+        selectNode(node);
+        
+        // Add pulsing animation
+        animateNodeHighlight(circle);
+        
+        // Auto-clear highlight after 5 seconds
+        setTimeout(() => {
+            clearSearchHighlight();
+        }, 5000);
+        
+        showNotification(`Located "${node.content || 'Untitled'}" in graph`, 'success');
+    }
+    
+    function clearSearchHighlight() {
+        if (searchHighlightedNode) {
+            const highlightedElement = document.querySelector(`g[data-node-id="${searchHighlightedNode}"] circle.main-node-circle`);
+            if (highlightedElement) {
+                highlightedElement.classList.remove('search-highlighted');
+            }
+            searchHighlightedNode = null;
+        }
+    }
+    
+    function centerViewOnNode(nodeX, nodeY) {
+        const svg = document.querySelector('#local-graph-canvas svg');
+        const mainGroup = document.getElementById('main-graph-group');
+        
+        if (!svg || !mainGroup) return;
+        
+        const svgRect = svg.getBoundingClientRect();
+        const centerX = svgRect.width / 2;
+        const centerY = svgRect.height / 2;
+        
+        // Calculate new pan position to center the node
+        const newPanX = centerX - nodeX;
+        const newPanY = centerY - nodeY;
+        
+        // Apply smooth transition
+        mainGroup.style.transition = 'transform 0.8s ease-out';
+        mainGroup.setAttribute('transform', `translate(${newPanX}, ${newPanY}) scale(1)`);
+        
+        // Remove transition after animation
+        setTimeout(() => {
+            mainGroup.style.transition = '';
+        }, 800);
+        
+        // Update global pan state if available
+        if (typeof currentPanX !== 'undefined') {
+            currentPanX = newPanX;
+            currentPanY = newPanY;
+            currentZoom = 1;
+        }
+    }
+    
+    function animateNodeHighlight(circleElement) {
+        // Add pulsing animation
+        circleElement.style.animation = 'searchPulse 2s ease-in-out 3';
+    }
+    
     // Public API
     return {
         initialize,
@@ -2351,6 +2532,7 @@ const LocalGraphManager = (function() {
         removeNodeFromPool,
         useQuickAccess,
         removeFromQuickAccess,
+        locateNodeInGraph, // Add this
         isInitialized: () => isInitialized
     };
 })();
