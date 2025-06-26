@@ -242,6 +242,7 @@
   .graph-main-area {
     display: flex;
     height: calc(100% - 70px);
+    position: relative;
   }
   
   .graph-sidebar {
@@ -250,10 +251,13 @@
     border-right: 1px solid #e1e4e8;
     padding: 20px;
     overflow-y: auto;
+    flex-shrink: 0;
+    position: relative;
   }
   
   .sidebar-section {
     margin-bottom: 25px;
+    min-width: 180px;
   }
   
   .sidebar-section h4 {
@@ -333,6 +337,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    margin-left: 8px;
   }
   
   #local-graph-canvas {
@@ -479,7 +484,7 @@
     }
     
     .graph-sidebar {
-      width: 100%;
+      width: 100% !important;
       height: 200px;
       border-right: none;
       border-bottom: 1px solid #e1e4e8;
@@ -492,6 +497,14 @@
     .center-selection-container {
       margin: 20px;
       padding: 20px;
+    }
+    
+    .local-graph-resize-handle {
+      display: none;
+    }
+    
+    .graph-canvas-area {
+      margin-left: 0;
     }
   }
   
@@ -1652,6 +1665,7 @@
     font-size: 13px;
     background: white;
     transition: border-color 0.2s ease;
+    min-width: 150px;
   }
 
   .graph-search-input:focus {
@@ -1884,4 +1898,127 @@
       height: 24px;
       font-size: 12px;
     }
+  }
+
+  /* Local Graph Resizable Sidebar */
+  .graph-main-area {
+    display: flex;
+    height: calc(100% - 70px);
+    position: relative;
+  }
+
+  .graph-sidebar {
+    width: 250px;
+    background: #f6f8fa;
+    border-right: 1px solid #e1e4e8;
+    padding: 20px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  /* Local Graph Resize Handle */
+  .local-graph-resize-handle {
+    width: 8px;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 250px; /* Default sidebar width */
+    cursor: col-resize;
+    z-index: 100;
+    background-color: transparent;
+    border-left: 1px solid #e1e4e8;
+    border-right: 1px solid #e1e4e8;
+    transition: background-color 0.2s ease;
+  }
+
+  /* Add a visible grip to the handle */
+  .local-graph-resize-grip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 30px;
+    background-color: #d1d5da;
+    box-shadow: -2px 0 0 #d1d5da, 2px 0 0 #d1d5da;
+    border-radius: 1px;
+    transition: all 0.2s ease;
+  }
+
+  .local-graph-resize-handle:hover {
+    background-color: #0366d6;
+  }
+
+  .local-graph-resize-handle:hover .local-graph-resize-grip {
+    background-color: white;
+    box-shadow: -2px 0 0 white, 2px 0 0 white;
+  }
+
+  /* Resizing state styles */
+  .local-graph-resizing {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+
+  .local-graph-resizing .local-graph-resize-handle {
+    background-color: #0366d6;
+  }
+
+  .local-graph-resizing .local-graph-resize-grip {
+    background-color: white;
+    box-shadow: -2px 0 0 white, 2px 0 0 white;
+  }
+
+  /* Canvas area adjustments */
+  .graph-canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    margin-left: 8px; /* Account for resize handle width */
+  }
+
+  /* Dark mode support for resize handle */
+  @media (prefers-color-scheme: dark) {
+    .local-graph-resize-handle {
+      border-left-color: #30363d;
+      border-right-color: #30363d;
+    }
+    
+    .local-graph-resize-grip {
+      background-color: #586069;
+      box-shadow: -2px 0 0 #586069, 2px 0 0 #586069;
+    }
+    
+    .local-graph-resize-handle:hover {
+      background-color: #1f6feb;
+    }
+    
+    .local-graph-resize-handle:hover .local-graph-resize-grip {
+      background-color: white;
+      box-shadow: -2px 0 0 white, 2px 0 0 white;
+    }
+    
+    .local-graph-resizing .local-graph-resize-handle {
+      background-color: #1f6feb;
+    }
+  }
+
+  /* Smooth transitions for width changes */
+  .graph-sidebar {
+    transition: width 0.1s ease-out;
+  }
+
+  .local-graph-resize-handle {
+    transition: left 0.1s ease-out, background-color 0.2s ease;
+  }
+
+  /* Ensure sidebar content doesn't overflow during resize */
+  .sidebar-section {
+    min-width: 180px; /* Minimum width to prevent content from becoming unusable */
+  }
+
+  /* Adjust search input width for small sidebar sizes */
+  .graph-search-input {
+    min-width: 150px;
   }

@@ -140,7 +140,7 @@ const LocalGraphManager = (function() {
                     </div>
                     
                     <div class="graph-main-area">
-                        <div class="graph-sidebar">
+                        <div class="graph-sidebar" id="local-graph-sidebar">
                             <div class="sidebar-section">
                                 <h4>Search in Graph</h4>
                                 <div class="graph-search-container">
@@ -176,7 +176,12 @@ const LocalGraphManager = (function() {
                             </div>
                         </div>
                         
-                        <div class="graph-canvas-area">
+                        <!-- Resize Handle -->
+                        <div class="local-graph-resize-handle" id="local-graph-resize-handle">
+                            <div class="local-graph-resize-grip"></div>
+                        </div>
+                        
+                        <div class="graph-canvas-area" id="local-graph-canvas-area">
                             <div id="local-graph-canvas"></div>
                         </div>
                     </div>
@@ -188,6 +193,9 @@ const LocalGraphManager = (function() {
         
         // Create modals
         createModals();
+        
+        // Setup resizable sidebar after container is created
+        setupResizableGraphSidebar();
     }
     
     function createModals() {
@@ -2519,6 +2527,84 @@ const LocalGraphManager = (function() {
         // Add pulsing animation
         circleElement.style.animation = 'searchPulse 2s ease-in-out 3';
     }
+
+    // Add the resizable sidebar functionality:
+    function setupResizableGraphSidebar() {
+        const sidebar = document.getElementById('local-graph-sidebar');
+        const resizeHandle = document.getElementById('local-graph-resize-handle');
+        const canvasArea = document.getElementById('local-graph-canvas-area');
+        
+        if (!sidebar || !resizeHandle || !canvasArea) {
+            console.warn('Local graph sidebar elements not found');
+            return;
+        }
+        
+        // Get the initial sidebar width from localStorage or use default
+        const savedWidth = localStorage.getItem('localGraphSidebarWidth');
+        const defaultWidth = 250;
+        const initialWidth = savedWidth ? parseInt(savedWidth) : defaultWidth;
+        
+        // Set initial width
+        sidebar.style.width = initialWidth + 'px';
+        resizeHandle.style.left = initialWidth + 'px';
+        
+        // Variables for tracking resize state
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        // Mouse down event on the resize handle
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = parseInt(getComputedStyle(sidebar).width);
+            
+            // Add a class to the body during resize to prevent text selection
+            document.body.classList.add('local-graph-resizing');
+            
+            // Prevent text selection during resize
+            e.preventDefault();
+        });
+        
+        // Mouse move event for resizing
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const deltaX = e.clientX - startX;
+            const newWidth = Math.max(200, Math.min(startWidth + deltaX, window.innerWidth * 0.6));
+            
+            // Update sidebar width
+            sidebar.style.width = `${newWidth}px`;
+            
+            // Update handle position
+            resizeHandle.style.left = `${newWidth}px`;
+            
+            // Save the width to localStorage
+            localStorage.setItem('localGraphSidebarWidth', newWidth);
+        });
+        
+        // Mouse up event to stop resizing
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('local-graph-resizing');
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Make sure sidebar doesn't exceed max width when window is resized
+            const currentWidth = parseInt(getComputedStyle(sidebar).width);
+            const maxWidth = window.innerWidth * 0.6;
+            
+            if (currentWidth > maxWidth) {
+                const newWidth = maxWidth;
+                sidebar.style.width = newWidth + 'px';
+                resizeHandle.style.left = `${newWidth}px`;
+                localStorage.setItem('localGraphSidebarWidth', newWidth);
+            }
+        });
+    }
     
     // Public API
     return {
@@ -2541,3 +2627,4 @@ const LocalGraphManager = (function() {
 LocalGraphManager.isInitialized = false;
 
 window.LocalGraphManager = LocalGraphManager;
+
