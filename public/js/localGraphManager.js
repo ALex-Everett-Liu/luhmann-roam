@@ -1109,62 +1109,12 @@ const LocalGraphManager = (function() {
     
     function calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius) {
         const nodePositions = {};
+        const EDGE_SCALE_FACTOR = 40; // Scale factor to convert edge weights to pixels
         
-        // Find maximum distance for scaling
-        const maxDist = Math.max(...Object.values(distances));
-        const distanceScale = maxRadius / Math.max(maxDist, 1);
+        // Start with center node at origin
+        nodePositions[centerNodeId] = { x: centerX, y: centerY };
         
-        // Build shortest path tree to determine parent relationships
-        const parentMap = buildShortestPathTree(links, distances, centerNodeId);
-        
-        // Assign quadrants to avoid crossings
-        const quadrantAssignments = assignNodesToQuadrants(nodes, distances, parentMap, centerNodeId);
-        
-        // Position nodes based on distance and quadrant
-        nodes.forEach(node => {
-            const distance = distances[node.id] || 0;
-            const quadrant = quadrantAssignments[node.id] || 0;
-            
-            if (distance === 0) {
-                // Center node
-                nodePositions[node.id] = { x: centerX, y: centerY };
-            } else {
-                // Calculate position based on distance and quadrant
-                const radius = distance * distanceScale;
-                
-                // Quadrant-based angle adjustment
-                const baseAngle = getQuadrantBaseAngle(quadrant);
-                const angleSpread = Math.PI / 3; // 60 degrees spread within quadrant
-                
-                // Find nodes at same distance in same quadrant for angular spacing
-                const sameDistanceQuadrantNodes = nodes.filter(n => {
-                    const dist = distances[n.id] || 0;
-                    const quad = quadrantAssignments[n.id] || 0;
-                    return Math.abs(dist - distance) < 0.1 && quad === quadrant && n.id !== node.id;
-                });
-                
-                const nodeIndex = sameDistanceQuadrantNodes.findIndex(n => n.id < node.id);
-                const totalNodes = sameDistanceQuadrantNodes.length + 1;
-                const angleOffset = (nodeIndex / Math.max(totalNodes - 1, 1) - 0.5) * angleSpread;
-                
-                const angle = baseAngle + angleOffset;
-                
-                nodePositions[node.id] = {
-                    x: centerX + Math.cos(angle) * radius,
-                    y: centerY + Math.sin(angle) * radius
-                };
-            }
-        });
-        
-        return nodePositions;
-    }
-    
-    function buildShortestPathTree(links, distances, centerNodeId) {
-        const parentMap = {};
-        const visited = new Set();
-        const queue = [{ nodeId: centerNodeId, distance: 0, parent: null }];
-        
-        // Build adjacency list
+        // Build adjacency list with weights
         const adjacencyList = new Map();
         links.forEach(link => {
             if (!adjacencyList.has(link.from_node_id)) {
@@ -1173,131 +1123,265 @@ const LocalGraphManager = (function() {
             if (!adjacencyList.has(link.to_node_id)) {
                 adjacencyList.set(link.to_node_id, []);
             }
+            
             adjacencyList.get(link.from_node_id).push({
                 nodeId: link.to_node_id,
-                weight: link.weight || 1.0
+                weight: link.weight || 1.0,
+                linkId: link.id
             });
             adjacencyList.get(link.to_node_id).push({
                 nodeId: link.from_node_id,
-                weight: link.weight || 1.0
+                weight: link.weight || 1.0,
+                linkId: link.id
             });
         });
         
-        while (queue.length > 0) {
-            queue.sort((a, b) => a.distance - b.distance);
-            const current = queue.shift();
+        // Track which nodes have been positioned
+        const positioned = new Set([centerNodeId]);
+        const toPosition = [];
+        
+        // Start with direct neighbors of center node
+        const centerNeighbors = adjacencyList.get(centerNodeId) || [];
+        centerNeighbors.forEach(neighbor => {
+            toPosition.push({
+                nodeId: neighbor.nodeId,
+                fromNodeId: centerNodeId,
+                edgeWeight: neighbor.weight,
+                priority: 1 // Distance from center in hops
+            });
+        });
+        
+        // Sort by priority (closer to center first) and then by edge weight
+        toPosition.sort((a, b) => {
+            if (a.priority !== b.priority) return a.priority - b.priority;
+            return a.edgeWeight - b.edgeWeight;
+        });
+        
+        // Assign quadrants to minimize edge crossings
+        const quadrantAssignments = {};
+        quadrantAssignments[centerNodeId] = -1; // Center node has no quadrant
+        let currentQuadrant = 0;
+        
+        // Process nodes level by level to maintain edge length constraints
+        while (toPosition.length > 0) {
+            const current = toPosition.shift();
             
-            if (visited.has(current.nodeId)) continue;
+            if (positioned.has(current.nodeId)) continue;
             
-            visited.add(current.nodeId);
-            if (current.parent) {
-                parentMap[current.nodeId] = current.parent;
-            }
+            const fromPos = nodePositions[current.fromNodeId];
+            if (!fromPos) continue; // Skip if parent not positioned yet
             
+            // Calculate desired distance based on edge weight
+            const desiredDistance = current.edgeWeight * EDGE_SCALE_FACTOR;
+            
+            // Find best angle to minimize conflicts and avoid quadrant line crossings
+            let bestAngle = findBestAngleForNode(
+                current.nodeId,
+                fromPos,
+                desiredDistance,
+                nodePositions,
+                links,
+                positioned,
+                centerX,
+                centerY
+            );
+            
+            // Position the node
+            const newPos = {
+                x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
+                y: fromPos.y + Math.sin(bestAngle) * desiredDistance
+            };
+            
+            nodePositions[current.nodeId] = newPos;
+            positioned.add(current.nodeId);
+            
+            // Assign quadrant based on position relative to center
+            quadrantAssignments[current.nodeId] = getQuadrantForPosition(newPos, centerX, centerY);
+            
+            // Add unpositioned neighbors of this node to the queue
             const neighbors = adjacencyList.get(current.nodeId) || [];
-            for (const neighbor of neighbors) {
-                if (!visited.has(neighbor.nodeId)) {
-                    const newDistance = current.distance + neighbor.weight;
-                    queue.push({
+            neighbors.forEach(neighbor => {
+                if (!positioned.has(neighbor.nodeId) && 
+                    !toPosition.some(item => item.nodeId === neighbor.nodeId)) {
+                    toPosition.push({
                         nodeId: neighbor.nodeId,
-                        distance: newDistance,
-                        parent: current.nodeId
+                        fromNodeId: current.nodeId,
+                        edgeWeight: neighbor.weight,
+                        priority: current.priority + 1
                     });
                 }
+            });
+            
+            // Re-sort queue by priority
+            toPosition.sort((a, b) => {
+                if (a.priority !== b.priority) return a.priority - b.priority;
+                return a.edgeWeight - b.edgeWeight;
+            });
+        }
+        
+        // Apply force-directed refinement to improve layout while preserving edge lengths
+        refineEdgeLengthLayout(nodePositions, links, adjacencyList, EDGE_SCALE_FACTOR, centerNodeId, centerX, centerY);
+        
+        return nodePositions;
+    }
+    
+    function findBestAngleForNode(nodeId, fromPos, desiredDistance, existingPositions, links, positioned, centerX, centerY) {
+        const candidateAngles = [];
+        
+        // Generate candidate angles
+        for (let i = 0; i < 16; i++) {
+            candidateAngles.push((i * Math.PI * 2) / 16);
+        }
+        
+        let bestAngle = 0;
+        let bestScore = -Infinity;
+        
+        for (const angle of candidateAngles) {
+            const candidatePos = {
+                x: fromPos.x + Math.cos(angle) * desiredDistance,
+                y: fromPos.y + Math.sin(angle) * desiredDistance
+            };
+            
+            let score = 0;
+            
+            // Score based on:
+            // 1. Distance from other nodes (avoid overlaps)
+            for (const [otherId, otherPos] of Object.entries(existingPositions)) {
+                if (positioned.has(otherId)) {
+                    const dist = Math.sqrt(
+                        Math.pow(candidatePos.x - otherPos.x, 2) + 
+                        Math.pow(candidatePos.y - otherPos.y, 2)
+                    );
+                    score += Math.min(dist / 50, 2); // Reward distance, cap benefit
+                }
+            }
+            
+            // 2. Avoid crossing quadrant dividers with shortest path edge
+            const crossesDivider = checkIfEdgeCrossesQuadrantDivider(
+                fromPos, candidatePos, centerX, centerY
+            );
+            if (crossesDivider) {
+                score -= 5; // Heavy penalty for crossing quadrant lines
+            }
+            
+            // 3. Prefer positions that keep graph compact
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(candidatePos.x - centerX, 2) + 
+                Math.pow(candidatePos.y - centerY, 2)
+            );
+            score -= distanceFromCenter / 100; // Small penalty for being far from center
+            
+            if (score > bestScore) {
+                bestScore = score;
+                bestAngle = angle;
             }
         }
         
-        return parentMap;
+        return bestAngle;
     }
     
-    function assignNodesToQuadrants(nodes, distances, parentMap, centerNodeId) {
-        const assignments = {};
-        assignments[centerNodeId] = 0; // Center node
+    function checkIfEdgeCrossesQuadrantDivider(pos1, pos2, centerX, centerY) {
+        // Check if line from pos1 to pos2 crosses vertical or horizontal divider through center
         
-        // Assign quadrants trying to avoid parent-child crossings
-        const quadrantCounts = [0, 0, 0, 0]; // Track how many nodes in each quadrant
-        
-        // Sort nodes by distance to process closest first
-        const sortedNodes = nodes
-            .filter(n => n.id !== centerNodeId)
-            .sort((a, b) => (distances[a.id] || 0) - (distances[b.id] || 0));
-        
-        sortedNodes.forEach(node => {
-            const parentId = parentMap[node.id];
-            let preferredQuadrant = 0;
-            
-            if (parentId && assignments[parentId] !== undefined) {
-                // If parent is center, choose least populated quadrant
-                if (parentId === centerNodeId) {
-                    preferredQuadrant = quadrantCounts.indexOf(Math.min(...quadrantCounts));
-                } else {
-                    // Try to stay in same quadrant as parent, or adjacent quadrant
-                    const parentQuadrant = assignments[parentId];
-                    const adjacentQuadrants = [
-                        parentQuadrant,
-                        (parentQuadrant + 1) % 4,
-                        (parentQuadrant + 3) % 4
-                    ];
-                    
-                    // Choose the least populated adjacent quadrant
-                    preferredQuadrant = adjacentQuadrants.reduce((best, quad) => 
-                        quadrantCounts[quad] < quadrantCounts[best] ? quad : best
-                    );
-                }
-            } else {
-                // No parent info, choose least populated quadrant
-                preferredQuadrant = quadrantCounts.indexOf(Math.min(...quadrantCounts));
+        // Vertical divider (x = centerX)
+        if ((pos1.x < centerX && pos2.x > centerX) || (pos1.x > centerX && pos2.x < centerX)) {
+            // Line crosses vertical divider, check if it's at the center region
+            const t = (centerX - pos1.x) / (pos2.x - pos1.x);
+            const intersectionY = pos1.y + t * (pos2.y - pos1.y);
+            if (Math.abs(intersectionY - centerY) < 100) { // Within 100px of center
+                return true;
             }
+        }
+        
+        // Horizontal divider (y = centerY)
+        if ((pos1.y < centerY && pos2.y > centerY) || (pos1.y > centerY && pos2.y < centerY)) {
+            // Line crosses horizontal divider, check if it's at the center region
+            const t = (centerY - pos1.y) / (pos2.y - pos1.y);
+            const intersectionX = pos1.x + t * (pos2.x - pos1.x);
+            if (Math.abs(intersectionX - centerX) < 100) { // Within 100px of center
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    function getQuadrantForPosition(pos, centerX, centerY) {
+        if (pos.x >= centerX && pos.y <= centerY) return 0; // Top-right
+        if (pos.x < centerX && pos.y <= centerY) return 1;  // Top-left
+        if (pos.x < centerX && pos.y > centerY) return 2;   // Bottom-left
+        return 3; // Bottom-right
+    }
+    
+    function refineEdgeLengthLayout(nodePositions, links, adjacencyList, EDGE_SCALE_FACTOR, centerNodeId, centerX, centerY) {
+        const MAX_ITERATIONS = 50;
+        const STEP_SIZE = 0.5;
+        
+        for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+            const forces = {};
             
-            assignments[node.id] = preferredQuadrant;
-            quadrantCounts[preferredQuadrant]++;
-        });
-        
-        return assignments;
-    }
-    
-    function getQuadrantBaseAngle(quadrant) {
-        const baseAngles = [
-            0,              // Right (0°)
-            Math.PI / 2,    // Bottom (90°)
-            Math.PI,        // Left (180°)
-            3 * Math.PI / 2 // Top (270°)
-        ];
-        return baseAngles[quadrant] || 0;
-    }
-    
-    function addQuadrantDividers(mainGroup, centerX, centerY) {
-        // Create very light dotted lines for quadrant division
-        const dividerStyle = {
-            stroke: '#e5e7eb',
-            strokeWidth: '1',
-            strokeDasharray: '2,3',
-            opacity: '0.4'
-        };
-        
-        // Vertical divider line
-        const verticalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        verticalLine.setAttribute('x1', centerX);
-        verticalLine.setAttribute('y1', centerY - 400);
-        verticalLine.setAttribute('x2', centerX);
-        verticalLine.setAttribute('y2', centerY + 400);
-        Object.entries(dividerStyle).forEach(([key, value]) => {
-            verticalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
-        });
-        
-        // Horizontal divider line
-        const horizontalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        horizontalLine.setAttribute('x1', centerX - 400);
-        horizontalLine.setAttribute('y1', centerY);
-        horizontalLine.setAttribute('x2', centerX + 400);
-        horizontalLine.setAttribute('y2', centerY);
-        Object.entries(dividerStyle).forEach(([key, value]) => {
-            horizontalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
-        });
-        
-        // Add lines to the beginning so they appear behind nodes
-        mainGroup.insertBefore(verticalLine, mainGroup.firstChild);
-        mainGroup.insertBefore(horizontalLine, mainGroup.firstChild);
+            // Initialize forces
+            Object.keys(nodePositions).forEach(nodeId => {
+                forces[nodeId] = { x: 0, y: 0 };
+            });
+            
+            // Apply forces based on edge length constraints
+            links.forEach(link => {
+                const pos1 = nodePositions[link.from_node_id];
+                const pos2 = nodePositions[link.to_node_id];
+                
+                if (!pos1 || !pos2) return;
+                
+                const currentDistance = Math.sqrt(
+                    Math.pow(pos2.x - pos1.x, 2) + 
+                    Math.pow(pos2.y - pos1.y, 2)
+                );
+                
+                const desiredDistance = (link.weight || 1.0) * EDGE_SCALE_FACTOR;
+                const difference = currentDistance - desiredDistance;
+                
+                if (Math.abs(difference) > 1) { // Only adjust if significant difference
+                    const forceStrength = difference * 0.1;
+                    
+                    const dx = pos2.x - pos1.x;
+                    const dy = pos2.y - pos1.y;
+                    
+                    if (currentDistance > 0) {
+                        const unitX = dx / currentDistance;
+                        const unitY = dy / currentDistance;
+                        
+                        const forceX = unitX * forceStrength;
+                        const forceY = unitY * forceStrength;
+                        
+                        // Don't move the center node
+                        if (link.from_node_id !== centerNodeId) {
+                            forces[link.from_node_id].x += forceX;
+                            forces[link.from_node_id].y += forceY;
+                        }
+                        if (link.to_node_id !== centerNodeId) {
+                            forces[link.to_node_id].x -= forceX;
+                            forces[link.to_node_id].y -= forceY;
+                        }
+                    }
+                }
+            });
+            
+            // Apply forces with damping
+            let maxForce = 0;
+            Object.keys(forces).forEach(nodeId => {
+                if (nodeId === centerNodeId) return; // Don't move center node
+                
+                const force = forces[nodeId];
+                const forceMagnitude = Math.sqrt(force.x * force.x + force.y * force.y);
+                maxForce = Math.max(maxForce, forceMagnitude);
+                
+                nodePositions[nodeId].x += force.x * STEP_SIZE;
+                nodePositions[nodeId].y += force.y * STEP_SIZE;
+            });
+            
+            // Stop if forces are small enough
+            if (maxForce < 0.1) break;
+        }
     }
     
     function createLinkElement(link, sourcePos, targetPos, layoutMode) {
@@ -1307,29 +1391,39 @@ const LocalGraphManager = (function() {
             Math.pow(targetPos.y - sourcePos.y, 2)
         );
         
-        // In distance-based mode, validate that visual distance matches weight
+        // In distance-based mode, check if visual distance matches weight
         const weight = link.weight || 1.0;
         let visuallyCorrect = true;
         
         if (layoutMode === 'distance-based') {
             // Check if the visual distance approximately matches the weight
-            const expectedDistance = weight * 50; // Scale factor for visual representation
-            visuallyCorrect = Math.abs(actualDistance - expectedDistance) < 20; // Tolerance
+            const EDGE_SCALE_FACTOR = 40; // Same scale factor used in layout
+            const expectedDistance = weight * EDGE_SCALE_FACTOR;
+            const tolerance = expectedDistance * 0.2; // 20% tolerance
+            visuallyCorrect = Math.abs(actualDistance - expectedDistance) < tolerance;
         }
         
-        // Create link line
+        // Create link line with visual feedback
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', sourcePos.x);
         line.setAttribute('y1', sourcePos.y);
         line.setAttribute('x2', targetPos.x);
         line.setAttribute('y2', targetPos.y);
-        line.setAttribute('stroke', visuallyCorrect ? '#e2e8f0' : '#fbbf24'); // Yellow if distance mismatch
-        line.setAttribute('stroke-width', Math.max(0.8, weight * 0.8));
-        line.setAttribute('opacity', '0.6');
+        
+        // Color coding for distance-based mode
+        if (layoutMode === 'distance-based') {
+            line.setAttribute('stroke', visuallyCorrect ? '#22c55e' : '#ef4444'); // Green if correct, red if not
+            line.setAttribute('stroke-width', Math.max(1, weight * 0.8));
+        } else {
+            line.setAttribute('stroke', '#e2e8f0');
+            line.setAttribute('stroke-width', Math.max(0.8, weight * 0.8));
+        }
+        
+        line.setAttribute('opacity', '0.7');
         line.setAttribute('data-from-node', link.from_node_id);
         line.setAttribute('data-to-node', link.to_node_id);
         
-        // Create distance label
+        // Create distance label with improved positioning
         const midX = (sourcePos.x + targetPos.x) / 2;
         const midY = (sourcePos.y + targetPos.y) / 2;
         
@@ -1337,33 +1431,54 @@ const LocalGraphManager = (function() {
         const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         const labelText = weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
         
-        // Estimate text width (rough approximation)
-        const textWidth = labelText.length * 6 + 4;
-        const textHeight = 12;
+        // Calculate label dimensions
+        const textWidth = labelText.length * 7 + 6;
+        const textHeight = 14;
         
         labelBg.setAttribute('x', midX - textWidth / 2);
         labelBg.setAttribute('y', midY - textHeight / 2);
         labelBg.setAttribute('width', textWidth);
         labelBg.setAttribute('height', textHeight);
-        labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
-        labelBg.setAttribute('stroke', '#d1d5da');
+        labelBg.setAttribute('fill', layoutMode === 'distance-based' 
+            ? (visuallyCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)') 
+            : 'rgba(255, 255, 255, 0.9)');
+        labelBg.setAttribute('stroke', layoutMode === 'distance-based' 
+            ? (visuallyCorrect ? '#16a34a' : '#dc2626') 
+            : '#d1d5da');
         labelBg.setAttribute('stroke-width', '0.5');
-        labelBg.setAttribute('rx', '2');
-        labelBg.setAttribute('ry', '2');
-        labelBg.style.opacity = '0.8';
+        labelBg.setAttribute('rx', '3');
+        labelBg.setAttribute('ry', '3');
         
         // Create distance text
         const distanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         distanceText.setAttribute('x', midX);
-        distanceText.setAttribute('y', midY + 3);
+        distanceText.setAttribute('y', midY + 4);
         distanceText.setAttribute('text-anchor', 'middle');
-        distanceText.setAttribute('font-size', '9');
+        distanceText.setAttribute('font-size', '10');
         distanceText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-        distanceText.setAttribute('font-weight', '600');
-        distanceText.setAttribute('fill', visuallyCorrect ? '#374151' : '#d97706');
+        distanceText.setAttribute('font-weight', '700');
+        distanceText.setAttribute('fill', layoutMode === 'distance-based' 
+            ? 'white' 
+            : '#374151');
         distanceText.textContent = labelText;
         distanceText.style.pointerEvents = 'none';
         distanceText.style.userSelect = 'none';
+        
+        // Add actual distance display for distance-based mode
+        if (layoutMode === 'distance-based') {
+            const actualDistanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            actualDistanceText.setAttribute('x', midX);
+            actualDistanceText.setAttribute('y', midY + 25);
+            actualDistanceText.setAttribute('text-anchor', 'middle');
+            actualDistanceText.setAttribute('font-size', '8');
+            actualDistanceText.setAttribute('font-family', 'monospace');
+            actualDistanceText.setAttribute('font-weight', '600');
+            actualDistanceText.setAttribute('fill', visuallyCorrect ? '#16a34a' : '#dc2626');
+            actualDistanceText.textContent = `${(actualDistance / 40).toFixed(1)}px`; // Show in scaled units
+            actualDistanceText.style.pointerEvents = 'none';
+            actualDistanceText.style.userSelect = 'none';
+            actualDistanceText.style.opacity = '0.8';
+        }
         
         // Create link group
         const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -1372,25 +1487,26 @@ const LocalGraphManager = (function() {
         linkGroup.appendChild(labelBg);
         linkGroup.appendChild(distanceText);
         
+        if (layoutMode === 'distance-based') {
+            const actualDistanceText = linkGroup.querySelector('text:last-child');
+            if (actualDistanceText) {
+                linkGroup.appendChild(actualDistanceText);
+            }
+        }
+        
         // Add hover effects
         linkGroup.addEventListener('mouseenter', () => {
-            line.setAttribute('stroke', visuallyCorrect ? '#94a3b8' : '#f59e0b');
-            line.setAttribute('opacity', '0.9');
-            labelBg.style.opacity = '1';
-            labelBg.setAttribute('fill', 'rgba(255, 255, 255, 1)');
-            labelBg.setAttribute('stroke', '#6b7280');
-            distanceText.setAttribute('fill', visuallyCorrect ? '#111827' : '#92400e');
-            distanceText.setAttribute('font-weight', '700');
+            line.setAttribute('stroke-width', Math.max(2, (weight * 0.8) + 1));
+            line.setAttribute('opacity', '1');
+            labelBg.setAttribute('stroke-width', '1');
         });
         
         linkGroup.addEventListener('mouseleave', () => {
-            line.setAttribute('stroke', visuallyCorrect ? '#e2e8f0' : '#fbbf24');
-            line.setAttribute('opacity', '0.6');
-            labelBg.style.opacity = '0.8';
-            labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
-            labelBg.setAttribute('stroke', '#d1d5da');
-            distanceText.setAttribute('fill', visuallyCorrect ? '#374151' : '#d97706');
-            distanceText.setAttribute('font-weight', '600');
+            line.setAttribute('stroke-width', layoutMode === 'distance-based' 
+                ? Math.max(1, weight * 0.8) 
+                : Math.max(0.8, weight * 0.8));
+            line.setAttribute('opacity', '0.7');
+            labelBg.setAttribute('stroke-width', '0.5');
         });
         
         return {
@@ -1438,19 +1554,15 @@ const LocalGraphManager = (function() {
         
         circle.style.transition = 'all 0.2s ease';
         
-        // Add hover effects
+        // Add hover effects (removed draggedNode reference)
         circle.addEventListener('mouseenter', () => {
-            if (!draggedNode) {
-                circle.setAttribute('stroke-width', '4');
-                circle.style.filter = 'brightness(1.1)';
-            }
+            circle.setAttribute('stroke-width', '4');
+            circle.style.filter = 'brightness(1.1)';
         });
         
         circle.addEventListener('mouseleave', () => {
-            if (!draggedNode) {
-                circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
-                circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
-            }
+            circle.setAttribute('stroke-width', isCenter ? '3' : (isInPool ? '2' : '1.5'));
+            circle.style.filter = isInPool ? 'url(#poolGlow)' : 'none';
         });
         
         nodeGroup.appendChild(circle);
