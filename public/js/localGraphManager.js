@@ -1384,6 +1384,40 @@ const LocalGraphManager = (function() {
         }
     }
     
+    function addQuadrantDividers(mainGroup, centerX, centerY) {
+        // Create very light dotted lines for quadrant division
+        const dividerStyle = {
+            stroke: '#e5e7eb',
+            strokeWidth: '1',
+            strokeDasharray: '2,3',
+            opacity: '0.4'
+        };
+        
+        // Vertical divider line
+        const verticalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        verticalLine.setAttribute('x1', centerX);
+        verticalLine.setAttribute('y1', centerY - 400);
+        verticalLine.setAttribute('x2', centerX);
+        verticalLine.setAttribute('y2', centerY + 400);
+        Object.entries(dividerStyle).forEach(([key, value]) => {
+            verticalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
+        });
+        
+        // Horizontal divider line
+        const horizontalLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        horizontalLine.setAttribute('x1', centerX - 400);
+        horizontalLine.setAttribute('y1', centerY);
+        horizontalLine.setAttribute('x2', centerX + 400);
+        horizontalLine.setAttribute('y2', centerY);
+        Object.entries(dividerStyle).forEach(([key, value]) => {
+            horizontalLine.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
+        });
+        
+        // Add lines to the beginning so they appear behind nodes
+        mainGroup.insertBefore(verticalLine, mainGroup.firstChild);
+        mainGroup.insertBefore(horizontalLine, mainGroup.firstChild);
+    }
+    
     function createLinkElement(link, sourcePos, targetPos, layoutMode) {
         // Calculate actual distance between nodes
         const actualDistance = Math.sqrt(
