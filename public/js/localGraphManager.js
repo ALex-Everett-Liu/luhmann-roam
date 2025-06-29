@@ -1109,7 +1109,17 @@ const LocalGraphManager = (function() {
     
     function calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius) {
         const nodePositions = {};
-        const EDGE_SCALE_FACTOR = 40; // Scale factor to convert edge weights to pixels
+        const BASE_EDGE_SCALE_FACTOR = 40; // Base scale factor to convert edge weights to pixels
+        
+        // Function to get scale factor based on depth
+        function getScaleFactorForDepth(depth) {
+            // For nodes at depth 1 and 2 hops, use 3x multiplier to push them away
+            if (depth <= 2) {
+                return BASE_EDGE_SCALE_FACTOR * 3; // 120 pixels per weight unit
+            }
+            // For nodes at depth > 2, use normal multiplier
+            return BASE_EDGE_SCALE_FACTOR; // 40 pixels per weight unit
+        }
         
         // Start with center node at origin
         nodePositions[centerNodeId] = { x: centerX, y: centerY };
@@ -1136,8 +1146,10 @@ const LocalGraphManager = (function() {
             });
         });
         
-        // Track which nodes have been positioned
+        // Track which nodes have been positioned and their depths
         const positioned = new Set([centerNodeId]);
+        const nodeDepths = new Map();
+        nodeDepths.set(centerNodeId, 0);
         const toPosition = [];
         
         // Start with direct neighbors of center node
@@ -1171,8 +1183,12 @@ const LocalGraphManager = (function() {
             const fromPos = nodePositions[current.fromNodeId];
             if (!fromPos) continue; // Skip if parent not positioned yet
             
-            // Calculate desired distance based on edge weight
-            const desiredDistance = current.edgeWeight * EDGE_SCALE_FACTOR;
+            // Store the depth for this node
+            nodeDepths.set(current.nodeId, current.priority);
+            
+            // Calculate desired distance based on edge weight and dynamic scaling
+            const scaleFactorForThisDepth = getScaleFactorForDepth(current.priority);
+            const desiredDistance = current.edgeWeight * scaleFactorForThisDepth;
             
             // Find best angle to minimize conflicts and avoid quadrant line crossings
             let bestAngle = findBestAngleForNode(
@@ -1220,9 +1236,87 @@ const LocalGraphManager = (function() {
         }
         
         // Apply force-directed refinement to improve layout while preserving edge lengths
-        refineEdgeLengthLayout(nodePositions, links, adjacencyList, EDGE_SCALE_FACTOR, centerNodeId, centerX, centerY);
+        refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY);
         
         return nodePositions;
+    }
+    
+    function refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY) {
+        const MAX_ITERATIONS = 50;
+        const STEP_SIZE = 0.5;
+        
+        for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+            const forces = {};
+            
+            // Initialize forces
+            Object.keys(nodePositions).forEach(nodeId => {
+                forces[nodeId] = { x: 0, y: 0 };
+            });
+            
+            // Apply forces based on edge length constraints with dynamic scaling
+            links.forEach(link => {
+                const pos1 = nodePositions[link.from_node_id];
+                const pos2 = nodePositions[link.to_node_id];
+                
+                if (!pos1 || !pos2) return;
+                
+                const currentDistance = Math.sqrt(
+                    Math.pow(pos2.x - pos1.x, 2) + 
+                    Math.pow(pos2.y - pos1.y, 2)
+                );
+                
+                // Determine which node's depth to use for scaling
+                // Use the target node's depth (the one further from center)
+                const fromDepth = nodeDepths.get(link.from_node_id) || 0;
+                const toDepth = nodeDepths.get(link.to_node_id) || 0;
+                const edgeDepth = Math.max(fromDepth, toDepth); // Use the deeper node's depth
+                
+                const scaleFactor = getScaleFactorForDepth(edgeDepth);
+                const desiredDistance = (link.weight || 1.0) * scaleFactor;
+                const difference = currentDistance - desiredDistance;
+                
+                if (Math.abs(difference) > 1) { // Only adjust if significant difference
+                    const forceStrength = difference * 0.1;
+                    
+                    const dx = pos2.x - pos1.x;
+                    const dy = pos2.y - pos1.y;
+                    
+                    if (currentDistance > 0) {
+                        const unitX = dx / currentDistance;
+                        const unitY = dy / currentDistance;
+                        
+                        const forceX = unitX * forceStrength;
+                        const forceY = unitY * forceStrength;
+                        
+                        // Don't move the center node
+                        if (link.from_node_id !== centerNodeId) {
+                            forces[link.from_node_id].x += forceX;
+                            forces[link.from_node_id].y += forceY;
+                        }
+                        if (link.to_node_id !== centerNodeId) {
+                            forces[link.to_node_id].x -= forceX;
+                            forces[link.to_node_id].y -= forceY;
+                        }
+                    }
+                }
+            });
+            
+            // Apply forces with damping
+            let maxForce = 0;
+            Object.keys(forces).forEach(nodeId => {
+                if (nodeId === centerNodeId) return; // Don't move center node
+                
+                const force = forces[nodeId];
+                const forceMagnitude = Math.sqrt(force.x * force.x + force.y * force.y);
+                maxForce = Math.max(maxForce, forceMagnitude);
+                
+                nodePositions[nodeId].x += force.x * STEP_SIZE;
+                nodePositions[nodeId].y += force.y * STEP_SIZE;
+            });
+            
+            // Stop if forces are small enough
+            if (maxForce < 0.1) break;
+        }
     }
     
     function findBestAngleForNode(nodeId, fromPos, desiredDistance, existingPositions, links, positioned, centerX, centerY) {
@@ -1313,77 +1407,6 @@ const LocalGraphManager = (function() {
         return 3; // Bottom-right
     }
     
-    function refineEdgeLengthLayout(nodePositions, links, adjacencyList, EDGE_SCALE_FACTOR, centerNodeId, centerX, centerY) {
-        const MAX_ITERATIONS = 50;
-        const STEP_SIZE = 0.5;
-        
-        for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-            const forces = {};
-            
-            // Initialize forces
-            Object.keys(nodePositions).forEach(nodeId => {
-                forces[nodeId] = { x: 0, y: 0 };
-            });
-            
-            // Apply forces based on edge length constraints
-            links.forEach(link => {
-                const pos1 = nodePositions[link.from_node_id];
-                const pos2 = nodePositions[link.to_node_id];
-                
-                if (!pos1 || !pos2) return;
-                
-                const currentDistance = Math.sqrt(
-                    Math.pow(pos2.x - pos1.x, 2) + 
-                    Math.pow(pos2.y - pos1.y, 2)
-                );
-                
-                const desiredDistance = (link.weight || 1.0) * EDGE_SCALE_FACTOR;
-                const difference = currentDistance - desiredDistance;
-                
-                if (Math.abs(difference) > 1) { // Only adjust if significant difference
-                    const forceStrength = difference * 0.1;
-                    
-                    const dx = pos2.x - pos1.x;
-                    const dy = pos2.y - pos1.y;
-                    
-                    if (currentDistance > 0) {
-                        const unitX = dx / currentDistance;
-                        const unitY = dy / currentDistance;
-                        
-                        const forceX = unitX * forceStrength;
-                        const forceY = unitY * forceStrength;
-                        
-                        // Don't move the center node
-                        if (link.from_node_id !== centerNodeId) {
-                            forces[link.from_node_id].x += forceX;
-                            forces[link.from_node_id].y += forceY;
-                        }
-                        if (link.to_node_id !== centerNodeId) {
-                            forces[link.to_node_id].x -= forceX;
-                            forces[link.to_node_id].y -= forceY;
-                        }
-                    }
-                }
-            });
-            
-            // Apply forces with damping
-            let maxForce = 0;
-            Object.keys(forces).forEach(nodeId => {
-                if (nodeId === centerNodeId) return; // Don't move center node
-                
-                const force = forces[nodeId];
-                const forceMagnitude = Math.sqrt(force.x * force.x + force.y * force.y);
-                maxForce = Math.max(maxForce, forceMagnitude);
-                
-                nodePositions[nodeId].x += force.x * STEP_SIZE;
-                nodePositions[nodeId].y += force.y * STEP_SIZE;
-            });
-            
-            // Stop if forces are small enough
-            if (maxForce < 0.1) break;
-        }
-    }
-    
     function addQuadrantDividers(mainGroup, centerX, centerY) {
         // Create very light dotted lines for quadrant division
         const dividerStyle = {
@@ -1425,14 +1448,22 @@ const LocalGraphManager = (function() {
             Math.pow(targetPos.y - sourcePos.y, 2)
         );
         
-        // In distance-based mode, check if visual distance matches weight
+        // In distance-based mode, check if visual distance matches weight with dynamic scaling
         const weight = link.weight || 1.0;
         let visuallyCorrect = true;
+        let expectedDistance = weight * 40; // Default scale factor
         
         if (layoutMode === 'distance-based') {
-            // Check if the visual distance approximately matches the weight
-            const EDGE_SCALE_FACTOR = 40; // Same scale factor used in layout
-            const expectedDistance = weight * EDGE_SCALE_FACTOR;
+            // We need to determine the expected distance based on the nodes' depths
+            // For this, we need access to the graphData.depths
+            const fromDepth = graphData.depths[link.from_node_id] || 0;
+            const toDepth = graphData.depths[link.to_node_id] || 0;
+            const edgeDepth = Math.max(fromDepth, toDepth);
+            
+            // Use the same scaling logic as in layout calculation
+            const scaleFactor = edgeDepth <= 2 ? 120 : 40;
+            expectedDistance = weight * scaleFactor;
+            
             const tolerance = expectedDistance * 0.2; // 20% tolerance
             visuallyCorrect = Math.abs(actualDistance - expectedDistance) < tolerance;
         }
@@ -1498,7 +1529,7 @@ const LocalGraphManager = (function() {
         distanceText.style.pointerEvents = 'none';
         distanceText.style.userSelect = 'none';
         
-        // Add actual distance display for distance-based mode
+        // Add actual distance display for distance-based mode with dynamic scaling info
         if (layoutMode === 'distance-based') {
             const actualDistanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             actualDistanceText.setAttribute('x', midX);
@@ -1508,7 +1539,16 @@ const LocalGraphManager = (function() {
             actualDistanceText.setAttribute('font-family', 'monospace');
             actualDistanceText.setAttribute('font-weight', '600');
             actualDistanceText.setAttribute('fill', visuallyCorrect ? '#16a34a' : '#dc2626');
-            actualDistanceText.textContent = `${(actualDistance / 40).toFixed(1)}px`; // Show in scaled units
+            
+            // Show the scaled distance with indication of which scaling was used
+            const fromDepth = graphData.depths[link.from_node_id] || 0;
+            const toDepth = graphData.depths[link.to_node_id] || 0;
+            const edgeDepth = Math.max(fromDepth, toDepth);
+            const scaleFactor = edgeDepth <= 2 ? 120 : 40;
+            const scaledDistance = actualDistance / scaleFactor;
+            const scaleIndicator = edgeDepth <= 2 ? '×3' : '×1';
+            
+            actualDistanceText.textContent = `${scaledDistance.toFixed(1)}${scaleIndicator}`;
             actualDistanceText.style.pointerEvents = 'none';
             actualDistanceText.style.userSelect = 'none';
             actualDistanceText.style.opacity = '0.8';
