@@ -393,6 +393,33 @@ const LocalGraphManager = (function() {
             </div>
         `;
         document.body.appendChild(editNodeModal);
+
+        // Edit link modal
+        const editLinkModal = document.createElement('div');
+        editLinkModal.id = 'edit-link-modal';
+        editLinkModal.className = 'local-graph-modal';
+        editLinkModal.innerHTML = `
+            <div class="local-graph-modal-content">
+                <h3>Edit Link</h3>
+                <form id="edit-link-form">
+                    <div class="form-group">
+                        <label>Weight:</label>
+                        <input type="number" id="edit-link-weight" min="0.1" max="100" step="0.1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <input type="text" id="edit-link-description" placeholder="Optional description...">
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="primary-btn">Save Changes</button>
+                        <button type="button" id="cancel-edit-link" class="secondary-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(editLinkModal);
     }
     
     function setupEventHandlers() {
@@ -468,6 +495,13 @@ const LocalGraphManager = (function() {
         if (layoutModeSelect) {
             layoutModeSelect.addEventListener('change', handleLayoutModeChange);
         }
+        
+        // Edit link modal handlers
+        const editLinkForm = document.getElementById('edit-link-form');
+        const cancelEditLinkBtn = document.getElementById('cancel-edit-link');
+        
+        if (editLinkForm) editLinkForm.addEventListener('submit', saveEditedLink);
+        if (cancelEditLinkBtn) cancelEditLinkBtn.addEventListener('click', closeEditLinkModal);
     }
     
     function handleLayoutModeChange(e) {
@@ -3301,20 +3335,61 @@ const LocalGraphManager = (function() {
         }
     }
 
+    let currentEditingLink = null;
+    let currentEditingLinkNodeId = null; // Add this new variable
+
     async function editLink(link) {
-        const newWeight = prompt('Enter new weight:', link.weight);
-        if (newWeight === null) return;
+        currentEditingLink = link;
+        // Store the node ID that we need to reload links for
+        currentEditingLinkNodeId = currentEditingNode?.id;
         
-        const newDescription = prompt('Enter new description:', link.description || '');
-        if (newDescription === null) return;
+        // Populate the form
+        document.getElementById('edit-link-weight').value = link.weight;
+        document.getElementById('edit-link-description').value = link.description || '';
+        
+        // Show modal
+        const modal = document.getElementById('edit-link-modal');
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+        
+        // Focus on weight field
+        setTimeout(() => document.getElementById('edit-link-weight').focus(), 100);
+    }
+
+    function closeEditLinkModal() {
+        const modal = document.getElementById('edit-link-modal');
+        modal.classList.remove('show');
+        setTimeout(() => modal.style.display = 'none', 200);
+        
+        // Reset form
+        document.getElementById('edit-link-form').reset();
+        currentEditingLink = null;
+        currentEditingLinkNodeId = null; // Reset this too
+    }
+
+    async function saveEditedLink(e) {
+        e.preventDefault();
+        
+        if (!currentEditingLink) {
+            showNotification('No link being edited', 'error');
+            return;
+        }
+        
+        const weight = parseFloat(document.getElementById('edit-link-weight').value);
+        const description = document.getElementById('edit-link-description').value.trim();
+        
+        if (isNaN(weight) || weight <= 0) {
+            showNotification('Please enter a valid weight', 'warning');
+            return;
+        }
         
         try {
-            const response = await fetch(`/api/links/${link.id}`, {
+            const response = await fetch(`/api/links/${currentEditingLink.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    weight: parseFloat(newWeight) || 1.0,
-                    description: newDescription
+                    weight: weight,
+                    description: description
                 })
             });
             
@@ -3323,8 +3398,15 @@ const LocalGraphManager = (function() {
                 throw new Error(error.error || 'Failed to update link');
             }
             
-            // Reload links
-            await loadNodeLinks(currentEditingNode.id);
+            closeEditLinkModal();
+            
+            // Only reload links if we have a valid node ID and the edit node modal is still open
+            if (currentEditingLinkNodeId && currentEditingNode?.id === currentEditingLinkNodeId) {
+                await loadNodeLinks(currentEditingLinkNodeId);
+            }
+            
+            // Also refresh the main graph to show updated link weights
+            await refreshGraph();
             
             showNotification('Link updated successfully!', 'success');
             
