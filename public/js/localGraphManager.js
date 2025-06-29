@@ -3696,6 +3696,28 @@ function renderManualGraph() {
     const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     mainGroup.setAttribute('id', 'main-graph-group');
     
+    // Zoom and pan state - ADD THESE MISSING VARIABLES
+    let currentZoom = 1;
+    let currentPanX = 0;
+    let currentPanY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartPanX = 0;
+    let panStartPanY = 0;
+    
+    // Node dragging state
+    let draggedNode = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let hasDragged = false;
+    
+    // Zoom constraints
+    const MIN_ZOOM = 0.2;
+    const MAX_ZOOM = 5;
+    
     // Add gradients and filters (reuse from existing code)
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     
@@ -3799,13 +3821,297 @@ function renderManualGraph() {
     mainGroup.appendChild(nodesGroup);
     svg.appendChild(mainGroup);
     
-    // Add manual placement interaction
-    if (manualPlacementState.phase === 'placing') {
-        addManualPlacementInteraction(svg, mainGroup);
-    } else {
-        // Add drag functionality for initial nodes
-        addManualDragInteraction(svg, mainGroup, nodeElements, linkElements);
+    // ADD ALL THE MISSING TRANSFORM AND INTERACTION FUNCTIONS
+    
+    // Function to update transform
+    function updateTransform() {
+        mainGroup.setAttribute('transform', 
+            `translate(${currentPanX}, ${currentPanY}) scale(${currentZoom})`
+        );
     }
+    
+    // Function to update link positions
+    function updateLinks() {
+        linkElements.forEach(linkData => {
+            const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
+            const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
+            
+            if (fromNode && toNode) {
+                const fromPos = fromNode.position;
+                const toPos = toNode.position;
+                
+                // Update line position
+                linkData.element.setAttribute('x1', fromPos.x);
+                linkData.element.setAttribute('y1', fromPos.y);
+                linkData.element.setAttribute('x2', toPos.x);
+                linkData.element.setAttribute('y2', toPos.y);
+                
+                // Update label position
+                const midX = (fromPos.x + toPos.x) / 2;
+                const midY = (fromPos.y + toPos.y) / 2;
+                
+                // Update label background position
+                if (linkData.labelBg) {
+                    const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
+                    const textWidth = labelText.length * 7 + 6;
+                    const textHeight = 14;
+                    
+                    linkData.labelBg.setAttribute('x', midX - textWidth / 2);
+                    linkData.labelBg.setAttribute('y', midY - textHeight / 2);
+                }
+                
+                // Update label text position
+                if (linkData.labelText) {
+                    linkData.labelText.setAttribute('x', midX);
+                    linkData.labelText.setAttribute('y', midY + 3);
+                }
+            }
+        });
+    }
+    
+    // Function to update node visual position
+    function updateNodePosition(nodeData) {
+        const pos = nodeData.position;
+        
+        // Update circle position
+        nodeData.circle.setAttribute('cx', pos.x);
+        nodeData.circle.setAttribute('cy', pos.y);
+        
+        // Update text position
+        const isCenter = nodeData.nodeId === centerNodeId;
+        nodeData.text.setAttribute('x', pos.x);
+        nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+    }
+    
+    // Function to convert screen coordinates to SVG coordinates
+    function screenToSVG(screenX, screenY) {
+        const rect = svg.getBoundingClientRect();
+        const svgX = (screenX - rect.left - currentPanX) / currentZoom;
+        const svgY = (screenY - rect.top - currentPanY) / currentZoom;
+        return { x: svgX, y: svgY };
+    }
+    
+    // ADD COMPLETE MOUSE EVENT HANDLERS WITH BOTH NODE DRAGGING AND CANVAS PANNING
+    
+    // Add manual placement interaction for placing new nodes (only in placing phase)
+    if (manualPlacementState.phase === 'placing') {
+        // Add click handler for placing nodes
+        svg.addEventListener('click', (e) => {
+            if (manualPlacementState.phase !== 'placing' || manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
+                return;
+            }
+            
+            // Don't place if we're dragging or panning
+            if (isPanning || draggedNode) return;
+            
+            // Get click position relative to SVG (accounting for zoom/pan)
+            const svgCoords = screenToSVG(e.clientX, e.clientY);
+            
+            // Place the current node
+            const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
+            manualPlacementState.nodePositions[currentNode.id] = { x: svgCoords.x, y: svgCoords.y };
+            manualPlacementState.placedNodes.add(currentNode.id);
+            
+            // Move to next node
+            manualPlacementState.currentNodeIndex++;
+            
+            // Re-render graph with new node
+            renderManualGraph();
+            
+            // Update UI
+            updateManualPlacementUI();
+            
+            // Check if we're done
+            if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
+                completeManualPlacement();
+            }
+        });
+    }
+    
+    // Mouse event handlers for both node dragging and canvas panning
+    svg.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        
+        // Check if we clicked on a node
+        const target = e.target.closest('g[data-node-id]');
+        if (target && manualPlacementState.phase === 'initial') {
+            // Start node dragging (only in initial phase)
+            const nodeId = target.getAttribute('data-node-id');
+            if (manualPlacementState.initialNodes.has(nodeId)) {
+                draggedNode = nodeElements.find(n => n.nodeId === nodeId);
+                
+                if (draggedNode) {
+                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragOffsetX = svgCoords.x - draggedNode.position.x;
+                    dragOffsetY = svgCoords.y - draggedNode.position.y;
+                    hasDragged = false;
+                    
+                    draggedNode.element.style.cursor = 'grabbing';
+                    
+                    // Bring node to front
+                    nodesGroup.appendChild(draggedNode.element);
+                }
+            }
+        } else {
+            // Start canvas panning
+            isPanning = true;
+            svg.style.cursor = 'grabbing';
+            
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panStartPanX = currentPanX;
+            panStartPanY = currentPanY;
+        }
+    });
+    
+    svg.addEventListener('mousemove', (e) => {
+        if (draggedNode) {
+            // Handle node dragging
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+            
+            // Check if we've moved enough to consider this a drag
+            if (!hasDragged && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+                hasDragged = true;
+            }
+            
+            if (hasDragged) {
+                const svgCoords = screenToSVG(e.clientX, e.clientY);
+                draggedNode.position.x = svgCoords.x - dragOffsetX;
+                draggedNode.position.y = svgCoords.y - dragOffsetY;
+                
+                // Update stored position
+                manualPlacementState.nodePositions[draggedNode.nodeId] = { 
+                    x: draggedNode.position.x, 
+                    y: draggedNode.position.y 
+                };
+                
+                updateNodePosition(draggedNode);
+                updateLinks();
+            }
+        } else if (isPanning) {
+            // Handle canvas panning
+            const deltaX = e.clientX - panStartX;
+            const deltaY = e.clientY - panStartY;
+            
+            currentPanX = panStartPanX + deltaX;
+            currentPanY = panStartPanY + deltaY;
+            
+            updateTransform();
+        }
+    });
+    
+    svg.addEventListener('mouseup', (e) => {
+        if (draggedNode) {
+            draggedNode.element.style.cursor = 'move';
+            
+            // If we didn't drag, treat it as a click
+            if (!hasDragged) {
+                selectNode(draggedNode.node);
+            }
+            
+            draggedNode = null;
+            hasDragged = false;
+        }
+        
+        if (isPanning) {
+            isPanning = false;
+            svg.style.cursor = manualPlacementState.phase === 'placing' ? 'crosshair' : 'grab';
+        }
+    });
+    
+    // Add right-click context menu to nodes
+    nodeElements.forEach(nodeData => {
+        nodeData.element.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showNodeContextMenu(e, nodeData.node);
+        });
+    });
+    
+    // Zoom functionality
+    svg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        
+        const rect = svg.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Calculate zoom
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
+        
+        if (newZoom !== currentZoom) {
+            // Zoom towards mouse position
+            const zoomRatio = newZoom / currentZoom;
+            
+            currentPanX = mouseX - (mouseX - currentPanX) * zoomRatio;
+            currentPanY = mouseY - (mouseY - currentPanY) * zoomRatio;
+            currentZoom = newZoom;
+            
+            updateTransform();
+            updateZoomInfo();
+        }
+    });
+    
+    // Touch support for mobile
+    let touchStartDistance = 0;
+    let touchStartZoom = 1;
+    let touchStartPan = { x: 0, y: 0 };
+    
+    svg.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            // Pinch zoom start
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            touchStartDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            touchStartZoom = currentZoom;
+            touchStartPan = { x: currentPanX, y: currentPanY };
+        }
+    });
+    
+    svg.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            
+            if (touchStartDistance > 0) {
+                const zoomRatio = currentDistance / touchStartDistance;
+                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, touchStartZoom * zoomRatio));
+                
+                if (newZoom !== currentZoom) {
+                    currentZoom = newZoom;
+                    updateTransform();
+                    updateZoomInfo();
+                }
+            }
+        }
+    });
+    
+    // Function to update zoom info in UI
+    function updateZoomInfo() {
+        const zoomPercent = Math.round(currentZoom * 100);
+        const distanceDisplay = document.getElementById('distance-display');
+        if (distanceDisplay) {
+            const originalText = distanceDisplay.textContent.split(' | ')[0];
+            distanceDisplay.textContent = `${originalText} | Zoom: ${zoomPercent}%`;
+        }
+    }
+    
+    // Initial transform
+    updateTransform();
+    updateZoomInfo();
     
     canvasArea.appendChild(svg);
 }
@@ -3864,156 +4170,6 @@ function createManualNodeElement(node, pos) {
         position: pos,
         node: node
     };
-}
-
-function addManualPlacementInteraction(svg, mainGroup) {
-    // Add click handler for placing nodes
-    svg.addEventListener('click', (e) => {
-        if (manualPlacementState.phase !== 'placing' || manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
-            return;
-        }
-        
-        // Get click position relative to SVG
-        const rect = svg.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-        
-        // Place the current node
-        const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
-        manualPlacementState.nodePositions[currentNode.id] = { x: clickX, y: clickY };
-        manualPlacementState.placedNodes.add(currentNode.id);
-        
-        // Move to next node
-        manualPlacementState.currentNodeIndex++;
-        
-        // Re-render graph with new node
-        renderManualGraph();
-        
-        // Update UI
-        updateManualPlacementUI();
-        
-        // Check if we're done
-        if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
-            completeManualPlacement();
-        }
-    });
-}
-
-function addManualDragInteraction(svg, mainGroup, nodeElements, linkElements) {
-    // Add drag functionality similar to existing renderGraph
-    let draggedNode = null;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
-    let hasDragged = false;
-    
-    // Mouse event handlers (similar to existing implementation)
-    svg.addEventListener('mousedown', (e) => {
-        const target = e.target.closest('g[data-node-id]');
-        if (target) {
-            const nodeId = target.getAttribute('data-node-id');
-            if (manualPlacementState.initialNodes.has(nodeId)) {
-                draggedNode = nodeElements.find(n => n.nodeId === nodeId);
-                if (draggedNode) {
-                    const rect = svg.getBoundingClientRect();
-                    dragStartX = e.clientX;
-                    dragStartY = e.clientY;
-                    dragOffsetX = (e.clientX - rect.left) - draggedNode.position.x;
-                    dragOffsetY = (e.clientY - rect.top) - draggedNode.position.y;
-                    hasDragged = false;
-                    draggedNode.element.style.cursor = 'grabbing';
-                }
-            }
-        }
-    });
-    
-    svg.addEventListener('mousemove', (e) => {
-        if (draggedNode) {
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-            
-            if (!hasDragged && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
-                hasDragged = true;
-            }
-            
-            if (hasDragged) {
-                const rect = svg.getBoundingClientRect();
-                const newX = (e.clientX - rect.left) - dragOffsetX;
-                const newY = (e.clientY - rect.top) - dragOffsetY;
-                
-                draggedNode.position.x = newX;
-                draggedNode.position.y = newY;
-                
-                // Update stored position
-                manualPlacementState.nodePositions[draggedNode.nodeId] = { x: newX, y: newY };
-                
-                // Update visual position
-                updateManualNodePosition(draggedNode);
-                updateManualLinks(linkElements, nodeElements);
-            }
-        }
-    });
-    
-    svg.addEventListener('mouseup', (e) => {
-        if (draggedNode) {
-            draggedNode.element.style.cursor = 'move';
-            if (!hasDragged) {
-                selectNode(draggedNode.node);
-            }
-            draggedNode = null;
-            hasDragged = false;
-        }
-    });
-}
-
-function updateManualNodePosition(nodeData) {
-    const pos = nodeData.position;
-    
-    // Update circle position
-    nodeData.circle.setAttribute('cx', pos.x);
-    nodeData.circle.setAttribute('cy', pos.y);
-    
-    // Update text position
-    const isCenter = nodeData.nodeId === centerNodeId;
-    nodeData.text.setAttribute('x', pos.x);
-    nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
-}
-
-function updateManualLinks(linkElements, nodeElements) {
-    linkElements.forEach(linkData => {
-        const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
-        const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
-        
-        if (fromNode && toNode) {
-            const fromPos = fromNode.position;
-            const toPos = toNode.position;
-            
-            // Update line position
-            linkData.element.setAttribute('x1', fromPos.x);
-            linkData.element.setAttribute('y1', fromPos.y);
-            linkData.element.setAttribute('x2', toPos.x);
-            linkData.element.setAttribute('y2', toPos.y);
-            
-            // Update label position
-            const midX = (fromPos.x + toPos.x) / 2;
-            const midY = (fromPos.y + toPos.y) / 2;
-            
-            if (linkData.labelBg) {
-                const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
-                const textWidth = labelText.length * 7 + 6;
-                const textHeight = 14;
-                
-                linkData.labelBg.setAttribute('x', midX - textWidth / 2);
-                linkData.labelBg.setAttribute('y', midY - textHeight / 2);
-            }
-            
-            if (linkData.labelText) {
-                linkData.labelText.setAttribute('x', midX);
-                linkData.labelText.setAttribute('y', midY + 3);
-            }
-        }
-    });
 }
 
 function updateManualPlacementUI() {
