@@ -1509,13 +1509,38 @@ const LocalGraphManager = (function() {
         line.setAttribute('x2', targetPos.x);
         line.setAttribute('y2', targetPos.y);
         
+        // IMPROVED: Calculate line width based on connection strength (inverse of distance)
+        // Smaller distance = stronger connection = thicker line
+        function calculateLineWidth(weight) {
+            // Base configuration
+            const minWidth = 0.5;  // Minimum line width for very weak connections
+            const maxWidth = 4.0;  // Maximum line width for very strong connections
+            const baseWeight = 1.0; // Reference weight for normal connections
+            
+            // Calculate connection strength (inverse of distance)
+            // For weight = 0.5 (close): strength = 2.0 (thick line)
+            // For weight = 1.0 (normal): strength = 1.0 (medium line) 
+            // For weight = 2.0 (far): strength = 0.5 (thin line)
+            const connectionStrength = baseWeight / weight;
+            
+            // Map connection strength to line width with smooth scaling
+            // Use logarithmic scaling to handle extreme values gracefully
+            const scaledStrength = Math.log(connectionStrength + 1) / Math.log(2);
+            const lineWidth = minWidth + (maxWidth - minWidth) * Math.min(1, Math.max(0, scaledStrength / 2));
+            
+            return Math.round(lineWidth * 10) / 10; // Round to 1 decimal place
+        }
+        
+        const lineWidth = calculateLineWidth(weight);
+        const hoverLineWidth = Math.min(lineWidth + 1.5, 6.0); // Cap hover width
+        
         // Color coding for distance-based mode
         if (layoutMode === 'distance-based') {
             line.setAttribute('stroke', visuallyCorrect ? '#22c55e' : '#ef4444'); // Green if correct, red if not
-            line.setAttribute('stroke-width', Math.max(1, weight * 0.8));
+            line.setAttribute('stroke-width', lineWidth);
         } else {
             line.setAttribute('stroke', '#e2e8f0');
-            line.setAttribute('stroke-width', Math.max(0.8, weight * 0.8));
+            line.setAttribute('stroke-width', lineWidth);
         }
         
         line.setAttribute('opacity', '0.7');
@@ -1602,17 +1627,15 @@ const LocalGraphManager = (function() {
             }
         }
         
-        // Add hover effects
+        // Add hover effects with improved line width calculation
         linkGroup.addEventListener('mouseenter', () => {
-            line.setAttribute('stroke-width', Math.max(2, (weight * 0.8) + 1));
+            line.setAttribute('stroke-width', hoverLineWidth);
             line.setAttribute('opacity', '1');
             labelBg.setAttribute('stroke-width', '1');
         });
         
         linkGroup.addEventListener('mouseleave', () => {
-            line.setAttribute('stroke-width', layoutMode === 'distance-based' 
-                ? Math.max(1, weight * 0.8) 
-                : Math.max(0.8, weight * 0.8));
+            line.setAttribute('stroke-width', lineWidth);
             line.setAttribute('opacity', '0.7');
             labelBg.setAttribute('stroke-width', '0.5');
         });
