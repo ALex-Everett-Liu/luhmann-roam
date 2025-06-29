@@ -12,7 +12,16 @@ const LocalGraphManager = (function() {
     let nodePoolStatus = new Map(); // Track which nodes are in pool
     let currentEditingNode = null; // Track the node being edited
     let currentNodeLinks = { outgoing: [], incoming: [] }; // Track links for editing
-    let currentLayoutMode = 'circular'; // 'circular' or 'distance-based'
+    let currentLayoutMode = 'circular'; // 'circular', 'distance-based', or 'manual'
+    let manualPlacementState = {
+        isActive: false,
+        phase: 'initial', // 'initial', 'adjusting', 'placing'
+        placedNodes: new Set(),
+        nodesToPlace: [],
+        currentNodeIndex: 0,
+        initialNodes: new Set(), // nodes placed in initial phase (depth 1-2)
+        nodePositions: {} // store positions during manual placement
+    };
     
     function initialize() {
         if (isInitialized) {
@@ -140,6 +149,7 @@ const LocalGraphManager = (function() {
                                 <select id="layout-mode-select" class="layout-select">
                                     <option value="circular">Circular</option>
                                     <option value="distance-based">Distance-Based</option>
+                                    <option value="manual">Manual Placement</option>
                                 </select>
                             </div>
                             <div class="graph-actions">
@@ -192,6 +202,50 @@ const LocalGraphManager = (function() {
                         </div>
                         
                         <div class="graph-canvas-area" id="local-graph-canvas-area">
+                            <div id="manual-placement-controls" class="manual-placement-controls" style="display: none;">
+                                <div class="manual-placement-header">
+                                    <h4 id="manual-placement-title">Manual Node Placement</h4>
+                                    <div class="manual-placement-progress">
+                                        <span id="manual-progress-text">Step 1 of 3</span>
+                                        <div class="progress-bar">
+                                            <div id="manual-progress-fill" class="progress-fill"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="manual-phase-initial" class="manual-phase">
+                                    <div class="manual-instructions">
+                                        <p>Initial nodes (depth 1-2) have been placed automatically using distance-based layout.</p>
+                                        <p>You can drag them to adjust their positions, or proceed to place the remaining nodes.</p>
+                                    </div>
+                                    <div class="manual-actions">
+                                        <button id="manual-proceed-btn" class="primary-btn">Proceed to Manual Placement</button>
+                                        <button id="manual-reset-positions-btn" class="secondary-btn">Reset to Auto Positions</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="manual-phase-placing" class="manual-phase" style="display: none;">
+                                    <div class="manual-instructions">
+                                        <p>Click anywhere on the canvas to place: <strong id="current-node-name">Node Name</strong></p>
+                                        <p id="remaining-nodes-count">Remaining: 5 nodes</p>
+                                    </div>
+                                    <div class="manual-actions">
+                                        <button id="manual-skip-node-btn" class="secondary-btn">Skip This Node</button>
+                                        <button id="manual-auto-place-remaining-btn" class="secondary-btn">Auto-place Remaining</button>
+                                        <button id="manual-cancel-btn" class="secondary-btn">Cancel Manual Mode</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="manual-phase-complete" class="manual-phase" style="display: none;">
+                                    <div class="manual-instructions">
+                                        <p>✅ Manual placement complete! All nodes have been positioned.</p>
+                                    </div>
+                                    <div class="manual-actions">
+                                        <button id="manual-finish-btn" class="primary-btn">Finish</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div id="local-graph-canvas"></div>
                         </div>
                     </div>
@@ -502,11 +556,27 @@ const LocalGraphManager = (function() {
         
         if (editLinkForm) editLinkForm.addEventListener('submit', saveEditedLink);
         if (cancelEditLinkBtn) cancelEditLinkBtn.addEventListener('click', closeEditLinkModal);
+        
+        // Setup manual placement handlers
+        setupManualPlacementHandlers();
     }
     
     function handleLayoutModeChange(e) {
-        currentLayoutMode = e.target.value;
-        if (graphData) {
+        const newMode = e.target.value;
+        
+        if (newMode === 'manual' && currentLayoutMode !== 'manual') {
+            // Switching to manual mode
+            if (graphData) {
+                startManualPlacement();
+            }
+        } else if (currentLayoutMode === 'manual' && newMode !== 'manual') {
+            // Switching away from manual mode
+            exitManualPlacement();
+        }
+        
+        currentLayoutMode = newMode;
+        
+        if (graphData && currentLayoutMode !== 'manual') {
             renderGraph(); // Re-render with new layout
         }
     }
@@ -615,6 +685,11 @@ const LocalGraphManager = (function() {
     }
     
     function renderGraph() {
+        if (currentLayoutMode === 'manual' && manualPlacementState.isActive) {
+            renderManualGraph();
+            return;
+        }
+        
         const canvasArea = document.getElementById('local-graph-canvas');
         
         const nodes = graphData.nodes || [];
@@ -3531,6 +3606,585 @@ const LocalGraphManager = (function() {
         currentEditingNode = null;
         currentNodeLinks = { outgoing: [], incoming: [] };
     }
+
+    // Manual Placement Functions
+function startManualPlacement() {
+    manualPlacementState.isActive = true;
+    manualPlacementState.phase = 'initial';
+    manualPlacementState.placedNodes.clear();
+    manualPlacementState.initialNodes.clear();
+    manualPlacementState.nodesToPlace = [];
+    manualPlacementState.currentNodeIndex = 0;
+    
+    // Show manual placement controls
+    const controls = document.getElementById('manual-placement-controls');
+    if (controls) {
+        controls.style.display = 'block';
+    }
+    
+    // Calculate initial layout for depth 1-2 nodes only
+    const initialLayout = calculateManualInitialLayout();
+    manualPlacementState.nodePositions = initialLayout;
+    
+    // Render with initial placement
+    renderManualGraph();
+    
+    updateManualPlacementUI();
+}
+
+function calculateManualInitialLayout() {
+    const nodes = graphData.nodes || [];
+    const links = graphData.links || [];
+    const distances = graphData.distances || {};
+    const depths = graphData.depths || {};
+    
+    // Filter nodes by depth (only depth 1-2)
+    const initialNodes = nodes.filter(node => {
+        const depth = depths[node.id] || 0;
+        return depth <= 2;
+    });
+    
+    // Nodes that will need manual placement
+    const remainingNodes = nodes.filter(node => {
+        const depth = depths[node.id] || 0;
+        return depth > 2;
+    });
+    
+    // Store which nodes are initial vs manual
+    initialNodes.forEach(node => {
+        manualPlacementState.initialNodes.add(node.id);
+        manualPlacementState.placedNodes.add(node.id);
+    });
+    
+    manualPlacementState.nodesToPlace = remainingNodes;
+    
+    // Use distance-based layout for initial nodes
+    const centerX = 400;
+    const centerY = 300;
+    const maxRadius = 250;
+    
+    // Calculate positions using the existing distance-based algorithm but only for initial nodes
+    const allPositions = calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius);
+    
+    // Return only positions for initial nodes
+    const initialPositions = {};
+    initialNodes.forEach(node => {
+        if (allPositions[node.id]) {
+            initialPositions[node.id] = allPositions[node.id];
+        }
+    });
+    
+    return initialPositions;
+}
+
+function renderManualGraph() {
+    const canvasArea = document.getElementById('local-graph-canvas');
+    const nodes = graphData.nodes || [];
+    const links = graphData.links || [];
+    
+    // Clear canvas
+    canvasArea.innerHTML = '';
+    
+    // Create SVG with zoom and pan capabilities (similar to existing renderGraph)
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.background = '#fff';
+    svg.style.cursor = manualPlacementState.phase === 'placing' ? 'crosshair' : 'grab';
+    
+    // Create main group for zoom/pan transformations
+    const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    mainGroup.setAttribute('id', 'main-graph-group');
+    
+    // Add gradients and filters (reuse from existing code)
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    
+    // Silver gradient for pool rings
+    const silverGradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+    silverGradient.setAttribute('id', 'silverGradient');
+    silverGradient.setAttribute('x1', '0%');
+    silverGradient.setAttribute('y1', '0%');
+    silverGradient.setAttribute('x2', '100%');
+    silverGradient.setAttribute('y2', '100%');
+    
+    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop1.setAttribute('offset', '0%');
+    stop1.setAttribute('stop-color', '#f8fafc');
+    stop1.setAttribute('stop-opacity', '1');
+    
+    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop2.setAttribute('offset', '50%');
+    stop2.setAttribute('stop-color', '#cbd5e1');
+    stop2.setAttribute('stop-opacity', '1');
+    
+    const stop3 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop3.setAttribute('offset', '100%');
+    stop3.setAttribute('stop-color', '#94a3b8');
+    stop3.setAttribute('stop-opacity', '1');
+    
+    silverGradient.appendChild(stop1);
+    silverGradient.appendChild(stop2);
+    silverGradient.appendChild(stop3);
+    defs.appendChild(silverGradient);
+    
+    // Subtle glow filter for pool nodes
+    const glowFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+    glowFilter.setAttribute('id', 'poolGlow');
+    glowFilter.setAttribute('x', '-50%');
+    glowFilter.setAttribute('y', '-50%');
+    glowFilter.setAttribute('width', '200%');
+    glowFilter.setAttribute('height', '200%');
+    
+    const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+    feGaussianBlur.setAttribute('stdDeviation', '2');
+    feGaussianBlur.setAttribute('result', 'coloredBlur');
+    
+    const feMerge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge');
+    const feMergeNode1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+    feMergeNode1.setAttribute('in', 'coloredBlur');
+    const feMergeNode2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+    feMergeNode2.setAttribute('in', 'SourceGraphic');
+    
+    feMerge.appendChild(feMergeNode1);
+    feMerge.appendChild(feMergeNode2);
+    glowFilter.appendChild(feGaussianBlur);
+    glowFilter.appendChild(feMerge);
+    defs.appendChild(glowFilter);
+    
+    svg.appendChild(defs);
+    
+    // Create links group
+    const linksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    linksGroup.setAttribute('id', 'links-group');
+    
+    // Create nodes group
+    const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodesGroup.setAttribute('id', 'nodes-group');
+    
+    // Only render placed nodes and their connections
+    const placedNodes = nodes.filter(node => manualPlacementState.placedNodes.has(node.id));
+    const placedNodeIds = new Set(placedNodes.map(n => n.id));
+    
+    // Filter links to only show connections between placed nodes
+    const visibleLinks = links.filter(link => 
+        placedNodeIds.has(link.from_node_id) && placedNodeIds.has(link.to_node_id)
+    );
+    
+    // Draw links
+    const linkElements = [];
+    visibleLinks.forEach(link => {
+        const sourcePos = manualPlacementState.nodePositions[link.from_node_id];
+        const targetPos = manualPlacementState.nodePositions[link.to_node_id];
+        
+        if (sourcePos && targetPos) {
+            const linkData = createLinkElement(link, sourcePos, targetPos, 'manual');
+            linksGroup.appendChild(linkData.linkGroup);
+            linkElements.push(linkData);
+        }
+    });
+    
+    // Draw nodes
+    const nodeElements = [];
+    placedNodes.forEach(node => {
+        const pos = manualPlacementState.nodePositions[node.id];
+        if (!pos) return;
+        
+        const nodeData = createManualNodeElement(node, pos);
+        nodeElements.push(nodeData);
+        nodesGroup.appendChild(nodeData.element);
+    });
+    
+    // Add groups to main group
+    mainGroup.appendChild(linksGroup);
+    mainGroup.appendChild(nodesGroup);
+    svg.appendChild(mainGroup);
+    
+    // Add manual placement interaction
+    if (manualPlacementState.phase === 'placing') {
+        addManualPlacementInteraction(svg, mainGroup);
+    } else {
+        // Add drag functionality for initial nodes
+        addManualDragInteraction(svg, mainGroup, nodeElements, linkElements);
+    }
+    
+    canvasArea.appendChild(svg);
+}
+
+function createManualNodeElement(node, pos) {
+    const isCenter = node.id === centerNodeId;
+    const isInitial = manualPlacementState.initialNodes.has(node.id);
+    
+    // Create node group
+    const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodeGroup.setAttribute('data-node-id', node.id);
+    nodeGroup.style.cursor = isInitial ? 'move' : 'default';
+    
+    // Node circle with different styling for initial vs manual nodes
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', pos.x);
+    circle.setAttribute('cy', pos.y);
+    circle.setAttribute('r', isCenter ? 14 : 10);
+    circle.setAttribute('class', 'main-node-circle');
+    
+    if (isCenter) {
+        circle.setAttribute('fill', '#6366f1');
+        circle.setAttribute('stroke', '#4f46e5');
+        circle.setAttribute('stroke-width', '3');
+    } else if (isInitial) {
+        circle.setAttribute('fill', '#10b981'); // Green for initial nodes
+        circle.setAttribute('stroke', '#059669');
+        circle.setAttribute('stroke-width', '2');
+    } else {
+        circle.setAttribute('fill', '#8b5cf6'); // Purple for manually placed nodes
+        circle.setAttribute('stroke', '#7c3aed');
+        circle.setAttribute('stroke-width', '2');
+    }
+    
+    nodeGroup.appendChild(circle);
+    
+    // Node label
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', pos.x);
+    text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', isCenter ? '11' : '9');
+    text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+    text.setAttribute('font-weight', isCenter ? '600' : '500');
+    text.setAttribute('fill', '#1e293b');
+    text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
+    text.style.pointerEvents = 'none';
+    
+    nodeGroup.appendChild(text);
+    
+    return {
+        element: nodeGroup,
+        circle: circle,
+        text: text,
+        nodeId: node.id,
+        position: pos,
+        node: node
+    };
+}
+
+function addManualPlacementInteraction(svg, mainGroup) {
+    // Add click handler for placing nodes
+    svg.addEventListener('click', (e) => {
+        if (manualPlacementState.phase !== 'placing' || manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
+            return;
+        }
+        
+        // Get click position relative to SVG
+        const rect = svg.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        // Place the current node
+        const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
+        manualPlacementState.nodePositions[currentNode.id] = { x: clickX, y: clickY };
+        manualPlacementState.placedNodes.add(currentNode.id);
+        
+        // Move to next node
+        manualPlacementState.currentNodeIndex++;
+        
+        // Re-render graph with new node
+        renderManualGraph();
+        
+        // Update UI
+        updateManualPlacementUI();
+        
+        // Check if we're done
+        if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
+            completeManualPlacement();
+        }
+    });
+}
+
+function addManualDragInteraction(svg, mainGroup, nodeElements, linkElements) {
+    // Add drag functionality similar to existing renderGraph
+    let draggedNode = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let hasDragged = false;
+    
+    // Mouse event handlers (similar to existing implementation)
+    svg.addEventListener('mousedown', (e) => {
+        const target = e.target.closest('g[data-node-id]');
+        if (target) {
+            const nodeId = target.getAttribute('data-node-id');
+            if (manualPlacementState.initialNodes.has(nodeId)) {
+                draggedNode = nodeElements.find(n => n.nodeId === nodeId);
+                if (draggedNode) {
+                    const rect = svg.getBoundingClientRect();
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragOffsetX = (e.clientX - rect.left) - draggedNode.position.x;
+                    dragOffsetY = (e.clientY - rect.top) - draggedNode.position.y;
+                    hasDragged = false;
+                    draggedNode.element.style.cursor = 'grabbing';
+                }
+            }
+        }
+    });
+    
+    svg.addEventListener('mousemove', (e) => {
+        if (draggedNode) {
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+            
+            if (!hasDragged && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+                hasDragged = true;
+            }
+            
+            if (hasDragged) {
+                const rect = svg.getBoundingClientRect();
+                const newX = (e.clientX - rect.left) - dragOffsetX;
+                const newY = (e.clientY - rect.top) - dragOffsetY;
+                
+                draggedNode.position.x = newX;
+                draggedNode.position.y = newY;
+                
+                // Update stored position
+                manualPlacementState.nodePositions[draggedNode.nodeId] = { x: newX, y: newY };
+                
+                // Update visual position
+                updateManualNodePosition(draggedNode);
+                updateManualLinks(linkElements, nodeElements);
+            }
+        }
+    });
+    
+    svg.addEventListener('mouseup', (e) => {
+        if (draggedNode) {
+            draggedNode.element.style.cursor = 'move';
+            if (!hasDragged) {
+                selectNode(draggedNode.node);
+            }
+            draggedNode = null;
+            hasDragged = false;
+        }
+    });
+}
+
+function updateManualNodePosition(nodeData) {
+    const pos = nodeData.position;
+    
+    // Update circle position
+    nodeData.circle.setAttribute('cx', pos.x);
+    nodeData.circle.setAttribute('cy', pos.y);
+    
+    // Update text position
+    const isCenter = nodeData.nodeId === centerNodeId;
+    nodeData.text.setAttribute('x', pos.x);
+    nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+}
+
+function updateManualLinks(linkElements, nodeElements) {
+    linkElements.forEach(linkData => {
+        const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
+        const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
+        
+        if (fromNode && toNode) {
+            const fromPos = fromNode.position;
+            const toPos = toNode.position;
+            
+            // Update line position
+            linkData.element.setAttribute('x1', fromPos.x);
+            linkData.element.setAttribute('y1', fromPos.y);
+            linkData.element.setAttribute('x2', toPos.x);
+            linkData.element.setAttribute('y2', toPos.y);
+            
+            // Update label position
+            const midX = (fromPos.x + toPos.x) / 2;
+            const midY = (fromPos.y + toPos.y) / 2;
+            
+            if (linkData.labelBg) {
+                const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
+                const textWidth = labelText.length * 7 + 6;
+                const textHeight = 14;
+                
+                linkData.labelBg.setAttribute('x', midX - textWidth / 2);
+                linkData.labelBg.setAttribute('y', midY - textHeight / 2);
+            }
+            
+            if (linkData.labelText) {
+                linkData.labelText.setAttribute('x', midX);
+                linkData.labelText.setAttribute('y', midY + 3);
+            }
+        }
+    });
+}
+
+function updateManualPlacementUI() {
+    const titleElement = document.getElementById('manual-placement-title');
+    const progressText = document.getElementById('manual-progress-text');
+    const progressFill = document.getElementById('manual-progress-fill');
+    const currentNodeName = document.getElementById('current-node-name');
+    const remainingCount = document.getElementById('remaining-nodes-count');
+    
+    const totalPhases = 3;
+    let currentPhase = 1;
+    let progress = 0;
+    
+    switch (manualPlacementState.phase) {
+        case 'initial':
+            currentPhase = 1;
+            progress = 33;
+            if (titleElement) titleElement.textContent = 'Step 1: Initial Placement';
+            document.getElementById('manual-phase-initial').style.display = 'block';
+            document.getElementById('manual-phase-placing').style.display = 'none';
+            document.getElementById('manual-phase-complete').style.display = 'none';
+            break;
+            
+        case 'placing':
+            currentPhase = 2;
+            const placedCount = manualPlacementState.currentNodeIndex;
+            const totalToPlace = manualPlacementState.nodesToPlace.length;
+            progress = 33 + ((placedCount / totalToPlace) * 34);
+            
+            if (titleElement) titleElement.textContent = 'Step 2: Manual Placement';
+            document.getElementById('manual-phase-initial').style.display = 'none';
+            document.getElementById('manual-phase-placing').style.display = 'block';
+            document.getElementById('manual-phase-complete').style.display = 'none';
+            
+            if (manualPlacementState.currentNodeIndex < manualPlacementState.nodesToPlace.length) {
+                const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
+                if (currentNodeName) {
+                    currentNodeName.textContent = currentNode.content || currentNode.content_zh || 'Untitled';
+                }
+                if (remainingCount) {
+                    remainingCount.textContent = `Remaining: ${totalToPlace - placedCount} nodes`;
+                }
+            }
+            break;
+            
+        case 'complete':
+            currentPhase = 3;
+            progress = 100;
+            if (titleElement) titleElement.textContent = 'Step 3: Complete';
+            document.getElementById('manual-phase-initial').style.display = 'none';
+            document.getElementById('manual-phase-placing').style.display = 'none';
+            document.getElementById('manual-phase-complete').style.display = 'block';
+            break;
+    }
+    
+    if (progressText) {
+        progressText.textContent = `Step ${currentPhase} of ${totalPhases}`;
+    }
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+}
+
+function setupManualPlacementHandlers() {
+    const proceedBtn = document.getElementById('manual-proceed-btn');
+    const resetBtn = document.getElementById('manual-reset-positions-btn');
+    const skipBtn = document.getElementById('manual-skip-node-btn');
+    const autoPlaceBtn = document.getElementById('manual-auto-place-remaining-btn');
+    const cancelBtn = document.getElementById('manual-cancel-btn');
+    const finishBtn = document.getElementById('manual-finish-btn');
+    
+    if (proceedBtn) {
+        proceedBtn.addEventListener('click', () => {
+            manualPlacementState.phase = 'placing';
+            updateManualPlacementUI();
+            renderManualGraph();
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            // Reset initial positions to auto-calculated ones
+            const initialLayout = calculateManualInitialLayout();
+            Object.keys(initialLayout).forEach(nodeId => {
+                manualPlacementState.nodePositions[nodeId] = initialLayout[nodeId];
+            });
+            renderManualGraph();
+        });
+    }
+    
+    if (skipBtn) {
+        skipBtn.addEventListener('click', () => {
+            // Skip current node (place it at a default position)
+            if (manualPlacementState.currentNodeIndex < manualPlacementState.nodesToPlace.length) {
+                const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
+                
+                // Place at a default position (e.g., top-right corner)
+                manualPlacementState.nodePositions[currentNode.id] = { x: 600, y: 100 + (manualPlacementState.currentNodeIndex * 30) };
+                manualPlacementState.placedNodes.add(currentNode.id);
+                manualPlacementState.currentNodeIndex++;
+                
+                renderManualGraph();
+                updateManualPlacementUI();
+                
+                if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
+                    completeManualPlacement();
+                }
+            }
+        });
+    }
+    
+    if (autoPlaceBtn) {
+        autoPlaceBtn.addEventListener('click', () => {
+            // Auto-place all remaining nodes
+            const remaining = manualPlacementState.nodesToPlace.slice(manualPlacementState.currentNodeIndex);
+            remaining.forEach((node, index) => {
+                // Place in a grid pattern
+                const x = 500 + (index % 3) * 80;
+                const y = 200 + Math.floor(index / 3) * 60;
+                manualPlacementState.nodePositions[node.id] = { x, y };
+                manualPlacementState.placedNodes.add(node.id);
+            });
+            
+            manualPlacementState.currentNodeIndex = manualPlacementState.nodesToPlace.length;
+            completeManualPlacement();
+        });
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            exitManualPlacement();
+            // Switch back to distance-based layout
+            const layoutSelect = document.getElementById('layout-mode-select');
+            if (layoutSelect) {
+                layoutSelect.value = 'distance-based';
+                currentLayoutMode = 'distance-based';
+                renderGraph();
+            }
+        });
+    }
+    
+    if (finishBtn) {
+        finishBtn.addEventListener('click', () => {
+            exitManualPlacement();
+            showNotification('Manual placement completed!', 'success');
+        });
+    }
+}
+
+function completeManualPlacement() {
+    manualPlacementState.phase = 'complete';
+    updateManualPlacementUI();
+    renderManualGraph();
+}
+
+function exitManualPlacement() {
+    manualPlacementState.isActive = false;
+    manualPlacementState.phase = 'initial';
+    manualPlacementState.placedNodes.clear();
+    manualPlacementState.initialNodes.clear();
+    manualPlacementState.nodesToPlace = [];
+    manualPlacementState.currentNodeIndex = 0;
+    manualPlacementState.nodePositions = {};
+    
+    // Hide manual placement controls
+    const controls = document.getElementById('manual-placement-controls');
+    if (controls) {
+        controls.style.display = 'none';
+    }
+}
 
     // Public API
     return {
