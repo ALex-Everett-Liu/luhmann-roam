@@ -4476,9 +4476,15 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
     const weightScale = Math.max(0.5, Math.min(2.0, globalAvgWeight));
     
     // Store the depth 2 circle radius for later constraint checking
+    const depth1Radius = getFixedRadiusForDepth(1, weightScale);
     const depth2Radius = getFixedRadiusForDepth(2, weightScale);
-    const minOutsideRadius = depth2Radius + 40; // Minimum distance from center for depth > 2 nodes
     
+    // IMPROVED: Calculate minimum distance based on the gap between depth 1 and 2 circles
+    const circleGap = depth2Radius - depth1Radius; // This is 80 pixels with default values
+    const minOutsideRadius = depth2Radius + circleGap; // Push out by same distance as between circles
+    
+    console.log(`Circle radii - Depth 1: ${depth1Radius}, Depth 2: ${depth2Radius}, Gap: ${circleGap}, MinOutside: ${minOutsideRadius}`);
+
     // Process depth 1 nodes (inner circle) and depth 2 nodes (outer circle)
     for (let depth = 1; depth <= 2; depth++) {
         const nodesAtDepth = nodesByDepth.get(depth) || [];
@@ -4659,11 +4665,12 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
     nodes.forEach(node => {
         if (!nodePositions[node.id]) {
             console.error(`Node ${node.id} missing position! Adding fallback position.`);
-            // Fallback: place missing nodes at a default position outside the depth 2 circle
+            // Improved fallback: place missing nodes well outside the depth 2 circle
             const angle = Math.random() * 2 * Math.PI;
+            const fallbackDistance = minOutsideRadius + circleGap;
             nodePositions[node.id] = {
-                x: centerX + Math.cos(angle) * (minOutsideRadius + 50),
-                y: centerY + Math.sin(angle) * (minOutsideRadius + 50)
+                x: centerX + Math.cos(angle) * fallbackDistance,
+                y: centerY + Math.sin(angle) * fallbackDistance
             };
         }
     });
@@ -4676,8 +4683,13 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
 
 // New refinement function that respects the outer boundary constraint
 function refineHybridLayoutWithConstraints(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY, minOutsideRadius) {
-    const MAX_ITERATIONS = 30; // Reduced iterations for hybrid layout
-    const STEP_SIZE = 0.3; // Smaller step size for more controlled movement
+    const MAX_ITERATIONS = 30;
+    const STEP_SIZE = 0.3;
+    
+    // Calculate the circle gap for stronger constraint enforcement
+    const BASE_RADIUS_DEPTH_2 = 160;
+    const BASE_RADIUS_DEPTH_1 = BASE_RADIUS_DEPTH_2 / 2;
+    const circleGap = BASE_RADIUS_DEPTH_1; // 80 pixels
     
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
         const forces = {};
@@ -4724,11 +4736,9 @@ function refineHybridLayoutWithConstraints(nodePositions, links, adjacencyList, 
         
         // Apply forces while respecting constraints
         Object.keys(nodePositions).forEach(nodeId => {
-            if (nodeId === centerNodeId) return; // Don't move center node
+            if (nodeId === centerNodeId) return;
             
             const depth = nodeDepths.get(nodeId) || 0;
-            
-            // Don't apply forces to depth 1 and 2 nodes (they should stay on circles)
             if (depth <= 2) return;
             
             const currentPos = nodePositions[nodeId];
@@ -4737,18 +4747,19 @@ function refineHybridLayoutWithConstraints(nodePositions, links, adjacencyList, 
                 y: currentPos.y + forces[nodeId].y * STEP_SIZE
             };
             
-            // Constraint: Ensure depth > 2 nodes stay outside the depth 2 circle
+            // IMPROVED CONSTRAINT: Much stronger separation enforcement
             const distanceFromCenter = Math.sqrt(
                 Math.pow(newPos.x - centerX, 2) + 
                 Math.pow(newPos.y - centerY, 2)
             );
             
             if (distanceFromCenter < minOutsideRadius) {
-                // Push back to the minimum radius
+                // Push back with additional buffer to ensure proper separation
                 const angleFromCenter = Math.atan2(newPos.y - centerY, newPos.x - centerX);
+                const strongPushDistance = minOutsideRadius + (circleGap * 0.5); // Add half the circle gap as buffer
                 nodePositions[nodeId] = {
-                    x: centerX + Math.cos(angleFromCenter) * minOutsideRadius,
-                    y: centerY + Math.sin(angleFromCenter) * minOutsideRadius
+                    x: centerX + Math.cos(angleFromCenter) * strongPushDistance,
+                    y: centerY + Math.sin(angleFromCenter) * strongPushDistance
                 };
             } else {
                 nodePositions[nodeId] = newPos;
