@@ -876,14 +876,14 @@ const LocalGraphManager = (function() {
         svg.appendChild(mainGroup);
         
         // Function to update transform
-        function updateTransform() {
+        function updateTransform(mainGroup, currentPanX, currentPanY, currentZoom) {
             mainGroup.setAttribute('transform', 
                 `translate(${currentPanX}, ${currentPanY}) scale(${currentZoom})`
             );
         }
         
         // Function to update link positions
-        function updateLinks() {
+        function updateLinks(linkElements, nodeElements) {
             linkElements.forEach(linkData => {
                 const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
                 const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
@@ -952,7 +952,7 @@ const LocalGraphManager = (function() {
         }
         
         // Function to convert screen coordinates to SVG coordinates
-        function screenToSVG(screenX, screenY) {
+        function screenToSVG(screenX, screenY, svg, currentPanX, currentPanY, currentZoom) {
             const rect = svg.getBoundingClientRect();
             const svgX = (screenX - rect.left - currentPanX) / currentZoom;
             const svgY = (screenY - rect.top - currentPanY) / currentZoom;
@@ -971,7 +971,7 @@ const LocalGraphManager = (function() {
                 draggedNode = nodeElements.find(n => n.nodeId === nodeId);
                 
                 if (draggedNode) {
-                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
                     dragOffsetX = svgCoords.x - draggedNode.position.x;
@@ -1007,12 +1007,12 @@ const LocalGraphManager = (function() {
                 }
                 
                 if (hasDragged) {
-                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
                     draggedNode.position.x = svgCoords.x - dragOffsetX;
                     draggedNode.position.y = svgCoords.y - dragOffsetY;
                     
                     updateNodePosition(draggedNode);
-                    updateLinks();
+                    updateLinks(linkElements, nodeElements);
                 }
             } else if (isPanning) {
                 // Handle canvas panning
@@ -1022,7 +1022,7 @@ const LocalGraphManager = (function() {
                 currentPanX = panStartPanX + deltaX;
                 currentPanY = panStartPanY + deltaY;
                 
-                updateTransform();
+                updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
             }
         });
         
@@ -1074,7 +1074,7 @@ const LocalGraphManager = (function() {
                 currentPanY = mouseY - (mouseY - currentPanY) * zoomRatio;
                 currentZoom = newZoom;
                 
-                updateTransform();
+                updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                 updateZoomInfo();
             }
         });
@@ -1115,7 +1115,7 @@ const LocalGraphManager = (function() {
                     
                     if (newZoom !== currentZoom) {
                         currentZoom = newZoom;
-                        updateTransform();
+                        updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                         updateZoomInfo();
                     }
                 }
@@ -1136,7 +1136,7 @@ const LocalGraphManager = (function() {
         addZoomControls();
         
         // Initial transform
-        updateTransform();
+        updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
         updateZoomInfo();
         
         canvasArea.appendChild(svg);
@@ -1198,7 +1198,7 @@ const LocalGraphManager = (function() {
                 const newZoom = Math.min(MAX_ZOOM, currentZoom * 1.2);
                 if (newZoom !== currentZoom) {
                     currentZoom = newZoom;
-                    updateTransform();
+                    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                     updateZoomInfo();
                 }
             });
@@ -1207,7 +1207,7 @@ const LocalGraphManager = (function() {
                 const newZoom = Math.max(MIN_ZOOM, currentZoom / 1.2);
                 if (newZoom !== currentZoom) {
                     currentZoom = newZoom;
-                    updateTransform();
+                    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                     updateZoomInfo();
                 }
             });
@@ -1216,7 +1216,7 @@ const LocalGraphManager = (function() {
                 currentZoom = 1;
                 currentPanX = 0;
                 currentPanY = 0;
-                updateTransform();
+                updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                 updateZoomInfo();
             });
             
@@ -3929,7 +3929,7 @@ function renderManualGraph() {
             if (isPanning || draggedNode) return;
             
             // Get click position relative to SVG (accounting for zoom/pan)
-            const svgCoords = screenToSVG(e.clientX, e.clientY);
+            const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
             
             // Place the current node
             const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
@@ -3965,7 +3965,7 @@ function renderManualGraph() {
                 draggedNode = nodeElements.find(n => n.nodeId === nodeId);
                 
                 if (draggedNode) {
-                    const svgCoords = screenToSVG(e.clientX, e.clientY);
+                    const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
                     dragOffsetX = svgCoords.x - draggedNode.position.x;
@@ -4002,7 +4002,7 @@ function renderManualGraph() {
             }
             
             if (hasDragged) {
-                const svgCoords = screenToSVG(e.clientX, e.clientY);
+                const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
                 draggedNode.position.x = svgCoords.x - dragOffsetX;
                 draggedNode.position.y = svgCoords.y - dragOffsetY;
                 
@@ -4013,7 +4013,7 @@ function renderManualGraph() {
                 };
                 
                 updateNodePosition(draggedNode);
-                updateLinks();
+                updateLinks(linkElements, nodeElements);
             }
         } else if (isPanning) {
             // Handle canvas panning
@@ -4023,7 +4023,7 @@ function renderManualGraph() {
             currentPanX = panStartPanX + deltaX;
             currentPanY = panStartPanY + deltaY;
             
-            updateTransform();
+            updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
         }
     });
     
@@ -4075,7 +4075,7 @@ function renderManualGraph() {
             currentPanY = mouseY - (mouseY - currentPanY) * zoomRatio;
             currentZoom = newZoom;
             
-            updateTransform();
+            updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
             updateZoomInfo();
         }
     });
@@ -4116,7 +4116,7 @@ function renderManualGraph() {
                 
                 if (newZoom !== currentZoom) {
                     currentZoom = newZoom;
-                    updateTransform();
+                    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
                     updateZoomInfo();
                 }
             }
@@ -4134,7 +4134,7 @@ function renderManualGraph() {
     }
     
     // Initial transform
-    updateTransform();
+    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
     updateZoomInfo();
     
     canvasArea.appendChild(svg);
