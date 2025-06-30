@@ -3151,7 +3151,7 @@ const LocalGraphManager = (function() {
         // Add pulsing animation with updated animation name
         animateNodeHighlight(circle);
         
-        // Auto-clear highlight after 5 seconds
+        // Auto-clear highlight after 500 seconds
         setTimeout(() => {
             clearSearchHighlight();
         }, 5000);

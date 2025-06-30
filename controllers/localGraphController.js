@@ -49,9 +49,9 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
     queue.sort((a, b) => a.distance - b.distance);
     const current = queue.shift();
     
-    // CHANGED: Use OR condition - exclude only if BOTH distance and depth exceed limits
+    // FIXED: Exclude only if BOTH distance and depth exceed limits
     if (visited.has(current.nodeId) || 
-        (current.distance > maxDistance && current.depth >= maxDepth)) {
+        (current.distance > maxDistance && current.depth > maxDepth)) {
       continue;
     }
     
@@ -65,8 +65,8 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
       const newDistance = current.distance + neighbor.weight;
       const newDepth = current.depth + 1;
       
-      // CHANGED: Include neighbor if it satisfies either condition
-      if ((newDistance <= maxDistance || newDepth < maxDepth) && 
+      // FIXED: Include neighbor if it satisfies EITHER condition
+      if ((newDistance <= maxDistance || newDepth <= maxDepth) && 
           (!distances.has(neighbor.nodeId) || newDistance < distances.get(neighbor.nodeId))) {
         distances.set(neighbor.nodeId, newDistance);
         depths.set(neighbor.nodeId, newDepth);
@@ -87,7 +87,8 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
  * Get cached distances or calculate new ones
  */
 function getCachedDistances(centerNodeId, links, maxDistance, maxDepth) {
-  const cacheKey = centerNodeId;
+  // FIXED: Include distance and depth in cache key
+  const cacheKey = `${centerNodeId}-${maxDistance}-${maxDepth}`;
   const now = Date.now();
   
   // Check if cache exists and is still valid
@@ -101,7 +102,7 @@ function getCachedDistances(centerNodeId, links, maxDistance, maxDepth) {
   // Calculate new distances and depths
   const result = calculateDistances(centerNodeId, links, maxDistance, maxDepth);
   
-  // Update cache
+  // Update cache with the new key
   distanceCache.set(cacheKey, {
     result,
     timestamp: now
