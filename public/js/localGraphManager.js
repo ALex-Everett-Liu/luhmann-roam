@@ -4457,6 +4457,10 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
     
     const weightScale = Math.max(0.5, Math.min(2.0, globalAvgWeight));
     
+    // Store the depth 2 circle radius for later constraint checking
+    const depth2Radius = getFixedRadiusForDepth(2, weightScale);
+    const minOutsideRadius = depth2Radius + 40; // Minimum distance from center for depth > 2 nodes
+    
     // Process depth 1 nodes (inner circle) and depth 2 nodes (outer circle)
     for (let depth = 1; depth <= 2; depth++) {
         const nodesAtDepth = nodesByDepth.get(depth) || [];
@@ -4481,7 +4485,7 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         });
     }
     
-    // Process deeper nodes (depth > 2) using distance-based approach
+    // Process deeper nodes (depth > 2) using distance-based approach with constraint
     const positioned = new Set([centerNodeId, ...nodesByDepth.get(1) || [], ...nodesByDepth.get(2) || []]);
     const toPosition = [];
     
@@ -4519,7 +4523,7 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         return a.edgeWeight - b.edgeWeight;
     });
     
-    // Position deeper nodes using distance-based approach
+    // Position deeper nodes using distance-based approach with outer constraint
     toPosition.forEach(current => {
         if (positioned.has(current.nodeId)) return;
         
@@ -4540,19 +4544,117 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
             centerY
         );
         
-        const newPos = {
+        let newPos = {
             x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
             y: fromPos.y + Math.sin(bestAngle) * desiredDistance
         };
+        
+        // CONSTRAINT: Ensure the node is outside the depth 2 circle
+        const distanceFromCenter = Math.sqrt(
+            Math.pow(newPos.x - centerX, 2) + 
+            Math.pow(newPos.y - centerY, 2)
+        );
+        
+        if (distanceFromCenter < minOutsideRadius) {
+            // Push the node outward to be just outside the depth 2 circle
+            const angleFromCenter = Math.atan2(newPos.y - centerY, newPos.x - centerX);
+            newPos = {
+                x: centerX + Math.cos(angleFromCenter) * minOutsideRadius,
+                y: centerY + Math.sin(angleFromCenter) * minOutsideRadius
+            };
+        }
         
         nodePositions[current.nodeId] = newPos;
         positioned.add(current.nodeId);
     });
     
-    // Apply refinement to improve layout
-    refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY);
+    // Modified refinement to respect the outer boundary constraint
+    refineHybridLayoutWithConstraints(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY, minOutsideRadius);
     
     return nodePositions;
+}
+
+// New refinement function that respects the outer boundary constraint
+function refineHybridLayoutWithConstraints(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY, minOutsideRadius) {
+    const MAX_ITERATIONS = 30; // Reduced iterations for hybrid layout
+    const STEP_SIZE = 0.3; // Smaller step size for more controlled movement
+    
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+        const forces = {};
+        
+        // Initialize forces
+        Object.keys(nodePositions).forEach(nodeId => {
+            forces[nodeId] = { x: 0, y: 0 };
+        });
+        
+        // Apply forces based on edge length constraints with dynamic scaling
+        links.forEach(link => {
+            const pos1 = nodePositions[link.from_node_id];
+            const pos2 = nodePositions[link.to_node_id];
+            
+            if (!pos1 || !pos2) return;
+            
+            const currentDistance = Math.sqrt(
+                Math.pow(pos2.x - pos1.x, 2) + 
+                Math.pow(pos2.y - pos1.y, 2)
+            );
+            
+            // Determine which node's depth to use for scaling
+            const fromDepth = nodeDepths.get(link.from_node_id) || 0;
+            const toDepth = nodeDepths.get(link.to_node_id) || 0;
+            const edgeDepth = Math.max(fromDepth, toDepth);
+            
+            const scaleFactorForThisEdge = getScaleFactorForDepth(edgeDepth);
+            const desiredDistance = link.weight * scaleFactorForThisEdge;
+            
+            if (Math.abs(currentDistance - desiredDistance) > 0.1) {
+                const direction = {
+                    x: (pos2.x - pos1.x) / currentDistance,
+                    y: (pos2.y - pos1.y) / currentDistance
+                };
+                
+                const forceStrength = (desiredDistance - currentDistance) * 0.1;
+                
+                forces[link.from_node_id].x -= direction.x * forceStrength;
+                forces[link.from_node_id].y -= direction.y * forceStrength;
+                forces[link.to_node_id].x += direction.x * forceStrength;
+                forces[link.to_node_id].y += direction.y * forceStrength;
+            }
+        });
+        
+        // Apply forces while respecting constraints
+        Object.keys(nodePositions).forEach(nodeId => {
+            if (nodeId === centerNodeId) return; // Don't move center node
+            
+            const depth = nodeDepths.get(nodeId) || 0;
+            
+            // Don't apply forces to depth 1 and 2 nodes (they should stay on circles)
+            if (depth <= 2) return;
+            
+            const currentPos = nodePositions[nodeId];
+            const newPos = {
+                x: currentPos.x + forces[nodeId].x * STEP_SIZE,
+                y: currentPos.y + forces[nodeId].y * STEP_SIZE
+            };
+            
+            // Constraint: Ensure depth > 2 nodes stay outside the depth 2 circle
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(newPos.x - centerX, 2) + 
+                Math.pow(newPos.y - centerY, 2)
+            );
+            
+            if (distanceFromCenter < minOutsideRadius) {
+                // Push back to the minimum radius
+                const angleFromCenter = Math.atan2(newPos.y - centerY, newPos.x - centerX);
+                nodePositions[nodeId] = {
+                    x: centerX + Math.cos(angleFromCenter) * minOutsideRadius,
+                    y: centerY + Math.sin(angleFromCenter) * minOutsideRadius
+                };
+            } else {
+                nodePositions[nodeId] = newPos;
+            }
+        });
+    }
 }
 
 function minimizeCrossingsOnCircle(nodeIds, links, nodeDepths, centerX, centerY, radius) {
