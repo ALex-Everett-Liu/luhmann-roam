@@ -820,21 +820,50 @@ const LocalGraphManager = (function() {
         // Draw links with distance labels
         const linkElements = [];
         links.forEach(link => {
-            const sourcePos = nodePositions[link.from_node_id];
-            const targetPos = nodePositions[link.to_node_id];
+            let sourcePos = nodePositions[link.from_node_id];
+            let targetPos = nodePositions[link.to_node_id];
             
-            if (sourcePos && targetPos) {
-                const linkData = createLinkElement(link, sourcePos, targetPos, currentLayoutMode);
-                linksGroup.appendChild(linkData.linkGroup);
-                linkElements.push(linkData);
+            // CRITICAL FIX: Validate positions before creating links
+            if (!sourcePos || !targetPos) {
+                console.error(`Missing positions for link ${link.from_node_id} -> ${link.to_node_id}`);
+                return; // Skip this link
             }
+            
+            // Validate and fix positions if they contain NaN
+            if (!isFinite(sourcePos.x) || !isFinite(sourcePos.y)) {
+                console.error(`Invalid source position for link ${link.from_node_id} -> ${link.to_node_id}:`, sourcePos);
+                sourcePos = { x: 400, y: 300 }; // Safe fallback
+            }
+            
+            if (!isFinite(targetPos.x) || !isFinite(targetPos.y)) {
+                console.error(`Invalid target position for link ${link.from_node_id} -> ${link.to_node_id}:`, targetPos);
+                targetPos = { x: 450, y: 350 }; // Safe fallback
+            }
+            
+            const linkData = createLinkElement(link, sourcePos, targetPos, currentLayoutMode);
+            linksGroup.appendChild(linkData.linkGroup);
+            linkElements.push(linkData);
         });
         
         // Draw nodes with drag functionality
         const nodeElements = [];
         nodes.forEach(node => {
             const pos = nodePositions[node.id];
-            if (!pos) return;
+            if (!pos) {
+                console.error(`No position found for node ${node.id}`);
+                return;
+            }
+            
+            // CRITICAL FIX: Validate position before creating node element
+            if (!isFinite(pos.x) || !isFinite(pos.y)) {
+                console.error(`Invalid position for node ${node.id}:`, pos);
+                // Create a safe fallback position
+                const fallbackAngle = Math.random() * 2 * Math.PI;
+                const fallbackRadius = 200;
+                pos.x = centerX + Math.cos(fallbackAngle) * fallbackRadius;
+                pos.y = centerY + Math.sin(fallbackAngle) * fallbackRadius;
+                console.log(`Using fallback position for node ${node.id}:`, pos);
+            }
             
             const nodeData = createNodeElement(node, pos, distances);
             nodeElements.push(nodeData);
@@ -863,15 +892,21 @@ const LocalGraphManager = (function() {
                     const fromPos = fromNode.position;
                     const toPos = toNode.position;
                     
+                    // CRITICAL FIX: Validate positions before updating link
+                    const safeFromX = isFinite(fromPos.x) ? fromPos.x : 400;
+                    const safeFromY = isFinite(fromPos.y) ? fromPos.y : 300;
+                    const safeToX = isFinite(toPos.x) ? toPos.x : 450;
+                    const safeToY = isFinite(toPos.y) ? toPos.y : 350;
+                    
                     // Update line position
-                    linkData.element.setAttribute('x1', fromPos.x);
-                    linkData.element.setAttribute('y1', fromPos.y);
-                    linkData.element.setAttribute('x2', toPos.x);
-                    linkData.element.setAttribute('y2', toPos.y);
+                    linkData.element.setAttribute('x1', safeFromX);
+                    linkData.element.setAttribute('y1', safeFromY);
+                    linkData.element.setAttribute('x2', safeToX);
+                    linkData.element.setAttribute('y2', safeToY);
                     
                     // Update label position
-                    const midX = (fromPos.x + toPos.x) / 2;
-                    const midY = (fromPos.y + toPos.y) / 2;
+                    const midX = (safeFromX + safeToX) / 2;
+                    const midY = (safeFromY + safeToY) / 2;
                     
                     // Update label background position
                     const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
@@ -892,20 +927,28 @@ const LocalGraphManager = (function() {
         function updateNodePosition(nodeData) {
             const pos = nodeData.position;
             
+            // CRITICAL FIX: Validate position before updating SVG attributes
+            const safeX = isFinite(pos.x) ? pos.x : 400;
+            const safeY = isFinite(pos.y) ? pos.y : 300;
+            
             // Update circle position
-            nodeData.circle.setAttribute('cx', pos.x);
-            nodeData.circle.setAttribute('cy', pos.y);
+            nodeData.circle.setAttribute('cx', safeX);
+            nodeData.circle.setAttribute('cy', safeY);
             
             // Update text position
             const isCenter = nodeData.nodeId === centerNodeId;
-            nodeData.text.setAttribute('x', pos.x);
-            nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+            nodeData.text.setAttribute('x', safeX);
+            nodeData.text.setAttribute('y', safeY - (isCenter ? 20 : 16));
             
             // Update pool indicators if they exist
             nodeData.poolRings.forEach(ring => {
-                ring.setAttribute('cx', pos.x);
-                ring.setAttribute('cy', pos.y);
+                ring.setAttribute('cx', safeX);
+                ring.setAttribute('cy', safeY);
             });
+            
+            // Update the stored position to the safe values
+            nodeData.position.x = safeX;
+            nodeData.position.y = safeY;
         }
         
         // Function to convert screen coordinates to SVG coordinates
@@ -1556,6 +1599,23 @@ const LocalGraphManager = (function() {
     }
     
     function createLinkElement(link, sourcePos, targetPos, layoutMode) {
+        // CRITICAL FIX: Validate source and target positions
+        if (!sourcePos || !targetPos || 
+            !isFinite(sourcePos.x) || !isFinite(sourcePos.y) ||
+            !isFinite(targetPos.x) || !isFinite(targetPos.y)) {
+            
+            console.error(`Invalid positions for link ${link.from_node_id} -> ${link.to_node_id}:`, 
+                         { sourcePos, targetPos });
+            
+            // Use safe fallback positions
+            sourcePos = sourcePos && isFinite(sourcePos.x) && isFinite(sourcePos.y) 
+                ? sourcePos 
+                : { x: 400, y: 300 };
+            targetPos = targetPos && isFinite(targetPos.x) && isFinite(targetPos.y) 
+                ? targetPos 
+                : { x: 450, y: 350 };
+        }
+        
         // Calculate actual distance between nodes
         const actualDistance = Math.sqrt(
             Math.pow(targetPos.x - sourcePos.x, 2) + 
@@ -1584,10 +1644,17 @@ const LocalGraphManager = (function() {
         
         // Create link line with visual feedback
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', sourcePos.x);
-        line.setAttribute('y1', sourcePos.y);
-        line.setAttribute('x2', targetPos.x);
-        line.setAttribute('y2', targetPos.y);
+        
+        // CRITICAL FIX: Use safe coordinates for line attributes
+        const safeX1 = isFinite(sourcePos.x) ? sourcePos.x : 400;
+        const safeY1 = isFinite(sourcePos.y) ? sourcePos.y : 300;
+        const safeX2 = isFinite(targetPos.x) ? targetPos.x : 450;
+        const safeY2 = isFinite(targetPos.y) ? targetPos.y : 350;
+        
+        line.setAttribute('x1', safeX1);
+        line.setAttribute('y1', safeY1);
+        line.setAttribute('x2', safeX2);
+        line.setAttribute('y2', safeY2);
         
         // IMPROVED: Calculate line width based on connection strength (inverse of distance)
         // Smaller distance = stronger connection = thicker line
@@ -1628,8 +1695,8 @@ const LocalGraphManager = (function() {
         line.setAttribute('data-to-node', link.to_node_id);
         
         // Create distance label with improved positioning
-        const midX = (sourcePos.x + targetPos.x) / 2;
-        const midY = (sourcePos.y + targetPos.y) / 2;
+        const midX = (safeX1 + safeX2) / 2;
+        const midY = (safeY1 + safeY2) / 2;
         
         // Create background rectangle for better readability
         const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1732,6 +1799,13 @@ const LocalGraphManager = (function() {
     }
     
     function createNodeElement(node, pos, distances) {
+        // CRITICAL FIX: Validate position at the start of function
+        if (!pos || !isFinite(pos.x) || !isFinite(pos.y)) {
+            console.error(`Invalid position passed to createNodeElement for node ${node.id}:`, pos);
+            // Use a safe default position
+            pos = { x: 400, y: 300 }; // Center position as fallback
+        }
+        
         const isCenter = node.id === centerNodeId;
         const distance = distances[node.id] || 0;
         const depth = graphData.depths[node.id] || 0;
@@ -1744,8 +1818,13 @@ const LocalGraphManager = (function() {
         
         // Node circle with improved styling
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', pos.x);
-        circle.setAttribute('cy', pos.y);
+        
+        // CRITICAL FIX: Ensure coordinates are valid numbers before setting attributes
+        const safeX = isFinite(pos.x) ? pos.x : 400;
+        const safeY = isFinite(pos.y) ? pos.y : 300;
+        
+        circle.setAttribute('cx', safeX);
+        circle.setAttribute('cy', safeY);
         circle.setAttribute('r', isCenter ? 14 : 10);
         circle.setAttribute('class', 'main-node-circle');
         
@@ -1783,8 +1862,8 @@ const LocalGraphManager = (function() {
         
         // Node label with improved styling
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', pos.x);
-        text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
+        text.setAttribute('x', safeX);
+        text.setAttribute('y', safeY - (isCenter ? 20 : 16));
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('font-size', isCenter ? '11' : '9');
         text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
@@ -1800,7 +1879,7 @@ const LocalGraphManager = (function() {
             circle: circle,
             text: text,
             nodeId: node.id,
-            position: pos,
+            position: { x: safeX, y: safeY }, // Use safe coordinates
             node: node,
             poolRings: [] // Would contain pool ring elements
         };
@@ -3836,83 +3915,7 @@ function renderManualGraph() {
         nodeElements.push(nodeData);
         nodesGroup.appendChild(nodeData.element);
     });
-    
-    // Add groups to main group
-    mainGroup.appendChild(linksGroup);
-    mainGroup.appendChild(nodesGroup);
-    svg.appendChild(mainGroup);
-    
-    // ADD ALL THE MISSING TRANSFORM AND INTERACTION FUNCTIONS
-    
-    // Function to update transform
-    function updateTransform() {
-        mainGroup.setAttribute('transform', 
-            `translate(${currentPanX}, ${currentPanY}) scale(${currentZoom})`
-        );
-    }
-    
-    // Function to update link positions
-    function updateLinks() {
-        linkElements.forEach(linkData => {
-            const fromNode = nodeElements.find(n => n.nodeId === linkData.fromNodeId);
-            const toNode = nodeElements.find(n => n.nodeId === linkData.toNodeId);
-            
-            if (fromNode && toNode) {
-                const fromPos = fromNode.position;
-                const toPos = toNode.position;
-                
-                // Update line position
-                linkData.element.setAttribute('x1', fromPos.x);
-                linkData.element.setAttribute('y1', fromPos.y);
-                linkData.element.setAttribute('x2', toPos.x);
-                linkData.element.setAttribute('y2', toPos.y);
-                
-                // Update label position
-                const midX = (fromPos.x + toPos.x) / 2;
-                const midY = (fromPos.y + toPos.y) / 2;
-                
-                // Update label background position
-                if (linkData.labelBg) {
-                    const labelText = linkData.weight % 1 === 0 ? linkData.weight.toString() : linkData.weight.toFixed(1);
-                    const textWidth = labelText.length * 7 + 6;
-                    const textHeight = 14;
-                    
-                    linkData.labelBg.setAttribute('x', midX - textWidth / 2);
-                    linkData.labelBg.setAttribute('y', midY - textHeight / 2);
-                }
-                
-                // Update label text position
-                if (linkData.labelText) {
-                    linkData.labelText.setAttribute('x', midX);
-                    linkData.labelText.setAttribute('y', midY + 3);
-                }
-            }
-        });
-    }
-    
-    // Function to update node visual position
-    function updateNodePosition(nodeData) {
-        const pos = nodeData.position;
-        
-        // Update circle position
-        nodeData.circle.setAttribute('cx', pos.x);
-        nodeData.circle.setAttribute('cy', pos.y);
-        
-        // Update text position
-        const isCenter = nodeData.nodeId === centerNodeId;
-        nodeData.text.setAttribute('x', pos.x);
-        nodeData.text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
-    }
-    
-    // Function to convert screen coordinates to SVG coordinates
-    function screenToSVG(screenX, screenY) {
-        const rect = svg.getBoundingClientRect();
-        const svgX = (screenX - rect.left - currentPanX) / currentZoom;
-        const svgY = (screenY - rect.top - currentPanY) / currentZoom;
-        return { x: svgX, y: svgY };
-    }
-    
-    // ADD COMPLETE MOUSE EVENT HANDLERS WITH BOTH NODE DRAGGING AND CANVAS PANNING
+
     
     // Add manual placement interaction for placing new nodes (only in placing phase)
     if (manualPlacementState.phase === 'placing') {
