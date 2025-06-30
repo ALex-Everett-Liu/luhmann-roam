@@ -4442,6 +4442,21 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         });
     }
     
+    // CRITICAL FIX: Store depths in global graphData for rendering
+    if (!graphData.depths) {
+        graphData.depths = {};
+    }
+    
+    // Convert Map to object and store in graphData
+    for (let [nodeId, depth] of nodeDepths.entries()) {
+        graphData.depths[nodeId] = depth;
+    }
+    
+    console.log('Hybrid Layout Debug - Nodes by depth:');
+    for (let [depth, nodeIds] of nodesByDepth.entries()) {
+        console.log(`Depth ${depth}: ${nodeIds.length} nodes`, nodeIds);
+    }
+    
     // Calculate global weight scale for consistent sizing
     let globalAvgWeight = 1.0;
     let globalWeightCount = 0;
@@ -4466,6 +4481,8 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         const nodesAtDepth = nodesByDepth.get(depth) || [];
         if (nodesAtDepth.length === 0) continue;
         
+        console.log(`Processing depth ${depth}: ${nodesAtDepth.length} nodes`);
+        
         // Use fixed radius calculation to maintain 1:2 ratio
         const radius = getFixedRadiusForDepth(depth, weightScale);
         
@@ -4487,13 +4504,24 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
     
     // Process deeper nodes (depth > 2) using distance-based approach with constraint
     const positioned = new Set([centerNodeId, ...nodesByDepth.get(1) || [], ...nodesByDepth.get(2) || []]);
-    const toPosition = [];
-    
-    // Add all unpositioned nodes to queue
-    const maxDepth = Math.max(...nodesByDepth.keys());
+
+    // FIXED: Get the actual maximum depth, not just from keys
+    const allDepths = Array.from(nodesByDepth.keys());
+    const maxDepth = allDepths.length > 0 ? Math.max(...allDepths) : 0;
+
+    console.log(`Processing deeper nodes from depth 3 to ${maxDepth}`);
+
+    // FIXED: Process nodes depth by depth, positioning them incrementally
     for (let depth = 3; depth <= maxDepth; depth++) {
         const nodesAtDepth = nodesByDepth.get(depth) || [];
+        console.log(`Depth ${depth}: ${nodesAtDepth.length} nodes to position`);
+        
+        // Collect nodes at this depth that need positioning
+        const toPositionAtThisDepth = [];
+        
         nodesAtDepth.forEach(nodeId => {
+            if (positioned.has(nodeId)) return; // Skip if already positioned
+            
             // Find the best parent (positioned node with shortest edge weight)
             const neighbors = adjacencyList.get(nodeId) || [];
             let bestParent = null;
@@ -4506,66 +4534,135 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
                 }
             });
             
-            if (bestParent) {
-                toPosition.push({
+            if (bestParent && isFinite(bestWeight) && bestWeight > 0) {
+                toPositionAtThisDepth.push({
                     nodeId: nodeId,
                     fromNodeId: bestParent,
                     edgeWeight: bestWeight,
                     priority: depth
                 });
+            } else {
+                console.warn(`Node ${nodeId} at depth ${depth} has no valid positioned parent! Using fallback.`);
+                // FALLBACK: Use center node as parent if no positioned neighbor found
+                toPositionAtThisDepth.push({
+                    nodeId: nodeId,
+                    fromNodeId: centerNodeId,
+                    edgeWeight: 2.0, // Default weight
+                    priority: depth
+                });
             }
         });
+        
+        // Sort nodes at this depth by edge weight (position closest connections first)
+        toPositionAtThisDepth.sort((a, b) => a.edgeWeight - b.edgeWeight);
+        
+        // Position each node at this depth
+        toPositionAtThisDepth.forEach((current, index) => {
+            const fromPos = nodePositions[current.fromNodeId];
+            if (!fromPos) {
+                console.error(`Parent node ${current.fromNodeId} not positioned for node ${current.nodeId}`);
+                return;
+            }
+            
+            // SAFETY CHECK: Validate fromPos coordinates
+            if (!isFinite(fromPos.x) || !isFinite(fromPos.y)) {
+                console.error(`Invalid parent position for node ${current.nodeId}:`, fromPos);
+                return;
+            }
+            
+            const scaleFactorForThisDepth = getScaleFactorForDepth(current.priority);
+            const desiredDistance = current.edgeWeight * scaleFactorForThisDepth;
+            
+            // SAFETY CHECK: Validate desiredDistance
+            if (!isFinite(desiredDistance) || desiredDistance <= 0) {
+                console.error(`Invalid desired distance for node ${current.nodeId}: ${desiredDistance} (weight: ${current.edgeWeight}, scale: ${scaleFactorForThisDepth})`);
+                return;
+            }
+            
+            let bestAngle = findBestAngleForNode(
+                current.nodeId,
+                fromPos,
+                desiredDistance,
+                nodePositions,
+                links,
+                positioned,
+                centerX,
+                centerY
+            );
+            
+            // SAFETY CHECK: Validate bestAngle
+            if (!isFinite(bestAngle)) {
+                console.error(`Invalid angle for node ${current.nodeId}: ${bestAngle}`);
+                // Use a random angle as fallback
+                bestAngle = Math.random() * 2 * Math.PI;
+            }
+            
+            let newPos = {
+                x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
+                y: fromPos.y + Math.sin(bestAngle) * desiredDistance
+            };
+            
+            // SAFETY CHECK: Validate newPos coordinates
+            if (!isFinite(newPos.x) || !isFinite(newPos.y)) {
+                console.error(`Invalid calculated position for node ${current.nodeId}:`, newPos);
+                console.error(`fromPos:`, fromPos, `angle:`, bestAngle, `distance:`, desiredDistance);
+                // Use fallback position
+                const fallbackAngle = Math.random() * 2 * Math.PI;
+                newPos = {
+                    x: centerX + Math.cos(fallbackAngle) * (minOutsideRadius + 20),
+                    y: centerY + Math.sin(fallbackAngle) * (minOutsideRadius + 20)
+                };
+            }
+            
+            // CONSTRAINT: Ensure the node is outside the depth 2 circle
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(newPos.x - centerX, 2) + 
+                Math.pow(newPos.y - centerY, 2)
+            );
+            
+            if (distanceFromCenter < minOutsideRadius) {
+                // Push the node outward to be just outside the depth 2 circle
+                const angleFromCenter = Math.atan2(newPos.y - centerY, newPos.x - centerX);
+                newPos = {
+                    x: centerX + Math.cos(angleFromCenter) * minOutsideRadius,
+                    y: centerY + Math.sin(angleFromCenter) * minOutsideRadius
+                };
+            }
+            
+            // FINAL SAFETY CHECK: Ensure final position is valid
+            if (!isFinite(newPos.x) || !isFinite(newPos.y)) {
+                console.error(`Final position still invalid for node ${current.nodeId}:`, newPos);
+                // Last resort fallback
+                newPos = {
+                    x: centerX + Math.random() * 100 - 50,
+                    y: centerY + Math.random() * 100 - 50
+                };
+            }
+            
+            // CRITICAL: Add the positioned node to our tracking sets immediately
+            nodePositions[current.nodeId] = newPos;
+            positioned.add(current.nodeId);
+            
+            console.log(`Positioned node ${current.nodeId} at depth ${current.priority} (${index + 1}/${toPositionAtThisDepth.length}) at (${newPos.x.toFixed(1)}, ${newPos.y.toFixed(1)})`);
+        });
+        
+        console.log(`Completed depth ${depth}. Total positioned nodes: ${positioned.size}`);
     }
+
+    console.log(`Final positioned nodes: ${Object.keys(nodePositions).length}`);
+    console.log('Positioned node IDs:', Object.keys(nodePositions));
     
-    // Sort by depth (priority) and then by edge weight
-    toPosition.sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
-        return a.edgeWeight - b.edgeWeight;
-    });
-    
-    // Position deeper nodes using distance-based approach with outer constraint
-    toPosition.forEach(current => {
-        if (positioned.has(current.nodeId)) return;
-        
-        const fromPos = nodePositions[current.fromNodeId];
-        if (!fromPos) return;
-        
-        const scaleFactorForThisDepth = getScaleFactorForDepth(current.priority);
-        const desiredDistance = current.edgeWeight * scaleFactorForThisDepth;
-        
-        const bestAngle = findBestAngleForNode(
-            current.nodeId,
-            fromPos,
-            desiredDistance,
-            nodePositions,
-            links,
-            positioned,
-            centerX,
-            centerY
-        );
-        
-        let newPos = {
-            x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
-            y: fromPos.y + Math.sin(bestAngle) * desiredDistance
-        };
-        
-        // CONSTRAINT: Ensure the node is outside the depth 2 circle
-        const distanceFromCenter = Math.sqrt(
-            Math.pow(newPos.x - centerX, 2) + 
-            Math.pow(newPos.y - centerY, 2)
-        );
-        
-        if (distanceFromCenter < minOutsideRadius) {
-            // Push the node outward to be just outside the depth 2 circle
-            const angleFromCenter = Math.atan2(newPos.y - centerY, newPos.x - centerX);
-            newPos = {
-                x: centerX + Math.cos(angleFromCenter) * minOutsideRadius,
-                y: centerY + Math.sin(angleFromCenter) * minOutsideRadius
+    // ADDITIONAL FIX: Ensure all nodes from the original nodes array have positions
+    nodes.forEach(node => {
+        if (!nodePositions[node.id]) {
+            console.error(`Node ${node.id} missing position! Adding fallback position.`);
+            // Fallback: place missing nodes at a default position outside the depth 2 circle
+            const angle = Math.random() * 2 * Math.PI;
+            nodePositions[node.id] = {
+                x: centerX + Math.cos(angle) * (minOutsideRadius + 50),
+                y: centerY + Math.sin(angle) * (minOutsideRadius + 50)
             };
         }
-        
-        nodePositions[current.nodeId] = newPos;
-        positioned.add(current.nodeId);
     });
     
     // Modified refinement to respect the outer boundary constraint
