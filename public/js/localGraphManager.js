@@ -149,6 +149,7 @@ const LocalGraphManager = (function() {
                                 <select id="layout-mode-select" class="layout-select">
                                     <option value="circular">Circular</option>
                                     <option value="distance-based">Distance-Based</option>
+                                    <option value="hybrid">Hybrid Concentric</option>
                                     <option value="manual">Manual Placement</option>
                                 </select>
                             </div>
@@ -797,11 +798,15 @@ const LocalGraphManager = (function() {
         // Choose layout algorithm based on current mode
         const nodePositions = currentLayoutMode === 'distance-based' 
             ? calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius)
+            : currentLayoutMode === 'hybrid'
+            ? calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRadius)
             : calculateCircularLayout(nodes, distances, centerX, centerY, maxRadius);
         
         // Add quadrant divider lines for distance-based layout
         if (currentLayoutMode === 'distance-based') {
             addQuadrantDividers(mainGroup, centerX, centerY);
+        } else if (currentLayoutMode === 'hybrid') {
+            addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links);
         }
         
         // Create links group
@@ -4355,6 +4360,451 @@ function exitManualPlacement() {
     const controls = document.getElementById('manual-placement-controls');
     if (controls) {
         controls.style.display = 'none';
+    }
+}
+
+function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRadius) {
+    const nodePositions = {};
+    const BASE_EDGE_SCALE_FACTOR = 40;
+    
+    // Function to get scale factor based on depth (same as distance-based)
+    function getScaleFactorForDepth(depth) {
+        if (depth <= 2) {
+            return BASE_EDGE_SCALE_FACTOR * 3; // 120 pixels per weight unit
+        }
+        return BASE_EDGE_SCALE_FACTOR; // 40 pixels per weight unit
+    }
+    
+    // Start with center node at origin
+    nodePositions[centerNodeId] = { x: centerX, y: centerY };
+    
+    // Build adjacency list with weights
+    const adjacencyList = new Map();
+    links.forEach(link => {
+        if (!adjacencyList.has(link.from_node_id)) {
+            adjacencyList.set(link.from_node_id, []);
+        }
+        if (!adjacencyList.has(link.to_node_id)) {
+            adjacencyList.set(link.to_node_id, []);
+        }
+        
+        adjacencyList.get(link.from_node_id).push({
+            nodeId: link.to_node_id,
+            weight: link.weight || 1.0,
+            linkId: link.id
+        });
+        adjacencyList.get(link.to_node_id).push({
+            nodeId: link.from_node_id,
+            weight: link.weight || 1.0,
+            linkId: link.id
+        });
+    });
+    
+    // Group nodes by depth (hop count from center) - ENSURE PROPER DEPTH ASSIGNMENT
+    const nodesByDepth = new Map();
+    const nodeDepths = new Map();
+    const visited = new Set();
+    const queue = [{ nodeId: centerNodeId, depth: 0 }];
+    
+    // BFS to assign depths - this ensures depth 1 = 1 hop, depth 2 = 2 hops
+    while (queue.length > 0) {
+        const { nodeId, depth } = queue.shift();
+        
+        if (visited.has(nodeId)) continue;
+        visited.add(nodeId);
+        
+        nodeDepths.set(nodeId, depth);
+        
+        if (!nodesByDepth.has(depth)) {
+            nodesByDepth.set(depth, []);
+        }
+        nodesByDepth.get(depth).push(nodeId);
+        
+        // Add neighbors to queue with depth + 1
+        const neighbors = adjacencyList.get(nodeId) || [];
+        neighbors.forEach(neighbor => {
+            if (!visited.has(neighbor.nodeId)) {
+                queue.push({ nodeId: neighbor.nodeId, depth: depth + 1 });
+            }
+        });
+    }
+    
+    // Process depth 1 nodes (inner circle) and depth 2 nodes (outer circle)
+    for (let depth = 1; depth <= 2; depth++) {
+        const nodesAtDepth = nodesByDepth.get(depth) || [];
+        if (nodesAtDepth.length === 0) continue;
+        
+        // Calculate radius for this depth based on average edge weights
+        let avgWeight = 1.0;
+        let weightCount = 0;
+        
+        nodesAtDepth.forEach(nodeId => {
+            const neighbors = adjacencyList.get(nodeId) || [];
+            neighbors.forEach(neighbor => {
+                const neighborDepth = nodeDepths.get(neighbor.nodeId) || 0;
+                if (Math.abs(neighborDepth - depth) === 1) { // Edge between adjacent depths
+                    avgWeight += neighbor.weight;
+                    weightCount++;
+                }
+            });
+        });
+        
+        if (weightCount > 0) {
+            avgWeight = avgWeight / weightCount;
+        }
+        
+        const radius = avgWeight * getScaleFactorForDepth(depth);
+        
+        // Use crossing minimization for node placement
+        const optimizedPositions = minimizeCrossingsOnCircle(
+            nodesAtDepth, 
+            links, 
+            nodeDepths, 
+            centerX, 
+            centerY, 
+            radius
+        );
+        
+        // Assign positions
+        Object.entries(optimizedPositions).forEach(([nodeId, pos]) => {
+            nodePositions[nodeId] = pos;
+        });
+    }
+    
+    // Process deeper nodes (depth > 2) using distance-based approach
+    const positioned = new Set([centerNodeId, ...nodesByDepth.get(1) || [], ...nodesByDepth.get(2) || []]);
+    const toPosition = [];
+    
+    // Add all unpositioned nodes to queue
+    const maxDepth = Math.max(...nodesByDepth.keys());
+    for (let depth = 3; depth <= maxDepth; depth++) {
+        const nodesAtDepth = nodesByDepth.get(depth) || [];
+        nodesAtDepth.forEach(nodeId => {
+            // Find the best parent (positioned node with shortest edge weight)
+            const neighbors = adjacencyList.get(nodeId) || [];
+            let bestParent = null;
+            let bestWeight = Infinity;
+            
+            neighbors.forEach(neighbor => {
+                if (positioned.has(neighbor.nodeId) && neighbor.weight < bestWeight) {
+                    bestParent = neighbor.nodeId;
+                    bestWeight = neighbor.weight;
+                }
+            });
+            
+            if (bestParent) {
+                toPosition.push({
+                    nodeId: nodeId,
+                    fromNodeId: bestParent,
+                    edgeWeight: bestWeight,
+                    priority: depth
+                });
+            }
+        });
+    }
+    
+    // Sort by depth (priority) and then by edge weight
+    toPosition.sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.edgeWeight - b.edgeWeight;
+    });
+    
+    // Position deeper nodes using distance-based approach
+    toPosition.forEach(current => {
+        if (positioned.has(current.nodeId)) return;
+        
+        const fromPos = nodePositions[current.fromNodeId];
+        if (!fromPos) return;
+        
+        const scaleFactorForThisDepth = getScaleFactorForDepth(current.priority);
+        const desiredDistance = current.edgeWeight * scaleFactorForThisDepth;
+        
+        const bestAngle = findBestAngleForNode(
+            current.nodeId,
+            fromPos,
+            desiredDistance,
+            nodePositions,
+            links,
+            positioned,
+            centerX,
+            centerY
+        );
+        
+        const newPos = {
+            x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
+            y: fromPos.y + Math.sin(bestAngle) * desiredDistance
+        };
+        
+        nodePositions[current.nodeId] = newPos;
+        positioned.add(current.nodeId);
+    });
+    
+    // Apply refinement to improve layout
+    refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY);
+    
+    return nodePositions;
+}
+
+function minimizeCrossingsOnCircle(nodeIds, links, nodeDepths, centerX, centerY, radius) {
+    if (nodeIds.length === 0) return {};
+    
+    const positions = {};
+    
+    // Special case for single node
+    if (nodeIds.length === 1) {
+        positions[nodeIds[0]] = {
+            x: centerX + radius,
+            y: centerY
+        };
+        return positions;
+    }
+    
+    // Build adjacency matrix for nodes at this level
+    const nodeIndex = new Map();
+    nodeIds.forEach((nodeId, index) => {
+        nodeIndex.set(nodeId, index);
+    });
+    
+    const adjacencyMatrix = Array(nodeIds.length).fill(null).map(() => Array(nodeIds.length).fill(0));
+    
+    // Count crossings between nodes at this level
+    links.forEach(link => {
+        const fromIndex = nodeIndex.get(link.from_node_id);
+        const toIndex = nodeIndex.get(link.to_node_id);
+        
+        if (fromIndex !== undefined && toIndex !== undefined) {
+            adjacencyMatrix[fromIndex][toIndex] = 1;
+            adjacencyMatrix[toIndex][fromIndex] = 1;
+        }
+    });
+    
+    // Use a simple heuristic: try to minimize the sum of angular distances for connected nodes
+    let bestOrder = [...nodeIds];
+    let bestCrossingCount = countCrossings(bestOrder, links, nodeDepths);
+    
+    // Try several random permutations and local improvements
+    for (let attempt = 0; attempt < Math.min(50, nodeIds.length * 2); attempt++) {
+        let currentOrder = [...nodeIds];
+        
+        // Shuffle the order
+        for (let i = currentOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [currentOrder[i], currentOrder[j]] = [currentOrder[j], currentOrder[i]];
+        }
+        
+        // Apply local improvements (2-opt style)
+        let improved = true;
+        while (improved) {
+            improved = false;
+            for (let i = 0; i < currentOrder.length - 1; i++) {
+                for (let j = i + 2; j < currentOrder.length; j++) {
+                    // Try swapping segments
+                    const newOrder = [...currentOrder];
+                    const segment = newOrder.slice(i, j + 1).reverse();
+                    newOrder.splice(i, j - i + 1, ...segment);
+                    
+                    const newCrossingCount = countCrossings(newOrder, links, nodeDepths);
+                    if (newCrossingCount < bestCrossingCount) {
+                        bestOrder = newOrder;
+                        bestCrossingCount = newCrossingCount;
+                        currentOrder = newOrder;
+                        improved = true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Place nodes according to best order
+    bestOrder.forEach((nodeId, index) => {
+        const angle = (index / bestOrder.length) * 2 * Math.PI;
+        positions[nodeId] = {
+            x: centerX + Math.cos(angle) * radius,
+            y: centerY + Math.sin(angle) * radius
+        };
+    });
+    
+    return positions;
+}
+
+function countCrossings(nodeOrder, links, nodeDepths) {
+    // Create position map for quick lookup
+    const positionMap = new Map();
+    nodeOrder.forEach((nodeId, index) => {
+        positionMap.set(nodeId, index);
+    });
+    
+    let crossings = 0;
+    
+    // Check all pairs of links for crossings
+    for (let i = 0; i < links.length; i++) {
+        for (let j = i + 1; j < links.length; j++) {
+            const link1 = links[i];
+            const link2 = links[j];
+            
+            // Only consider links that involve nodes in this circle
+            const pos1From = positionMap.get(link1.from_node_id);
+            const pos1To = positionMap.get(link1.to_node_id);
+            const pos2From = positionMap.get(link2.from_node_id);
+            const pos2To = positionMap.get(link2.to_node_id);
+            
+            // Skip if either link doesn't involve nodes in this circle
+            if (pos1From === undefined && pos1To === undefined) continue;
+            if (pos2From === undefined && pos2To === undefined) continue;
+            
+            // Check for crossing (only count crossings between nodes at the same level)
+            if (pos1From !== undefined && pos1To !== undefined && 
+                pos2From !== undefined && pos2To !== undefined) {
+                
+                const depth1From = nodeDepths.get(link1.from_node_id);
+                const depth1To = nodeDepths.get(link1.to_node_id);
+                const depth2From = nodeDepths.get(link2.from_node_id);
+                const depth2To = nodeDepths.get(link2.to_node_id);
+                
+                // Only count if both links are between nodes at the same depth
+                if (depth1From === depth1To && depth2From === depth2To && depth1From === depth2From) {
+                    if (doSegmentsCrossOnCircle(pos1From, pos1To, pos2From, pos2To, nodeOrder.length)) {
+                        crossings++;
+                    }
+                }
+            }
+        }
+    }
+    
+    return crossings;
+}
+
+function doSegmentsCrossOnCircle(pos1From, pos1To, pos2From, pos2To, circleSize) {
+    // Convert to normalized positions on circle [0, 1)
+    const normalize = (pos) => pos / circleSize;
+    
+    const a1 = normalize(Math.min(pos1From, pos1To));
+    const a2 = normalize(Math.max(pos1From, pos1To));
+    const b1 = normalize(Math.min(pos2From, pos2To));
+    const b2 = normalize(Math.max(pos2From, pos2To));
+    
+    // Check if the arcs cross
+    // Two arcs cross if one starts inside the other but doesn't end inside
+    return (a1 < b1 && b1 < a2 && a2 < b2) || (b1 < a1 && a1 < b2 && b2 < a2);
+}
+
+function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
+    // Create very light dotted circles for depth visualization
+    const circleStyle = {
+        stroke: '#e5e7eb',
+        strokeWidth: '1',
+        strokeDasharray: '3,4',
+        opacity: '0.3',
+        fill: 'none'
+    };
+    
+    // Calculate radii for depth 1 and 2 circles based on the hybrid layout logic
+    const BASE_EDGE_SCALE_FACTOR = 40;
+    const getScaleFactorForDepth = (depth) => {
+        return depth <= 2 ? BASE_EDGE_SCALE_FACTOR * 3 : BASE_EDGE_SCALE_FACTOR;
+    };
+    
+    // Build adjacency list to calculate average weights
+    const adjacencyList = new Map();
+    links.forEach(link => {
+        if (!adjacencyList.has(link.from_node_id)) {
+            adjacencyList.set(link.from_node_id, []);
+        }
+        if (!adjacencyList.has(link.to_node_id)) {
+            adjacencyList.set(link.to_node_id, []);
+        }
+        
+        adjacencyList.get(link.from_node_id).push({
+            nodeId: link.to_node_id,
+            weight: link.weight || 1.0
+        });
+        adjacencyList.get(link.to_node_id).push({
+            nodeId: link.from_node_id,
+            weight: link.weight || 1.0
+        });
+    });
+    
+    // Group nodes by depth
+    const nodesByDepth = new Map();
+    const nodeDepths = new Map();
+    const visited = new Set();
+    const queue = [{ nodeId: centerNodeId, depth: 0 }];
+    
+    // BFS to assign depths
+    while (queue.length > 0) {
+        const { nodeId, depth } = queue.shift();
+        
+        if (visited.has(nodeId)) continue;
+        visited.add(nodeId);
+        
+        nodeDepths.set(nodeId, depth);
+        
+        if (!nodesByDepth.has(depth)) {
+            nodesByDepth.set(depth, []);
+        }
+        nodesByDepth.get(depth).push(nodeId);
+        
+        const neighbors = adjacencyList.get(nodeId) || [];
+        neighbors.forEach(neighbor => {
+            if (!visited.has(neighbor.nodeId)) {
+                queue.push({ nodeId: neighbor.nodeId, depth: depth + 1 });
+            }
+        });
+    }
+    
+    // Calculate and draw circles for depth 1 and 2
+    for (let depth = 1; depth <= 2; depth++) {
+        const nodesAtDepth = nodesByDepth.get(depth) || [];
+        if (nodesAtDepth.length === 0) continue;
+        
+        // Calculate average weight for this depth
+        let avgWeight = 1.0;
+        let weightCount = 0;
+        
+        nodesAtDepth.forEach(nodeId => {
+            const neighbors = adjacencyList.get(nodeId) || [];
+            neighbors.forEach(neighbor => {
+                const neighborDepth = nodeDepths.get(neighbor.nodeId) || 0;
+                if (Math.abs(neighborDepth - depth) === 1) {
+                    avgWeight += neighbor.weight;
+                    weightCount++;
+                }
+            });
+        });
+        
+        if (weightCount > 0) {
+            avgWeight = avgWeight / weightCount;
+        }
+        
+        const radius = avgWeight * getScaleFactorForDepth(depth);
+        
+        // Create circle element
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', centerX);
+        circle.setAttribute('cy', centerY);
+        circle.setAttribute('r', radius);
+        
+        // Apply styling
+        Object.entries(circleStyle).forEach(([key, value]) => {
+            circle.setAttribute(key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`), value);
+        });
+        
+        // Add depth label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', centerX + radius - 15);
+        label.setAttribute('y', centerY - 5);
+        label.setAttribute('font-size', '10');
+        label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+        label.setAttribute('font-weight', '500');
+        label.setAttribute('fill', '#9ca3af');
+        label.setAttribute('opacity', '0.6');
+        label.textContent = `Depth ${depth}`;
+        label.style.pointerEvents = 'none';
+        label.style.userSelect = 'none';
+        
+        // Add elements to the beginning so they appear behind nodes
+        mainGroup.insertBefore(circle, mainGroup.firstChild);
+        mainGroup.insertBefore(label, mainGroup.firstChild);
     }
 }
 
