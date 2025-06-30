@@ -4375,6 +4375,19 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         return BASE_EDGE_SCALE_FACTOR; // 40 pixels per weight unit
     }
     
+    // Fixed radius calculation for concentric circles
+    function getFixedRadiusForDepth(depth, weightScale = 1.0) {
+        const BASE_RADIUS_DEPTH_2 = 160;
+        const BASE_RADIUS_DEPTH_1 = BASE_RADIUS_DEPTH_2 / 2;
+        
+        if (depth === 1) {
+            return BASE_RADIUS_DEPTH_1 * weightScale;
+        } else if (depth === 2) {
+            return BASE_RADIUS_DEPTH_2 * weightScale;
+        }
+        return 0; // Should not happen for depths 1-2
+    }
+    
     // Start with center node at origin
     nodePositions[centerNodeId] = { x: centerX, y: centerY };
     
@@ -4429,31 +4442,28 @@ function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRad
         });
     }
     
+    // Calculate global weight scale for consistent sizing
+    let globalAvgWeight = 1.0;
+    let globalWeightCount = 0;
+    
+    links.forEach(link => {
+        globalAvgWeight += link.weight || 1.0;
+        globalWeightCount++;
+    });
+    
+    if (globalWeightCount > 0) {
+        globalAvgWeight = globalAvgWeight / globalWeightCount;
+    }
+    
+    const weightScale = Math.max(0.5, Math.min(2.0, globalAvgWeight));
+    
     // Process depth 1 nodes (inner circle) and depth 2 nodes (outer circle)
     for (let depth = 1; depth <= 2; depth++) {
         const nodesAtDepth = nodesByDepth.get(depth) || [];
         if (nodesAtDepth.length === 0) continue;
         
-        // Calculate radius for this depth based on average edge weights
-        let avgWeight = 1.0;
-        let weightCount = 0;
-        
-        nodesAtDepth.forEach(nodeId => {
-            const neighbors = adjacencyList.get(nodeId) || [];
-            neighbors.forEach(neighbor => {
-                const neighborDepth = nodeDepths.get(neighbor.nodeId) || 0;
-                if (Math.abs(neighborDepth - depth) === 1) { // Edge between adjacent depths
-                    avgWeight += neighbor.weight;
-                    weightCount++;
-                }
-            });
-        });
-        
-        if (weightCount > 0) {
-            avgWeight = avgWeight / weightCount;
-        }
-        
-        const radius = avgWeight * getScaleFactorForDepth(depth);
+        // Use fixed radius calculation to maintain 1:2 ratio
+        const radius = getFixedRadiusForDepth(depth, weightScale);
         
         // Use crossing minimization for node placement
         const optimizedPositions = minimizeCrossingsOnCircle(
@@ -4698,13 +4708,11 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         fill: 'none'
     };
     
-    // Calculate radii for depth 1 and 2 circles based on the hybrid layout logic
-    const BASE_EDGE_SCALE_FACTOR = 40;
-    const getScaleFactorForDepth = (depth) => {
-        return depth <= 2 ? BASE_EDGE_SCALE_FACTOR * 3 : BASE_EDGE_SCALE_FACTOR;
-    };
+    // Fixed radius calculation - depth 1 radius is half of depth 2 radius
+    const BASE_RADIUS_DEPTH_2 = 160; // Base radius for depth 2
+    const BASE_RADIUS_DEPTH_1 = BASE_RADIUS_DEPTH_2 / 2; // Depth 1 is half of depth 2
     
-    // Build adjacency list to calculate average weights
+    // Build adjacency list to calculate average weights for scaling
     const adjacencyList = new Map();
     links.forEach(link => {
         if (!adjacencyList.has(link.from_node_id)) {
@@ -4752,31 +4760,30 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         });
     }
     
-    // Calculate and draw circles for depth 1 and 2
+    // Calculate global average weight for scaling
+    let globalAvgWeight = 1.0;
+    let globalWeightCount = 0;
+    
+    links.forEach(link => {
+        globalAvgWeight += link.weight || 1.0;
+        globalWeightCount++;
+    });
+    
+    if (globalWeightCount > 0) {
+        globalAvgWeight = globalAvgWeight / globalWeightCount;
+    }
+    
+    // Scale factor based on global average weight
+    const weightScale = Math.max(0.5, Math.min(2.0, globalAvgWeight)); // Clamp between 0.5 and 2.0
+    
+    // Calculate and draw circles for depth 1 and 2 with fixed ratios
     for (let depth = 1; depth <= 2; depth++) {
         const nodesAtDepth = nodesByDepth.get(depth) || [];
         if (nodesAtDepth.length === 0) continue;
         
-        // Calculate average weight for this depth
-        let avgWeight = 1.0;
-        let weightCount = 0;
-        
-        nodesAtDepth.forEach(nodeId => {
-            const neighbors = adjacencyList.get(nodeId) || [];
-            neighbors.forEach(neighbor => {
-                const neighborDepth = nodeDepths.get(neighbor.nodeId) || 0;
-                if (Math.abs(neighborDepth - depth) === 1) {
-                    avgWeight += neighbor.weight;
-                    weightCount++;
-                }
-            });
-        });
-        
-        if (weightCount > 0) {
-            avgWeight = avgWeight / weightCount;
-        }
-        
-        const radius = avgWeight * getScaleFactorForDepth(depth);
+        // Fixed radius calculation maintaining 1:2 ratio
+        const baseRadius = depth === 1 ? BASE_RADIUS_DEPTH_1 : BASE_RADIUS_DEPTH_2;
+        const radius = baseRadius * weightScale;
         
         // Create circle element
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -4791,7 +4798,7 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         
         // Add depth label
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', centerX + radius - 15);
+        label.setAttribute('x', centerX + radius - 25);
         label.setAttribute('y', centerY - 5);
         label.setAttribute('font-size', '10');
         label.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
