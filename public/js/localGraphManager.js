@@ -3644,10 +3644,26 @@ function calculateManualInitialLayout() {
         return depth <= 2;
     });
     
-    // Nodes that will need manual placement
+    // Nodes that will need manual placement (depth > 2)
     const remainingNodes = nodes.filter(node => {
         const depth = depths[node.id] || 0;
         return depth > 2;
+    });
+    
+    // SORT REMAINING NODES BY DEPTH (3 hops, then 4 hops, then 5 hops, etc.)
+    remainingNodes.sort((a, b) => {
+        const depthA = depths[a.id] || 0;
+        const depthB = depths[b.id] || 0;
+        
+        // Primary sort: by depth (ascending - 3 hops first, then 4, then 5, etc.)
+        if (depthA !== depthB) {
+            return depthA - depthB;
+        }
+        
+        // Secondary sort: by node content for consistent ordering within same depth
+        const contentA = a.content || a.content_zh || '';
+        const contentB = b.content || b.content_zh || '';
+        return contentA.localeCompare(contentB);
     });
     
     // Store which nodes are initial vs manual
