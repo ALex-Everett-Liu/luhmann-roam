@@ -862,28 +862,75 @@ const GlobalGraphManager = (function() {
             clearTimeout(searchTimeout);
         }
         
-        if (query.length < 2) {
-            resultsEl.innerHTML = '';
+        if (!graphData || !graphData.nodes) {
+            resultsEl.innerHTML = '<div class="search-error">No graph loaded</div>';
             return;
         }
         
-        searchTimeout = setTimeout(async () => {
+        if (query.length < 2) {
+            resultsEl.innerHTML = '<div class="search-hint">Type at least 2 characters to search</div>';
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
             try {
-                const response = await fetch(`/api/global-graph/search?q=${encodeURIComponent(query)}`);
-                const results = await response.json();
+                // Search within current graph nodes (similar to localGraphManager)
+                const matchingNodes = graphData.nodes.filter(node => {
+                    const content = (node.content || '').toLowerCase();
+                    const content_zh = (node.content_zh || '').toLowerCase();
+                    const searchTerm = query.toLowerCase();
+                    
+                    return content.includes(searchTerm) || content_zh.includes(searchTerm);
+                });
                 
-                resultsEl.innerHTML = results.map(node => `
-                    <div class="search-result-item" data-node-id="${node.id}">
-                        <div class="search-result-content">${highlightSearchTerm(node.content, query)}</div>
-                        ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
-                    </div>
-                `).join('');
+                if (matchingNodes.length === 0) {
+                    resultsEl.innerHTML = `<div class="search-error">No nodes found matching "${query}" in current graph</div>`;
+                    return;
+                }
+                
+                // Sort by relevance (exact matches first, then by content length)
+                matchingNodes.sort((a, b) => {
+                    const aContent = (a.content || '').toLowerCase();
+                    const bContent = (b.content || '').toLowerCase();
+                    const searchTerm = query.toLowerCase();
+                    
+                    // Exact matches first
+                    const aExact = aContent === searchTerm ? 1 : 0;
+                    const bExact = bContent === searchTerm ? 1 : 0;
+                    if (aExact !== bExact) return bExact - aExact;
+                    
+                    // Then by content length (shorter first for more specific matches)
+                    return aContent.length - bContent.length;
+                });
+                
+                // Display search results with additional metadata
+                resultsEl.innerHTML = matchingNodes.map(node => {
+                    // Get centrality info if available
+                    const measure = `${currentCentralityMeasure}Centrality`;
+                    const centrality = graphData.analysis && graphData.analysis[measure] ? 
+                        graphData.analysis[measure][node.id] : null;
+                    
+                    // Get degree if available
+                    const degree = graphData.analysis && graphData.analysis.degreeCentrality ? 
+                        graphData.analysis.degreeCentrality[node.id] || 0 : 0;
+                    
+                    return `
+                        <div class="search-result-item" data-node-id="${node.id}">
+                            <div class="search-result-content">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
+                            ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
+                            <div class="search-result-meta">
+                                <span class="search-result-degree">Degree: ${degree}</span>
+                                ${centrality !== null ? `<span class="search-result-centrality">${currentCentralityMeasure}: ${centrality.toFixed(3)}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
                 
                 // Add click handlers
                 resultsEl.querySelectorAll('.search-result-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const nodeId = item.dataset.nodeId;
-                        const node = graphData?.nodes.find(n => n.id === nodeId);
+                        const node = graphData.nodes.find(n => n.id === nodeId);
                         if (node) {
                             selectNode(node);
                             centerViewOnNode(node);
@@ -899,8 +946,11 @@ const GlobalGraphManager = (function() {
     }
     
     function highlightSearchTerm(text, term) {
-        if (!text || !term) return text;
-        const regex = new RegExp(`(${term})`, 'gi');
+        if (!text || !term) return text || '';
+        
+        // Escape special regex characters to prevent regex injection
+        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedTerm})`, 'gi');
         return text.replace(regex, '<mark>$1</mark>');
     }
     
