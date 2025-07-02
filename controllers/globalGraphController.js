@@ -554,9 +554,17 @@ exports.getGlobalGraph = async (req, res) => {
       AND l.to_node_id IN (${placeholders})
     `, [...poolNodeIds, ...poolNodeIds]);
     
+    // Validate that all link endpoints exist in the node set
+    const nodeIdSet = new Set(poolNodeIds);
+    const validLinks = poolLinks.filter(link => 
+      nodeIdSet.has(link.from_node_id) && nodeIdSet.has(link.to_node_id)
+    );
+    
+    console.log(`Filtered links: ${poolLinks.length} -> ${validLinks.length}`);
+    
     // Use the pool data for analysis
     const nodes = poolNodes;
-    const links = poolLinks;
+    const links = validLinks;
     
     // Build adjacency list
     const adjacencyList = buildAdjacencyList(links);

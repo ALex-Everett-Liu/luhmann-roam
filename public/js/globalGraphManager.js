@@ -262,12 +262,30 @@ const GlobalGraphManager = (function() {
             }
             
             graphData = await response.json();
-            console.log('📊 Graph data loaded:', {
+            console.log('📊 Raw graph data received:', {
                 nodes: graphData.nodes?.length || 0,
                 links: graphData.links?.length || 0,
                 hasAnalysis: !!graphData.analysis,
-                hasLayout: !!graphData.layout
+                hasLayout: !!graphData.layout,
+                nodesSample: graphData.nodes?.slice(0, 2),
+                linksSample: graphData.links?.slice(0, 2)
             });
+            
+            // Detailed data structure inspection
+            if (graphData.nodes && graphData.nodes.length > 0) {
+                console.log('🔍 First node structure:', graphData.nodes[0]);
+                console.log('🔍 Node ID types:', graphData.nodes.slice(0, 5).map(n => ({ id: n.id, type: typeof n.id })));
+            }
+            
+            if (graphData.links && graphData.links.length > 0) {
+                console.log('🔍 First link structure:', graphData.links[0]);
+                console.log('🔍 Link endpoint types:', graphData.links.slice(0, 5).map(l => ({ 
+                    from: l.from_node_id, 
+                    to: l.to_node_id, 
+                    fromType: typeof l.from_node_id,
+                    toType: typeof l.to_node_id
+                })));
+            }
             
             // Update statistics
             updateStatistics();
@@ -279,6 +297,7 @@ const GlobalGraphManager = (function() {
             }
             
             // Render graph
+            console.log('🎨 About to render graph...');
             renderGraph();
             
             // Update rankings
@@ -289,6 +308,7 @@ const GlobalGraphManager = (function() {
             
         } catch (error) {
             console.error('❌ Error loading graph:', error);
+            console.error('Error stack:', error.stack);
             hideLoading();
             showNotification('Error loading graph: ' + error.message, 'error');
         }
@@ -343,86 +363,123 @@ const GlobalGraphManager = (function() {
     function renderGraph() {
         if (!graphData || !graphData.nodes) return;
         
+        console.log('🎨 Starting renderGraph with data:', {
+            nodes: graphData.nodes.length,
+            links: graphData.links.length
+        });
+        
+        // Transform links to have the correct structure for D3.js
+        const transformedLinks = graphData.links.map(link => ({
+            ...link,
+            source: link.from_node_id,  // D3.js expects 'source'
+            target: link.to_node_id     // D3.js expects 'target'
+        }));
+        
+        console.log('🔧 Transformed first link:', transformedLinks[0]);
+        
+        // Validate data
+        const nodeIds = new Set(graphData.nodes.map(n => n.id));
+        const validLinks = transformedLinks.filter(link => {
+            const isValid = nodeIds.has(link.source) && nodeIds.has(link.target);
+            if (!isValid) {
+                console.warn('❌ Invalid link:', link);
+            }
+            return isValid;
+        });
+        
+        console.log('✅ Validation complete:', {
+            originalLinks: transformedLinks.length,
+            validLinks: validLinks.length,
+            filtered: transformedLinks.length - validLinks.length
+        });
+        
         // Clear previous elements
         g.selectAll('*').remove();
         g.append('g').attr('class', 'links');
         g.append('g').attr('class', 'nodes');
         g.append('g').attr('class', 'labels');
         
-        // Create force simulation
-        simulation = d3.forceSimulation(graphData.nodes)
-            .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-300))
-            .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(20));
-        
-        // Create links
-        linkElements = g.select('.links')
-            .selectAll('line')
-            .data(graphData.links)
-            .enter()
-            .append('line')
-            .attr('class', 'link')
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.6)
-            .attr('stroke-width', d => Math.sqrt(d.weight || 1));
-        
-        // Create nodes
-        nodeElements = g.select('.nodes')
-            .selectAll('circle')
-            .data(graphData.nodes)
-            .enter()
-            .append('circle')
-            .attr('class', 'node')
-            .attr('r', d => getNodeRadius(d))
-            .attr('fill', d => getNodeColor(d))
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 2)
-            .on('click', handleNodeClick)
-            .on('mouseover', handleNodeMouseOver)
-            .on('mouseout', handleNodeMouseOut)
-            .call(d3.drag()
-                .on('start', dragStarted)
-                .on('drag', dragged)
-                .on('end', dragEnded));
-        
-        // Create labels
-        labelElements = g.select('.labels')
-            .selectAll('text')
-            .data(graphData.nodes)
-            .enter()
-            .append('text')
-            .attr('class', 'node-label')
-            .attr('dx', 15)
-            .attr('dy', 4)
-            .style('font-size', '12px')
-            .style('fill', '#333')
-            .style('pointer-events', 'none')
-            .text(d => truncateText(d.content, 20));
-        
-        // Use layout positions if available
-        if (graphData.layout && graphData.layout.positions) {
-            graphData.nodes.forEach(node => {
-                const pos = graphData.layout.positions[node.id];
-                if (pos) {
-                    node.x = pos.x;
-                    node.y = pos.y;
-                    node.fx = pos.x; // Fix position
-                    node.fy = pos.y;
+        try {
+            // Create force simulation with transformed data
+            simulation = d3.forceSimulation(graphData.nodes)
+                .force('link', d3.forceLink(validLinks).id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(20));
+            
+            console.log('✅ Force simulation created successfully');
+            
+            // Create links with transformed data
+            linkElements = g.select('.links')
+                .selectAll('line')
+                .data(validLinks)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('stroke', '#999')
+                .attr('stroke-opacity', 0.6)
+                .attr('stroke-width', d => Math.sqrt(d.weight || 1));
+            
+            // Create nodes
+            nodeElements = g.select('.nodes')
+                .selectAll('circle')
+                .data(graphData.nodes)
+                .enter()
+                .append('circle')
+                .attr('class', 'node')
+                .attr('r', d => getNodeRadius(d))
+                .attr('fill', d => getNodeColor(d))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .on('click', handleNodeClick)
+                .on('mouseover', handleNodeMouseOver)
+                .on('mouseout', handleNodeMouseOut)
+                .call(d3.drag()
+                    .on('start', dragStarted)
+                    .on('drag', dragged)
+                    .on('end', dragEnded));
+            
+            // Create labels
+            labelElements = g.select('.labels')
+                .selectAll('text')
+                .data(graphData.nodes)
+                .enter()
+                .append('text')
+                .attr('class', 'node-label')
+                .attr('dx', 15)
+                .attr('dy', 4)
+                .style('font-size', '12px')
+                .style('fill', '#333')
+                .style('pointer-events', 'none')
+                .text(d => truncateText(d.content, 20));
+            
+            // Use layout positions if available
+            if (graphData.layout && graphData.layout.positions) {
+                graphData.nodes.forEach(node => {
+                    const pos = graphData.layout.positions[node.id];
+                    if (pos) {
+                        node.x = pos.x;
+                        node.y = pos.y;
+                        node.fx = pos.x;
+                        node.fy = pos.y;
+                    }
+                });
+                
+                updateElementPositions();
+                
+                if (currentLayout !== 'force-directed') {
+                    simulation.stop();
                 }
-            });
-            
-            // Update positions immediately
-            updateElementPositions();
-            
-            // Disable simulation for fixed layouts
-            if (currentLayout !== 'force-directed') {
-                simulation.stop();
             }
+            
+            // Start simulation
+            simulation.on('tick', updateElementPositions);
+            console.log('✅ Graph rendered successfully');
+            
+        } catch (error) {
+            console.error('❌ Error in renderGraph:', error);
+            showNotification('Error rendering graph: ' + error.message, 'error');
         }
-        
-        // Start simulation
-        simulation.on('tick', updateElementPositions);
     }
     
     function updateElementPositions() {
