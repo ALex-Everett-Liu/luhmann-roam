@@ -92,6 +92,12 @@ const PluginAwareInitializer = (function() {
                 name: 'Enhanced Code Graph Manager',
                 initialize: initializeEnhancedCodeGraphManager,
                 pluginId: 'enhancedCodeGraphManager'
+            },
+
+            'globalGraphManager': {
+                name: 'Global Graph Manager',
+                initialize: initializeGlobalGraphManager,
+                pluginId: 'globalGraphManager'
             }
         };
         
@@ -282,6 +288,20 @@ const PluginAwareInitializer = (function() {
                 LocalGraphIndicators.initialize();
             } catch (error) {
                 console.error('Failed to initialize LocalGraphIndicators:', error);
+            }
+        }
+    }
+    
+    /**
+     * Initialize Global Graph Manager only if plugin is enabled
+     */
+    function initializeGlobalGraphManager() {
+        if (window.GlobalGraphManager && !window.GlobalGraphManager.isInitialized) {
+            try {
+                GlobalGraphManager.initialize();
+                addGlobalGraphButton();
+            } catch (error) {
+                console.error('Failed to initialize GlobalGraphManager:', error);
             }
         }
     }
@@ -566,6 +586,49 @@ const PluginAwareInitializer = (function() {
         window.addButtonToSidebar(toggleLocalGraphButton);
     }
     
+    function addGlobalGraphButton() {
+        const button = document.createElement('button');
+        button.id = 'global-graph-btn';
+        button.className = 'sidebar-btn';
+        button.innerHTML = '🌐';
+        button.title = 'Global Graph Explorer';
+        button.style.cssText = `
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        `;
+        
+        button.addEventListener('mouseenter', () => {
+            button.style.transform = 'translateY(-2px)';
+            button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+        });
+        
+        button.addEventListener('mouseleave', () => {
+            button.style.transform = 'translateY(0)';
+            button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        });
+        
+        button.addEventListener('click', () => {
+            if (window.GlobalGraphManager) {
+                if (GlobalGraphManager.isVisible()) {
+                    GlobalGraphManager.hide();
+                } else {
+                    GlobalGraphManager.show();
+                }
+            }
+        });
+        
+        addButtonToSidebar(button);
+    }
+    
     /**
      * Handle plugin state changes (when user enables/disables plugins)
      */
@@ -601,6 +664,9 @@ const PluginAwareInitializer = (function() {
                     break;
                 case 'localGraphManager':
                     initializeLocalGraphManager();
+                    break;
+                case 'globalGraphManager':
+                    initializeGlobalGraphManager();
                     break;
                 default:
                     console.log(`No specific initialization handler for plugin: ${pluginId}`);
@@ -651,6 +717,11 @@ const PluginAwareInitializer = (function() {
                 case 'localGraphManager':
                     if (window.LocalGraphManager) {
                         LocalGraphManager.hide();
+                    }
+                    break;
+                case 'globalGraphManager':
+                    if (window.GlobalGraphManager) {
+                        GlobalGraphManager.hide();
                     }
                     break;
                 default:

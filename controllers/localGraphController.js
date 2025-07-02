@@ -11,7 +11,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Calculate distances from center node using Dijkstra's algorithm
- * Modified to use OR condition: include nodes that satisfy distance <= maxDistance OR depth < maxDepth
+ * Modified to use OR condition: include nodes that satisfy distance <= maxDistance OR depth <= maxDepth
  */
 function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5) {
   const distances = new Map();

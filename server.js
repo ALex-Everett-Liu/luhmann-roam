@@ -779,6 +779,7 @@ app.use('/api/word-groups', wordGroupRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/graph-management', graphManagementRoutes);
 app.use('/api/local-graph', localGraphRoutes); 
+app.use('/api/global-graph', require('./routes/globalGraphRoutes'));
 
 // Add this after the database initialization
 // Create vaults directory if it doesn't exist

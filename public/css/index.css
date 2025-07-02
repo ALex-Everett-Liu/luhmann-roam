@@ -45,6 +45,7 @@
 @import './features/graph-analysis.css';
 @import './features/graph-management.css';
 @import './features/local-graph-manager.css';
+@import './features/global-graph-manager.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities - import last to override if needed */

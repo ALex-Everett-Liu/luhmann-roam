@@ -110,6 +110,15 @@
           defaultEnabled: true,
           category: 'analysis'
         });
+
+        // Register GlobalGraphManager
+        this.registerPlugin('globalGraphManager', {
+          name: 'Global Graph Explorer',
+          description: 'Complete graph visualization with multiple layouts and centrality analysis algorithms',
+          defaultEnabled: true,
+          category: 'analysis'
+        });
+
         
         // Register StyleSettingsManager
         this.registerPlugin('styleSettingsManager', {
