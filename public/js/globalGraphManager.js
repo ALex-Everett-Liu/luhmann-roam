@@ -11,15 +11,14 @@ const GlobalGraphManager = (function() {
     let selectedNode = null;
     let searchTimeout = null;
     
-    // D3 visualization variables
+    // D3 visualization variables - will be initialized later
     let svg, g, simulation;
     let nodeElements, linkElements, labelElements;
     let width = 800, height = 600;
-    let zoom, transform = d3.zoomIdentity;
+    let zoom, transform;
     
-    // Color scales
-    let centralityColorScale = d3.scaleSequential(d3.interpolateViridis);
-    let communityColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+    // Color scales - will be initialized later
+    let centralityColorScale, communityColorScale;
     
     function initialize() {
         if (isInitialized) {
@@ -27,7 +26,21 @@ const GlobalGraphManager = (function() {
             return;
         }
         
+        // Check if D3 is available
+        if (typeof d3 === 'undefined') {
+            console.error('D3.js is not loaded. GlobalGraphManager requires D3.js to function.');
+            setTimeout(() => {
+                initialize(); // Try again in 100ms
+            }, 100);
+            return;
+        }
+        
         try {
+            // Initialize D3-dependent variables now that D3 is available
+            transform = d3.zoomIdentity;
+            centralityColorScale = d3.scaleSequential(d3.interpolateViridis);
+            communityColorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            
             createContainer();
             setupEventHandlers();
             isInitialized = true;
@@ -233,16 +246,28 @@ const GlobalGraphManager = (function() {
     
     async function loadGraph() {
         try {
+            console.log('🔄 Starting graph load...');
+            console.log('D3 available:', typeof d3 !== 'undefined');
+            console.log('GlobalGraphManager initialized:', isInitialized);
+            
             showLoading('Loading graph data...');
             
             const layout = document.getElementById('layout-select').value;
+            console.log('Selected layout:', layout);
+            
             const response = await fetch(`/api/global-graph?layout=${layout}&includeCentrality=true&includeLayout=true`);
             
             if (!response.ok) {
-                throw new Error('Failed to load graph data');
+                throw new Error(`Failed to load graph data: ${response.status} ${response.statusText}`);
             }
             
             graphData = await response.json();
+            console.log('📊 Graph data loaded:', {
+                nodes: graphData.nodes?.length || 0,
+                links: graphData.links?.length || 0,
+                hasAnalysis: !!graphData.analysis,
+                hasLayout: !!graphData.layout
+            });
             
             // Update statistics
             updateStatistics();
@@ -263,7 +288,7 @@ const GlobalGraphManager = (function() {
             showNotification('Graph loaded successfully!', 'success');
             
         } catch (error) {
-            console.error('Error loading graph:', error);
+            console.error('❌ Error loading graph:', error);
             hideLoading();
             showNotification('Error loading graph: ' + error.message, 'error');
         }

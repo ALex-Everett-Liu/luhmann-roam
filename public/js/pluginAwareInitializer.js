@@ -296,7 +296,7 @@ const PluginAwareInitializer = (function() {
      * Initialize Global Graph Manager only if plugin is enabled
      */
     function initializeGlobalGraphManager() {
-        if (window.GlobalGraphManager && !window.GlobalGraphManager.isInitialized) {
+        if (window.GlobalGraphManager && !window.GlobalGraphManager.isInitialized()) {
             try {
                 GlobalGraphManager.initialize();
                 addGlobalGraphButton();
@@ -587,36 +587,25 @@ const PluginAwareInitializer = (function() {
     }
     
     function addGlobalGraphButton() {
-        const button = document.createElement('button');
-        button.id = 'global-graph-btn';
-        button.className = 'sidebar-btn';
-        button.innerHTML = '🌐';
-        button.title = 'Global Graph Explorer';
-        button.style.cssText = `
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            margin: 5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        `;
+        // Check if addButtonToSidebar is available
+        if (!window.addButtonToSidebar) {
+            console.error('addButtonToSidebar not available, deferring button creation');
+            setTimeout(() => addGlobalGraphButton(), 100);
+            return;
+        }
         
-        button.addEventListener('mouseenter', () => {
-            button.style.transform = 'translateY(-2px)';
-            button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-        });
+        const toggleGlobalGraphButton = document.createElement('button');
+        toggleGlobalGraphButton.id = 'toggle-global-graph';
+        toggleGlobalGraphButton.className = 'feature-toggle';
+        toggleGlobalGraphButton.textContent = 'Global Graph Explorer';
+        toggleGlobalGraphButton.title = 'Complete graph visualization with multiple layouts and centrality analysis';
         
-        button.addEventListener('mouseleave', () => {
-            button.style.transform = 'translateY(0)';
-            button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        });
-        
-        button.addEventListener('click', () => {
+        toggleGlobalGraphButton.addEventListener('click', function() {
+            if (window.PluginManager && !PluginManager.isPluginEnabled('globalGraphManager')) {
+                alert('Global Graph Explorer plugin is disabled. Please enable it in Settings > Plugins.');
+                return;
+            }
+            
             if (window.GlobalGraphManager) {
                 if (GlobalGraphManager.isVisible()) {
                     GlobalGraphManager.hide();
@@ -626,7 +615,7 @@ const PluginAwareInitializer = (function() {
             }
         });
         
-        addButtonToSidebar(button);
+        window.addButtonToSidebar(toggleGlobalGraphButton);
     }
     
     /**
