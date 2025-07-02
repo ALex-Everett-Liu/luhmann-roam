@@ -154,6 +154,7 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    min-height: 0;
   }
   
   .global-graph-container .global-graph-canvas-area {
@@ -227,48 +228,51 @@
     width: 350px;
     background: #f8f9fa;
     border-left: 1px solid #e9ecef;
-    overflow-y: auto;
+    overflow-y: scroll !important;
     overflow-x: hidden;
     flex-shrink: 0;
     display: block;
     height: 100%;
+    max-height: 100vh;
+    min-height: 0;
   }
   
-  /* Add the missing scrollbar styling for the main sidebar */
   .global-graph-container .global-graph-sidebar::-webkit-scrollbar {
-    width: 14px;
+    width: 16px !important;
+    display: block !important;
   }
   
   .global-graph-container .global-graph-sidebar::-webkit-scrollbar-track {
-    background: #e9ecef;
-    border-radius: 7px;
-    margin: 4px;
+    background: #dee2e6 !important;
+    border-radius: 8px;
+    margin: 2px;
   }
   
   .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb {
-    background: #6c757d;
-    border-radius: 7px;
-    border: 2px solid #e9ecef;
-    min-height: 40px;
+    background: #6c757d !important;
+    border-radius: 8px;
+    border: 3px solid #dee2e6;
+    min-height: 50px;
   }
   
   .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb:hover {
-    background: #495057;
+    background: #495057 !important;
   }
   
   .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb:active {
-    background: #343a40;
+    background: #343a40 !important;
   }
   
-  /* For Firefox */
   .global-graph-container .global-graph-sidebar {
-    scrollbar-width: thin;
-    scrollbar-color: #6c757d #e9ecef;
+    scrollbar-width: auto !important;
+    scrollbar-color: #6c757d #dee2e6 !important;
   }
   
   .global-graph-container .sidebar-section {
     padding: 1rem;
     border-bottom: 1px solid #e9ecef;
+    flex-shrink: 0;
+    min-height: auto;
   }
   
   .global-graph-container .sidebar-section h4 {
@@ -482,10 +486,13 @@
   
   /* Rankings */
   .global-graph-container .centrality-rankings {
-    max-height: 300px;
-    overflow-y: auto;
+    overflow-y: visible;
     scrollbar-width: thin;
     scrollbar-color: #6c757d #f8f9fa;
+  }
+  
+  .global-graph-container .centrality-rankings::-webkit-scrollbar {
+    display: none;
   }
   
   .global-graph-container .rankings-header {
