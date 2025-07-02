@@ -506,11 +506,26 @@ exports.getGlobalGraph = async (req, res) => {
     
     const db = req.db;
     
-    // Get all nodes (with limit)
-    const nodes = await db.all(`SELECT * FROM nodes ORDER BY created_at DESC LIMIT ?`, maxNodes);
+    // Get nodes from the local graph pool instead of main nodes table
+    const poolNodes = await db.all(`
+      SELECT 
+        n.id,
+        n.content,
+        n.content_zh,
+        n.parent_id,
+        n.position,
+        n.created_at,
+        n.updated_at,
+        lgp.added_at as pool_added_at,
+        lgp.notes as pool_notes
+      FROM local_graph_pool lgp
+      JOIN nodes n ON lgp.node_id = n.id
+      ORDER BY lgp.added_at DESC
+      LIMIT ?
+    `, maxNodes);
     
-    // Get all links between the selected nodes
-    if (nodes.length === 0) {
+    // Get links from the local graph pool instead of main links table
+    if (poolNodes.length === 0) {
       return res.json({
         nodes: [],
         links: [],
@@ -520,14 +535,28 @@ exports.getGlobalGraph = async (req, res) => {
       });
     }
     
-    const nodeIds = nodes.map(n => n.id);
-    const placeholders = nodeIds.map(() => '?').join(',');
+    const poolNodeIds = poolNodes.map(n => n.id);
+    const placeholders = poolNodeIds.map(() => '?').join(',');
     
-    const links = await db.all(`
-      SELECT * FROM links 
-      WHERE from_node_id IN (${placeholders}) 
-      AND to_node_id IN (${placeholders})
-    `, [...nodeIds, ...nodeIds]);
+    const poolLinks = await db.all(`
+      SELECT 
+        l.id,
+        l.from_node_id,
+        l.to_node_id,
+        COALESCE(lgpl.weight_override, l.weight) as weight,
+        l.description,
+        l.created_at,
+        l.updated_at,
+        lgpl.added_at as pool_added_at
+      FROM local_graph_pool_links lgpl
+      JOIN links l ON lgpl.link_id = l.id
+      WHERE l.from_node_id IN (${placeholders}) 
+      AND l.to_node_id IN (${placeholders})
+    `, [...poolNodeIds, ...poolNodeIds]);
+    
+    // Use the pool data for analysis
+    const nodes = poolNodes;
+    const links = poolLinks;
     
     // Build adjacency list
     const adjacencyList = buildAdjacencyList(links);
@@ -536,7 +565,7 @@ exports.getGlobalGraph = async (req, res) => {
     const analysis = {};
     
     if (includeCentrality === 'true') {
-      console.log('Calculating centrality measures...');
+      console.log('Calculating centrality measures for pool nodes...');
       analysis.degreeCentrality = Object.fromEntries(calculateDegreeCentrality(nodes, adjacencyList));
       analysis.betweennessCentrality = Object.fromEntries(calculateBetweennessCentrality(nodes, adjacencyList));
       analysis.closenessCentrality = Object.fromEntries(calculateClosenessCentrality(nodes, adjacencyList));
@@ -549,7 +578,7 @@ exports.getGlobalGraph = async (req, res) => {
     const layoutData = {};
     
     if (includeLayout === 'true') {
-      console.log(`Calculating ${layout} layout...`);
+      console.log(`Calculating ${layout} layout for pool nodes...`);
       let positions;
       
       switch (layout) {
@@ -574,7 +603,7 @@ exports.getGlobalGraph = async (req, res) => {
     const stats = {
       nodeCount: nodes.length,
       linkCount: links.length,
-      density: links.length / (nodes.length * (nodes.length - 1) / 2),
+      density: links.length > 0 ? links.length / (nodes.length * (nodes.length - 1) / 2) : 0,
       averageDegree: nodes.length > 0 ? (links.length * 2) / nodes.length : 0,
       components: analysis.communities ? Math.max(...Object.values(analysis.communities)) + 1 : 1
     };
@@ -643,69 +672,93 @@ exports.getGraphStats = async (req, res) => {
  * Calculate specific centrality measure
  */
 exports.calculateCentrality = async (req, res) => {
-  try {
-    const { measure } = req.params;
-    const { maxNodes = 1000 } = req.query;
-    
-    const db = req.db;
-    
-    // Get nodes and links
-    const nodes = await db.all(`SELECT * FROM nodes LIMIT ?`, maxNodes);
-    const nodeIds = nodes.map(n => n.id);
-    const placeholders = nodeIds.map(() => '?').join(',');
-    
-    const links = await db.all(`
-      SELECT * FROM links 
-      WHERE from_node_id IN (${placeholders}) 
-      AND to_node_id IN (${placeholders})
-    `, [...nodeIds, ...nodeIds]);
-    
-    const adjacencyList = buildAdjacencyList(links);
-    
-    let centrality;
-    switch (measure) {
-      case 'degree':
-        centrality = calculateDegreeCentrality(nodes, adjacencyList);
-        break;
-      case 'betweenness':
-        centrality = calculateBetweennessCentrality(nodes, adjacencyList);
-        break;
-      case 'closeness':
-        centrality = calculateClosenessCentrality(nodes, adjacencyList);
-        break;
-      case 'pagerank':
-        centrality = calculatePageRankCentrality(nodes, adjacencyList);
-        break;
-      case 'eigenvector':
-        centrality = calculateEigenvectorCentrality(nodes, adjacencyList);
-        break;
-      default:
-        return res.status(400).json({ error: 'Unknown centrality measure' });
-    }
-    
-    // Convert to array with node details and sort by centrality
-    const results = nodes.map(node => ({
-      nodeId: node.id,
-      content: node.content,
-      content_zh: node.content_zh,
-      centrality: centrality.get(node.id) || 0
-    })).sort((a, b) => b.centrality - a.centrality);
-    
-    res.json({
-      measure,
-      results,
-      summary: {
-        max: Math.max(...results.map(r => r.centrality)),
-        min: Math.min(...results.map(r => r.centrality)),
-        avg: results.reduce((sum, r) => sum + r.centrality, 0) / results.length
+    try {
+      const { measure } = req.params;
+      const { maxNodes = 1000 } = req.query;
+      
+      const db = req.db;
+      
+      // Get nodes from pool instead of main table
+      const poolNodes = await db.all(`
+        SELECT 
+          n.id,
+          n.content,
+          n.content_zh,
+          n.parent_id,
+          n.position,
+          n.created_at,
+          n.updated_at
+        FROM local_graph_pool lgp
+        JOIN nodes n ON lgp.node_id = n.id
+        ORDER BY lgp.added_at DESC
+        LIMIT ?
+      `, maxNodes);
+      
+      const poolNodeIds = poolNodes.map(n => n.id);
+      const placeholders = poolNodeIds.map(() => '?').join(',');
+      
+      // Get links from pool instead of main table
+      const poolLinks = await db.all(`
+        SELECT 
+          l.id,
+          l.from_node_id,
+          l.to_node_id,
+          COALESCE(lgpl.weight_override, l.weight) as weight,
+          l.description
+        FROM local_graph_pool_links lgpl
+        JOIN links l ON lgpl.link_id = l.id
+        WHERE l.from_node_id IN (${placeholders}) 
+        AND l.to_node_id IN (${placeholders})
+      `, [...poolNodeIds, ...poolNodeIds]);
+      
+      const nodes = poolNodes;
+      const links = poolLinks;
+      const adjacencyList = buildAdjacencyList(links);
+      
+      let centrality;
+      switch (measure) {
+        case 'degree':
+          centrality = calculateDegreeCentrality(nodes, adjacencyList);
+          break;
+        case 'betweenness':
+          centrality = calculateBetweennessCentrality(nodes, adjacencyList);
+          break;
+        case 'closeness':
+          centrality = calculateClosenessCentrality(nodes, adjacencyList);
+          break;
+        case 'pagerank':
+          centrality = calculatePageRankCentrality(nodes, adjacencyList);
+          break;
+        case 'eigenvector':
+          centrality = calculateEigenvectorCentrality(nodes, adjacencyList);
+          break;
+        default:
+          return res.status(400).json({ error: 'Unknown centrality measure' });
       }
-    });
-    
-  } catch (error) {
-    console.error('Error calculating centrality:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
+      
+      // Convert to array with node details and sort by centrality
+      const results = nodes.map(node => ({
+        nodeId: node.id,
+        content: node.content,
+        content_zh: node.content_zh,
+        centrality: centrality.get(node.id) || 0
+      })).sort((a, b) => b.centrality - a.centrality);
+      
+      res.json({
+        measure,
+        results,
+        summary: {
+          max: Math.max(...results.map(r => r.centrality)),
+          min: Math.min(...results.map(r => r.centrality)),
+          avg: results.reduce((sum, r) => sum + r.centrality, 0) / results.length
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error calculating centrality:', error);
+      res.status(500).json({ error: error.message });
+    }
+  };
 
 /**
  * Search nodes in global graph
