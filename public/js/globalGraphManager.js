@@ -89,6 +89,7 @@ const GlobalGraphManager = (function() {
                         <div class="control-group">
                             <button id="load-graph-btn" class="primary-btn">Load Graph</button>
                             <button id="analyze-btn" class="secondary-btn">Analyze</button>
+                            <button id="debug-state-btn" class="secondary-btn">Debug State</button>
                         </div>
                     </div>
                 </div>
@@ -225,6 +226,7 @@ const GlobalGraphManager = (function() {
         document.getElementById('close-global-graph-btn')?.addEventListener('click', hide);
         document.getElementById('load-graph-btn')?.addEventListener('click', loadGraph);
         document.getElementById('analyze-btn')?.addEventListener('click', analyzeGraph);
+        document.getElementById('debug-state-btn')?.addEventListener('click', debugCurrentState);
         document.getElementById('layout-select')?.addEventListener('change', handleLayoutChange);
         document.getElementById('centrality-select')?.addEventListener('change', handleCentralityChange);
         
@@ -242,6 +244,22 @@ const GlobalGraphManager = (function() {
         
         // Window resize
         window.addEventListener('resize', handleResize);
+    }
+
+    function debugCurrentState() {
+        console.log('🐛 Current Debug State:', {
+            transform: { x: transform.x, y: transform.y, k: transform.k },
+            svgDimensions: { width, height },
+            svgBoundingRect: svg.node().getBoundingClientRect(),
+            containerBoundingRect: container.getBoundingClientRect(),
+            sampleNodePositions: graphData?.nodes?.slice(0, 3).map(n => ({ 
+                id: n.id, 
+                x: n.x, 
+                y: n.y, 
+                fx: n.fx, 
+                fy: n.fy 
+            })) || []
+        });
     }
     
     async function loadGraph() {
@@ -453,23 +471,72 @@ const GlobalGraphManager = (function() {
                 .style('pointer-events', 'none')
                 .text(d => truncateText(d.content, 20));
             
-            // Use layout positions if available
+            // Use layout positions if available, but scale them properly
             if (graphData.layout && graphData.layout.positions) {
-                graphData.nodes.forEach(node => {
-                    const pos = graphData.layout.positions[node.id];
-                    if (pos) {
-                        node.x = pos.x;
-                        node.y = pos.y;
-                        node.fx = pos.x;
-                        node.fy = pos.y;
+                console.log('🎨 Applying layout positions...');
+                
+                // First, find the bounds of the server-provided positions
+                const positions = Object.values(graphData.layout.positions);
+                if (positions.length > 0) {
+                    const xValues = positions.map(p => p.x);
+                    const yValues = positions.map(p => p.y);
+                    
+                    const serverMinX = Math.min(...xValues);
+                    const serverMaxX = Math.max(...xValues);
+                    const serverMinY = Math.min(...yValues);
+                    const serverMaxY = Math.max(...yValues);
+                    
+                    const serverWidth = serverMaxX - serverMinX;
+                    const serverHeight = serverMaxY - serverMinY;
+                    
+                    console.log('🎨 Server layout bounds:', {
+                        width: serverWidth,
+                        height: serverHeight,
+                        minX: serverMinX,
+                        maxX: serverMaxX,
+                        minY: serverMinY,
+                        maxY: serverMaxY
+                    });
+                    
+                    console.log('🎨 Canvas dimensions:', { width, height });
+                    
+                    // Calculate scaling factors to fit in canvas with some padding
+                    const padding = 50;
+                    const scaleX = (width - 2 * padding) / serverWidth;
+                    const scaleY = (height - 2 * padding) / serverHeight;
+                    const scale = Math.min(scaleX, scaleY); // Use uniform scaling
+                    
+                    console.log('🎨 Calculated scale factor:', scale);
+                    
+                    // Apply scaled positions WITHOUT fixing them (no fx/fy)
+                    graphData.nodes.forEach(node => {
+                        const pos = graphData.layout.positions[node.id];
+                        if (pos) {
+                            // Scale and center the positions
+                            node.x = padding + (pos.x - serverMinX) * scale;
+                            node.y = padding + (pos.y - serverMinY) * scale;
+                            
+                            // Don't set fx/fy - let the force simulation take over if needed
+                            console.log(`🎨 Node ${node.id}: server(${pos.x}, ${pos.y}) -> canvas(${node.x}, ${node.y})`);
+                        }
+                    });
+                    
+                    // For non-force-directed layouts, we can stop the simulation
+                    // But for force-directed, let it run to fine-tune positions
+                    if (currentLayout !== 'force-directed') {
+                        // Give the simulation a moment to settle, then stop it
+                        setTimeout(() => {
+                            if (simulation) {
+                                simulation.stop();
+                            }
+                        }, 1000);
                     }
-                });
+                }
                 
                 updateElementPositions();
-                
-                if (currentLayout !== 'force-directed') {
-                    simulation.stop();
-                }
+            } else {
+                console.log('🎨 No layout positions available, using force simulation defaults');
+                // Let the force simulation place nodes randomly and naturally
             }
             
             // Start simulation
@@ -570,6 +637,11 @@ const GlobalGraphManager = (function() {
     }
     
     function handleZoom(event) {
+        console.log('🔍 Zoom event:', {
+            transform: { x: event.transform.x, y: event.transform.y, k: event.transform.k },
+            previousTransform: { x: transform.x, y: transform.y, k: transform.k }
+        });
+        
         transform = event.transform;
         g.attr('transform', transform);
     }
@@ -871,17 +943,41 @@ const GlobalGraphManager = (function() {
     
     // Drag handlers
     function dragStarted(event, d) {
+        console.log('🎯 Drag Started:', {
+            nodeId: d.id,
+            nodePosition: { x: d.x, y: d.y },
+            eventPosition: { x: event.x, y: event.y },
+            transform: { x: transform.x, y: transform.y, k: transform.k },
+            sourceEvent: event.sourceEvent ? { x: event.sourceEvent.clientX, y: event.sourceEvent.clientY } : null
+        });
+        
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
     }
     
     function dragged(event, d) {
+        console.log('🎯 Dragging:', {
+            nodeId: d.id,
+            eventPosition: { x: event.x, y: event.y },
+            currentNodePos: { x: d.x, y: d.y },
+            currentFixedPos: { fx: d.fx, fy: d.fy },
+            transform: { x: transform.x, y: transform.y, k: transform.k }
+        });
+        
         d.fx = event.x;
         d.fy = event.y;
+        
+        console.log('🎯 Final position set:', { fx: d.fx, fy: d.fy });
     }
     
     function dragEnded(event, d) {
+        console.log('🎯 Drag Ended:', {
+            nodeId: d.id,
+            finalPosition: { fx: d.fx, fy: d.fy },
+            nodePosition: { x: d.x, y: d.y }
+        });
+        
         if (!event.active) simulation.alphaTarget(0);
         d.fx = null;
         d.fy = null;
