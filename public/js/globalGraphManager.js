@@ -22,7 +22,6 @@ const GlobalGraphManager = (function() {
     
     function initialize() {
         if (isInitialized) {
-            console.log('GlobalGraphManager already initialized');
             return;
         }
         
@@ -44,7 +43,6 @@ const GlobalGraphManager = (function() {
             createContainer();
             setupEventHandlers();
             isInitialized = true;
-            console.log('GlobalGraphManager initialized successfully');
         } catch (error) {
             console.error('Error initializing GlobalGraphManager:', error);
         }
@@ -264,15 +262,9 @@ const GlobalGraphManager = (function() {
     
     async function loadGraph() {
         try {
-            console.log('🔄 Starting graph load...');
-            console.log('D3 available:', typeof d3 !== 'undefined');
-            console.log('GlobalGraphManager initialized:', isInitialized);
-            
             showLoading('Loading graph data...');
             
             const layout = document.getElementById('layout-select').value;
-            console.log('Selected layout:', layout);
-            
             const response = await fetch(`/api/global-graph?layout=${layout}&includeCentrality=true&includeLayout=true`);
             
             if (!response.ok) {
@@ -280,30 +272,6 @@ const GlobalGraphManager = (function() {
             }
             
             graphData = await response.json();
-            console.log('📊 Raw graph data received:', {
-                nodes: graphData.nodes?.length || 0,
-                links: graphData.links?.length || 0,
-                hasAnalysis: !!graphData.analysis,
-                hasLayout: !!graphData.layout,
-                nodesSample: graphData.nodes?.slice(0, 2),
-                linksSample: graphData.links?.slice(0, 2)
-            });
-            
-            // Detailed data structure inspection
-            if (graphData.nodes && graphData.nodes.length > 0) {
-                console.log('🔍 First node structure:', graphData.nodes[0]);
-                console.log('🔍 Node ID types:', graphData.nodes.slice(0, 5).map(n => ({ id: n.id, type: typeof n.id })));
-            }
-            
-            if (graphData.links && graphData.links.length > 0) {
-                console.log('🔍 First link structure:', graphData.links[0]);
-                console.log('🔍 Link endpoint types:', graphData.links.slice(0, 5).map(l => ({ 
-                    from: l.from_node_id, 
-                    to: l.to_node_id, 
-                    fromType: typeof l.from_node_id,
-                    toType: typeof l.to_node_id
-                })));
-            }
             
             // Update statistics
             updateStatistics();
@@ -315,7 +283,6 @@ const GlobalGraphManager = (function() {
             }
             
             // Render graph
-            console.log('🎨 About to render graph...');
             renderGraph();
             
             // Update rankings
@@ -326,7 +293,6 @@ const GlobalGraphManager = (function() {
             
         } catch (error) {
             console.error('❌ Error loading graph:', error);
-            console.error('Error stack:', error.stack);
             hideLoading();
             showNotification('Error loading graph: ' + error.message, 'error');
         }
@@ -381,19 +347,12 @@ const GlobalGraphManager = (function() {
     function renderGraph() {
         if (!graphData || !graphData.nodes) return;
         
-        console.log('🎨 Starting renderGraph with data:', {
-            nodes: graphData.nodes.length,
-            links: graphData.links.length
-        });
-        
         // Transform links to have the correct structure for D3.js
         const transformedLinks = graphData.links.map(link => ({
             ...link,
             source: link.from_node_id,  // D3.js expects 'source'
             target: link.to_node_id     // D3.js expects 'target'
         }));
-        
-        console.log('🔧 Transformed first link:', transformedLinks[0]);
         
         // Validate data
         const nodeIds = new Set(graphData.nodes.map(n => n.id));
@@ -403,12 +362,6 @@ const GlobalGraphManager = (function() {
                 console.warn('❌ Invalid link:', link);
             }
             return isValid;
-        });
-        
-        console.log('✅ Validation complete:', {
-            originalLinks: transformedLinks.length,
-            validLinks: validLinks.length,
-            filtered: transformedLinks.length - validLinks.length
         });
         
         // Clear previous elements
@@ -424,8 +377,6 @@ const GlobalGraphManager = (function() {
                 .force('charge', d3.forceManyBody().strength(-300))
                 .force('center', d3.forceCenter(width / 2, height / 2))
                 .force('collision', d3.forceCollide().radius(20));
-            
-            console.log('✅ Force simulation created successfully');
             
             // Create links with transformed data
             linkElements = g.select('.links')
@@ -473,8 +424,6 @@ const GlobalGraphManager = (function() {
             
             // Use layout positions if available, but scale them properly
             if (graphData.layout && graphData.layout.positions) {
-                console.log('🎨 Applying layout positions...');
-                
                 // First, find the bounds of the server-provided positions
                 const positions = Object.values(graphData.layout.positions);
                 if (positions.length > 0) {
@@ -489,24 +438,11 @@ const GlobalGraphManager = (function() {
                     const serverWidth = serverMaxX - serverMinX;
                     const serverHeight = serverMaxY - serverMinY;
                     
-                    console.log('🎨 Server layout bounds:', {
-                        width: serverWidth,
-                        height: serverHeight,
-                        minX: serverMinX,
-                        maxX: serverMaxX,
-                        minY: serverMinY,
-                        maxY: serverMaxY
-                    });
-                    
-                    console.log('🎨 Canvas dimensions:', { width, height });
-                    
                     // Calculate scaling factors to fit in canvas with some padding
                     const padding = 50;
                     const scaleX = (width - 2 * padding) / serverWidth;
                     const scaleY = (height - 2 * padding) / serverHeight;
                     const scale = Math.min(scaleX, scaleY); // Use uniform scaling
-                    
-                    console.log('🎨 Calculated scale factor:', scale);
                     
                     // Apply scaled positions WITHOUT fixing them (no fx/fy)
                     graphData.nodes.forEach(node => {
@@ -515,9 +451,6 @@ const GlobalGraphManager = (function() {
                             // Scale and center the positions
                             node.x = padding + (pos.x - serverMinX) * scale;
                             node.y = padding + (pos.y - serverMinY) * scale;
-                            
-                            // Don't set fx/fy - let the force simulation take over if needed
-                            console.log(`🎨 Node ${node.id}: server(${pos.x}, ${pos.y}) -> canvas(${node.x}, ${node.y})`);
                         }
                     });
                     
@@ -534,14 +467,10 @@ const GlobalGraphManager = (function() {
                 }
                 
                 updateElementPositions();
-            } else {
-                console.log('🎨 No layout positions available, using force simulation defaults');
-                // Let the force simulation place nodes randomly and naturally
             }
             
             // Start simulation
             simulation.on('tick', updateElementPositions);
-            console.log('✅ Graph rendered successfully');
             
         } catch (error) {
             console.error('❌ Error in renderGraph:', error);
@@ -637,11 +566,6 @@ const GlobalGraphManager = (function() {
     }
     
     function handleZoom(event) {
-        console.log('🔍 Zoom event:', {
-            transform: { x: event.transform.x, y: event.transform.y, k: event.transform.k },
-            previousTransform: { x: transform.x, y: transform.y, k: transform.k }
-        });
-        
         transform = event.transform;
         g.attr('transform', transform);
     }
@@ -991,43 +915,19 @@ const GlobalGraphManager = (function() {
         }
     }
     
-    // Drag handlers
+    // Drag handlers - simplified without excessive logging
     function dragStarted(event, d) {
-        console.log('🎯 Drag Started:', {
-            nodeId: d.id,
-            nodePosition: { x: d.x, y: d.y },
-            eventPosition: { x: event.x, y: event.y },
-            transform: { x: transform.x, y: transform.y, k: transform.k },
-            sourceEvent: event.sourceEvent ? { x: event.sourceEvent.clientX, y: event.sourceEvent.clientY } : null
-        });
-        
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
     }
     
     function dragged(event, d) {
-        console.log('🎯 Dragging:', {
-            nodeId: d.id,
-            eventPosition: { x: event.x, y: event.y },
-            currentNodePos: { x: d.x, y: d.y },
-            currentFixedPos: { fx: d.fx, fy: d.fy },
-            transform: { x: transform.x, y: transform.y, k: transform.k }
-        });
-        
         d.fx = event.x;
         d.fy = event.y;
-        
-        console.log('🎯 Final position set:', { fx: d.fx, fy: d.fy });
     }
     
     function dragEnded(event, d) {
-        console.log('🎯 Drag Ended:', {
-            nodeId: d.id,
-            finalPosition: { fx: d.fx, fy: d.fy },
-            nodePosition: { x: d.x, y: d.y }
-        });
-        
         if (!event.active) simulation.alphaTarget(0);
         d.fx = null;
         d.fy = null;

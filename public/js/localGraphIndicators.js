@@ -108,7 +108,7 @@ const LocalGraphIndicators = (function() {
         cachedElements.set(element, isVisible);
         
         // Clear cache after a short time to prevent memory leaks
-        setTimeout(() => cachedElements.delete(element), 5000);
+        setTimeout(() => cachedElements.delete(element), 50000);
         
         return isVisible;
     }
