@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 
 // Distance calculation cache
 let distanceCache = new Map(); // centerNodeId -> { distances: Map, timestamp: number }
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Calculate distances from center node using Dijkstra's algorithm
@@ -17,7 +17,7 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
   const distances = new Map();
   const depths = new Map(); // Track depth separately
   const visited = new Set();
-  const queue = [{ nodeId: centerNodeId, distance: 0, depth: 0 }];
+  const queue = [{ nodeId: centerNodeId, distance: 0, depth: 0 }]; // manage the nodes that need to be processed
   
   distances.set(centerNodeId, 0);
   depths.set(centerNodeId, 0);
@@ -25,11 +25,11 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
   // Build adjacency list for faster lookup - TREAT ALL LINKS AS BIDIRECTIONAL
   const adjacencyList = new Map();
   links.forEach(link => {
-    // Add forward direction
+    // adds the link in the forward direction
     if (!adjacencyList.has(link.from_node_id)) {
       adjacencyList.set(link.from_node_id, []);
     }
-    adjacencyList.get(link.from_node_id).push({
+    adjacencyList.get(link.from_node_id).push({ // retrieves the array for the from_node_id and pushes a new object into it.
       nodeId: link.to_node_id,
       weight: link.weight || 1.0
     });
@@ -45,11 +45,11 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
   });
   
   while (queue.length > 0) {
-    // Sort by distance to get shortest path first
+    // Sort by distance to get shortest path first; The queue is sorted based on the `distance` property of each node. This ensures that the node with the shortest distance from the `centerNodeId` is processed first.
     queue.sort((a, b) => a.distance - b.distance);
     const current = queue.shift();
     
-    // FIXED: Exclude only if BOTH distance and depth exceed limits
+    // FIXED: Exclude only if BOTH distance and depth exceed limits; checks if the current node has already been visited or if both its distance and depth exceed the specified limits. If either condition is true, the loop continues to the next iteration, effectively skipping the current node.
     if (visited.has(current.nodeId) || 
         (current.distance > maxDistance && current.depth > maxDepth)) {
       continue;
@@ -62,12 +62,12 @@ function calculateDistances(centerNodeId, links, maxDistance = 10, maxDepth = 5)
     const neighbors = adjacencyList.get(current.nodeId) || [];
     
     for (const neighbor of neighbors) {
-      const newDistance = current.distance + neighbor.weight;
-      const newDepth = current.depth + 1;
+      const newDistance = current.distance + neighbor.weight; // adding the weight of the edge to the `current.distance`.
+      const newDepth = current.depth + 1; // one additional step away from the `centerNodeId`.
       
       // FIXED: Include neighbor if it satisfies EITHER condition
       if ((newDistance <= maxDistance || newDepth <= maxDepth) && 
-          (!distances.has(neighbor.nodeId) || newDistance < distances.get(neighbor.nodeId))) {
+          (!distances.has(neighbor.nodeId) || newDistance < distances.get(neighbor.nodeId))) { // it checks if the `neighbor.nodeId` has not been recorded in the `distances` map or if the `newDistance` is shorter than any previously recorded distance for that neighbor.
         distances.set(neighbor.nodeId, newDistance);
         depths.set(neighbor.nodeId, newDepth);
         queue.push({
