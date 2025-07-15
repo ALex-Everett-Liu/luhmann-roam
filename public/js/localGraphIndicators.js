@@ -211,6 +211,11 @@ const LocalGraphIndicators = (function() {
      * Apply indicators - no changes needed here
      */
     function applyIndicatorsToElement(element) {
+        // EXCLUDE GLOBAL GRAPH MANAGER ELEMENTS
+        if (element.closest('.global-graph-container')) {
+            return; // Don't apply indicators to global graph elements
+        }
+        
         const nodeId = element.getAttribute('data-id') || element.getAttribute('data-node-id');
         const linkId = element.getAttribute('data-link-id');
         

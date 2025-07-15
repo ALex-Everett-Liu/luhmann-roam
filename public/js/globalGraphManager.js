@@ -174,12 +174,11 @@ const GlobalGraphManager = (function() {
                                         <th>Centrality</th>
                                         <th>Community</th>
                                         <th>Degree</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="metrics-table-body">
                                     <tr>
-                                        <td colspan="6" class="table-message">Load graph data to see metrics</td>
+                                        <td colspan="5" class="table-message">Load graph data to see metrics</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -636,7 +635,7 @@ const GlobalGraphManager = (function() {
         if (!centrality) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="table-message">
+                    <td colspan="5" class="table-message">
                         ${metric} centrality not calculated yet. 
                         <button onclick="GlobalGraphManager.calculateCentralityMeasure('${metric}')" class="inline-btn">Calculate Now</button>
                     </td>
@@ -679,10 +678,6 @@ const GlobalGraphManager = (function() {
                         </span>
                     </td>
                     <td class="degree-cell">${degree}</td>
-                    <td class="actions-cell">
-                        <button class="table-action-btn" onclick="GlobalGraphManager.selectNodeById('${item.nodeId}')">Select</button>
-                        <button class="table-action-btn" onclick="GlobalGraphManager.focusNodeById('${item.nodeId}')">Focus</button>
-                    </td>
                 </tr>
             `;
         }).join('');
