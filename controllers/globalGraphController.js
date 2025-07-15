@@ -1249,3 +1249,120 @@ exports.getNodeNeighbors = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Get centrality data for a specific node
+ */
+exports.getNodeCentrality = async (req, res) => {
+  try {
+    const { nodeId } = req.params;
+    const db = req.db;
+    
+    // Check if node exists
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Get all available centrality measures from cache
+    const centralityMeasures = ['degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'];
+    const centrality = {};
+    const ranking = {};
+    
+    for (const measure of centralityMeasures) {
+      const cached = getCachedAnalysis(measure);
+      if (cached && cached.results) {
+        const nodeResult = cached.results.find(r => r.nodeId === nodeId);
+        if (nodeResult) {
+          centrality[measure] = nodeResult.centrality;
+          
+          // Calculate ranking (1-based)
+          const nodeRank = cached.results.findIndex(r => r.nodeId === nodeId) + 1;
+          ranking[measure] = nodeRank;
+        }
+      }
+    }
+    
+    // Get community information if available
+    let community = null;
+    const communityData = getCachedAnalysis('communities');
+    if (communityData && communityData.communities) {
+      community = communityData.communities[nodeId];
+    }
+    
+    // Calculate percentiles if we have degree centrality
+    let percentiles = null;
+    if (centrality.degree !== undefined) {
+      const degreeData = getCachedAnalysis('degree');
+      if (degreeData && degreeData.results) {
+        const nodeRank = ranking.degree;
+        const totalNodes = degreeData.results.length;
+        percentiles = {
+          degree: ((totalNodes - nodeRank) / totalNodes) * 100
+        };
+      }
+    }
+    
+    res.json({
+      nodeId,
+      node: {
+        id: node.id,
+        content: node.content,
+        content_zh: node.content_zh
+      },
+      centrality,
+      community,
+      ranking: {
+        ...ranking,
+        percentiles
+      },
+      availableMeasures: centralityMeasures.filter(m => centrality[m] !== undefined)
+    });
+    
+  } catch (error) {
+    console.error('Error getting node centrality:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Calculate centrality for a specific node (trigger calculation if not cached)
+ */
+exports.calculateNodeCentrality = async (req, res) => {
+  try {
+    const { nodeId } = req.params;
+    const db = req.db;
+    
+    // Check if node exists
+    const node = await db.get('SELECT * FROM nodes WHERE id = ?', nodeId);
+    if (!node) {
+      return res.status(404).json({ error: 'Node not found' });
+    }
+    
+    // Calculate all centrality measures
+    const measures = ['degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'];
+    const results = {};
+    
+    for (const measure of measures) {
+      try {
+        const data = await calculateCentralityMeasure(measure);
+        const nodeResult = data.results.find(r => r.nodeId === nodeId);
+        if (nodeResult) {
+          results[measure] = nodeResult.centrality;
+        }
+      } catch (error) {
+        console.error(`Error calculating ${measure} for node ${nodeId}:`, error);
+      }
+    }
+    
+    res.json({
+      nodeId,
+      message: 'Centrality calculation completed',
+      results
+    });
+    
+  } catch (error) {
+    console.error('Error calculating node centrality:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -24,4 +24,10 @@ router.get('/search', globalGraphController.searchNodes);
 // Get node neighbors
 router.get('/nodes/:nodeId/neighbors', globalGraphController.getNodeNeighbors);
 
+// Get centrality data for a specific node
+router.get('/nodes/:nodeId/centrality', globalGraphController.getNodeCentrality);
+
+// Calculate centrality for a specific node
+router.post('/nodes/:nodeId/calculate-centrality', globalGraphController.calculateNodeCentrality);
+
 module.exports = router;

@@ -1901,23 +1901,52 @@ const LocalGraphManager = (function() {
         }
     }
     
+    // Add this new function to fetch centrality data for a specific node
+    async function fetchNodeCentralityData(nodeId) {
+        try {
+            const response = await fetch(`/api/global-graph/nodes/${nodeId}/centrality`);
+            if (!response.ok) {
+                return null;
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching node centrality data:', error);
+            return null;
+        }
+    }
+    
+    // Enhanced selectNode function with centrality data
     function selectNode(node) {
         const infoDiv = document.getElementById('selected-node-info');
         const distance = graphData.distances[node.id] || 0;
-        const depth = graphData.depths[node.id] || 0; // Get depth from graphData
+        const depth = graphData.depths[node.id] || 0;
         const isInPool = nodePoolStatus.get(node.id) || false;
         
+        // Show basic info immediately
         infoDiv.innerHTML = `
             <div class="selected-node">
                 <h5>${node.content || 'Untitled'}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
+                
                 <div class="node-metrics">
-                    <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
-                    <p class="node-depth">Depth: ${depth} hops</p>
+                    <div class="metric-section">
+                        <h6>Local Graph Metrics</h6>
+                        <p class="node-distance">Distance: ${distance.toFixed(2)}</p>
+                        <p class="node-depth">Depth: ${depth} hops</p>
+                    </div>
+                    
+                    <div class="metric-section">
+                        <h6>Global Graph Metrics</h6>
+                        <div id="centrality-metrics-${node.id}" class="centrality-metrics">
+                            <div class="loading-centrality">Loading centrality data...</div>
+                        </div>
+                    </div>
                 </div>
+                
                 <p class="node-pool-status" style="color: ${isInPool ? '#6366f1' : '#666'}; font-size: 12px; margin: 5px 0;">
                     ${isInPool ? '✓ In Local Graph Pool' : '○ Not in Pool'}
                 </p>
+                
                 <div class="node-actions">
                     <button onclick="LocalGraphManager.editNode('${node.id}')" class="primary-btn" style="margin-right: 8px; padding: 6px 12px; font-size: 12px;">
                         Edit Node
@@ -1933,6 +1962,173 @@ const LocalGraphManager = (function() {
                 </div>
             </div>
         `;
+        
+        // Fetch and display centrality data asynchronously
+        fetchAndDisplayCentralityData(node.id);
+    }
+    
+    // New function to fetch and display centrality data
+    async function fetchAndDisplayCentralityData(nodeId) {
+        try {
+            const centralityData = await fetchNodeCentralityData(nodeId);
+            const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
+            
+            if (!centralityDiv) return; // Node might have been deselected
+            
+            if (!centralityData || !centralityData.centrality) {
+                centralityDiv.innerHTML = `
+                    <div class="centrality-unavailable">
+                        <p style="color: #666; font-style: italic;">No centrality data available</p>
+                        <button onclick="LocalGraphManager.calculateCentralityForNode('${nodeId}')" 
+                                class="secondary-btn" style="font-size: 11px; padding: 4px 8px;">
+                            Calculate Centrality
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const { centrality, community, ranking } = centralityData;
+            
+            // Create centrality metrics display
+            let centralityHTML = '<div class="centrality-data">';
+            
+            // Community information
+            if (community !== undefined && community !== null) {
+                const communityColor = getCommunityColor(community);
+                centralityHTML += `
+                    <div class="community-info" style="margin-bottom: 10px;">
+                        <span class="community-label">Community:</span>
+                        <span class="community-badge" style="
+                            background: ${communityColor}20;
+                            border: 1px solid ${communityColor};
+                            border-radius: 4px;
+                            padding: 2px 6px;
+                            font-size: 11px;
+                            margin-left: 5px;
+                        ">${community}</span>
+                    </div>
+                `;
+            }
+            
+            // Centrality measures
+            const measures = [
+                { key: 'degree', name: 'Degree', icon: '🔗' },
+                { key: 'betweenness', name: 'Betweenness', icon: '🌉' },
+                { key: 'closeness', name: 'Closeness', icon: '📍' },
+                { key: 'pagerank', name: 'PageRank', icon: '⭐' },
+                { key: 'eigenvector', name: 'Eigenvector', icon: '🎯' }
+            ];
+            
+            centralityHTML += '<div class="centrality-measures">';
+            
+            measures.forEach(measure => {
+                const value = centrality[measure.key];
+                const rank = ranking && ranking[measure.key] ? ranking[measure.key] : null;
+                
+                if (value !== undefined && value !== null) {
+                    const displayValue = typeof value === 'number' ? value.toFixed(4) : value;
+                    const rankText = rank ? ` (Rank: ${rank})` : '';
+                    
+                    centralityHTML += `
+                        <div class="centrality-item" style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin: 3px 0;
+                            padding: 4px;
+                            background: #f8f9fa;
+                            border-radius: 4px;
+                            font-size: 11px;
+                        ">
+                            <span class="centrality-name">
+                                ${measure.icon} ${measure.name}
+                            </span>
+                            <span class="centrality-value" style="
+                                font-weight: 600;
+                                color: #374151;
+                            ">
+                                ${displayValue}${rankText}
+                            </span>
+                        </div>
+                    `;
+                }
+            });
+            
+            centralityHTML += '</div>';
+            
+            // Add comparative information if available
+            if (ranking && ranking.percentiles) {
+                centralityHTML += `
+                    <div class="centrality-comparison" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                        <p style="font-size: 10px; color: #666; margin: 0;">
+                            This node ranks in the top ${(100 - ranking.percentiles.degree).toFixed(1)}% by degree centrality
+                        </p>
+                    </div>
+                `;
+            }
+            
+            centralityHTML += '</div>';
+            
+            centralityDiv.innerHTML = centralityHTML;
+            
+        } catch (error) {
+            console.error('Error fetching centrality data:', error);
+            const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
+            if (centralityDiv) {
+                centralityDiv.innerHTML = `
+                    <div class="centrality-error">
+                        <p style="color: #dc2626; font-style: italic;">Error loading centrality data</p>
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    // Helper function to get community color
+    function getCommunityColor(community) {
+        // Simple color generation based on community number
+        const colors = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+            '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+        ];
+        return colors[community % colors.length] || '#6b7280';
+    }
+    
+    // New function to calculate centrality for a specific node
+    async function calculateCentralityForNode(nodeId) {
+        try {
+            const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
+            if (centralityDiv) {
+                centralityDiv.innerHTML = '<div class="loading-centrality">Calculating centrality...</div>';
+            }
+            
+            const response = await fetch(`/api/global-graph/nodes/${nodeId}/calculate-centrality`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to calculate centrality');
+            }
+            
+            // Refresh the centrality display
+            await fetchAndDisplayCentralityData(nodeId);
+            
+            showNotification('Centrality calculated successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error calculating centrality:', error);
+            showNotification('Error calculating centrality: ' + error.message, 'error');
+            
+            const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
+            if (centralityDiv) {
+                centralityDiv.innerHTML = `
+                    <div class="centrality-error">
+                        <p style="color: #dc2626; font-style: italic;">Error calculating centrality</p>
+                    </div>
+                `;
+            }
+        }
     }
     
     function updateStats() {
@@ -5042,7 +5238,8 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         removeFromQuickAccess,
         locateNodeInGraph,
         editNode, // This function is now defined above
-        isInitialized: () => isInitialized
+        isInitialized: () => isInitialized,
+        calculateCentralityForNode // Add this new function
     };
 })();
 
