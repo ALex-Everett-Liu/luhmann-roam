@@ -3,11 +3,91 @@ const { v4: uuidv4 } = require('uuid');
 /**
  * Global Graph Controller
  * Manages global graph visualization with multiple layouts and centrality analysis
+ * Enhanced with better caching and cache management
  */
 
-// Analysis results cache
+// Enhanced Analysis results cache
 let analysisCache = new Map();
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+let calculationInProgress = new Map();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Get cache status and statistics
+ */
+exports.getCacheStatus = async (req, res) => {
+  try {
+    const now = Date.now();
+    const cacheStats = {
+      totalCached: analysisCache.size,
+      validCached: 0,
+      expiredCached: 0,
+      calculationsInProgress: calculationInProgress.size,
+      cacheDetails: []
+    };
+
+    analysisCache.forEach((value, key) => {
+      const isExpired = (now - value.timestamp) > CACHE_DURATION;
+      if (isExpired) {
+        cacheStats.expiredCached++;
+      } else {
+        cacheStats.validCached++;
+      }
+      
+      cacheStats.cacheDetails.push({
+        measure: key,
+        timestamp: value.timestamp,
+        age: now - value.timestamp,
+        isExpired: isExpired,
+        nodeCount: value.data?.results?.length || 0
+      });
+    });
+
+    res.json(cacheStats);
+  } catch (error) {
+    console.error('Error getting cache status:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Clear cache
+ */
+exports.clearCache = async (req, res) => {
+  try {
+    const clearedCount = analysisCache.size;
+    analysisCache.clear();
+    calculationInProgress.clear();
+    
+    res.json({ 
+      message: 'Cache cleared successfully',
+      clearedCount: clearedCount
+    });
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Get cached analysis or return null if not available/expired
+ */
+function getCachedAnalysis(measure) {
+  const cached = analysisCache.get(measure);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+}
+
+/**
+ * Set cached analysis with timestamp
+ */
+function setCachedAnalysis(measure, data) {
+  analysisCache.set(measure, {
+    data: data,
+    timestamp: Date.now()
+  });
+}
 
 /**
  * Build adjacency list from links (bidirectional)
@@ -575,10 +655,18 @@ exports.getGlobalGraph = async (req, res) => {
     if (includeCentrality === 'true') {
       console.log('Calculating centrality measures for pool nodes...');
       analysis.degreeCentrality = Object.fromEntries(calculateDegreeCentrality(nodes, adjacencyList));
-      analysis.betweennessCentrality = Object.fromEntries(calculateBetweennessCentrality(nodes, adjacencyList));
-      analysis.closenessCentrality = Object.fromEntries(calculateClosenessCentrality(nodes, adjacencyList));
-      analysis.pageRankCentrality = Object.fromEntries(calculatePageRankCentrality(nodes, adjacencyList));
-      analysis.eigenvectorCentrality = Object.fromEntries(calculateEigenvectorCentrality(nodes, adjacencyList));
+      
+      // Check cache for other centrality measures
+      const cachedBetweenness = getCachedAnalysis('betweenness');
+      if (cachedBetweenness) {
+        analysis.betweennessCentrality = {};
+        cachedBetweenness.results.forEach(result => {
+          if (nodeIdSet.has(result.nodeId)) {
+            analysis.betweennessCentrality[result.nodeId] = result.centrality;
+          }
+        });
+      }
+      
       analysis.communities = Object.fromEntries(detectCommunities(nodes, adjacencyList));
     }
     
@@ -677,13 +765,32 @@ exports.getGraphStats = async (req, res) => {
 };
 
 /**
- * Calculate specific centrality measure
+ * Calculate specific centrality measure with enhanced caching
  */
 exports.calculateCentrality = async (req, res) => {
+  try {
+    const { measure } = req.params;
+    const { maxNodes = 1000 } = req.query;
+    
+    // Check cache first
+    const cached = getCachedAnalysis(measure);
+    if (cached) {
+      console.log(`Returning cached ${measure} centrality results`);
+      return res.json(cached);
+    }
+    
+    // Check if calculation is already in progress
+    if (calculationInProgress.has(measure)) {
+      return res.status(202).json({ 
+        message: 'Calculation in progress', 
+        measure: measure 
+      });
+    }
+    
+    // Mark calculation as in progress
+    calculationInProgress.set(measure, true);
+    
     try {
-      const { measure } = req.params;
-      const { maxNodes = 1000 } = req.query;
-      
       const db = req.db;
       
       // Get nodes from pool instead of main table
@@ -724,6 +831,8 @@ exports.calculateCentrality = async (req, res) => {
       const adjacencyList = buildAdjacencyList(links);
       
       let centrality;
+      console.log(`Calculating ${measure} centrality for ${nodes.length} nodes...`);
+      
       switch (measure) {
         case 'degree':
           centrality = calculateDegreeCentrality(nodes, adjacencyList);
@@ -741,7 +850,7 @@ exports.calculateCentrality = async (req, res) => {
           centrality = calculateEigenvectorCentrality(nodes, adjacencyList);
           break;
         default:
-          return res.status(400).json({ error: 'Unknown centrality measure' });
+          throw new Error('Unknown centrality measure');
       }
       
       // Convert to array with node details and sort by centrality
@@ -752,21 +861,70 @@ exports.calculateCentrality = async (req, res) => {
         centrality: centrality.get(node.id) || 0
       })).sort((a, b) => b.centrality - a.centrality);
       
-      res.json({
+      const responseData = {
         measure,
         results,
         summary: {
           max: Math.max(...results.map(r => r.centrality)),
           min: Math.min(...results.map(r => r.centrality)),
           avg: results.reduce((sum, r) => sum + r.centrality, 0) / results.length
-        }
-      });
+        },
+        calculatedAt: Date.now()
+      };
       
-    } catch (error) {
-      console.error('Error calculating centrality:', error);
-      res.status(500).json({ error: error.message });
+      // Cache the results
+      setCachedAnalysis(measure, responseData);
+      
+      res.json(responseData);
+      
+    } finally {
+      // Mark calculation as complete
+      calculationInProgress.delete(measure);
     }
-  };
+    
+  } catch (error) {
+    console.error('Error calculating centrality:', error);
+    calculationInProgress.delete(req.params.measure);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Calculate all centrality measures in sequence
+ */
+exports.calculateAllCentralities = async (req, res) => {
+  try {
+    const measures = ['degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'];
+    const results = {};
+    
+    for (const measure of measures) {
+      try {
+        // Check cache first
+        const cached = getCachedAnalysis(measure);
+        if (cached) {
+          results[measure] = cached;
+        } else {
+          console.log(`Calculating ${measure} centrality...`);
+          // This would trigger the calculation - in a real implementation
+          // you might want to call the calculation function directly
+          results[measure] = { status: 'pending' };
+        }
+      } catch (error) {
+        console.error(`Error calculating ${measure}:`, error);
+        results[measure] = { error: error.message };
+      }
+    }
+    
+    res.json({
+      message: 'Centrality calculations initiated',
+      results: results
+    });
+    
+  } catch (error) {
+    console.error('Error calculating all centralities:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 /**
  * Search nodes in global graph

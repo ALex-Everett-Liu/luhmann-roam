@@ -8,8 +8,15 @@ router.get('/', globalGraphController.getGlobalGraph);
 // Get graph statistics
 router.get('/stats', globalGraphController.getGraphStats);
 
+// Cache management endpoints
+router.get('/cache/status', globalGraphController.getCacheStatus);
+router.delete('/cache', globalGraphController.clearCache);
+
 // Calculate specific centrality measure
 router.get('/centrality/:measure', globalGraphController.calculateCentrality);
+
+// Calculate all centrality measures
+router.post('/centrality/calculate-all', globalGraphController.calculateAllCentralities);
 
 // Search nodes
 router.get('/search', globalGraphController.searchNodes);

@@ -1,12 +1,14 @@
 /**
  * Global Graph Manager UI
  * Complete graph visualization with multiple layouts and centrality analysis
+ * Enhanced with table view, caching, and community-based coloring
  */
 const GlobalGraphManager = (function() {
     let container;
     let graphData = null;
     let currentLayout = 'force-directed';
     let currentCentralityMeasure = 'degree';
+    let currentViewMode = 'graph'; // 'graph' or 'table'
     let isInitialized = false;
     let selectedNode = null;
     let searchTimeout = null;
@@ -19,6 +21,16 @@ const GlobalGraphManager = (function() {
     
     // Color scales - will be initialized later
     let centralityColorScale, communityColorScale;
+    
+    // Enhanced caching system
+    let analysisCache = new Map();
+    let calculationPromises = new Map();
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+    
+    // Available centrality measures
+    const centralityMeasures = [
+        'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'
+    ];
     
     function initialize() {
         if (isInitialized) {
@@ -65,6 +77,14 @@ const GlobalGraphManager = (function() {
                 <div class="global-graph-controls">
                     <div class="control-section">
                         <div class="control-group">
+                            <label for="view-mode-select">View Mode:</label>
+                            <select id="view-mode-select" class="view-mode-select">
+                                <option value="graph">Graph View</option>
+                                <option value="table">Table View</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
                             <label for="layout-select">Layout:</label>
                             <select id="layout-select" class="layout-select">
                                 <option value="force-directed">Force-Directed</option>
@@ -87,20 +107,82 @@ const GlobalGraphManager = (function() {
                         <div class="control-group">
                             <button id="load-graph-btn" class="primary-btn">Load Graph</button>
                             <button id="analyze-btn" class="secondary-btn">Analyze</button>
+                            <button id="calculate-all-btn" class="secondary-btn">Calculate All</button>
                             <button id="debug-state-btn" class="secondary-btn">Debug State</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cache Status -->
+                    <div class="cache-status-section">
+                        <div class="cache-status" id="cache-status">
+                            <span class="cache-info">Cache: Empty</span>
+                            <button id="clear-cache-btn" class="cache-btn">Clear Cache</button>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Main Content Area -->
                 <div class="global-graph-main-area">
-                    <!-- Graph Canvas -->
-                    <div class="global-graph-canvas-area">
-                        <div id="global-graph-canvas"></div>
-                        <div class="zoom-controls">
-                            <button id="zoom-in-btn">+</button>
-                            <button id="zoom-out-btn">-</button>
-                            <button id="zoom-reset-btn">⌂</button>
+                    <!-- Graph View -->
+                    <div class="global-graph-view" id="graph-view">
+                        <div class="global-graph-canvas-area">
+                            <div id="global-graph-canvas"></div>
+                            <div class="zoom-controls">
+                                <button id="zoom-in-btn">+</button>
+                                <button id="zoom-out-btn">-</button>
+                                <button id="zoom-reset-btn">⌂</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Table View -->
+                    <div class="global-graph-table-view" id="table-view" style="display: none;">
+                        <div class="table-controls">
+                            <div class="table-control-group">
+                                <label for="table-metric-select">Metric:</label>
+                                <select id="table-metric-select" class="table-metric-select">
+                                    <option value="degree">Degree Centrality</option>
+                                    <option value="betweenness">Betweenness Centrality</option>
+                                    <option value="closeness">Closeness Centrality</option>
+                                    <option value="pagerank">PageRank Centrality</option>
+                                    <option value="eigenvector">Eigenvector Centrality</option>
+                                </select>
+                            </div>
+                            
+                            <div class="table-control-group">
+                                <label for="table-limit-select">Show Top:</label>
+                                <select id="table-limit-select" class="table-limit-select">
+                                    <option value="25">Top 25</option>
+                                    <option value="50">Top 50</option>
+                                    <option value="100" selected>Top 100</option>
+                                    <option value="200">Top 200</option>
+                                </select>
+                            </div>
+                            
+                            <div class="table-control-group">
+                                <label for="community-coloring-toggle">Community Colors:</label>
+                                <input type="checkbox" id="community-coloring-toggle" class="community-toggle">
+                            </div>
+                        </div>
+                        
+                        <div class="metrics-table-container">
+                            <table class="metrics-table" id="metrics-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Node</th>
+                                        <th>Centrality</th>
+                                        <th>Community</th>
+                                        <th>Degree</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metrics-table-body">
+                                    <tr>
+                                        <td colspan="6" class="table-message">Load graph data to see metrics</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                     
@@ -129,6 +211,37 @@ const GlobalGraphManager = (function() {
                                 <div class="stat-item">
                                     <span class="stat-label">Components:</span>
                                     <span class="stat-value" id="stat-components">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Communities:</span>
+                                    <span class="stat-value" id="stat-communities">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Calculation Progress -->
+                        <div class="sidebar-section" id="calculation-progress-section" style="display: none;">
+                            <h4>🔄 Calculation Progress</h4>
+                            <div class="progress-container">
+                                <div class="progress-item">
+                                    <span class="progress-label">Degree:</span>
+                                    <span class="progress-status" id="progress-degree">Pending</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span class="progress-label">Betweenness:</span>
+                                    <span class="progress-status" id="progress-betweenness">Pending</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span class="progress-label">Closeness:</span>
+                                    <span class="progress-status" id="progress-closeness">Pending</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span class="progress-label">PageRank:</span>
+                                    <span class="progress-status" id="progress-pagerank">Pending</span>
+                                </div>
+                                <div class="progress-item">
+                                    <span class="progress-label">Eigenvector:</span>
+                                    <span class="progress-status" id="progress-eigenvector">Pending</span>
                                 </div>
                             </div>
                         </div>
@@ -224,9 +337,20 @@ const GlobalGraphManager = (function() {
         document.getElementById('close-global-graph-btn')?.addEventListener('click', hide);
         document.getElementById('load-graph-btn')?.addEventListener('click', loadGraph);
         document.getElementById('analyze-btn')?.addEventListener('click', analyzeGraph);
+        document.getElementById('calculate-all-btn')?.addEventListener('click', calculateAllCentralities);
         document.getElementById('debug-state-btn')?.addEventListener('click', debugCurrentState);
+        document.getElementById('clear-cache-btn')?.addEventListener('click', clearCache);
+        
+        // View mode toggle
+        document.getElementById('view-mode-select')?.addEventListener('change', handleViewModeChange);
+        
         document.getElementById('layout-select')?.addEventListener('change', handleLayoutChange);
         document.getElementById('centrality-select')?.addEventListener('change', handleCentralityChange);
+        
+        // Table view handlers
+        document.getElementById('table-metric-select')?.addEventListener('change', handleTableMetricChange);
+        document.getElementById('table-limit-select')?.addEventListener('change', updateTableView);
+        document.getElementById('community-coloring-toggle')?.addEventListener('change', updateTableView);
         
         // Zoom controls
         document.getElementById('zoom-in-btn')?.addEventListener('click', () => zoomBy(1.5));
@@ -243,9 +367,158 @@ const GlobalGraphManager = (function() {
         // Window resize
         window.addEventListener('resize', handleResize);
     }
+    
+    function handleViewModeChange(e) {
+        currentViewMode = e.target.value;
+        switchView();
+    }
+    
+    function switchView() {
+        const graphView = document.getElementById('graph-view');
+        const tableView = document.getElementById('table-view');
+        
+        if (currentViewMode === 'table') {
+            graphView.style.display = 'none';
+            tableView.style.display = 'block';
+            updateTableView();
+        } else {
+            graphView.style.display = 'block';
+            tableView.style.display = 'none';
+        }
+    }
+    
+    function handleTableMetricChange(e) {
+        const metric = e.target.value;
+        // Sync with main centrality select
+        document.getElementById('centrality-select').value = metric;
+        currentCentralityMeasure = metric;
+        updateTableView();
+    }
+    
+    // Enhanced caching functions
+    function getCachedAnalysis(measure) {
+        const cacheKey = `${measure}_${Date.now()}`;
+        const cached = analysisCache.get(measure);
+        
+        if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+            return cached.data;
+        }
+        
+        return null;
+    }
+    
+    function setCachedAnalysis(measure, data) {
+        analysisCache.set(measure, {
+            data: data,
+            timestamp: Date.now()
+        });
+        updateCacheStatus();
+    }
+    
+    function updateCacheStatus() {
+        const statusEl = document.getElementById('cache-status');
+        const cacheInfo = statusEl.querySelector('.cache-info');
+        
+        if (analysisCache.size === 0) {
+            cacheInfo.textContent = 'Cache: Empty';
+        } else {
+            const validCount = Array.from(analysisCache.values())
+                .filter(item => (Date.now() - item.timestamp) < CACHE_DURATION).length;
+            cacheInfo.textContent = `Cache: ${validCount} metrics cached`;
+        }
+    }
+    
+    function clearCache() {
+        analysisCache.clear();
+        calculationPromises.clear();
+        updateCacheStatus();
+        showNotification('Cache cleared', 'info');
+    }
+
+    async function calculateAllCentralities() {
+        if (!graphData) {
+            showNotification('Please load the graph first', 'warning');
+            return;
+        }
+        
+        document.getElementById('calculation-progress-section').style.display = 'block';
+        
+        // Calculate all centralities progressively
+        const measures = ['degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'];
+        
+        for (const measure of measures) {
+            const progressEl = document.getElementById(`progress-${measure}`);
+            progressEl.textContent = 'Calculating...';
+            progressEl.className = 'progress-status calculating';
+            
+            try {
+                await calculateCentralityMeasure(measure);
+                progressEl.textContent = 'Completed';
+                progressEl.className = 'progress-status completed';
+            } catch (error) {
+                progressEl.textContent = 'Error';
+                progressEl.className = 'progress-status error';
+                console.error(`Error calculating ${measure}:`, error);
+            }
+        }
+        
+        // Update views
+        updateCentralityRankings();
+        updateTableView();
+        
+        setTimeout(() => {
+            document.getElementById('calculation-progress-section').style.display = 'none';
+        }, 3000);
+    }
+    
+    async function calculateCentralityMeasure(measure) {
+        // Check cache first
+        const cached = getCachedAnalysis(measure);
+        if (cached) {
+            console.log(`Using cached ${measure} centrality`);
+            return cached;
+        }
+        
+        // Check if calculation is already in progress
+        if (calculationPromises.has(measure)) {
+            return await calculationPromises.get(measure);
+        }
+        
+        // Start calculation
+        const calculationPromise = fetch(`/api/global-graph/centrality/${measure}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to calculate ${measure} centrality`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Cache the result
+                setCachedAnalysis(measure, data);
+                
+                // Update graph data
+                if (!graphData.analysis) graphData.analysis = {};
+                graphData.analysis[`${measure}Centrality`] = {};
+                
+                data.results.forEach(result => {
+                    graphData.analysis[`${measure}Centrality`][result.nodeId] = result.centrality;
+                });
+                
+                return data;
+            })
+            .finally(() => {
+                calculationPromises.delete(measure);
+            });
+        
+        calculationPromises.set(measure, calculationPromise);
+        return await calculationPromise;
+    }
 
     function debugCurrentState() {
         console.log('🐛 Current Debug State:', {
+            viewMode: currentViewMode,
+            centralityMeasure: currentCentralityMeasure,
+            cacheSize: analysisCache.size,
             transform: { x: transform.x, y: transform.y, k: transform.k },
             svgDimensions: { width, height },
             svgBoundingRect: svg.node().getBoundingClientRect(),
@@ -282,8 +555,18 @@ const GlobalGraphManager = (function() {
                 centralityColorScale.domain(d3.extent(centralityValues));
             }
             
-            // Render graph
-            renderGraph();
+            // Update community color scale
+            if (graphData.analysis && graphData.analysis.communities) {
+                const communityCount = Math.max(...Object.values(graphData.analysis.communities)) + 1;
+                communityColorScale.domain(d3.range(communityCount));
+            }
+            
+            // Render based on current view mode
+            if (currentViewMode === 'graph') {
+                renderGraph();
+            } else {
+                updateTableView();
+            }
             
             // Update rankings
             updateCentralityRankings();
@@ -308,28 +591,21 @@ const GlobalGraphManager = (function() {
             showLoading('Analyzing graph...');
             
             const centrality = document.getElementById('centrality-select').value;
-            const response = await fetch(`/api/global-graph/centrality/${centrality}`);
-            
-            if (!response.ok) {
-                throw new Error('Failed to analyze graph');
-            }
-            
-            const analysisData = await response.json();
-            
-            // Update graph data with new centrality
-            if (!graphData.analysis) graphData.analysis = {};
-            graphData.analysis[`${centrality}Centrality`] = {};
-            
-            analysisData.results.forEach(result => {
-                graphData.analysis[`${centrality}Centrality`][result.nodeId] = result.centrality;
-            });
+            await calculateCentralityMeasure(centrality);
             
             // Update color scale
-            const centralityValues = analysisData.results.map(r => r.centrality);
-            centralityColorScale.domain(d3.extent(centralityValues));
+            const measure = `${centrality}Centrality`;
+            if (graphData.analysis[measure]) {
+                const centralityValues = Object.values(graphData.analysis[measure]);
+                centralityColorScale.domain(d3.extent(centralityValues));
+            }
             
             // Re-render with new colors
-            updateNodeColors();
+            if (currentViewMode === 'graph') {
+                updateNodeColors();
+            } else {
+                updateTableView();
+            }
             
             // Update rankings
             updateCentralityRankings();
@@ -342,6 +618,82 @@ const GlobalGraphManager = (function() {
             hideLoading();
             showNotification('Error analyzing graph: ' + error.message, 'error');
         }
+    }
+    
+    function updateTableView() {
+        const tableBody = document.getElementById('metrics-table-body');
+        if (!tableBody || !graphData || !graphData.nodes) {
+            return;
+        }
+        
+        const metric = document.getElementById('table-metric-select').value;
+        const limit = parseInt(document.getElementById('table-limit-select').value);
+        const useCommunityCola = document.getElementById('community-coloring-toggle').checked;
+        
+        const measure = `${metric}Centrality`;
+        const centrality = graphData.analysis?.[measure];
+        
+        if (!centrality) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="table-message">
+                        ${metric} centrality not calculated yet. 
+                        <button onclick="GlobalGraphManager.calculateCentralityMeasure('${metric}')" class="inline-btn">Calculate Now</button>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Create rankings array
+        const rankings = Object.entries(centrality)
+            .map(([nodeId, value]) => {
+                const node = graphData.nodes.find(n => n.id === nodeId);
+                return { node, value, nodeId };
+            })
+            .filter(item => item.node)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, limit);
+        
+        tableBody.innerHTML = rankings.map((item, index) => {
+            const community = graphData.analysis?.communities?.[item.nodeId] || 'N/A';
+            const degree = graphData.analysis?.degreeCentrality?.[item.nodeId] || 0;
+            
+            // Get community color
+            const communityColor = useCommunityCola && community !== 'N/A' ? 
+                communityColorScale(community) : 'transparent';
+            
+            return `
+                <tr class="table-row" data-node-id="${item.nodeId}" style="background-color: ${communityColor}15;">
+                    <td class="rank-cell">${index + 1}</td>
+                    <td class="node-cell">
+                        <div class="node-info">
+                            <div class="node-title">${truncateText(item.node.content, 40)}</div>
+                            ${item.node.content_zh ? `<div class="node-subtitle">${truncateText(item.node.content_zh, 40)}</div>` : ''}
+                        </div>
+                    </td>
+                    <td class="centrality-cell">${item.value.toFixed(4)}</td>
+                    <td class="community-cell">
+                        <span class="community-badge" style="background-color: ${communityColor};">
+                            ${community}
+                        </span>
+                    </td>
+                    <td class="degree-cell">${degree}</td>
+                    <td class="actions-cell">
+                        <button class="table-action-btn" onclick="GlobalGraphManager.selectNodeById('${item.nodeId}')">Select</button>
+                        <button class="table-action-btn" onclick="GlobalGraphManager.focusNodeById('${item.nodeId}')">Focus</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Add click handlers for table rows
+        tableBody.querySelectorAll('.table-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const nodeId = row.dataset.nodeId;
+                selectNodeById(nodeId);
+            });
+        });
     }
     
     function renderGraph() {
@@ -520,16 +872,20 @@ const GlobalGraphManager = (function() {
     function getNodeColor(node) {
         if (!graphData.analysis) return '#69b3a2';
         
+        // Check if community coloring is enabled
+        const useCommunityCola = document.getElementById('community-coloring-toggle')?.checked;
+        
+        if (useCommunityCola && graphData.analysis.communities && 
+            graphData.analysis.communities[node.id] !== undefined) {
+            return communityColorScale(graphData.analysis.communities[node.id]);
+        }
+        
+        // Use centrality coloring
         const measure = `${currentCentralityMeasure}Centrality`;
         const centrality = graphData.analysis[measure];
         
         if (centrality && centrality[node.id] !== undefined) {
             return centralityColorScale(centrality[node.id]);
-        }
-        
-        // Use community color if available
-        if (graphData.analysis.communities && graphData.analysis.communities[node.id] !== undefined) {
-            return communityColorScale(graphData.analysis.communities[node.id]);
         }
         
         return '#69b3a2';
@@ -543,20 +899,30 @@ const GlobalGraphManager = (function() {
     
     function handleLayoutChange(e) {
         currentLayout = e.target.value;
-        if (graphData) {
+        if (graphData && currentViewMode === 'graph') {
             loadGraph(); // Reload with new layout
         }
     }
     
     function handleCentralityChange(e) {
         currentCentralityMeasure = e.target.value;
+        
+        // Sync with table metric select
+        document.getElementById('table-metric-select').value = currentCentralityMeasure;
+        
         if (graphData && graphData.analysis) {
             // Update color scale
             const measure = `${currentCentralityMeasure}Centrality`;
             if (graphData.analysis[measure]) {
                 const centralityValues = Object.values(graphData.analysis[measure]);
                 centralityColorScale.domain(d3.extent(centralityValues));
-                updateNodeColors();
+                
+                if (currentViewMode === 'graph') {
+                    updateNodeColors();
+                } else {
+                    updateTableView();
+                }
+                
                 updateCentralityRankings();
             } else {
                 // Need to calculate this centrality
@@ -571,20 +937,24 @@ const GlobalGraphManager = (function() {
     }
     
     function zoomBy(factor) {
-        svg.transition().duration(300).call(
-            zoom.scaleBy, factor
-        );
+        if (currentViewMode === 'graph') {
+            svg.transition().duration(300).call(
+                zoom.scaleBy, factor
+            );
+        }
     }
     
     function resetZoom() {
-        svg.transition().duration(500).call(
-            zoom.transform,
-            d3.zoomIdentity
-        );
+        if (currentViewMode === 'graph') {
+            svg.transition().duration(500).call(
+                zoom.transform,
+                d3.zoomIdentity
+            );
+        }
     }
     
     function handleResize() {
-        if (container && container.style.display !== 'none') {
+        if (container && container.style.display !== 'none' && currentViewMode === 'graph') {
             const canvasContainer = document.getElementById('global-graph-canvas');
             const newWidth = canvasContainer.clientWidth || 800;
             const newHeight = canvasContainer.clientHeight || 600;
@@ -644,9 +1014,13 @@ const GlobalGraphManager = (function() {
         const centrality = graphData.analysis && graphData.analysis[measure] ? 
             graphData.analysis[measure][node.id] : 'N/A';
         
+        const community = graphData.analysis && graphData.analysis.communities ? 
+            graphData.analysis.communities[node.id] : 'N/A';
+        
         tooltip.html(`
             <strong>${truncateText(node.content, 30)}</strong><br/>
-            ${currentCentralityMeasure}: ${typeof centrality === 'number' ? centrality.toFixed(3) : centrality}
+            ${currentCentralityMeasure}: ${typeof centrality === 'number' ? centrality.toFixed(3) : centrality}<br/>
+            Community: ${community}
         `);
         
         tooltip.style('left', (event.pageX + 10) + 'px')
@@ -660,10 +1034,22 @@ const GlobalGraphManager = (function() {
     function selectNode(node) {
         selectedNode = node;
         
-        // Highlight selected node
-        if (nodeElements) {
+        // Highlight selected node in graph view
+        if (currentViewMode === 'graph' && nodeElements) {
             nodeElements.attr('stroke', d => d.id === node.id ? '#ff6b6b' : '#fff')
                         .attr('stroke-width', d => d.id === node.id ? 4 : 2);
+        }
+        
+        // Highlight selected node in table view
+        if (currentViewMode === 'table') {
+            const tableRows = document.querySelectorAll('.table-row');
+            tableRows.forEach(row => {
+                if (row.dataset.nodeId === node.id) {
+                    row.classList.add('selected');
+                } else {
+                    row.classList.remove('selected');
+                }
+            });
         }
         
         // Update selected node info
@@ -671,6 +1057,25 @@ const GlobalGraphManager = (function() {
         
         // Show selected node section
         document.getElementById('selected-node-section').style.display = 'block';
+    }
+    
+    function selectNodeById(nodeId) {
+        if (!graphData || !graphData.nodes) return;
+        
+        const node = graphData.nodes.find(n => n.id === nodeId);
+        if (node) {
+            selectNode(node);
+            
+            // If in graph view, center on node
+            if (currentViewMode === 'graph') {
+                centerViewOnNode(node);
+            }
+        }
+    }
+    
+    function focusNodeById(nodeId) {
+        selectNodeById(nodeId);
+        focusSelectedNode();
     }
     
     function updateSelectedNodeInfo() {
@@ -704,7 +1109,18 @@ const GlobalGraphManager = (function() {
         // Get community
         const community = graphData.analysis && graphData.analysis.communities ? 
             graphData.analysis.communities[selectedNode.id] : 'N/A';
-        if (communityEl) communityEl.textContent = community;
+        if (communityEl) {
+            communityEl.textContent = community;
+            
+            // Add community color indicator
+            if (community !== 'N/A') {
+                const communityColor = communityColorScale(community);
+                communityEl.style.background = communityColor + '20';
+                communityEl.style.border = `2px solid ${communityColor}`;
+                communityEl.style.borderRadius = '4px';
+                communityEl.style.padding = '2px 6px';
+            }
+        }
     }
     
     function updateStatistics() {
@@ -715,6 +1131,11 @@ const GlobalGraphManager = (function() {
         document.getElementById('stat-density').textContent = graphData.stats.density.toFixed(3);
         document.getElementById('stat-avg-degree').textContent = graphData.stats.averageDegree.toFixed(1);
         document.getElementById('stat-components').textContent = graphData.stats.components || 1;
+        
+        // Update community count
+        const communityCount = graphData.analysis && graphData.analysis.communities ? 
+            Math.max(...Object.values(graphData.analysis.communities)) + 1 : 1;
+        document.getElementById('stat-communities').textContent = communityCount;
     }
     
     function updateCentralityRankings() {
@@ -733,7 +1154,7 @@ const GlobalGraphManager = (function() {
         const rankings = Object.entries(centrality)
             .map(([nodeId, value]) => {
                 const node = graphData.nodes.find(n => n.id === nodeId);
-                return { node, value };
+                return { node, value, nodeId };
             })
             .filter(item => item.node)
             .sort((a, b) => b.value - a.value)
@@ -741,32 +1162,36 @@ const GlobalGraphManager = (function() {
         
         rankingsEl.innerHTML = `
             <div class="rankings-header">Top ${currentCentralityMeasure} Centrality</div>
-            ${rankings.map((item, index) => `
-                <div class="ranking-item" data-node-id="${item.node.id}">
-                    <div class="ranking-position">${index + 1}</div>
-                    <div class="ranking-content">
-                        <div class="ranking-title">${truncateText(item.node.content, 25)}</div>
-                        <div class="ranking-value">${item.value.toFixed(3)}</div>
+            ${rankings.map((item, index) => {
+                const community = graphData.analysis.communities?.[item.nodeId] || 'N/A';
+                const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
+                
+                return `
+                    <div class="ranking-item" data-node-id="${item.nodeId}">
+                        <div class="ranking-position">${index + 1}</div>
+                        <div class="ranking-content">
+                            <div class="ranking-title">${truncateText(item.node.content, 25)}</div>
+                            <div class="ranking-value">${item.value.toFixed(3)}</div>
+                            <div class="ranking-community" style="background-color: ${communityColor}20; border-left: 3px solid ${communityColor};">
+                                Community ${community}
+                            </div>
+                        </div>
                     </div>
-                </div>
-            `).join('')}
+                `;
+            }).join('')}
         `;
         
         // Add click handlers to ranking items
         rankingsEl.querySelectorAll('.ranking-item').forEach(item => {
             item.addEventListener('click', () => {
                 const nodeId = item.dataset.nodeId;
-                const node = graphData.nodes.find(n => n.id === nodeId);
-                if (node) {
-                    selectNode(node);
-                    centerViewOnNode(node);
-                }
+                selectNodeById(nodeId);
             });
         });
     }
     
     function centerViewOnNode(node) {
-        if (!node.x || !node.y) return;
+        if (!node.x || !node.y || currentViewMode !== 'graph') return;
         
         const scale = transform.k;
         const x = -node.x * scale + width / 2;
@@ -798,7 +1223,7 @@ const GlobalGraphManager = (function() {
         
         searchTimeout = setTimeout(() => {
             try {
-                // Search within current graph nodes (similar to localGraphManager)
+                // Search within current graph nodes
                 const matchingNodes = graphData.nodes.filter(node => {
                     const content = (node.content || '').toLowerCase();
                     const content_zh = (node.content_zh || '').toLowerCase();
@@ -838,6 +1263,12 @@ const GlobalGraphManager = (function() {
                     const degree = graphData.analysis && graphData.analysis.degreeCentrality ? 
                         graphData.analysis.degreeCentrality[node.id] || 0 : 0;
                     
+                    // Get community if available
+                    const community = graphData.analysis && graphData.analysis.communities ? 
+                        graphData.analysis.communities[node.id] : 'N/A';
+                    
+                    const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
+                    
                     return `
                         <div class="search-result-item" data-node-id="${node.id}">
                             <div class="search-result-content">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
@@ -845,6 +1276,9 @@ const GlobalGraphManager = (function() {
                             <div class="search-result-meta">
                                 <span class="search-result-degree">Degree: ${degree}</span>
                                 ${centrality !== null ? `<span class="search-result-centrality">${currentCentralityMeasure}: ${centrality.toFixed(3)}</span>` : ''}
+                                <span class="search-result-community" style="background-color: ${communityColor}20; border-left: 3px solid ${communityColor};">
+                                    C${community}
+                                </span>
                             </div>
                         </div>
                     `;
@@ -854,11 +1288,7 @@ const GlobalGraphManager = (function() {
                 resultsEl.querySelectorAll('.search-result-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const nodeId = item.dataset.nodeId;
-                        const node = graphData.nodes.find(n => n.id === nodeId);
-                        if (node) {
-                            selectNode(node);
-                            centerViewOnNode(node);
-                        }
+                        selectNodeById(nodeId);
                     });
                 });
                 
@@ -978,7 +1408,9 @@ const GlobalGraphManager = (function() {
             
             // Trigger resize to ensure proper canvas sizing
             setTimeout(() => {
-                handleResize();
+                if (currentViewMode === 'graph') {
+                    handleResize();
+                }
             }, 100);
         }
     }
@@ -1000,7 +1432,10 @@ const GlobalGraphManager = (function() {
         hide,
         isVisible,
         selectNode,
+        selectNodeById,
+        focusNodeById,
         centerViewOnNode,
+        calculateCentralityMeasure,
         isInitialized: () => isInitialized
     };
 })();

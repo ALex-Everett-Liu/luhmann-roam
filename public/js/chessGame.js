@@ -32,6 +32,177 @@ const ChessGame = (function() {
         hide();
     }
     
+    // Create a custom modal dialog
+    function createModal(title, content, buttons = []) {
+        const modal = document.createElement('div');
+        modal.className = 'chess-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'chess-modal-content';
+        modalContent.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        `;
+        
+        const modalTitle = document.createElement('h3');
+        modalTitle.textContent = title;
+        modalTitle.style.cssText = `
+            margin: 0 0 15px 0;
+            color: #333;
+        `;
+        
+        const modalBody = document.createElement('div');
+        modalBody.className = 'chess-modal-body';
+        modalBody.appendChild(content);
+        
+        const modalFooter = document.createElement('div');
+        modalFooter.className = 'chess-modal-footer';
+        modalFooter.style.cssText = `
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        `;
+        
+        buttons.forEach(button => {
+            const btn = document.createElement('button');
+            btn.textContent = button.text;
+            btn.className = 'chess-btn';
+            btn.style.cssText = `
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                background: ${button.primary ? '#2196F3' : '#f0f0f0'};
+                color: ${button.primary ? 'white' : '#333'};
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.2s;
+            `;
+            btn.addEventListener('click', () => {
+                modal.remove();
+                if (button.onClick) {
+                    button.onClick();
+                }
+            });
+            modalFooter.appendChild(btn);
+        });
+        
+        modalContent.appendChild(modalTitle);
+        modalContent.appendChild(modalBody);
+        modalContent.appendChild(modalFooter);
+        modal.appendChild(modalContent);
+        
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        return modal;
+    }
+    
+    // Create input dialog
+    function createInputDialog(title, placeholder, defaultValue = '', callback) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = placeholder;
+        input.value = defaultValue;
+        input.style.cssText = `
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        `;
+        
+        const buttons = [
+            {
+                text: 'Cancel',
+                primary: false,
+                onClick: () => {
+                    if (callback) callback(null);
+                }
+            },
+            {
+                text: 'OK',
+                primary: true,
+                onClick: () => {
+                    if (callback) callback(input.value);
+                }
+            }
+        ];
+        
+        const modal = createModal(title, input, buttons);
+        
+        // Focus input and select text
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 100);
+        
+        // Handle Enter key
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                modal.remove();
+                if (callback) callback(input.value);
+            } else if (e.key === 'Escape') {
+                modal.remove();
+                if (callback) callback(null);
+            }
+        });
+        
+        return modal;
+    }
+    
+    // Create confirmation dialog
+    function createConfirmDialog(title, message, callback) {
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        messageDiv.style.cssText = `
+            margin: 10px 0;
+            line-height: 1.4;
+        `;
+        
+        const buttons = [
+            {
+                text: 'Cancel',
+                primary: false,
+                onClick: () => {
+                    if (callback) callback(false);
+                }
+            },
+            {
+                text: 'OK',
+                primary: true,
+                onClick: () => {
+                    if (callback) callback(true);
+                }
+            }
+        ];
+        
+        return createModal(title, messageDiv, buttons);
+    }
+    
     // Create the container and board
     function createContainer() {
         // Create main container if it doesn't exist
@@ -448,29 +619,30 @@ const ChessGame = (function() {
     
     // Start a new game
     async function startNewGame() {
-        const title = prompt('Enter game title:', 'New Chess Game');
-        if (!title) return;
-        
-        try {
-            const response = await fetch('/api/chess', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ title })
-            });
+        createInputDialog('New Game', 'Enter game title:', 'New Chess Game', async (title) => {
+            if (!title) return;
             
-            if (response.ok) {
-                currentGame = await response.json();
-                isGameActive = true;
-                updateBoardDisplay();
-                updateGameStatus();
-                updateMoveHistory();
-                document.getElementById('chess-game-title').textContent = title;
+            try {
+                const response = await fetch('/api/chess', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title })
+                });
+                
+                if (response.ok) {
+                    currentGame = await response.json();
+                    isGameActive = true;
+                    updateBoardDisplay();
+                    updateGameStatus();
+                    updateMoveHistory();
+                    document.getElementById('chess-game-title').textContent = title;
+                }
+            } catch (error) {
+                console.error('Error starting new game:', error);
             }
-        } catch (error) {
-            console.error('Error starting new game:', error);
-        }
+        });
     }
     
     // Update board display
@@ -537,30 +709,41 @@ const ChessGame = (function() {
     // Save current game
     async function saveCurrentGame() {
         if (!currentGame) {
-            alert('No active game to save');
+            createModal('Error', document.createTextNode('No active game to save'), [
+                { text: 'OK', primary: true }
+            ]);
             return;
         }
         
-        const filename = prompt('Enter filename (without extension):', `chess_game_${currentGame.id.slice(0, 8)}`);
-        if (!filename) return;
-        
-        try {
-            const response = await fetch(`/api/chess/${currentGame.id}/save`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename })
-            });
+        createInputDialog('Save Game', 'Enter filename (without extension):', `chess_game_${currentGame.id.slice(0, 8)}`, async (filename) => {
+            if (!filename) return;
             
-            if (response.ok) {
-                const result = await response.json();
-                alert(`Game saved as ${result.filename}`);
+            try {
+                const response = await fetch(`/api/chess/${currentGame.id}/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filename })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const messageDiv = document.createElement('div');
+                    messageDiv.textContent = `Game saved as ${result.filename}`;
+                    createModal('Success', messageDiv, [
+                        { text: 'OK', primary: true }
+                    ]);
+                }
+            } catch (error) {
+                console.error('Error saving game:', error);
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = 'Error saving game';
+                createModal('Error', messageDiv, [
+                    { text: 'OK', primary: true }
+                ]);
             }
-        } catch (error) {
-            console.error('Error saving game:', error);
-            alert('Error saving game');
-        }
+        });
     }
     
     // Show load game dialog
@@ -599,7 +782,11 @@ const ChessGame = (function() {
             }
         } catch (error) {
             console.error('Error loading game:', error);
-            alert('Error loading game');
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = 'Error loading game';
+            createModal('Error', messageDiv, [
+                { text: 'OK', primary: true }
+            ]);
         }
     }
     
@@ -618,77 +805,46 @@ const ChessGame = (function() {
     
     // Show games modal
     function showGamesModal(games) {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 600px;
-            max-height: 80%;
+        const gamesContainer = document.createElement('div');
+        gamesContainer.style.cssText = `
+            max-height: 400px;
             overflow-y: auto;
         `;
         
-        modalContent.innerHTML = `
-            <h3>Saved Games</h3>
-            <div id="games-list-container"></div>
-            <button id="close-games-modal" class="chess-btn" style="margin-top: 15px;">Close</button>
-        `;
+        if (games.length === 0) {
+            gamesContainer.innerHTML = '<p>No saved games found.</p>';
+        } else {
+            games.forEach(game => {
+                const gameItem = document.createElement('div');
+                gameItem.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 10px;
+                    border-bottom: 1px solid #eee;
+                `;
+                
+                gameItem.innerHTML = `
+                    <div>
+                        <strong>${game.title}</strong><br>
+                        <small>Status: ${game.game_status}, Moves: ${game.move_count}</small>
+                    </div>
+                    <button class="chess-btn load-game-btn" data-game-id="${game.id}">Load</button>
+                `;
+                
+                gamesContainer.appendChild(gameItem);
+            });
+        }
         
-        const gamesContainer = modalContent.querySelector('#games-list-container');
+        const modal = createModal('Saved Games', gamesContainer, [
+            { text: 'Close', primary: true }
+        ]);
         
-        games.forEach(game => {
-            const gameItem = document.createElement('div');
-            gameItem.style.cssText = `
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 10px;
-                border-bottom: 1px solid #eee;
-            `;
-            
-            gameItem.innerHTML = `
-                <div>
-                    <strong>${game.title}</strong><br>
-                    <small>Status: ${game.game_status}, Moves: ${game.move_count}</small>
-                </div>
-                <button class="chess-btn load-game-btn" data-game-id="${game.id}">Load</button>
-            `;
-            
-            gamesContainer.appendChild(gameItem);
-        });
-        
-        modalContent.querySelector('#close-games-modal').addEventListener('click', () => {
-            modal.remove();
-        });
-        
-        modalContent.addEventListener('click', async (e) => {
+        // Add event listeners for load buttons
+        gamesContainer.addEventListener('click', async (e) => {
             if (e.target.classList.contains('load-game-btn')) {
                 const gameId = e.target.dataset.gameId;
                 await loadGameById(gameId);
-                modal.remove();
-            }
-        });
-        
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-        
-        // Close on background click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
                 modal.remove();
             }
         });
@@ -714,14 +870,18 @@ const ChessGame = (function() {
     // Export game as PGN
     async function exportGameAsPGN() {
         if (!currentGame) {
-            alert('No game to export');
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = 'No game to export';
+            createModal('Error', messageDiv, [
+                { text: 'OK', primary: true }
+            ]);
             return;
         }
         
-        const filename = prompt('Enter filename (without extension):', `chess_game_${currentGame.id.slice(0, 8)}`);
-        if (!filename) return;
-        
-        await saveCurrentGame();
+        createInputDialog('Export PGN', 'Enter filename (without extension):', `chess_game_${currentGame.id.slice(0, 8)}`, async (filename) => {
+            if (!filename) return;
+            await saveCurrentGame();
+        });
     }
     
     // Show the chess game
