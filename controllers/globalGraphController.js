@@ -347,99 +347,114 @@ function calculateEigenvectorCentrality(nodes, adjacencyList, iterations = 100) 
 }
 
 /**
- * Proper community detection using Louvain algorithm with weights as distances
+ * Simple and robust community detection with debugging
  */
 function detectCommunities(nodes, adjacencyList) {
+  console.log(`🔍 Starting community detection for ${nodes.length} nodes`);
+  
   const nodeIds = nodes.map(n => n.id);
-  const communities = new Map();
+  const communities = {};
+  const visited = new Set();
+  let communityId = 0;
   
-  // Initialize each node in its own community
-  nodeIds.forEach((nodeId, index) => {
-    communities.set(nodeId, index);
-  });
+  // Handle edge case: no nodes
+  if (nodeIds.length === 0) {
+    console.log('❌ No nodes to process');
+    return {};
+  }
   
-  // Calculate total strength (inverse of weight) for all edges
-  let totalStrength = 0;
-  const edgeStrengths = new Map();
-  
+  // Find all connected components using simple BFS
   nodeIds.forEach(nodeId => {
-    const neighbors = adjacencyList.get(nodeId) || [];
-    neighbors.forEach(neighbor => {
-      const edgeKey = `${nodeId}-${neighbor.nodeId}`;
-      if (!edgeStrengths.has(edgeKey)) {
-        const strength = 1.0 / neighbor.weight; // Convert distance to strength
-        edgeStrengths.set(edgeKey, strength);
-        totalStrength += strength;
-      }
-    });
-  });
-  
-  // If no edges, return each node in its own community
-  if (totalStrength === 0) {
-    return communities;
-  }
-  
-  // Louvain algorithm - Phase 1: Local optimization
-  let improved = true;
-  let maxIterations = 10;
-  let iteration = 0;
-  
-  while (improved && iteration < maxIterations) {
-    improved = false;
-    iteration++;
-    
-    // For each node, try moving it to neighbor communities
-    nodeIds.forEach(nodeId => {
-      const currentCommunity = communities.get(nodeId);
-      const neighbors = adjacencyList.get(nodeId) || [];
+    if (!visited.has(nodeId)) {
+      console.log(`🔍 Processing new component starting from node: ${nodeId}`);
       
-      // Get neighboring communities
-      const neighborCommunities = new Set();
-      neighbors.forEach(neighbor => {
-        const neighborCommunity = communities.get(neighbor.nodeId);
-        if (neighborCommunity !== currentCommunity) {
-          neighborCommunities.add(neighborCommunity);
-        }
-      });
+      const component = [];
+      const queue = [nodeId];
       
-      // Calculate modularity gain for each move
-      let bestCommunity = currentCommunity;
-      let bestModularityGain = 0;
-      
-      neighborCommunities.forEach(targetCommunity => {
-        const gain = calculateModularityGain(
-          nodeId, currentCommunity, targetCommunity, 
-          communities, adjacencyList, totalStrength
-        );
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (visited.has(current)) continue;
         
-        if (gain > bestModularityGain) {
-          bestModularityGain = gain;
-          bestCommunity = targetCommunity;
-        }
+        visited.add(current);
+        component.push(current);
+        
+        // Add all neighbors to the queue
+        const neighbors = adjacencyList.get(current) || [];
+        neighbors.forEach(neighbor => {
+          if (!visited.has(neighbor.nodeId)) {
+            queue.push(neighbor.nodeId);
+          }
+        });
+      }
+      
+      // Assign community ID to all nodes in this component
+      component.forEach(nId => {
+        communities[nId] = communityId;
       });
       
-      // Move node if improvement found
-      if (bestCommunity !== currentCommunity && bestModularityGain > 0) {
-        communities.set(nodeId, bestCommunity);
-        improved = true;
-      }
-    });
-  }
-  
-  // Renumber communities to be consecutive
-  const communityMapping = new Map();
-  let newCommunityId = 0;
-  
-  communities.forEach((communityId, nodeId) => {
-    if (!communityMapping.has(communityId)) {
-      communityMapping.set(communityId, newCommunityId++);
+      console.log(`✅ Community ${communityId}: ${component.length} nodes`);
+      communityId++;
     }
   });
   
-  // Apply renumbering
-  communities.forEach((communityId, nodeId) => {
-    communities.set(nodeId, communityMapping.get(communityId));
+  // If we have too many small communities, merge them
+  const targetCommunities = Math.min(30, Math.max(3, Math.floor(nodeIds.length / 15)));
+  const communityGroups = {};
+  
+  // Group nodes by community
+  Object.entries(communities).forEach(([nodeId, commId]) => {
+    if (!communityGroups[commId]) {
+      communityGroups[commId] = [];
+    }
+    communityGroups[commId].push(nodeId);
   });
+  
+  const currentCommunityCount = Object.keys(communityGroups).length;
+  console.log(`📊 Initial communities: ${currentCommunityCount}, target: ${targetCommunities}`);
+  
+  // Simple merging if we have too many communities
+  if (currentCommunityCount > targetCommunities) {
+    console.log('🔄 Merging small communities...');
+    
+    // Sort communities by size (smallest first)
+    const sortedCommunities = Object.entries(communityGroups)
+      .sort(([,a], [,b]) => a.length - b.length);
+    
+    // Merge smallest communities into larger ones
+    const toMerge = sortedCommunities.slice(0, currentCommunityCount - targetCommunities);
+    const targets = sortedCommunities.slice(-targetCommunities);
+    
+    toMerge.forEach(([smallCommId, smallNodes], index) => {
+      const targetIndex = index % targets.length;
+      const [targetCommId] = targets[targetIndex];
+      
+      // Move all nodes from small community to target community
+      smallNodes.forEach(nodeId => {
+        communities[nodeId] = parseInt(targetCommId);
+      });
+      
+      console.log(`🔄 Merged community ${smallCommId} (${smallNodes.length} nodes) into community ${targetCommId}`);
+    });
+  }
+  
+  // Renumber communities to be consecutive starting from 0
+  const uniqueCommunities = [...new Set(Object.values(communities))];
+  const communityMapping = {};
+  uniqueCommunities.forEach((oldId, index) => {
+    communityMapping[oldId] = index;
+  });
+  
+  // Apply renumbering
+  Object.keys(communities).forEach(nodeId => {
+    communities[nodeId] = communityMapping[communities[nodeId]];
+  });
+  
+  const finalCommunityCount = Math.max(...Object.values(communities)) + 1;
+  console.log(`✅ Community detection completed: ${Object.keys(communities).length} nodes in ${finalCommunityCount} communities`);
+  
+  // Debug: show first few assignments
+  const sampleAssignments = Object.entries(communities).slice(0, 5);
+  console.log('📋 Sample community assignments:', sampleAssignments);
   
   return communities;
 }
@@ -769,8 +784,12 @@ exports.getGlobalGraph = async (req, res) => {
     const analysis = {};
     
     if (includeCentrality === 'true') {
-      console.log('Calculating centrality measures for pool nodes...');
-      analysis.degreeCentrality = Object.fromEntries(calculateDegreeCentrality(nodes, adjacencyList));
+      console.log('🔍 Calculating centrality measures for pool nodes...');
+      
+      // Calculate degree centrality
+      const degreeCentralityMap = calculateDegreeCentrality(nodes, adjacencyList);
+      analysis.degreeCentrality = Object.fromEntries(degreeCentralityMap);
+      console.log(`✅ Degree centrality calculated for ${Object.keys(analysis.degreeCentrality).length} nodes`);
       
       // Check cache for other centrality measures
       const cachedBetweenness = getCachedAnalysis('betweenness');
@@ -781,9 +800,17 @@ exports.getGlobalGraph = async (req, res) => {
             analysis.betweennessCentrality[result.nodeId] = result.centrality;
           }
         });
+        console.log(`✅ Loaded cached betweenness centrality for ${Object.keys(analysis.betweennessCentrality).length} nodes`);
       }
       
-      analysis.communities = Object.fromEntries(detectCommunities(nodes, adjacencyList));
+      // Calculate communities with debugging
+      console.log('🔍 Starting community detection...');
+      analysis.communities = detectCommunities(nodes, adjacencyList);
+      console.log(`✅ Communities assigned: ${Object.keys(analysis.communities).length} nodes`);
+      
+      // Debug: show sample community assignments
+      const sampleCommunities = Object.entries(analysis.communities).slice(0, 10);
+      console.log('📋 Sample community assignments:', sampleCommunities);
     }
     
     // Calculate layout
