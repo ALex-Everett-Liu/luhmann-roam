@@ -1557,6 +1557,63 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Add chess game button to sidebar
+    function addChessGameButton() {
+        const chessButton = document.createElement('button');
+        chessButton.textContent = '♟️ Chess Game';
+        chessButton.className = 'sidebar-button';
+        chessButton.style.cssText = `
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        `;
+        
+        chessButton.addEventListener('click', () => {
+            if (window.ChessGame) {
+                window.ChessGame.show();
+            } else {
+                console.error('ChessGame module not loaded');
+                // Try to load it dynamically
+                const script = document.createElement('script');
+                script.src = 'js/chessGame.js';
+                script.onload = () => {
+                    if (window.ChessGame) {
+                        window.ChessGame.show();
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        });
+        
+        chessButton.addEventListener('mouseenter', () => {
+            chessButton.style.background = '#45a049';
+        });
+        
+        chessButton.addEventListener('mouseleave', () => {
+            chessButton.style.background = '#4CAF50';
+        });
+        
+        // Use the existing addButtonToSidebar function
+        if (window.addButtonToSidebar) {
+            window.addButtonToSidebar(chessButton);
+        } else {
+            // Fallback to direct append
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.appendChild(chessButton);
+            }
+        }
+    }
+    
+    // Add chess button after a short delay to ensure other modules are loaded
+    setTimeout(addChessGameButton, 1000);
+
   // Add this function after the other helper functions
   async function copyContentBetweenLanguages(nodeId, direction) {
     try {
@@ -1732,6 +1789,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 });
-
-
 

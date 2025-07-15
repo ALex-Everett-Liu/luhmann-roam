@@ -898,6 +898,47 @@ try {
     END;
   `);
 
+    // Create chess_games table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS chess_games (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        game_status TEXT DEFAULT 'active',
+        current_player TEXT DEFAULT 'white',
+        move_count INTEGER DEFAULT 0,
+        board_state TEXT,
+        moves_history TEXT,
+        winner TEXT,
+        game_result TEXT,
+        started_at INTEGER DEFAULT (strftime('%s', 'now')),
+        ended_at INTEGER,
+        last_move_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+  
+    // Add indices for chess_games table
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_chess_games_status ON chess_games(game_status);
+      CREATE INDEX IF NOT EXISTS idx_chess_games_started_at ON chess_games(started_at);
+      CREATE INDEX IF NOT EXISTS idx_chess_games_sequence_id ON chess_games(sequence_id);
+    `);
+  
+    // Add trigger for chess_games table
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_chess_games
+      AFTER INSERT ON chess_games
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE chess_games 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM chess_games)
+        WHERE id = NEW.id;
+      END;
+    `);
+
   return db;
 }
 
