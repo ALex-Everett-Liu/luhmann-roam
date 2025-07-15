@@ -32,6 +32,9 @@ const GlobalGraphManager = (function() {
         'degree', 'betweenness', 'closeness', 'pagerank', 'eigenvector'
     ];
     
+    // Add fullscreen state tracking
+    let isTableFullscreen = false;
+
     function initialize() {
         if (isInitialized) {
             return;
@@ -138,34 +141,45 @@ const GlobalGraphManager = (function() {
                     <!-- Table View -->
                     <div class="global-graph-table-view" id="table-view" style="display: none;">
                         <div class="table-controls">
-                            <div class="table-control-group">
-                                <label for="table-metric-select">Metric:</label>
-                                <select id="table-metric-select" class="table-metric-select">
-                                    <option value="degree">Degree Centrality</option>
-                                    <option value="betweenness">Betweenness Centrality</option>
-                                    <option value="closeness">Closeness Centrality</option>
-                                    <option value="pagerank">PageRank Centrality</option>
-                                    <option value="eigenvector">Eigenvector Centrality</option>
-                                </select>
+                            <div class="table-controls-left">
+                                <div class="table-control-group">
+                                    <label for="table-metric-select">Metric:</label>
+                                    <select id="table-metric-select" class="table-metric-select">
+                                        <option value="degree">Degree Centrality</option>
+                                        <option value="betweenness">Betweenness Centrality</option>
+                                        <option value="closeness">Closeness Centrality</option>
+                                        <option value="pagerank">PageRank Centrality</option>
+                                        <option value="eigenvector">Eigenvector Centrality</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="table-control-group">
+                                    <label for="table-limit-select">Show Top:</label>
+                                    <select id="table-limit-select" class="table-limit-select">
+                                        <option value="25">Top 25</option>
+                                        <option value="50">Top 50</option>
+                                        <option value="100" selected>Top 100</option>
+                                        <option value="200">Top 200</option>
+                                        <option value="500">Top 500</option>
+                                        <option value="1000">Top 1000</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="table-control-group">
+                                    <label for="community-coloring-toggle">Community Colors:</label>
+                                    <input type="checkbox" id="community-coloring-toggle" class="community-toggle">
+                                </div>
                             </div>
                             
-                            <div class="table-control-group">
-                                <label for="table-limit-select">Show Top:</label>
-                                <select id="table-limit-select" class="table-limit-select">
-                                    <option value="25">Top 25</option>
-                                    <option value="50">Top 50</option>
-                                    <option value="100" selected>Top 100</option>
-                                    <option value="200">Top 200</option>
-                                </select>
-                            </div>
-                            
-                            <div class="table-control-group">
-                                <label for="community-coloring-toggle">Community Colors:</label>
-                                <input type="checkbox" id="community-coloring-toggle" class="community-toggle">
+                            <div class="table-controls-right">
+                                <button id="table-fullscreen-btn" class="fullscreen-btn">
+                                    <span id="fullscreen-icon">⛶</span>
+                                    <span id="fullscreen-text">Fullscreen</span>
+                                </button>
                             </div>
                         </div>
                         
-                        <div class="metrics-table-container">
+                        <div class="metrics-table-container" id="metrics-table-container">
                             <table class="metrics-table" id="metrics-table">
                                 <thead>
                                     <tr>
@@ -351,6 +365,9 @@ const GlobalGraphManager = (function() {
         document.getElementById('table-limit-select')?.addEventListener('change', updateTableView);
         document.getElementById('community-coloring-toggle')?.addEventListener('change', updateTableView);
         
+        // Fullscreen handlers
+        document.getElementById('table-fullscreen-btn')?.addEventListener('click', toggleTableFullscreen);
+        
         // Zoom controls
         document.getElementById('zoom-in-btn')?.addEventListener('click', () => zoomBy(1.5));
         document.getElementById('zoom-out-btn')?.addEventListener('click', () => zoomBy(0.67));
@@ -365,6 +382,9 @@ const GlobalGraphManager = (function() {
         
         // Window resize
         window.addEventListener('resize', handleResize);
+        
+        // Escape key to exit fullscreen
+        document.addEventListener('keydown', handleKeyDown);
     }
     
     function handleViewModeChange(e) {
@@ -513,6 +533,35 @@ const GlobalGraphManager = (function() {
         return await calculationPromise;
     }
 
+    async function calculateAndUpdateTable(measure) {
+        try {
+            showLoading(`Calculating ${measure} centrality...`);
+            
+            await calculateCentralityMeasure(measure);
+            
+            // Update color scale
+            const measureKey = `${measure}Centrality`;
+            if (graphData.analysis[measureKey]) {
+                const centralityValues = Object.values(graphData.analysis[measureKey]);
+                centralityColorScale.domain(d3.extent(centralityValues));
+            }
+            
+            // Update table view
+            updateTableView();
+            
+            // Update rankings
+            updateCentralityRankings();
+            
+            hideLoading();
+            showNotification(`${measure} centrality calculated!`, 'success');
+            
+        } catch (error) {
+            console.error(`Error calculating ${measure}:`, error);
+            hideLoading();
+            showNotification(`Error calculating ${measure}: ${error.message}`, 'error');
+        }
+    }
+
     function debugCurrentState() {
         console.log('🐛 Current Debug State:', {
             viewMode: currentViewMode,
@@ -637,12 +686,36 @@ const GlobalGraphManager = (function() {
                 <tr>
                     <td colspan="5" class="table-message">
                         ${metric} centrality not calculated yet. 
-                        <button onclick="GlobalGraphManager.calculateCentralityMeasure('${metric}')" class="inline-btn">Calculate Now</button>
+                        <button onclick="GlobalGraphManager.calculateAndUpdateTable('${metric}')" class="inline-btn">Calculate Now</button>
                     </td>
                 </tr>
             `;
             return;
         }
+        
+        // Show loading for large datasets
+        if (Object.keys(centrality).length > 500) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="table-message">
+                        <div class="loading-spinner" style="width: 20px; height: 20px; margin: 0 auto;"></div>
+                        Loading ${Object.keys(centrality).length} nodes...
+                    </td>
+                </tr>
+            `;
+            
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                renderTableData(centrality, limit, useCommunityCola);
+            }, 10);
+        } else {
+            renderTableData(centrality, limit, useCommunityCola);
+        }
+    }
+    
+    function renderTableData(centrality, limit, useCommunityCola) {
+        const tableBody = document.getElementById('metrics-table-body');
+        if (!tableBody) return;
         
         // Create rankings array
         const rankings = Object.entries(centrality)
@@ -654,7 +727,10 @@ const GlobalGraphManager = (function() {
             .sort((a, b) => b.value - a.value)
             .slice(0, limit);
         
-        tableBody.innerHTML = rankings.map((item, index) => {
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        rankings.forEach((item, index) => {
             const community = graphData.analysis?.communities?.[item.nodeId] || 'N/A';
             const degree = graphData.analysis?.degreeCentrality?.[item.nodeId] || 0;
             
@@ -662,33 +738,39 @@ const GlobalGraphManager = (function() {
             const communityColor = useCommunityCola && community !== 'N/A' ? 
                 communityColorScale(community) : 'transparent';
             
-            return `
-                <tr class="table-row" data-node-id="${item.nodeId}" style="background-color: ${communityColor}15;">
-                    <td class="rank-cell">${index + 1}</td>
-                    <td class="node-cell">
-                        <div class="node-info">
-                            <div class="node-title">${truncateText(item.node.content, 40)}</div>
-                            ${item.node.content_zh ? `<div class="node-subtitle">${truncateText(item.node.content_zh, 40)}</div>` : ''}
-                        </div>
-                    </td>
-                    <td class="centrality-cell">${item.value.toFixed(4)}</td>
-                    <td class="community-cell">
-                        <span class="community-badge" style="background-color: ${communityColor};">
-                            ${community}
-                        </span>
-                    </td>
-                    <td class="degree-cell">${degree}</td>
-                </tr>
+            const row = document.createElement('tr');
+            row.className = 'table-row';
+            row.dataset.nodeId = item.nodeId;
+            row.style.backgroundColor = `${communityColor}15`;
+            
+            row.innerHTML = `
+                <td class="rank-cell">${index + 1}</td>
+                <td class="node-cell">
+                    <div class="node-info">
+                        <div class="node-title">${truncateText(item.node.content, 60)}</div>
+                        ${item.node.content_zh ? `<div class="node-subtitle">${truncateText(item.node.content_zh, 60)}</div>` : ''}
+                    </div>
+                </td>
+                <td class="centrality-cell">${item.value.toFixed(4)}</td>
+                <td class="community-cell">
+                    <span class="community-badge" style="background-color: ${communityColor};">
+                        ${community}
+                    </span>
+                </td>
+                <td class="degree-cell">${degree}</td>
             `;
-        }).join('');
-        
-        // Add click handlers for table rows
-        tableBody.querySelectorAll('.table-row').forEach(row => {
+            
+            // Add click handler
             row.addEventListener('click', () => {
-                const nodeId = row.dataset.nodeId;
-                selectNodeById(nodeId);
+                selectNodeById(item.nodeId);
             });
+            
+            fragment.appendChild(row);
         });
+        
+        // Clear and append all rows at once
+        tableBody.innerHTML = '';
+        tableBody.appendChild(fragment);
     }
     
     function renderGraph() {
@@ -1420,6 +1502,86 @@ const GlobalGraphManager = (function() {
         return container && container.style.display !== 'none';
     }
     
+    function handleKeyDown(e) {
+        if (e.key === 'Escape' && isTableFullscreen) {
+            exitTableFullscreen();
+        }
+    }
+
+    function toggleTableFullscreen() {
+        if (isTableFullscreen) {
+            exitTableFullscreen();
+        } else {
+            enterTableFullscreen();
+        }
+    }
+
+    function enterTableFullscreen() {
+        const tableContainer = document.getElementById('metrics-table-container');
+        const fullscreenBtn = document.getElementById('table-fullscreen-btn');
+        const fullscreenIcon = document.getElementById('fullscreen-icon');
+        const fullscreenText = document.getElementById('fullscreen-text');
+        
+        if (!tableContainer || !fullscreenBtn) return;
+        
+        // Add fullscreen class
+        tableContainer.classList.add('fullscreen');
+        fullscreenBtn.classList.add('active');
+        
+        // Update button text and icon
+        fullscreenIcon.textContent = '⛷';
+        fullscreenText.textContent = 'Exit Fullscreen';
+        
+        // Create close button
+        const closeBtn = document.createElement('button');
+        closeBtn.id = 'fullscreen-close-btn';
+        closeBtn.className = 'fullscreen-close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', exitTableFullscreen);
+        
+        // Add close button to table container
+        tableContainer.appendChild(closeBtn);
+        
+        // Set fullscreen state
+        isTableFullscreen = true;
+        
+        // Hide body scrollbar
+        document.body.style.overflow = 'hidden';
+        
+        showNotification('Table in fullscreen mode. Press ESC to exit.', 'info');
+    }
+
+    function exitTableFullscreen() {
+        const tableContainer = document.getElementById('metrics-table-container');
+        const fullscreenBtn = document.getElementById('table-fullscreen-btn');
+        const fullscreenIcon = document.getElementById('fullscreen-icon');
+        const fullscreenText = document.getElementById('fullscreen-text');
+        const closeBtn = document.getElementById('fullscreen-close-btn');
+        
+        if (!tableContainer || !fullscreenBtn) return;
+        
+        // Remove fullscreen class
+        tableContainer.classList.remove('fullscreen');
+        fullscreenBtn.classList.remove('active');
+        
+        // Update button text and icon
+        fullscreenIcon.textContent = '⛶';
+        fullscreenText.textContent = 'Fullscreen';
+        
+        // Remove close button
+        if (closeBtn) {
+            closeBtn.remove();
+        }
+        
+        // Reset fullscreen state
+        isTableFullscreen = false;
+        
+        // Restore body scrollbar
+        document.body.style.overflow = '';
+        
+        showNotification('Exited fullscreen mode', 'info');
+    }
+    
     // Public API
     return {
         initialize,
@@ -1431,6 +1593,7 @@ const GlobalGraphManager = (function() {
         focusNodeById,
         centerViewOnNode,
         calculateCentralityMeasure,
+        calculateAndUpdateTable,  // Add this line
         isInitialized: () => isInitialized
     };
 })();

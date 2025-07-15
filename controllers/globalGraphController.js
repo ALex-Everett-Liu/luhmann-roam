@@ -263,7 +263,7 @@ function dijkstraDistances(source, adjacencyList, nodeIds) {
 }
 
 /**
- * Calculate PageRank centrality
+ * Calculate PageRank centrality with weights as distances
  */
 function calculatePageRankCentrality(nodes, adjacencyList, damping = 0.85, iterations = 100) {
   const centrality = new Map();
@@ -284,11 +284,14 @@ function calculatePageRankCentrality(nodes, adjacencyList, damping = 0.85, itera
       // Find all nodes that link to this node
       nodeIds.forEach(otherNodeId => {
         const neighbors = adjacencyList.get(otherNodeId) || [];
-        const hasLinkToNode = neighbors.some(n => n.nodeId === nodeId);
+        const linkToNode = neighbors.find(n => n.nodeId === nodeId);
         
-        if (hasLinkToNode) {
-          const outDegree = neighbors.length;
-          sum += centrality.get(otherNodeId) / outDegree;
+        if (linkToNode) {
+          // Calculate total inverse weight (strength) for outgoing links
+          const totalOutStrength = neighbors.reduce((sum, n) => sum + (1.0 / n.weight), 0);
+          // Use inverse weight as strength for transition probability
+          const transitionStrength = 1.0 / linkToNode.weight;
+          sum += centrality.get(otherNodeId) * (transitionStrength / totalOutStrength);
         }
       });
       
@@ -303,7 +306,7 @@ function calculatePageRankCentrality(nodes, adjacencyList, damping = 0.85, itera
 }
 
 /**
- * Calculate eigenvector centrality
+ * Calculate eigenvector centrality with weights as distances
  */
 function calculateEigenvectorCentrality(nodes, adjacencyList, iterations = 100) {
   const centrality = new Map();
@@ -323,7 +326,9 @@ function calculateEigenvectorCentrality(nodes, adjacencyList, iterations = 100) 
       let sum = 0;
       const neighbors = adjacencyList.get(nodeId) || [];
       neighbors.forEach(neighbor => {
-        sum += centrality.get(neighbor.nodeId);
+        // Use inverse weight as connection strength
+        const strength = 1.0 / neighbor.weight;
+        sum += centrality.get(neighbor.nodeId) * strength;
       });
       newCentrality.set(nodeId, sum);
       norm += sum * sum;
@@ -342,45 +347,154 @@ function calculateEigenvectorCentrality(nodes, adjacencyList, iterations = 100) 
 }
 
 /**
- * Detect communities using simple modularity-based clustering
+ * Proper community detection using Louvain algorithm with weights as distances
  */
 function detectCommunities(nodes, adjacencyList) {
-  const communities = new Map();
   const nodeIds = nodes.map(n => n.id);
-  let communityId = 0;
-  const visited = new Set();
+  const communities = new Map();
   
-  // Simple connected components as communities
+  // Initialize each node in its own community
+  nodeIds.forEach((nodeId, index) => {
+    communities.set(nodeId, index);
+  });
+  
+  // Calculate total strength (inverse of weight) for all edges
+  let totalStrength = 0;
+  const edgeStrengths = new Map();
+  
   nodeIds.forEach(nodeId => {
-    if (!visited.has(nodeId)) {
-      const community = [];
-      const queue = [nodeId];
-      
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (visited.has(current)) continue;
-        
-        visited.add(current);
-        community.push(current);
-        
-        const neighbors = adjacencyList.get(current) || [];
-        neighbors.forEach(neighbor => {
-          if (!visited.has(neighbor.nodeId)) {
-            queue.push(neighbor.nodeId);
-          }
-        });
+    const neighbors = adjacencyList.get(nodeId) || [];
+    neighbors.forEach(neighbor => {
+      const edgeKey = `${nodeId}-${neighbor.nodeId}`;
+      if (!edgeStrengths.has(edgeKey)) {
+        const strength = 1.0 / neighbor.weight; // Convert distance to strength
+        edgeStrengths.set(edgeKey, strength);
+        totalStrength += strength;
       }
+    });
+  });
+  
+  // If no edges, return each node in its own community
+  if (totalStrength === 0) {
+    return communities;
+  }
+  
+  // Louvain algorithm - Phase 1: Local optimization
+  let improved = true;
+  let maxIterations = 10;
+  let iteration = 0;
+  
+  while (improved && iteration < maxIterations) {
+    improved = false;
+    iteration++;
+    
+    // For each node, try moving it to neighbor communities
+    nodeIds.forEach(nodeId => {
+      const currentCommunity = communities.get(nodeId);
+      const neighbors = adjacencyList.get(nodeId) || [];
       
-      community.forEach(nodeId => communities.set(nodeId, communityId));
-      communityId++;
+      // Get neighboring communities
+      const neighborCommunities = new Set();
+      neighbors.forEach(neighbor => {
+        const neighborCommunity = communities.get(neighbor.nodeId);
+        if (neighborCommunity !== currentCommunity) {
+          neighborCommunities.add(neighborCommunity);
+        }
+      });
+      
+      // Calculate modularity gain for each move
+      let bestCommunity = currentCommunity;
+      let bestModularityGain = 0;
+      
+      neighborCommunities.forEach(targetCommunity => {
+        const gain = calculateModularityGain(
+          nodeId, currentCommunity, targetCommunity, 
+          communities, adjacencyList, totalStrength
+        );
+        
+        if (gain > bestModularityGain) {
+          bestModularityGain = gain;
+          bestCommunity = targetCommunity;
+        }
+      });
+      
+      // Move node if improvement found
+      if (bestCommunity !== currentCommunity && bestModularityGain > 0) {
+        communities.set(nodeId, bestCommunity);
+        improved = true;
+      }
+    });
+  }
+  
+  // Renumber communities to be consecutive
+  const communityMapping = new Map();
+  let newCommunityId = 0;
+  
+  communities.forEach((communityId, nodeId) => {
+    if (!communityMapping.has(communityId)) {
+      communityMapping.set(communityId, newCommunityId++);
     }
+  });
+  
+  // Apply renumbering
+  communities.forEach((communityId, nodeId) => {
+    communities.set(nodeId, communityMapping.get(communityId));
   });
   
   return communities;
 }
 
 /**
- * Calculate force-directed layout positions
+ * Calculate modularity gain for moving a node from one community to another
+ */
+function calculateModularityGain(nodeId, fromCommunity, toCommunity, communities, adjacencyList, totalStrength) {
+  const neighbors = adjacencyList.get(nodeId) || [];
+  
+  // Calculate node's degree (sum of strengths)
+  const nodeStrength = neighbors.reduce((sum, neighbor) => sum + (1.0 / neighbor.weight), 0);
+  
+  // Calculate connections to target community
+  let connectionStrengthTo = 0;
+  neighbors.forEach(neighbor => {
+    if (communities.get(neighbor.nodeId) === toCommunity) {
+      connectionStrengthTo += 1.0 / neighbor.weight;
+    }
+  });
+  
+  // Calculate connections to current community
+  let connectionStrengthFrom = 0;
+  neighbors.forEach(neighbor => {
+    if (communities.get(neighbor.nodeId) === fromCommunity) {
+      connectionStrengthFrom += 1.0 / neighbor.weight;
+    }
+  });
+  
+  // Calculate community degrees
+  let toCommunityStrength = 0;
+  let fromCommunityStrength = 0;
+  
+  communities.forEach((communityId, nId) => {
+    if (nId !== nodeId) { // Exclude the node being moved
+      const nNeighbors = adjacencyList.get(nId) || [];
+      const nStrength = nNeighbors.reduce((sum, neighbor) => sum + (1.0 / neighbor.weight), 0);
+      
+      if (communityId === toCommunity) {
+        toCommunityStrength += nStrength;
+      } else if (communityId === fromCommunity) {
+        fromCommunityStrength += nStrength;
+      }
+    }
+  });
+  
+  // Modularity gain formula
+  const deltaQ = (connectionStrengthTo - connectionStrengthFrom) / totalStrength - 
+                 (nodeStrength * (toCommunityStrength - fromCommunityStrength)) / (totalStrength * totalStrength);
+  
+  return deltaQ;
+}
+
+/**
+ * Calculate force-directed layout positions with weights as distances
  */
 function calculateForceDirectedLayout(nodes, links, width = 800, height = 600, iterations = 300) {
   const positions = new Map();
@@ -411,7 +525,7 @@ function calculateForceDirectedLayout(nodes, links, width = 800, height = 600, i
           const pos2 = positions.get(nodeId2);
           const dx = pos1.x - pos2.x;
           const dy = pos1.y - pos2.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) + 0.01; // Avoid division by zero
+          const distance = Math.sqrt(dx * dx + dy * dy) + 0.01;
           
           const force = k * k / distance;
           vel1.x += (dx / distance) * force;
@@ -420,7 +534,7 @@ function calculateForceDirectedLayout(nodes, links, width = 800, height = 600, i
       });
     });
     
-    // Calculate attractive forces
+    // Calculate attractive forces with weights as distances
     links.forEach(link => {
       const pos1 = positions.get(link.from_node_id);
       const pos2 = positions.get(link.to_node_id);
@@ -432,7 +546,9 @@ function calculateForceDirectedLayout(nodes, links, width = 800, height = 600, i
         const dy = pos2.y - pos1.y;
         const distance = Math.sqrt(dx * dx + dy * dy) + 0.01;
         
-        const force = distance * distance / k;
+        // Use inverse of weight as connection strength
+        const strength = 1.0 / (link.weight || 1.0);
+        const force = (distance * distance / k) * strength;
         const fx = (dx / distance) * force;
         const fy = (dy / distance) * force;
         
