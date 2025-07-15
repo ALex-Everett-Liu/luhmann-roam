@@ -1982,12 +1982,18 @@ const LocalGraphManager = (function() {
     // New function to fetch and display centrality data
     async function fetchAndDisplayCentralityData(nodeId) {
         try {
+            console.log(`🔍 Fetching centrality data for node: ${nodeId}`);
+            
             const response = await fetch(`/api/global-graph/nodes/${nodeId}/centrality`);
             const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
             
-            if (!centralityDiv) return; // Node might have been deselected
+            if (!centralityDiv) {
+                console.log(`❌ Centrality div not found for node ${nodeId}`);
+                return;
+            }
             
             if (!response.ok) {
+                console.log(`❌ Response not ok: ${response.status} ${response.statusText}`);
                 centralityDiv.innerHTML = `
                     <div class="centrality-unavailable">
                         <p style="color: #666; font-style: italic; margin: 8px 0;">No centrality data available</p>
@@ -2001,8 +2007,10 @@ const LocalGraphManager = (function() {
             }
             
             const centralityData = await response.json();
+            console.log(`📊 Received centrality data:`, centralityData);
             
-            if (!centralityData || !centralityData.centrality) {
+            if (!centralityData || !centralityData.centrality || Object.keys(centralityData.centrality).length === 0) {
+                console.log(`❌ No centrality data in response`);
                 centralityDiv.innerHTML = `
                     <div class="centrality-unavailable">
                         <p style="color: #666; font-style: italic; margin: 8px 0;">No centrality data available</p>
@@ -2016,6 +2024,8 @@ const LocalGraphManager = (function() {
             }
             
             const { centrality, community, ranking } = centralityData;
+            console.log(`📈 Centrality measures:`, Object.keys(centrality));
+            console.log(`🏘️ Community:`, community);
             
             // Create centrality metrics display
             let centralityHTML = '<div class="centrality-data">';
@@ -2092,6 +2102,8 @@ const LocalGraphManager = (function() {
                         </div>
                     </div>
                 `;
+            } else {
+                console.log(`❌ No community data found`);
             }
             
             // Add comparative information if available
@@ -2110,7 +2122,7 @@ const LocalGraphManager = (function() {
             centralityDiv.innerHTML = centralityHTML;
             
         } catch (error) {
-            console.error('Error fetching centrality data:', error);
+            console.error('❌ Error fetching centrality data:', error);
             const centralityDiv = document.getElementById(`centrality-metrics-${nodeId}`);
             if (centralityDiv) {
                 centralityDiv.innerHTML = `
