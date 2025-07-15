@@ -209,6 +209,16 @@ const GlobalGraphManager = (function() {
                     
                     <!-- Sidebar -->
                     <div class="global-graph-sidebar">
+                        <!-- Search - MOVED TO TOP -->
+                        <div class="sidebar-section">
+                            <h4>🔍 Search Nodes</h4>
+                            <div class="search-container">
+                                <input type="text" id="global-graph-search" 
+                                       class="search-input" placeholder="Search nodes...">
+                                <div class="search-results" id="search-results"></div>
+                            </div>
+                        </div>
+                        
                         <!-- Graph Statistics -->
                         <div class="sidebar-section">
                             <h4>📊 Graph Statistics</h4>
@@ -264,16 +274,6 @@ const GlobalGraphManager = (function() {
                                     <span class="progress-label">Eigenvector:</span>
                                     <span class="progress-status" id="progress-eigenvector">Pending</span>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Search -->
-                        <div class="sidebar-section">
-                            <h4>🔍 Search Nodes</h4>
-                            <div class="search-container">
-                                <input type="text" id="global-graph-search" 
-                                       class="search-input" placeholder="Search nodes...">
-                                <div class="search-results" id="search-results"></div>
                             </div>
                         </div>
                         
@@ -1213,14 +1213,28 @@ const GlobalGraphManager = (function() {
         
         // Highlight selected node in table view
         if (currentViewMode === 'table') {
-            const tableRows = document.querySelectorAll('.table-row');
-            tableRows.forEach(row => {
-                if (row.dataset.nodeId === node.id) {
-                    row.classList.add('selected');
+            // Wait a moment for table to update if filter was changed
+            setTimeout(() => {
+                const tableRows = document.querySelectorAll('.table-row');
+                let targetRow = null;
+                
+                tableRows.forEach(row => {
+                    if (row.dataset.nodeId === node.id) {
+                        row.classList.add('selected');
+                        targetRow = row;
+                    } else {
+                        row.classList.remove('selected');
+                    }
+                });
+                
+                // Scroll to the selected row
+                if (targetRow) {
+                    scrollToTableRow(targetRow);
                 } else {
-                    row.classList.remove('selected');
+                    // If still not found, show message
+                    showNotification('Node not found in current table view', 'warning');
                 }
-            });
+            }, 100);
         }
         
         // Update selected node info
@@ -1235,12 +1249,56 @@ const GlobalGraphManager = (function() {
         
         const node = graphData.nodes.find(n => n.id === nodeId);
         if (node) {
+            // If in table view, ensure the node is visible
+            if (currentViewMode === 'table') {
+                ensureNodeVisibleInTable(node);
+            }
+            
             selectNode(node);
             
             // If in graph view, center on node
             if (currentViewMode === 'graph') {
                 centerViewOnNode(node);
             }
+        }
+    }
+
+    function ensureNodeVisibleInTable(node) {
+        const communityFilterSelect = document.getElementById('community-filter-select');
+        if (!communityFilterSelect) return;
+        
+        // Get the node's community
+        const nodeCommunity = graphData.analysis?.communities?.[node.id];
+        const nodeCommunityStr = nodeCommunity !== undefined ? nodeCommunity.toString() : 'N/A';
+        
+        // Check if the node would be visible with current filter
+        const currentFilter = communityFilterSelect.value;
+        let needsFilterChange = false;
+        
+        if (currentFilter !== 'all') {
+            if (currentFilter === 'none' && nodeCommunityStr !== 'N/A') {
+                needsFilterChange = true;
+            } else if (currentFilter !== 'none' && currentFilter !== nodeCommunityStr) {
+                needsFilterChange = true;
+            }
+        }
+        
+        // Change filter if needed
+        if (needsFilterChange) {
+            if (nodeCommunityStr === 'N/A') {
+                communityFilterSelect.value = 'none';
+            } else {
+                communityFilterSelect.value = nodeCommunityStr;
+            }
+            currentCommunityFilter = communityFilterSelect.value;
+            
+            // Update the table with new filter
+            updateTableView();
+            
+            // Show notification about filter change
+            const filterDisplayName = communityFilterSelect.value === 'none' ? 
+                'No Community' : `Community ${communityFilterSelect.value}`;
+            showNotification(`Switched to ${filterDisplayName} to show selected node`, 'info');
         }
     }
     
@@ -1425,37 +1483,50 @@ const GlobalGraphManager = (function() {
                 });
                 
                 // Display search results with additional metadata
-                resultsEl.innerHTML = matchingNodes.map(node => {
-                    // Get centrality info if available
-                    const measure = `${currentCentralityMeasure}Centrality`;
-                    const centrality = graphData.analysis && graphData.analysis[measure] ? 
-                        graphData.analysis[measure][node.id] : null;
-                    
-                    // Get degree if available
-                    const degree = graphData.analysis && graphData.analysis.degreeCentrality ? 
-                        graphData.analysis.degreeCentrality[node.id] || 0 : 0;
-                    
-                    // Get community if available
-                    const community = graphData.analysis && graphData.analysis.communities && 
-                        graphData.analysis.communities[node.id] !== undefined ? 
-                        graphData.analysis.communities[node.id] : 'N/A';
-                    
-                    const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
-                    
-                    return `
-                        <div class="search-result-item" data-node-id="${node.id}">
-                            <div class="search-result-content">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
-                            ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
-                            <div class="search-result-meta">
-                                <span class="search-result-degree">Degree: ${degree}</span>
-                                ${centrality !== null ? `<span class="search-result-centrality">${currentCentralityMeasure}: ${centrality.toFixed(3)}</span>` : ''}
-                                <span class="search-result-community" style="background-color: ${communityColor}20; border-left: 3px solid ${communityColor};">
-                                    C${community}
-                                </span>
+                resultsEl.innerHTML = `
+                    <div class="search-results-header">
+                        <span class="search-results-count">${matchingNodes.length} result${matchingNodes.length !== 1 ? 's' : ''}</span>
+                        <span class="search-results-mode">in ${currentViewMode} view</span>
+                    </div>
+                    ${matchingNodes.map(node => {
+                        // Get centrality info if available
+                        const measure = `${currentCentralityMeasure}Centrality`;
+                        const centrality = graphData.analysis && graphData.analysis[measure] ? 
+                            graphData.analysis[measure][node.id] : null;
+                        
+                        // Get degree if available
+                        const degree = graphData.analysis && graphData.analysis.degreeCentrality ? 
+                            graphData.analysis.degreeCentrality[node.id] || 0 : 0;
+                        
+                        // Get community if available
+                        const community = graphData.analysis && graphData.analysis.communities && 
+                            graphData.analysis.communities[node.id] !== undefined ? 
+                            graphData.analysis.communities[node.id] : 'N/A';
+                        
+                        const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
+                        
+                        // Check if node is currently visible in table
+                        const isVisibleInTable = currentViewMode === 'table' && 
+                            (currentCommunityFilter === 'all' || 
+                             (currentCommunityFilter === 'none' && community === 'N/A') ||
+                             (currentCommunityFilter === community.toString()));
+                        
+                        return `
+                            <div class="search-result-item" data-node-id="${node.id}" ${!isVisibleInTable ? 'data-needs-filter="true"' : ''}>
+                                <div class="search-result-content">${highlightSearchTerm(node.content || 'Untitled', query)}</div>
+                                ${node.content_zh ? `<div class="search-result-subtitle">${highlightSearchTerm(node.content_zh, query)}</div>` : ''}
+                                <div class="search-result-meta">
+                                    <span class="search-result-degree">Degree: ${degree}</span>
+                                    ${centrality !== null ? `<span class="search-result-centrality">${currentCentralityMeasure}: ${centrality.toFixed(3)}</span>` : ''}
+                                    <span class="search-result-community" style="background-color: ${communityColor}20; border-left: 3px solid ${communityColor};">
+                                        C${community}
+                                    </span>
+                                    ${!isVisibleInTable ? '<span class="search-result-filter-notice">Will adjust filter</span>' : ''}
+                                </div>
                             </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('')}
+                `;
                 
                 // Add click handlers
                 resultsEl.querySelectorAll('.search-result-item').forEach(item => {
@@ -1676,6 +1747,38 @@ const GlobalGraphManager = (function() {
         document.body.style.overflow = '';
         
         showNotification('Exited fullscreen mode', 'info');
+    }
+    
+    function scrollToTableRow(row) {
+        const tableContainer = document.getElementById('metrics-table-container');
+        if (!tableContainer || !row) return;
+        
+        // Calculate the position of the row relative to the table container
+        const tableRect = tableContainer.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        
+        // Check if row is already visible
+        const isVisible = rowRect.top >= tableRect.top && 
+                     rowRect.bottom <= tableRect.bottom;
+        
+        if (!isVisible) {
+            // Calculate scroll position to center the row
+            const containerHeight = tableContainer.clientHeight;
+            const rowHeight = row.offsetHeight;
+            const scrollOffset = row.offsetTop - (containerHeight / 2) + (rowHeight / 2);
+            
+            // Smooth scroll to the row
+            tableContainer.scrollTo({
+                top: scrollOffset,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Add a temporary highlight effect
+        row.classList.add('highlight-flash');
+        setTimeout(() => {
+            row.classList.remove('highlight-flash');
+        }, 2000);
     }
     
     // Public API

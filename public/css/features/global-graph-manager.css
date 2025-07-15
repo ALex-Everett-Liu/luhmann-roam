@@ -681,61 +681,191 @@
     border: 1px solid #f5c6cb;
 }
 
-/* Sidebar - FIXED VERSION */
+/* Sidebar - FIXED SCROLLBAR VERSION */
 .global-graph-container .global-graph-sidebar {
-    width: 350px;
-    background: #f8f9fa;
-    border-left: 1px solid #e9ecef;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
+    width: 350px !important;
+    background: #f8f9fa !important;
+    border-left: 1px solid #e9ecef !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100vh !important;
+    position: relative !important;
 }
 
-/* Unified scrollbar styles for sidebar - FIXED */
+/* FORCE SCROLLBAR VISIBILITY */
 .global-graph-container .global-graph-sidebar::-webkit-scrollbar {
-    width: 14px;
+    width: 16px !important;
+    background: #f8f9fa !important;
+    border-radius: 8px !important;
 }
 
 .global-graph-container .global-graph-sidebar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 8px;
+    background: #e9ecef !important;
+    border-radius: 8px !important;
+    margin: 4px !important;
+    border: 1px solid #dee2e6 !important;
 }
 
 .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 8px;
-    border: 2px solid #f1f1f1;
+    background: linear-gradient(180deg, #007bff 0%, #0056b3 100%) !important;
+    border-radius: 8px !important;
+    border: 2px solid #e9ecef !important;
+    box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.2) !important;
+    min-height: 40px !important;
 }
 
 .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: linear-gradient(180deg, #0056b3 0%, #004085 100%) !important;
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 .global-graph-container .global-graph-sidebar::-webkit-scrollbar-thumb:active {
-    background: #333;
+    background: linear-gradient(180deg, #004085 0%, #002752 100%) !important;
 }
 
-/* Firefox scrollbar support */
+.global-graph-container .global-graph-sidebar::-webkit-scrollbar-corner {
+    background: #f8f9fa !important;
+}
+
+/* Firefox scrollbar support - ENHANCED */
 .global-graph-container .global-graph-sidebar {
-    scrollbar-width: thin;
-    scrollbar-color: #888 #f1f1f1;
+    scrollbar-width: auto !important;
+    scrollbar-color: #007bff #e9ecef !important;
 }
 
+/* ENSURE SIDEBAR CONTENT TRIGGERS SCROLLING */
 .global-graph-container .sidebar-section {
-    padding: 1rem;
-    border-bottom: 1px solid #e9ecef;
-    flex-shrink: 0;
+    padding: 1rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+    flex-shrink: 0 !important;
+    min-height: 100px !important; /* Ensure minimum height */
+    position: relative !important;
 }
 
-.global-graph-container .sidebar-section h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1rem;
-    color: #495057;
-    font-weight: 600;
+.global-graph-container .sidebar-section:last-child {
+    margin-bottom: 2rem !important; /* Add space at bottom to ensure scrolling */
+}
+
+/* ENHANCED SEARCH RESULTS SCROLLING */
+.global-graph-container .search-results {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    margin-top: 0.5rem !important;
+    min-height: 50px !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 4px !important;
+    background: white !important;
+    padding: 0.5rem !important;
+}
+
+.global-graph-container .search-results::-webkit-scrollbar {
+    width: 12px !important;
+    background: #f8f9fa !important;
+}
+
+.global-graph-container .search-results::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 6px !important;
+}
+
+.global-graph-container .search-results::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 6px !important;
+    border: 2px solid #f1f1f1 !important;
+}
+
+.global-graph-container .search-results::-webkit-scrollbar-thumb:hover {
+    background: #555 !important;
+}
+
+/* ENHANCED CENTRALITY RANKINGS SCROLLING */
+.global-graph-container .centrality-rankings {
+    max-height: 500px !important;
+    overflow-y: auto !important;
+    min-height: 200px !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 4px !important;
+    background: white !important;
+    padding: 0.5rem !important;
+}
+
+.global-graph-container .centrality-rankings::-webkit-scrollbar {
+    width: 12px !important;
+    background: #f8f9fa !important;
+}
+
+.global-graph-container .centrality-rankings::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 6px !important;
+}
+
+.global-graph-container .centrality-rankings::-webkit-scrollbar-thumb {
+    background: #888 !important;
+    border-radius: 6px !important;
+    border: 2px solid #f1f1f1 !important;
+}
+
+.global-graph-container .centrality-rankings::-webkit-scrollbar-thumb:hover {
+    background: #555 !important;
+}
+
+/* ENSURE SELECTED NODE SECTION IS VISIBLE */
+.global-graph-container .selected-node-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    min-height: 200px !important;
+}
+
+.global-graph-container .node-content {
+    background: white !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
+    border: 1px solid #e9ecef !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    margin-bottom: 1rem !important;
+    min-height: 80px !important;
+}
+
+/* FORCE MINIMUM HEIGHTS TO ENSURE SCROLLING */
+.global-graph-container .stats-container {
+    min-height: 150px !important;
+}
+
+.global-graph-container .progress-container {
+    min-height: 120px !important;
+}
+
+.global-graph-container .search-container {
+    min-height: 120px !important;
+}
+
+/* Add debugging border to see sidebar clearly */
+.global-graph-container .global-graph-sidebar {
+    border: 2px solid #007bff !important;
+    box-shadow: inset 0 0 10px rgba(0, 123, 255, 0.1) !important;
+}
+
+/* RESPONSIVE SIDEBAR */
+@media (max-width: 1200px) {
+    .global-graph-container .global-graph-sidebar {
+        width: 300px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .global-graph-container .global-graph-sidebar {
+        width: 250px !important;
+    }
+    
+    .global-graph-container .sidebar-section {
+        padding: 0.75rem !important;
+    }
 }
 
 /* Statistics */
@@ -1191,4 +1321,100 @@
 .global-graph-container .global-graph-canvas-area .node:hover + .node-label {
     font-weight: bold;
     font-size: 14px;
+}
+
+/* Enhanced table row selection styles */
+.table-row.selected {
+    background-color: #ff6b6b20 !important;
+    border-left: 4px solid #ff6b6b !important;
+    font-weight: 600;
+}
+
+.table-row.highlight-flash {
+    animation: highlightFlash 2s ease-in-out;
+}
+
+@keyframes highlightFlash {
+    0% { background-color: #ff6b6b40; }
+    50% { background-color: #ff6b6b60; }
+    100% { background-color: inherit; }
+}
+
+/* Improve search result interaction */
+.search-result-item {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.search-result-item:hover {
+    background-color: #f0f0f0;
+}
+
+/* Table container scroll styling */
+.metrics-table-container {
+    scroll-behavior: smooth;
+}
+
+/* Fullscreen table container */
+.metrics-table-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: white;
+    z-index: 9999;
+    overflow: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.fullscreen-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    z-index: 10000;
+}
+
+.fullscreen-close-btn:hover {
+    color: #ff6b6b;
+}
+
+/* Search results enhancements */
+.search-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
+.search-results-count {
+    font-weight: 600;
+}
+
+.search-results-mode {
+    font-style: italic;
+}
+
+.search-result-filter-notice {
+    font-size: 10px;
+    color: #ff6b6b;
+    font-style: italic;
+    background: #ff6b6b10;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+.search-result-item[data-needs-filter="true"] {
+    border-left: 2px solid #ff6b6b;
+    background: #ff6b6b05;
 }
