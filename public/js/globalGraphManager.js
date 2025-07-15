@@ -12,6 +12,7 @@ const GlobalGraphManager = (function() {
     let isInitialized = false;
     let selectedNode = null;
     let searchTimeout = null;
+    let currentCommunityFilter = 'all'; // Track current community filter
     
     // D3 visualization variables - will be initialized later
     let svg, g, simulation;
@@ -168,6 +169,13 @@ const GlobalGraphManager = (function() {
                                 <div class="table-control-group">
                                     <label for="community-coloring-toggle">Community Colors:</label>
                                     <input type="checkbox" id="community-coloring-toggle" class="community-toggle">
+                                </div>
+                                
+                                <div class="table-control-group">
+                                    <label for="community-filter-select">Filter by Community:</label>
+                                    <select id="community-filter-select" class="community-filter-select">
+                                        <option value="all">All Communities</option>
+                                    </select>
                                 </div>
                             </div>
                             
@@ -364,6 +372,9 @@ const GlobalGraphManager = (function() {
         document.getElementById('table-metric-select')?.addEventListener('change', handleTableMetricChange);
         document.getElementById('table-limit-select')?.addEventListener('change', updateTableView);
         document.getElementById('community-coloring-toggle')?.addEventListener('change', updateTableView);
+                
+        // Community filter handler
+        document.getElementById('community-filter-select')?.addEventListener('change', handleCommunityFilterChange);
         
         // Fullscreen handlers
         document.getElementById('table-fullscreen-btn')?.addEventListener('click', toggleTableFullscreen);
@@ -411,6 +422,11 @@ const GlobalGraphManager = (function() {
         // Sync with main centrality select
         document.getElementById('centrality-select').value = metric;
         currentCentralityMeasure = metric;
+        updateTableView();
+    }
+    
+    function handleCommunityFilterChange(e) {
+        currentCommunityFilter = e.target.value;
         updateTableView();
     }
     
@@ -608,6 +624,9 @@ const GlobalGraphManager = (function() {
                 const communityCount = Math.max(...Object.values(graphData.analysis.communities)) + 1;
                 communityColorScale.domain(d3.range(communityCount));
             }
+                            
+            // Populate community filter dropdown
+            populateCommunityFilter();
             
             // Render based on current view mode
             if (currentViewMode === 'graph') {
@@ -677,6 +696,7 @@ const GlobalGraphManager = (function() {
         const metric = document.getElementById('table-metric-select').value;
         const limit = parseInt(document.getElementById('table-limit-select').value);
         const useCommunityCola = document.getElementById('community-coloring-toggle').checked;
+        const communityFilter = document.getElementById('community-filter-select')?.value || 'all';
         
         const measure = `${metric}Centrality`;
         const centrality = graphData.analysis?.[measure];
@@ -706,32 +726,59 @@ const GlobalGraphManager = (function() {
             
             // Use setTimeout to allow UI to update
             setTimeout(() => {
-                renderTableData(centrality, limit, useCommunityCola);
+                renderTableData(centrality, limit, useCommunityCola, communityFilter);
             }, 10);
         } else {
-            renderTableData(centrality, limit, useCommunityCola);
+            renderTableData(centrality, limit, useCommunityCola, communityFilter);
         }
     }
     
-    function renderTableData(centrality, limit, useCommunityCola) {
+    function renderTableData(centrality, limit, useCommunityCola, communityFilter = 'all') {
         const tableBody = document.getElementById('metrics-table-body');
         if (!tableBody) return;
         
-        // Create rankings array
+        // Create rankings array with community filtering
         const rankings = Object.entries(centrality)
             .map(([nodeId, value]) => {
                 const node = graphData.nodes.find(n => n.id === nodeId);
-                return { node, value, nodeId };
+                const community = graphData.analysis?.communities?.[nodeId] ?? 'N/A';
+                return { node, value, nodeId, community };
             })
-            .filter(item => item.node)
+            .filter(item => {
+                if (!item.node) return false;
+                
+                // Apply community filter
+                if (communityFilter !== 'all') {
+                    if (communityFilter === 'none') {
+                        return item.community === 'N/A';
+                    } else {
+                        return item.community.toString() === communityFilter;
+                    }
+                }
+                
+                return true;
+            })
             .sort((a, b) => b.value - a.value)
             .slice(0, limit);
+        
+        // Show message if no results after filtering
+        if (rankings.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="table-message">
+                        No nodes found in community "${communityFilter}". 
+                        <button onclick="document.getElementById('community-filter-select').value='all'; GlobalGraphManager.handleCommunityFilterChange({target: {value: 'all'}})" class="inline-btn">Show All</button>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
         
         // Use DocumentFragment for better performance
         const fragment = document.createDocumentFragment();
         
         rankings.forEach((item, index) => {
-            const community = graphData.analysis?.communities?.[item.nodeId] || 'N/A';
+            const community = item.community;
             const degree = graphData.analysis?.degreeCentrality?.[item.nodeId] || 0;
             
             // Get community color
@@ -771,6 +818,52 @@ const GlobalGraphManager = (function() {
         // Clear and append all rows at once
         tableBody.innerHTML = '';
         tableBody.appendChild(fragment);
+    }
+
+    function populateCommunityFilter() {
+        const communitySelect = document.getElementById('community-filter-select');
+        if (!communitySelect || !graphData || !graphData.analysis || !graphData.analysis.communities) {
+            return;
+        }
+        
+        // Get all unique communities
+        const communities = Object.values(graphData.analysis.communities);
+        const uniqueCommunities = [...new Set(communities)].sort((a, b) => a - b);
+        
+        // Get community counts for display
+        const communityCounts = {};
+        communities.forEach(community => {
+            communityCounts[community] = (communityCounts[community] || 0) + 1;
+        });
+        
+        // Check if there are nodes without communities
+        const nodesWithoutCommunities = graphData.nodes.filter(node => 
+            !graphData.analysis.communities[node.id] && 
+            graphData.analysis.communities[node.id] !== 0
+        ).length;
+        
+        // Clear existing options except "All Communities"
+        communitySelect.innerHTML = '<option value="all">All Communities</option>';
+        
+        // Add option for nodes without communities if they exist
+        if (nodesWithoutCommunities > 0) {
+            const option = document.createElement('option');
+            option.value = 'none';
+            option.textContent = `No Community (${nodesWithoutCommunities} nodes)`;
+            communitySelect.appendChild(option);
+        }
+        
+        // Add options for each community
+        uniqueCommunities.forEach(community => {
+            const option = document.createElement('option');
+            option.value = community.toString();
+            option.textContent = `Community ${community} (${communityCounts[community]} nodes)`;
+            communitySelect.appendChild(option);
+        });
+        
+        // Reset filter to 'all'
+        communitySelect.value = 'all';
+        currentCommunityFilter = 'all';
     }
     
     function renderGraph() {
@@ -1091,7 +1184,8 @@ const GlobalGraphManager = (function() {
         const centrality = graphData.analysis && graphData.analysis[measure] ? 
             graphData.analysis[measure][node.id] : 'N/A';
         
-        const community = graphData.analysis && graphData.analysis.communities ? 
+        const community = graphData.analysis && graphData.analysis.communities && 
+            graphData.analysis.communities[node.id] !== undefined ? 
             graphData.analysis.communities[node.id] : 'N/A';
         
         tooltip.html(`
@@ -1184,7 +1278,8 @@ const GlobalGraphManager = (function() {
         }
         
         // Get community
-        const community = graphData.analysis && graphData.analysis.communities ? 
+        const community = graphData.analysis && graphData.analysis.communities && 
+            graphData.analysis.communities[selectedNode.id] !== undefined ? 
             graphData.analysis.communities[selectedNode.id] : 'N/A';
         if (communityEl) {
             communityEl.textContent = community;
@@ -1240,7 +1335,7 @@ const GlobalGraphManager = (function() {
         rankingsEl.innerHTML = `
             <div class="rankings-header">Top ${currentCentralityMeasure} Centrality</div>
             ${rankings.map((item, index) => {
-                const community = graphData.analysis.communities?.[item.nodeId] || 'N/A';
+                const community = graphData.analysis.communities?.[item.nodeId] ?? 'N/A';
                 const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
                 
                 return `
@@ -1341,7 +1436,8 @@ const GlobalGraphManager = (function() {
                         graphData.analysis.degreeCentrality[node.id] || 0 : 0;
                     
                     // Get community if available
-                    const community = graphData.analysis && graphData.analysis.communities ? 
+                    const community = graphData.analysis && graphData.analysis.communities && 
+                        graphData.analysis.communities[node.id] !== undefined ? 
                         graphData.analysis.communities[node.id] : 'N/A';
                     
                     const communityColor = community !== 'N/A' ? communityColorScale(community) : '#ccc';
@@ -1593,7 +1689,8 @@ const GlobalGraphManager = (function() {
         focusNodeById,
         centerViewOnNode,
         calculateCentralityMeasure,
-        calculateAndUpdateTable,  // Add this line
+        calculateAndUpdateTable,
+        handleCommunityFilterChange,
         isInitialized: () => isInitialized
     };
 })();
