@@ -2859,72 +2859,214 @@
     margin-top: 140px;
   }
 
-  .metric-section {
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e5e7eb;
-  }
+/* Selected Node Metrics Styles */
+.node-metrics-container {
+  margin: 12px 0;
+}
 
-  .metric-section:last-child {
-    border-bottom: none;
-  }
+.metric-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
 
-  .metric-section h6 {
-    margin: 0 0 6px 0;
-    font-size: 11px;
-    font-weight: 600;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
+.metric-section:last-child {
+  border-bottom: none;
+}
 
-  .centrality-metrics {
-    font-size: 12px;
-  }
+.metric-section h6 {
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
-  .loading-centrality {
-    color: #6b7280;
-    font-style: italic;
-    text-align: center;
-    padding: 8px;
-  }
+.local-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-  .centrality-data {
-    animation: fadeIn 0.3s ease-in;
-  }
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
 
-  .centrality-measures {
-    margin-top: 8px;
-  }
+.metric-label {
+  color: #374151;
+  font-weight: 500;
+}
 
-  .centrality-item {
-    transition: background-color 0.2s ease;
-  }
+.metric-value {
+  font-weight: 600;
+}
 
-  .centrality-item:hover {
-    background: #f3f4f6 !important;
-  }
+/* Centrality Metrics Styles */
+.centrality-metrics {
+  font-size: 12px;
+}
 
-  .community-info {
-    display: flex;
-    align-items: center;
-    font-size: 11px;
-  }
+.loading-centrality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-style: italic;
+  padding: 8px;
+  justify-content: center;
+}
 
-  .community-label {
-    font-weight: 500;
-    color: #374151;
-  }
+.loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #6b7280;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 
-  .centrality-unavailable,
-  .centrality-error {
-    text-align: center;
-    padding: 8px;
-  }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.centrality-data {
+  animation: fadeIn 0.3s ease-in;
+}
 
-  /* ... rest of existing styles ... */
+.centrality-measures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.centrality-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.centrality-item:hover {
+  background: #f3f4f6;
+}
+
+.centrality-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.centrality-icon {
+  font-size: 12px;
+}
+
+.centrality-label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.centrality-value {
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Community Section Styles */
+.community-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.community-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.community-label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 12px;
+}
+
+.community-badge {
+  text-align: center;
+  max-width: fit-content;
+}
+
+.centrality-comparison {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.centrality-unavailable,
+.centrality-error,
+.no-centrality-data {
+  text-align: center;
+  padding: 12px 8px;
+}
+
+/* Node Status and Actions */
+.node-status {
+  margin: 12px 0;
+}
+
+.node-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.node-actions button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.primary-btn:hover {
+  background: #2563eb;
+}
+
+.secondary-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.secondary-btn:hover {
+  background: #e5e7eb;
+}
+
+.focus-btn {
+  background: #10b981;
+  color: white;
+}
+
+.focus-btn:hover {
+  background: #059669;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

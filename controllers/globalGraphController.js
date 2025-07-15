@@ -1283,11 +1283,18 @@ exports.getNodeCentrality = async (req, res) => {
       }
     }
     
-    // Get community information if available
+    // Get community information - check if we have community data in the global graph
     let community = null;
-    const communityData = getCachedAnalysis('communities');
-    if (communityData && communityData.communities) {
-      community = communityData.communities[nodeId];
+    try {
+      const response = await fetch(`/api/global-graph?layout=force-directed&includeCentrality=true&includeLayout=false&maxNodes=1000`);
+      if (response.ok) {
+        const globalGraphData = await response.json();
+        if (globalGraphData.analysis && globalGraphData.analysis.communities) {
+          community = globalGraphData.analysis.communities[nodeId];
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch community data:', error.message);
     }
     
     // Calculate percentiles if we have degree centrality
