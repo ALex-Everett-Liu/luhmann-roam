@@ -97,10 +97,16 @@ const CombatGame = (function() {
             btn.addEventListener('click', () => {
                 // Call the onClick handler first while the modal is still in the DOM
                 if (button.onClick) {
-                    button.onClick();
+                    const result = button.onClick();
+                    // If onClick returns a promise, wait for it before removing modal
+                    if (result && typeof result.then === 'function') {
+                        result.finally(() => modal.remove());
+                    } else {
+                        modal.remove();
+                    }
+                } else {
+                    modal.remove();
                 }
-                // Then remove the modal
-                modal.remove();
             });
             modalFooter.appendChild(btn);
         });
@@ -922,14 +928,17 @@ const CombatGame = (function() {
             { 
                 text: 'Attack', 
                 primary: true, 
-                onClick: () => attackUnit(attacker.id, target.id)
+                onClick: () => {
+                    const skillName = document.getElementById('attack-skill').value;
+                    attackUnit(attacker.id, target.id, skillName);
+                }
             }
         ]);
     }
     
     // Attack unit
-    async function attackUnit(attackerId, targetId) {
-        const skillName = document.getElementById('attack-skill').value;
+    async function attackUnit(attackerId, targetId, skillName) {
+        // const skillName = document.getElementById('attack-skill').value;
         
         try {
             const response = await fetch(`/api/combat/${currentGame.id}/attack`, {
@@ -1241,26 +1250,43 @@ const CombatGame = (function() {
             return;
         }
         
-        const filename = prompt('Enter filename (without extension):', `combat_game_${currentGame.id.slice(0, 8)}`);
-        if (!filename) return;
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <div style="margin-bottom: 15px;">
+                <label>Enter filename (without extension):</label>
+                <input type="text" id="save-filename" value="combat_game_${currentGame.id.slice(0, 8)}" style="width: 100%; padding: 8px; margin-top: 5px;">
+            </div>
+        `;
         
-        try {
-            const response = await fetch(`/api/combat/${currentGame.id}/save`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ filename })
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                alert(`Game saved as ${result.filename}`);
+        createModal('Save Game', content, [
+            { text: 'Cancel', primary: false },
+            { 
+                text: 'Save', 
+                primary: true, 
+                onClick: async () => {
+                    const filename = document.getElementById('save-filename').value;
+                    if (!filename) return;
+                    
+                    try {
+                        const response = await fetch(`/api/combat/${currentGame.id}/save`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ filename })
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            alert(`Game saved as ${result.filename}`);
+                        }
+                    } catch (error) {
+                        console.error('Error saving game:', error);
+                        alert('Error saving game');
+                    }
+                }
             }
-        } catch (error) {
-            console.error('Error saving game:', error);
-            alert('Error saving game');
-        }
+        ]);
     }
     
     // Show load game dialog
