@@ -95,10 +95,12 @@ const CombatGame = (function() {
                 transition: background 0.2s;
             `;
             btn.addEventListener('click', () => {
-                modal.remove();
+                // Call the onClick handler first while the modal is still in the DOM
                 if (button.onClick) {
                     button.onClick();
                 }
+                // Then remove the modal
+                modal.remove();
             });
             modalFooter.appendChild(btn);
         });
@@ -694,9 +696,15 @@ const CombatGame = (function() {
     async function loadUnitTemplates() {
         try {
             const response = await fetch('/api/combat/templates');
-            availableTemplates = await response.json();
+            if (response.ok) {
+                availableTemplates = await response.json();
+            } else {
+                console.error('Failed to load unit templates:', response.status);
+                availableTemplates = [];
+            }
         } catch (error) {
             console.error('Error loading unit templates:', error);
+            availableTemplates = [];
         }
     }
     
@@ -761,6 +769,12 @@ const CombatGame = (function() {
     
     // Show unit placement dialog
     function showUnitPlacementDialog(x, y) {
+        // Ensure templates are loaded and is an array
+        if (!Array.isArray(availableTemplates) || availableTemplates.length === 0) {
+            alert('Unit templates not loaded. Please try again.');
+            return;
+        }
+        
         const content = document.createElement('div');
         content.innerHTML = `
             <div style="margin-bottom: 15px;">
@@ -1083,13 +1097,18 @@ const CombatGame = (function() {
     
     // Show unit templates dialog
     function showUnitTemplatesDialog() {
+        // Ensure templates are loaded and is an array
+        if (!Array.isArray(availableTemplates)) {
+            availableTemplates = [];
+        }
+        
         const content = document.createElement('div');
         content.innerHTML = `
             <div style="margin-bottom: 15px;">
                 <button id="create-template-btn" class="combat-btn">Create New Template</button>
             </div>
             <div style="max-height: 400px; overflow-y: auto;">
-                ${availableTemplates.map(template => `
+                ${availableTemplates.length > 0 ? availableTemplates.map(template => `
                     <div style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 5px;">
                         <div style="font-size: 24px; margin-right: 15px;">${template.sprite_url}</div>
                         <div style="flex: 1;">
@@ -1102,7 +1121,7 @@ const CombatGame = (function() {
                         </div>
                         ${template.is_custom ? `<button onclick="CombatGame.deleteTemplate('${template.id}')" class="combat-btn" style="background: #f44336;">Delete</button>` : ''}
                     </div>
-                `).join('')}
+                `).join('') : '<p>No templates available. Try refreshing or creating a new template.</p>'}
             </div>
         `;
         
@@ -1111,10 +1130,13 @@ const CombatGame = (function() {
         ]);
         
         // Add event listener for create template button
-        document.getElementById('create-template-btn').addEventListener('click', () => {
-            modal.remove();
-            showCreateTemplateDialog();
-        });
+        const createBtn = document.getElementById('create-template-btn');
+        if (createBtn) {
+            createBtn.addEventListener('click', () => {
+                modal.remove();
+                showCreateTemplateDialog();
+            });
+        }
     }
     
     // Show create template dialog

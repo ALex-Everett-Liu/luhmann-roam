@@ -584,6 +584,51 @@ exports.createUnitTemplate = async (req, res) => {
 };
 
 /**
+ * Update custom unit template
+ * PUT /api/combat/templates/:id
+ */
+exports.updateTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, unitType, maxHp, attackPower, defense, movementRange, attackRange, skills, spriteUrl } = req.body;
+    const db = req.db;
+    
+    // Check if template exists and is custom
+    const template = await db.get(`
+      SELECT is_custom FROM combat_unit_templates WHERE id = ?
+    `, [id]);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    if (!template.is_custom) {
+      return res.status(400).json({ error: 'Cannot edit built-in templates' });
+    }
+    
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    await db.run(`
+      UPDATE combat_unit_templates 
+      SET name = ?, description = ?, unit_type = ?, max_hp = ?, attack_power = ?, 
+          defense = ?, movement_range = ?, attack_range = ?, skills = ?, 
+          sprite_url = ?, updated_at = ?
+      WHERE id = ?
+    `, [
+      name, description, unitType, maxHp, attackPower, defense,
+      movementRange, attackRange, JSON.stringify(skills || []), spriteUrl, currentTime, id
+    ]);
+    
+    const updatedTemplate = await db.get(`SELECT * FROM combat_unit_templates WHERE id = ?`, [id]);
+    updatedTemplate.skills = JSON.parse(updatedTemplate.skills || '[]');
+    
+    res.json(updatedTemplate);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * Start game (move from setup to active)
  * PUT /api/combat/:id/start
  */
@@ -783,6 +828,124 @@ exports.deleteUnitTemplate = async (req, res) => {
     }
     
     res.json({ message: 'Template deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Get game history/turn log
+ * GET /api/combat/:id/history
+ */
+exports.getGameHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.db;
+    
+    const game = await db.get(`
+      SELECT id, title, turn_history, game_status, current_turn, started_at, ended_at
+      FROM combat_games 
+      WHERE id = ?
+    `, [id]);
+    
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    
+    const turnHistory = JSON.parse(game.turn_history || '[]');
+    
+    // Get additional details for each turn
+    const detailedHistory = await Promise.all(
+      turnHistory.map(async (turn) => {
+        const details = { ...turn };
+        
+        // Add unit names for moves and attacks
+        if (turn.unitId) {
+          const unit = await db.get(`
+            SELECT u.id, t.name as template_name, t.sprite_url
+            FROM combat_game_units u
+            JOIN combat_unit_templates t ON u.template_id = t.id
+            WHERE u.id = ?
+          `, [turn.unitId]);
+          if (unit) {
+            details.unitName = unit.template_name;
+            details.unitSprite = unit.sprite_url;
+          }
+        }
+        
+        if (turn.attackerId) {
+          const attacker = await db.get(`
+            SELECT u.id, t.name as template_name, t.sprite_url
+            FROM combat_game_units u
+            JOIN combat_unit_templates t ON u.template_id = t.id
+            WHERE u.id = ?
+          `, [turn.attackerId]);
+          if (attacker) {
+            details.attackerName = attacker.template_name;
+            details.attackerSprite = attacker.sprite_url;
+          }
+        }
+        
+        if (turn.targetId) {
+          const target = await db.get(`
+            SELECT u.id, t.name as template_name, t.sprite_url
+            FROM combat_game_units u
+            JOIN combat_unit_templates t ON u.template_id = t.id
+            WHERE u.id = ?
+          `, [turn.targetId]);
+          if (target) {
+            details.targetName = target.template_name;
+            details.targetSprite = target.sprite_url;
+          }
+        }
+        
+        return details;
+      })
+    );
+    
+    res.json({
+      gameId: game.id,
+      gameTitle: game.title,
+      gameStatus: game.game_status,
+      currentTurn: game.current_turn,
+      startedAt: game.started_at,
+      endedAt: game.ended_at,
+      history: detailedHistory
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Remove unit during setup phase
+ * DELETE /api/combat/:id/units/:unitId
+ */
+exports.removeUnit = async (req, res) => {
+  try {
+    const { id, unitId } = req.params;
+    const db = req.db;
+    
+    const game = await db.get(`SELECT * FROM combat_games WHERE id = ?`, [id]);
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    
+    if (game.game_status !== 'setup') {
+      return res.status(400).json({ error: 'Can only remove units during setup phase' });
+    }
+    
+    const result = await db.run(`
+      DELETE FROM combat_game_units 
+      WHERE id = ? AND game_id = ?
+    `, [unitId, id]);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Unit not found' });
+    }
+    
+    const updatedGame = await this.getGameById(db, id);
+    res.json(updatedGame);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
