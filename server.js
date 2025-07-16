@@ -35,6 +35,7 @@ const codeGraphRoutes = require('./routes/codeGraphRoutes');
 const newCodeGraphRoutes = require('./routes/newCodeGraphRoutes');
 const enhancedCodeGraphRoutes = require('./routes/enhancedCodeGraphRoutes');
 const chessRoutes = require('./routes/chessRoutes');
+const combatRoutes = require('./routes/combatRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -812,6 +813,7 @@ app.use('/api/new-code-graph', newCodeGraphRoutes);
 app.use('/api/enhanced-code-graph', enhancedCodeGraphRoutes);
 
 app.use('/api/chess', chessRoutes);
+app.use('/api/combat', combatRoutes);
 
 // Start the server
 app.listen(PORT, () => {

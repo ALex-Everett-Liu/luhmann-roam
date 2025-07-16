@@ -46,6 +46,7 @@
 @import './features/graph-management.css';
 @import './features/local-graph-manager.css';
 @import './features/global-graph-manager.css';
+@import './features/combat-game.css';
 /* @import './features/hotkeys.css'; */
 
 /* Utilities - import last to override if needed */

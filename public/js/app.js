@@ -1610,9 +1610,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // Add combat game button to sidebar
+    function addCombatGameButton() {
+        const combatButton = document.createElement('button');
+        combatButton.textContent = '⚔️ D&D Combat';
+        combatButton.className = 'sidebar-button';
+        combatButton.style.cssText = `
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #FF6B35;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        `;
+        
+        combatButton.addEventListener('click', () => {
+            if (window.CombatGame) {
+                window.CombatGame.show();
+            } else {
+                console.error('CombatGame module not loaded');
+                // Try to load it dynamically
+                const script = document.createElement('script');
+                script.src = 'js/combatGame.js';
+                script.onload = () => {
+                    if (window.CombatGame) {
+                        window.CombatGame.show();
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        });
+        
+        combatButton.addEventListener('mouseenter', () => {
+            combatButton.style.background = '#E55A2B';
+        });
+        
+        combatButton.addEventListener('mouseleave', () => {
+            combatButton.style.background = '#FF6B35';
+        });
+        
+        // Use the existing addButtonToSidebar function
+        if (window.addButtonToSidebar) {
+            window.addButtonToSidebar(combatButton);
+        } else {
+            // Fallback to direct append
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.appendChild(combatButton);
+            }
+        }
+    }
     
-    // Add chess button after a short delay to ensure other modules are loaded
+    // Add chess and combat buttons after a short delay to ensure other modules are loaded
     setTimeout(addChessGameButton, 1000);
+    setTimeout(addCombatGameButton, 1100);
 
   // Add this function after the other helper functions
   async function copyContentBetweenLanguages(nodeId, direction) {

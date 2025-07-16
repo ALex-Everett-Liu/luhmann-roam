@@ -1486,6 +1486,62 @@ const CommandPaletteManager = (function() {
                 keywords: ['word', 'frequency', 'refresh', 'reload', 'update', 'analysis']
             });
         }
+
+        // Add Combat Game commands
+        if (window.CombatGame) {
+            registerCommand({
+                name: 'Open D&D Combat Game',
+                action: () => {
+                    window.CombatGame.show();
+                },
+                category: 'Games',
+                keywords: ['combat', 'dnd', 'game', 'tactical', 'battle', 'war']
+            });
+            
+            registerCommand({
+                name: 'Combat Game - New Game',
+                action: () => {
+                    window.CombatGame.show();
+                    // Simulate clicking new game button after a short delay
+                    setTimeout(() => {
+                        const newGameBtn = document.getElementById('new-combat-game-btn');
+                        if (newGameBtn) {
+                            newGameBtn.click();
+                        }
+                    }, 300);
+                },
+                category: 'Games',
+                keywords: ['combat', 'new', 'create', 'game', 'start']
+            });
+            
+            registerCommand({
+                name: 'Combat Game - Unit Templates',
+                action: () => {
+                    window.CombatGame.show();
+                    // Simulate clicking unit templates button after a short delay
+                    setTimeout(() => {
+                        const templatesBtn = document.getElementById('unit-templates-btn');
+                        if (templatesBtn) {
+                            templatesBtn.click();
+                        }
+                    }, 300);
+                },
+                category: 'Games',
+                keywords: ['combat', 'unit', 'template', 'customize', 'create']
+            });
+        }
+
+        // Add Chess Game commands
+        if (window.ChessGame) {
+            registerCommand({
+                name: 'Open Chess Game',
+                action: () => {
+                    window.ChessGame.show();
+                },
+                category: 'Games',
+                keywords: ['chess', 'game', 'board']
+            });
+        }
     }
     
     /**

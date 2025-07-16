@@ -939,6 +939,168 @@ try {
       END;
     `);
 
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_chess_games
+      AFTER INSERT ON chess_games
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE chess_games 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM chess_games)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    // Create combat game tables
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS combat_games (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        game_status TEXT DEFAULT 'active',
+        current_player TEXT DEFAULT 'player1',
+        current_turn INTEGER DEFAULT 1,
+        board_size INTEGER DEFAULT 8,
+        board_state TEXT,
+        turn_history TEXT,
+        winner TEXT,
+        game_result TEXT,
+        started_at INTEGER DEFAULT (strftime('%s', 'now')),
+        ended_at INTEGER,
+        last_move_at INTEGER DEFAULT (strftime('%s', 'now')),
+        sequence_id INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+
+    // Create unit templates table for pre-defined and custom units
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS combat_unit_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        unit_type TEXT DEFAULT 'infantry',
+        max_hp INTEGER DEFAULT 100,
+        attack_power INTEGER DEFAULT 10,
+        defense INTEGER DEFAULT 5,
+        movement_range INTEGER DEFAULT 2,
+        attack_range INTEGER DEFAULT 1,
+        skills TEXT, -- JSON array of skill objects
+        sprite_url TEXT,
+        is_custom BOOLEAN DEFAULT 0,
+        created_by TEXT,
+        sequence_id INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+
+    // Create game units table for units in specific games
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS combat_game_units (
+        id TEXT PRIMARY KEY,
+        game_id TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        player TEXT NOT NULL,
+        position_x INTEGER NOT NULL,
+        position_y INTEGER NOT NULL,
+        current_hp INTEGER NOT NULL,
+        status TEXT DEFAULT 'active',
+        has_moved BOOLEAN DEFAULT 0,
+        has_attacked BOOLEAN DEFAULT 0,
+        status_effects TEXT, -- JSON array of active effects
+        sequence_id INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+        FOREIGN KEY (game_id) REFERENCES combat_games (id) ON DELETE CASCADE,
+        FOREIGN KEY (template_id) REFERENCES combat_unit_templates (id)
+      )
+    `);
+
+    // Create skills table for unit abilities
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS combat_skills (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        skill_type TEXT DEFAULT 'attack',
+        damage INTEGER DEFAULT 0,
+        healing INTEGER DEFAULT 0,
+        range INTEGER DEFAULT 1,
+        area_of_effect INTEGER DEFAULT 0,
+        cooldown INTEGER DEFAULT 0,
+        mana_cost INTEGER DEFAULT 0,
+        effects TEXT, -- JSON array of special effects
+        sequence_id INTEGER,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      )
+    `);
+
+    // Add indices for combat game tables
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_combat_games_status ON combat_games(game_status);
+      CREATE INDEX IF NOT EXISTS idx_combat_games_started_at ON combat_games(started_at);
+      CREATE INDEX IF NOT EXISTS idx_combat_games_sequence_id ON combat_games(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_combat_unit_templates_type ON combat_unit_templates(unit_type);
+      CREATE INDEX IF NOT EXISTS idx_combat_unit_templates_sequence_id ON combat_unit_templates(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_combat_game_units_game_id ON combat_game_units(game_id);
+      CREATE INDEX IF NOT EXISTS idx_combat_game_units_player ON combat_game_units(player);
+      CREATE INDEX IF NOT EXISTS idx_combat_game_units_position ON combat_game_units(position_x, position_y);
+      CREATE INDEX IF NOT EXISTS idx_combat_game_units_sequence_id ON combat_game_units(sequence_id);
+      CREATE INDEX IF NOT EXISTS idx_combat_skills_type ON combat_skills(skill_type);
+      CREATE INDEX IF NOT EXISTS idx_combat_skills_sequence_id ON combat_skills(sequence_id);
+    `);
+
+    // Add triggers for combat game tables
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_games
+      AFTER INSERT ON combat_games
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE combat_games 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_games)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_unit_templates
+      AFTER INSERT ON combat_unit_templates
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE combat_unit_templates 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_unit_templates)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_game_units
+      AFTER INSERT ON combat_game_units
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE combat_game_units 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_game_units)
+        WHERE id = NEW.id;
+      END;
+    `);
+
+    await db.exec(`
+      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_skills
+      AFTER INSERT ON combat_skills
+      FOR EACH ROW
+      WHEN NEW.sequence_id IS NULL
+      BEGIN
+        UPDATE combat_skills 
+        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_skills)
+        WHERE id = NEW.id;
+      END;
+    `);
+
   return db;
 }
 
