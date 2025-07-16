@@ -1324,13 +1324,13 @@
 }
 
 /* Enhanced table row selection styles */
-.table-row.selected {
+.global-graph-container .table-row.selected {
     background-color: #ff6b6b20 !important;
     border-left: 4px solid #ff6b6b !important;
     font-weight: 600;
 }
 
-.table-row.highlight-flash {
+.global-graph-container .table-row.highlight-flash {
     animation: highlightFlash 2s ease-in-out;
 }
 
@@ -1341,22 +1341,22 @@
 }
 
 /* Improve search result interaction */
-.search-result-item {
+.global-graph-container .search-result-item {
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
 
-.search-result-item:hover {
+.global-graph-container .search-result-item:hover {
     background-color: #f0f0f0;
 }
 
 /* Table container scroll styling */
-.metrics-table-container {
+.global-graph-container .metrics-table-container {
     scroll-behavior: smooth;
 }
 
 /* Fullscreen table container */
-.metrics-table-container.fullscreen {
+.global-graph-container .metrics-table-container.fullscreen {
     position: fixed;
     top: 0;
     left: 0;
@@ -1369,7 +1369,7 @@
     box-sizing: border-box;
 }
 
-.fullscreen-close-btn {
+.global-graph-container .fullscreen-close-btn {
     position: absolute;
     top: 10px;
     right: 15px;
@@ -1381,12 +1381,12 @@
     z-index: 10000;
 }
 
-.fullscreen-close-btn:hover {
+.global-graph-container .fullscreen-close-btn:hover {
     color: #ff6b6b;
 }
 
 /* Search results enhancements */
-.search-results-header {
+.global-graph-container .search-results-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1397,15 +1397,15 @@
     padding-bottom: 4px;
 }
 
-.search-results-count {
+.global-graph-container .search-results-count {
     font-weight: 600;
 }
 
-.search-results-mode {
+.global-graph-container .search-results-mode {
     font-style: italic;
 }
 
-.search-result-filter-notice {
+.global-graph-container .search-result-filter-notice {
     font-size: 10px;
     color: #ff6b6b;
     font-style: italic;
@@ -1414,7 +1414,7 @@
     border-radius: 2px;
 }
 
-.search-result-item[data-needs-filter="true"] {
+.global-graph-container .search-result-item[data-needs-filter="true"] {
     border-left: 2px solid #ff6b6b;
     background: #ff6b6b05;
 }
