@@ -41,7 +41,7 @@ const I18n = (function() {
       deleteMarkdown: "Delete Markdown",
       saveMarkdown: "Save",
 
-      // Markdown search In the English translations object:
+      // Markdown search
       markdownSearch: "Markdown Search",
       markdownFiles: "Markdown Files",
       nodeContent: "Node Content",
@@ -154,7 +154,174 @@ const I18n = (function() {
       confirmDeleteTask: "Are you sure you want to delete this task?",
       previousDay: "Previous day",
       nextDay: "Next day",
-      noTasksForDay: "No tasks for this day"
+      noTasksForDay: "No tasks for this day",
+
+      // Local Graph Manager
+      localGraphExplorer: "Local Graph Explorer",
+      selectCenterNode: "Select Center Node",
+      chooseCenterNodeDescription: "Choose a node from your Local Graph pool to explore its neighborhood:",
+      quickAccess: "Quick Access",
+      recentlyUsedCenterNodes: "Recently used center nodes",
+      searchPoolNodes: "Search Pool Nodes",
+      searchPoolNodesPlaceholder: "Search pool nodes...",
+      startTypingToSearchPool: "Start typing to search pool nodes...",
+      maxDistance: "Max Distance:",
+      maxDepth: "Max Depth:",
+      maxTotalLinkWeightDistance: "Maximum total link weight distance",
+      maxNumberOfHops: "Maximum number of hops from center",
+      exploreGraph: "Explore Graph",
+      changeCenter: "Change Center",
+      saveToQuickAccess: "Save to Quick Access",
+      adjust: "Adjust",
+      layout: "Layout:",
+      addNode: "Add Node",
+      refresh: "Refresh",
+      searchInGraph: "Search in Graph",
+      searchNodesInCurrentGraph: "Search nodes in current graph...",
+      graphStatistics: "Graph Statistics",
+      nodes: "Nodes:",
+      links: "Links:",
+      distanceLevels: "Distance Levels",
+      selectedNode: "Selected Node",
+      localGraphMetrics: "LOCAL GRAPH METRICS",
+      globalGraphMetrics: "GLOBAL GRAPH METRICS",
+      
+      // Empty state
+      noNodesFound: "No Nodes Found",
+      knowledgeGraphEmpty: "Your knowledge graph is empty. To use the Local Graph Explorer, you need to create some nodes first.",
+      createYourFirstNode: "Create Your First Node",
+      goToMainOutliner: "Go to Main Outliner",
+      checkAgain: "Check Again",
+      gettingStarted: "Getting Started:",
+      
+      // Distance adjustment modal
+      adjustDistanceParameters: "Adjust Distance Parameters",
+      maximumDistance: "Maximum Distance:",
+      maximumDepth: "Maximum Depth:",
+      maxHopsFromCenter: "Maximum number of hops (links) from center node",
+      
+      // Add node modal
+      addNewNode: "Add New Node",
+      contentEnglish: "Content (English)*:",
+      enterNodeContent: "Enter node content...",
+      contentChinese: "Content (Chinese):",
+      enterChineseContent: "输入中文内容...",
+      placeInOutliner: "Place in Outliner (from pool):",
+      searchPoolNodesOrEmpty: "Search pool nodes or leave empty for root...",
+      searchPoolNodesOrEmptyHelp: "Start typing to search pool nodes or leave empty to create as root node...",
+      addToLocalGraphPool: "Add to Local Graph Pool",
+      
+      // Manual placement
+      manualNodePlacement: "Manual Node Placement",
+      proceedToManualPlacement: "Proceed to Manual Placement",
+      resetToAutoPositions: "Reset to Auto Positions",
+      skipThisNode: "Skip This Node",
+      autoPlaceRemaining: "Auto-place Remaining",
+      cancelManualMode: "Cancel Manual Mode",
+      finish: "Finish",
+      
+      // Notifications and messages
+      pleaseSelectCenterNode: "Please select a center node first",
+      errorLoadingGraphData: "Error loading graph data",
+      pleaseEnterNodeContent: "Please enter content for the node",
+      nodeCreatedWithLinks: "Node created successfully with {count} link(s)!",
+      errorCreatingNode: "Error creating node",
+      pathToNode: "Path to node: {path}",
+      errorFocusingNode: "Error focusing node in outliner",
+      firstNodeCreated: "First node created! You can now create more nodes and links.",
+      errorCreatingFirstNode: "Error creating first node",
+      pleaseUseMainOutliner: "Please use the main outliner to create nodes",
+      foundNodes: "Great! Found {count} nodes. You can now select a center node.",
+      stillNoNodesFound: "Still no nodes found. Please create some nodes first.",
+      errorCheckingNodes: "Error checking for nodes",
+      nodeCreatedAndAddedToPool: "Node created and added to pool!",
+      nodeCreatedButFailedToAddToPool: "Node created but failed to add to pool",
+      nodeAddedToPool: "Node added to Local Graph Pool!",
+      errorAddingNodeToPool: "Error adding node to pool",
+      nodeRemovedFromPool: "Node removed from Local Graph Pool!",
+      errorRemovingNodeFromPool: "Error removing node from pool",
+      
+      // Quick access
+      noQuickAccessNodes: "No quick access nodes yet. Explore a graph and save it using the ⭐ button.",
+      errorLoadingQuickAccess: "Error loading quick access nodes",
+      noCenterNodeSelected: "No center node selected",
+      savedToQuickAccess: "Saved to quick access!",
+      errorSavingToQuickAccess: "Error saving to quick access",
+      quickAccessCenterLoaded: "Quick access center loaded!",
+      errorLoadingQuickAccessCenter: "Error loading quick access center",
+      removeFromQuickAccess: "Remove this node from quick access?",
+      removedFromQuickAccess: "Removed from quick access",
+      errorRemovingFromQuickAccess: "Error removing from quick access",
+      
+      // Search
+      startTypingToSearch: "Start typing to search nodes...",
+      noNodesFoundInPool: "No nodes found in pool matching \"{query}\"",
+      errorSearchingPoolNodes: "Error searching pool nodes",
+      noNodesInPoolYet: "No nodes in pool yet. Add some nodes to the pool first.",
+      errorLoadingSuggestions: "Error loading suggestions",
+      
+      // SVG and diagrams
+      errorOpeningSVGEditor: "Error opening SVG editor",
+      confirmDeleteDiagram: "Are you sure you want to delete this diagram?",
+      diagramDeletedSuccessfully: "Diagram deleted successfully",
+      errorDeletingDiagram: "Error deleting diagram",
+      noActiveTabFound: "No active tab found",
+      pleaseCreateDiagramFirst: "Please create a diagram first",
+      diagramSavedSuccessfully: "Diagram saved successfully",
+      errorSavingDiagram: "Error saving diagram",
+      svgPreviewPlaceholder: "SVG preview will appear here",
+      previewPlaceholder: "SVG preview will appear here",
+      previewError: "Invalid SVG code",
+      
+      // Centrality
+      centralityCalculatedSuccessfully: "Centrality calculated successfully!",
+      errorCalculatingCentrality: "Error calculating centrality: {error}",
+      
+      // Layout and zoom
+      showLess: "Show Less",
+      showMore: "Show {count} More",
+      zoomIn: "+",
+      zoomOut: "−",
+      resetZoom: "⌂",
+      
+      // Context menu and actions
+      focusInOutliner: "Focus in Outliner",
+      addToPool: "Add to Pool",
+      removeFromPool: "Remove from Pool",
+      editNode: "Edit Node",
+      viewDiagram: "View Diagram",
+      
+      // Link management
+      searchForNodeToLinkTo: "Search for node to link to...",
+      optionalDescription: "Optional description...",
+      
+      // Distance and depth
+      distance: "Distance",
+      depth: "Depth",
+      untitled: "Untitled",
+
+      // Additional keys for Local Graph Manager
+      center: "Center",
+      none: "None",
+      circular: "Circular",
+      distanceBased: "Distance-Based",
+      hybridConcentric: "Hybrid Concentric",
+      manualPlacement: "Manual Placement",
+      clickNodeToSelect: "Click a node to see details",
+      step: "Step",
+      of: "of",
+      initialNodesPlaced: "Initial nodes (depth 1-2) have been placed automatically using distance-based layout.",
+      canDragToAdjust: "You can drag them to adjust their positions, or proceed to place the remaining nodes.",
+      clickToPlace: "Click anywhere on the canvas to place",
+      nodeName: "Node Name",
+      remaining: "Remaining",
+      manualPlacementComplete: "Manual placement complete! All nodes have been positioned.",
+      totalLinkWeightDistance: "Total link weight distance from center node",
+      createLinksToNodes: "Create links to nodes in current graph",
+      createNode: "Create Node",
+      createAtLeastNodes: "Create at least 2-3 nodes in your outliner",
+      addLinksBetweenNodes: "Add some links between nodes using the Graph Management tool",
+      returnToExplore: "Return here to explore local neighborhoods around any node"
     },
     zh: {
       // General UI
@@ -189,7 +356,7 @@ const I18n = (function() {
       deleteMarkdown: "删除Markdown",
       saveMarkdown: "保存",
 
-      // Markdown search In the Chinese translations object:
+      // Markdown search
       markdownSearch: "Markdown 搜索",
       markdownFiles: "Markdown 文件",
       nodeContent: "节点内容", 
@@ -302,10 +469,177 @@ const I18n = (function() {
       confirmDeleteTask: "您确定要删除此任务吗？",
       previousDay: "前一天",
       nextDay: "后一天",
-      noTasksForDay: "这一天没有任务"
+      noTasksForDay: "这一天没有任务",
+
+      // Local Graph Manager
+      localGraphExplorer: "局部图谱浏览器",
+      selectCenterNode: "选择中心节点",
+      chooseCenterNodeDescription: "从您的局部图谱池中选择一个节点来探索其邻域：",
+      quickAccess: "快速访问",
+      recentlyUsedCenterNodes: "最近使用的中心节点",
+      searchPoolNodes: "搜索池节点",
+      searchPoolNodesPlaceholder: "搜索池节点...",
+      startTypingToSearchPool: "开始输入以搜索池节点...",
+      maxDistance: "最大距离：",
+      maxDepth: "最大深度：",
+      maxTotalLinkWeightDistance: "最大总链接权重距离",
+      maxNumberOfHops: "从中心节点的最大跳数",
+      exploreGraph: "探索图谱",
+      changeCenter: "更改中心",
+      saveToQuickAccess: "保存到快速访问",
+      adjust: "调整",
+      layout: "布局：",
+      addNode: "添加节点",
+      refresh: "刷新",
+      searchInGraph: "在图谱中搜索",
+      searchNodesInCurrentGraph: "在当前图谱中搜索节点...",
+      graphStatistics: "图谱统计",
+      nodes: "节点：",
+      links: "链接：",
+      distanceLevels: "距离层级",
+      selectedNode: "已选节点",
+      localGraphMetrics: "局部图谱指标",
+      globalGraphMetrics: "全局图谱指标",
+      
+      // Empty state
+      noNodesFound: "未找到节点",
+      knowledgeGraphEmpty: "您的知识图谱为空。要使用局部图谱浏览器，您需要先创建一些节点。",
+      createYourFirstNode: "创建您的第一个节点",
+      goToMainOutliner: "前往主大纲",
+      checkAgain: "重新检查",
+      gettingStarted: "入门指南：",
+      
+      // Distance adjustment modal
+      adjustDistanceParameters: "调整距离参数",
+      maximumDistance: "最大距离：",
+      maximumDepth: "最大深度：",
+      maxHopsFromCenter: "从中心节点的最大跳数（链接）",
+      
+      // Add node modal
+      addNewNode: "添加新节点",
+      contentEnglish: "内容（英文）*：",
+      enterNodeContent: "输入节点内容...",
+      contentChinese: "内容（中文）：",
+      enterChineseContent: "输入中文内容...",
+      placeInOutliner: "在大纲中放置（从池中）：",
+      searchPoolNodesOrEmpty: "搜索池节点或留空作为根节点...",
+      searchPoolNodesOrEmptyHelp: "开始输入以搜索池节点或留空以创建为根节点...",
+      addToLocalGraphPool: "添加到局部图谱池",
+      
+      // Manual placement
+      manualNodePlacement: "手动节点放置",
+      proceedToManualPlacement: "进行手动放置",
+      resetToAutoPositions: "重置为自动位置",
+      skipThisNode: "跳过此节点",
+      autoPlaceRemaining: "自动放置剩余",
+      cancelManualMode: "取消手动模式",
+      finish: "完成",
+      
+      // Notifications and messages
+      pleaseSelectCenterNode: "请先选择一个中心节点",
+      errorLoadingGraphData: "加载图谱数据时出错",
+      pleaseEnterNodeContent: "请输入节点内容",
+      nodeCreatedWithLinks: "节点创建成功，包含 {count} 个链接！",
+      errorCreatingNode: "创建节点时出错",
+      pathToNode: "节点路径：{path}",
+      errorFocusingNode: "在大纲中聚焦节点时出错",
+      firstNodeCreated: "第一个节点已创建！现在您可以创建更多节点和链接。",
+      errorCreatingFirstNode: "创建第一个节点时出错",
+      pleaseUseMainOutliner: "请使用主大纲创建节点",
+      foundNodes: "太好了！找到 {count} 个节点。现在您可以选择一个中心节点。",
+      stillNoNodesFound: "仍未找到节点。请先创建一些节点。",
+      errorCheckingNodes: "检查节点时出错",
+      nodeCreatedAndAddedToPool: "节点已创建并添加到池中！",
+      nodeCreatedButFailedToAddToPool: "节点已创建但未能添加到池中",
+      nodeAddedToPool: "节点已添加到局部图谱池！",
+      errorAddingNodeToPool: "添加节点到池时出错",
+      nodeRemovedFromPool: "节点已从局部图谱池中移除！",
+      errorRemovingNodeFromPool: "从池中移除节点时出错",
+      
+      // Quick access
+      noQuickAccessNodes: "尚无快速访问节点。探索图谱并使用 ⭐ 按钮保存。",
+      errorLoadingQuickAccess: "加载快速访问节点时出错",
+      noCenterNodeSelected: "未选择中心节点",
+      savedToQuickAccess: "已保存到快速访问！",
+      errorSavingToQuickAccess: "保存到快速访问时出错",
+      quickAccessCenterLoaded: "快速访问中心已加载！",
+      errorLoadingQuickAccessCenter: "加载快速访问中心时出错",
+      removeFromQuickAccess: "从快速访问中移除此节点？",
+      removedFromQuickAccess: "已从快速访问中移除",
+      errorRemovingFromQuickAccess: "从快速访问中移除时出错",
+      
+      // Search
+      startTypingToSearch: "开始输入以搜索节点...",
+      noNodesFoundInPool: "在池中未找到匹配 \"{query}\" 的节点",
+      errorSearchingPoolNodes: "搜索池节点时出错",
+      noNodesInPoolYet: "池中尚无节点。请先添加一些节点到池中。",
+      errorLoadingSuggestions: "加载建议时出错",
+      
+      // SVG and diagrams
+      errorOpeningSVGEditor: "打开SVG编辑器时出错",
+      confirmDeleteDiagram: "确定要删除此图表吗？",
+      diagramDeletedSuccessfully: "图表删除成功",
+      errorDeletingDiagram: "删除图表时出错",
+      noActiveTabFound: "未找到活动标签页",
+      pleaseCreateDiagramFirst: "请先创建图表",
+      diagramSavedSuccessfully: "图表保存成功",
+      errorSavingDiagram: "保存图表时出错",
+      svgPreviewPlaceholder: "SVG预览将在这里显示",
+      previewPlaceholder: "SVG预览将在这里显示",
+      previewError: "无效的SVG代码",
+      
+      // Centrality
+      centralityCalculatedSuccessfully: "中心性计算成功！",
+      errorCalculatingCentrality: "计算中心性时出错：{error}",
+      
+      // Layout and zoom
+      showLess: "显示更少",
+      showMore: "显示更多 {count} 个",
+      zoomIn: "+",
+      zoomOut: "−",
+      resetZoom: "⌂",
+      
+      // Context menu and actions
+      focusInOutliner: "在大纲中聚焦",
+      addToPool: "添加到池",
+      removeFromPool: "从池中移除",
+      editNode: "编辑节点",
+      viewDiagram: "查看图表",
+      
+      // Link management
+      searchForNodeToLinkTo: "搜索要链接的节点...",
+      optionalDescription: "可选描述...",
+      
+      // Distance and depth
+      distance: "距离",
+      depth: "深度",
+      untitled: "无标题",
+
+      // Additional keys for Local Graph Manager
+      center: "中心",
+      none: "无",
+      circular: "圆形",
+      distanceBased: "基于距离",
+      hybridConcentric: "混合同心圆",
+      manualPlacement: "手动放置",
+      clickNodeToSelect: "点击节点查看详情",
+      step: "步骤",
+      of: "共",
+      initialNodesPlaced: "初始节点（深度1-2）已使用基于距离的布局自动放置。",
+      canDragToAdjust: "您可以拖动它们来调整位置，或继续放置剩余节点。",
+      clickToPlace: "点击画布上的任意位置来放置",
+      nodeName: "节点名称",
+      remaining: "剩余",
+      manualPlacementComplete: "手动放置完成！所有节点都已定位。",
+      totalLinkWeightDistance: "从中心节点的总链接权重距离",
+      createLinksToNodes: "创建到当前图谱中节点的链接",
+      createNode: "创建节点",
+      createAtLeastNodes: "在您的大纲中创建至少2-3个节点",
+      addLinksBetweenNodes: "使用图谱管理工具在节点之间添加一些链接",
+      returnToExplore: "返回这里探索任何节点周围的局部邻域"
     }
   };
-  
+
   /**
    * Initialize the i18n module
    */
@@ -376,6 +710,11 @@ const I18n = (function() {
     // Add this line to notify BookmarkManager about language changes
     if (window.BookmarkManager && BookmarkManager.updateLanguage) {
       BookmarkManager.updateLanguage(currentLanguage);
+    }
+    
+    // Add this line to notify LocalGraphManager about language changes
+    if (window.LocalGraphManager && LocalGraphManager.updateLanguage) {
+      LocalGraphManager.updateLanguage(currentLanguage);
     }
   }
   

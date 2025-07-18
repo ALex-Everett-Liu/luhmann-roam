@@ -38,6 +38,28 @@ const LocalGraphManager = (function() {
             console.error('Error initializing LocalGraphManager:', error);
         }
     }
+
+    // Add updateLanguage method
+    function updateLanguage(language) {
+        if (!isVisible()) return;
+        
+        // Re-render the container with new language
+        const container = document.getElementById('local-graph-container');
+        if (container) {
+            // Store current state
+            const currentPhase = container.querySelector('.phase-content.active')?.id;
+            const currentCenter = graphData?.centerNode;
+            
+            // Recreate container with new language
+            createContainer();
+            
+            // Restore state if needed
+            if (currentPhase && currentCenter) {
+                // Restore the appropriate phase and data
+                restoreUIState(currentPhase, currentCenter);
+            }
+        }
+    }
     
     function createContainer() {
         container = document.createElement('div');
@@ -56,7 +78,7 @@ const LocalGraphManager = (function() {
         
         container.innerHTML = `
             <div class="local-graph-header">
-                <h2>Local Graph Explorer</h2>
+                <h2>${I18n.t('localGraphExplorer')}</h2>
                 <button id="close-local-graph" class="close-btn">×</button>
             </div>
             
@@ -65,21 +87,21 @@ const LocalGraphManager = (function() {
                 <div id="empty-state-phase" class="phase-content">
                     <div class="empty-state-container">
                         <div class="empty-state-icon">🌱</div>
-                        <h3>No Nodes Found</h3>
-                        <p>Your knowledge graph is empty. To use the Local Graph Explorer, you need to create some nodes first.</p>
+                        <h3>${I18n.t('noNodesFound')}</h3>
+                        <p>${I18n.t('knowledgeGraphEmpty')}</p>
                         
                         <div class="empty-state-actions">
-                            <button id="create-first-node-btn" class="primary-btn">Create Your First Node</button>
-                            <button id="go-to-outliner-btn" class="secondary-btn">Go to Main Outliner</button>
-                            <button id="check-nodes-again-btn" class="secondary-btn">Check Again</button>
+                            <button id="create-first-node-btn" class="primary-btn">${I18n.t('createYourFirstNode')}</button>
+                            <button id="go-to-outliner-btn" class="secondary-btn">${I18n.t('goToMainOutliner')}</button>
+                            <button id="check-nodes-again-btn" class="secondary-btn">${I18n.t('checkAgain')}</button>
                         </div>
                         
                         <div class="empty-state-help">
-                            <h4>Getting Started:</h4>
+                            <h4>${I18n.t('gettingStarted')}</h4>
                             <ol>
-                                <li>Create at least 2-3 nodes in your outliner</li>
-                                <li>Add some links between nodes using the Graph Management tool</li>
-                                <li>Return here to explore local neighborhoods around any node</li>
+                                <li>${I18n.t('createAtLeastNodes')}</li>
+                                <li>${I18n.t('addLinksBetweenNodes')}</li>
+                                <li>${I18n.t('returnToExplore')}</li>
                             </ol>
                         </div>
                     </div>
@@ -88,14 +110,14 @@ const LocalGraphManager = (function() {
                 <!-- Center Node Selection Phase -->
                 <div id="center-selection-phase" class="phase-content">
                     <div class="center-selection-container">
-                        <h3>Select Center Node</h3>
-                        <p>Choose a node from your Local Graph pool to explore its neighborhood:</p>
+                        <h3>${I18n.t('selectCenterNode')}</h3>
+                        <p>${I18n.t('chooseCenterNodeDescription')}</p>
                         
                         <!-- Quick Access Section -->
                         <div class="quick-access-section">
                             <div class="quick-access-header">
-                                <h4>Quick Access</h4>
-                                <span class="quick-access-subtitle">Recently used center nodes</span>
+                                <h4>${I18n.t('quickAccess')}</h4>
+                                <span class="quick-access-subtitle">${I18n.t('recentlyUsedCenterNodes')}</span>
                             </div>
                             <div id="quick-access-list" class="quick-access-list">
                                 <!-- Will be populated with quick access nodes -->
@@ -103,12 +125,12 @@ const LocalGraphManager = (function() {
                         </div>
                         
                         <div class="search-section">
-                            <h4>Search Pool Nodes</h4>
+                            <h4>${I18n.t('searchPoolNodes')}</h4>
                             <div class="node-search-container">
-                                <input type="text" id="center-node-search" placeholder="Search pool nodes..." class="node-search-input">
+                                <input type="text" id="center-node-search" placeholder="${I18n.t('searchPoolNodesPlaceholder')}" class="node-search-input">
                                 <div id="center-node-dropdown" class="node-dropdown">
                                     <div class="node-dropdown-content">
-                                        <div class="no-results-message">Start typing to search pool nodes...</div>
+                                        <div class="no-results-message">${I18n.t('startTypingToSearchPool')}</div>
                                     </div>
                                 </div>
                             </div>
@@ -116,18 +138,18 @@ const LocalGraphManager = (function() {
                         
                         <div class="distance-controls">
                             <div class="control-group">
-                                <label>Max Distance:</label>
+                                <label>${I18n.t('maxDistance')}</label>
                                 <input type="number" id="max-distance-input" min="1" max="20" step="0.5" value="5">
-                                <span class="control-help">Maximum total link weight distance</span>
+                                <span class="control-help">${I18n.t('maxTotalLinkWeightDistance')}</span>
                             </div>
                             <div class="control-group">
-                                <label>Max Depth:</label>
+                                <label>${I18n.t('maxDepth')}</label>
                                 <input type="number" id="max-depth-input" min="1" max="10" value="3">
-                                <span class="control-help">Maximum number of hops from center</span>
+                                <span class="control-help">${I18n.t('maxNumberOfHops')}</span>
                             </div>
                         </div>
                         
-                        <button id="explore-graph-btn" class="primary-btn" disabled>Explore Graph</button>
+                        <button id="explore-graph-btn" class="primary-btn" disabled>${I18n.t('exploreGraph')}</button>
                     </div>
                 </div>
                 
@@ -136,26 +158,26 @@ const LocalGraphManager = (function() {
                     <div class="graph-controls">
                         <div class="control-row">
                             <div class="center-info">
-                                <strong>Center:</strong> <span id="current-center-node">None</span>
-                                <button id="change-center-btn" class="secondary-btn">Change Center</button>
-                                <button id="save-to-quick-access-btn" class="secondary-btn" title="Save to Quick Access">⭐</button>
+                                <strong>${I18n.t('center')}:</strong> <span id="current-center-node">${I18n.t('none')}</span>
+                                <button id="change-center-btn" class="secondary-btn">${I18n.t('changeCenter')}</button>
+                                <button id="save-to-quick-access-btn" class="secondary-btn" title="${I18n.t('saveToQuickAccess')}">⭐</button>
                             </div>
                             <div class="distance-info">
-                                <span id="distance-display">Distance: 5, Depth: 3</span>
-                                <button id="adjust-distance-btn" class="secondary-btn">Adjust</button>
+                                <span id="distance-display">${I18n.t('distance')}: 5, ${I18n.t('depth')}: 3</span>
+                                <button id="adjust-distance-btn" class="secondary-btn">${I18n.t('adjust')}</button>
                             </div>
                             <div class="layout-controls">
-                                <label>Layout:</label>
+                                <label>${I18n.t('layout')}</label>
                                 <select id="layout-mode-select" class="layout-select">
-                                    <option value="circular">Circular</option>
-                                    <option value="distance-based">Distance-Based</option>
-                                    <option value="hybrid">Hybrid Concentric</option>
-                                    <option value="manual">Manual Placement</option>
+                                    <option value="circular">${I18n.t('circular')}</option>
+                                    <option value="distance-based">${I18n.t('distanceBased')}</option>
+                                    <option value="hybrid">${I18n.t('hybridConcentric')}</option>
+                                    <option value="manual">${I18n.t('manualPlacement')}</option>
                                 </select>
                             </div>
                             <div class="graph-actions">
-                                <button id="add-node-btn" class="primary-btn">Add Node</button>
-                                <button id="refresh-graph-btn" class="secondary-btn">Refresh</button>
+                                <button id="add-node-btn" class="primary-btn">${I18n.t('addNode')}</button>
+                                <button id="refresh-graph-btn" class="secondary-btn">${I18n.t('refresh')}</button>
                             </div>
                         </div>
                     </div>
@@ -163,9 +185,9 @@ const LocalGraphManager = (function() {
                     <div class="graph-main-area">
                         <div class="graph-sidebar" id="local-graph-sidebar">
                             <div class="sidebar-section">
-                                <h4>Search in Graph</h4>
+                                <h4>${I18n.t('searchInGraph')}</h4>
                                 <div class="local-graph-search-container">
-                                    <input type="text" id="graph-node-search" placeholder="Search nodes in current graph..." class="local-graph-search-input">
+                                    <input type="text" id="graph-node-search" placeholder="${I18n.t('searchNodesInCurrentGraph')}" class="local-graph-search-input">
                                     <div id="graph-search-results" class="local-graph-search-results">
                                         <!-- Search results will appear here -->
                                     </div>
@@ -173,27 +195,27 @@ const LocalGraphManager = (function() {
                             </div>
                             
                             <div class="sidebar-section">
-                                <h4>Graph Statistics</h4>
+                                <h4>${I18n.t('graphStatistics')}</h4>
                                 <div id="graph-stats">
                                     <div class="stat-item">
-                                        <span class="stat-label">Nodes:</span>
+                                        <span class="stat-label">${I18n.t('nodes')}</span>
                                         <span id="nodes-count">0</span>
                                     </div>
                                     <div class="stat-item">
-                                        <span class="stat-label">Links:</span>
+                                        <span class="stat-label">${I18n.t('links')}</span>
                                         <span id="links-count">0</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="sidebar-section">
-                                <h4>Distance Levels</h4>
+                                <h4>${I18n.t('distanceLevels')}</h4>
                                 <div id="distance-levels"></div>
                             </div>
                             
                             <div class="sidebar-section">
-                                <h4>Selected Node</h4>
-                                <div id="selected-node-info">Click a node to see details</div>
+                                <h4>${I18n.t('selectedNode')}</h4>
+                                <div id="selected-node-info">${I18n.t('clickNodeToSelect')}</div>
                             </div>
                         </div>
                         
@@ -205,9 +227,9 @@ const LocalGraphManager = (function() {
                         <div class="graph-canvas-area" id="local-graph-canvas-area">
                             <div id="manual-placement-controls" class="manual-placement-controls" style="display: none;">
                                 <div class="manual-placement-header">
-                                    <h4 id="manual-placement-title">Manual Node Placement</h4>
+                                    <h4 id="manual-placement-title">${I18n.t('manualNodePlacement')}</h4>
                                     <div class="manual-placement-progress">
-                                        <span id="manual-progress-text">Step 1 of 3</span>
+                                        <span id="manual-progress-text">${I18n.t('step')} 1 ${I18n.t('of')} 3</span>
                                         <div class="progress-bar">
                                             <div id="manual-progress-fill" class="progress-fill"></div>
                                         </div>
@@ -216,33 +238,33 @@ const LocalGraphManager = (function() {
                                 
                                 <div id="manual-phase-initial" class="manual-phase">
                                     <div class="manual-instructions">
-                                        <p>Initial nodes (depth 1-2) have been placed automatically using distance-based layout.</p>
-                                        <p>You can drag them to adjust their positions, or proceed to place the remaining nodes.</p>
+                                        <p>${I18n.t('initialNodesPlaced')}</p>
+                                        <p>${I18n.t('canDragToAdjust')}</p>
                                     </div>
                                     <div class="manual-actions">
-                                        <button id="manual-proceed-btn" class="primary-btn">Proceed to Manual Placement</button>
-                                        <button id="manual-reset-positions-btn" class="secondary-btn">Reset to Auto Positions</button>
+                                        <button id="manual-proceed-btn" class="primary-btn">${I18n.t('proceedToManualPlacement')}</button>
+                                        <button id="manual-reset-positions-btn" class="secondary-btn">${I18n.t('resetToAutoPositions')}</button>
                                     </div>
                                 </div>
                                 
                                 <div id="manual-phase-placing" class="manual-phase" style="display: none;">
                                     <div class="manual-instructions">
-                                        <p>Click anywhere on the canvas to place: <strong id="current-node-name">Node Name</strong></p>
-                                        <p id="remaining-nodes-count">Remaining: 5 nodes</p>
+                                        <p>${I18n.t('clickToPlace')}: <strong id="current-node-name">${I18n.t('nodeName')}</strong></p>
+                                        <p id="remaining-nodes-count">${I18n.t('remaining')}: 5 ${I18n.t('nodes')}</p>
                                     </div>
                                     <div class="manual-actions">
-                                        <button id="manual-skip-node-btn" class="secondary-btn">Skip This Node</button>
-                                        <button id="manual-auto-place-remaining-btn" class="secondary-btn">Auto-place Remaining</button>
-                                        <button id="manual-cancel-btn" class="secondary-btn">Cancel Manual Mode</button>
+                                        <button id="manual-skip-node-btn" class="secondary-btn">${I18n.t('skipThisNode')}</button>
+                                        <button id="manual-auto-place-remaining-btn" class="secondary-btn">${I18n.t('autoPlaceRemaining')}</button>
+                                        <button id="manual-cancel-btn" class="secondary-btn">${I18n.t('cancelManualMode')}</button>
                                     </div>
                                 </div>
                                 
                                 <div id="manual-phase-complete" class="manual-phase" style="display: none;">
                                     <div class="manual-instructions">
-                                        <p>✅ Manual placement complete! All nodes have been positioned.</p>
+                                        <p>✅ ${I18n.t('manualPlacementComplete')}</p>
                                     </div>
                                     <div class="manual-actions">
-                                        <button id="manual-finish-btn" class="primary-btn">Finish</button>
+                                        <button id="manual-finish-btn" class="primary-btn">${I18n.t('finish')}</button>
                                     </div>
                                 </div>
                             </div>
@@ -299,25 +321,25 @@ const LocalGraphManager = (function() {
         addNodeModal.className = 'local-graph-modal';
         addNodeModal.innerHTML = `
             <div class="local-graph-modal-content">
-                <h3>Add New Node</h3>
+                <h3>${I18n.t('addNewNode')}</h3>
                 <form id="add-node-form">
                     <div class="form-group">
-                        <label>Content (English)*:</label>
-                        <textarea id="node-content" required placeholder="Enter node content..."></textarea>
+                        <label>${I18n.t('contentEnglish')}</label>
+                        <textarea id="node-content" required placeholder="${I18n.t('enterNodeContent')}"></textarea>
                     </div>
                     
                     <div class="form-group">
-                        <label>Content (Chinese):</label>
-                        <textarea id="node-content-zh" placeholder="输入中文内容..."></textarea>
+                        <label>${I18n.t('contentChinese')}</label>
+                        <textarea id="node-content-zh" placeholder="${I18n.t('enterChineseContent')}"></textarea>
                     </div>
                     
                     <div class="form-group">
-                        <label>Place in Outliner (from pool):</label>
+                        <label>${I18n.t('placeInOutliner')}</label>
                         <div class="parent-node-search-container">
-                            <input type="text" id="parent-node-search" placeholder="Search pool nodes or leave empty for root..." class="node-search-input">
+                            <input type="text" id="parent-node-search" placeholder="${I18n.t('searchPoolNodesOrEmpty')}" class="node-search-input">
                             <div id="parent-node-dropdown" class="node-dropdown">
                                 <div class="dropdown-content">
-                                    <div class="no-results-message">Start typing to search pool nodes or leave empty to create as root node...</div>
+                                    <div class="no-results-message">${I18n.t('searchPoolNodesOrEmptyHelp')}</div>
                                 </div>
                             </div>
                         </div>
@@ -326,7 +348,7 @@ const LocalGraphManager = (function() {
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="create-links" checked>
-                            Create links to other nodes
+                            ${I18n.t('createLinksToNodes')}
                         </label>
                     </div>
                     
@@ -363,8 +385,8 @@ const LocalGraphManager = (function() {
                     </div>
                     
                     <div class="modal-actions">
-                        <button type="submit" class="primary-btn">Create Node</button>
-                        <button type="button" id="cancel-add-node" class="secondary-btn">Cancel</button>
+                        <button type="submit" class="primary-btn">${I18n.t('createNode')}</button>
+                        <button type="button" id="cancel-add-node" class="secondary-btn">${I18n.t('cancel')}</button>
                     </div>
                 </form>
             </div>
@@ -588,7 +610,7 @@ const LocalGraphManager = (function() {
         const dropdownContent = dropdown.querySelector('.node-dropdown-content');
         
         if (query.length < 2) {
-            dropdownContent.innerHTML = '<div class="no-results-message">Start typing to search pool nodes...</div>';
+            dropdownContent.innerHTML = `<div class="no-results-message">${I18n.t('startTypingToSearchPool')}</div>`;
             dropdown.classList.remove('show');
             return;
         }
@@ -1925,7 +1947,7 @@ const LocalGraphManager = (function() {
         // Show basic info immediately
         infoDiv.innerHTML = `
             <div class="selected-node">
-                <h5>${node.content || 'Untitled'}</h5>
+                <h5>${node.content || I18n.t('untitled')}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
                 
                 <!-- SVG Icon/Diagram Section -->
@@ -3202,8 +3224,8 @@ function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
     
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = 'local-graph-notification';
-        notification.textContent = message;
+        notification.className = `notification ${type} local-graph-notification`;
+        notification.textContent = I18n.t(messageKey, params);
         
         const baseStyles = {
             position: 'fixed',
@@ -6175,6 +6197,7 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         show,
         hide,
         isVisible,
+        updateLanguage,
         editNode,
         focusInOutliner,
         createNodeFromSearch,
