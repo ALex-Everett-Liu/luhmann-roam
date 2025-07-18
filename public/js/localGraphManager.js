@@ -1938,6 +1938,11 @@ const LocalGraphManager = (function() {
                                     <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81l-6.286 6.287a.25.25 0 00-.064.108l-.558 1.953 1.953-.558a.249.249 0 00.108-.064l6.286-6.286z"/>
                                 </svg>
                             </button>
+                            <button onclick="LocalGraphManager.viewNodeSvgFullscreen('${node.id}')" class="svg-fullscreen-btn" title="View Fullscreen" style="display: none;">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1h-4zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5zM.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5z"/>
+                                </svg>
+                            </button>
                             <button onclick="LocalGraphManager.deleteNodeSvg('${node.id}')" class="svg-delete-btn" title="Delete SVG Diagram" style="display: none;">
                                 <svg width="16" height="16" viewBox="0 0 16 16">
                                     <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H2.506a.58.58 0 000 1.157H3.5v9.85A1.994 1.994 0 005.5 15h5a1.994 1.994 0 002-2.493V3.657h.994a.58.58 0 000-1.157H11zM4.5 13.507c0 .274.226.5.5.5h5c.274 0 .5-.226.5-.5V3.657H4.5v9.85z"/>
@@ -2016,7 +2021,8 @@ const LocalGraphManager = (function() {
             
             const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
             const svgContainer = document.getElementById(`svg-display-${nodeId}`);
-            const deleteBtn = svgContainer.parentElement.querySelector('.svg-delete-btn');
+            const deleteBtn = svgContainer && svgContainer.parentElement.querySelector('.svg-delete-btn');
+            const fullscreenBtn = svgContainer && svgContainer.parentElement.querySelector('.svg-fullscreen-btn');
             
             if (svgAttribute && svgAttribute.value) {
                 // Display the SVG
@@ -2026,8 +2032,9 @@ const LocalGraphManager = (function() {
                     </div>
                 `;
                 
-                // Show delete button
+                // Show delete and fullscreen buttons
                 if (deleteBtn) deleteBtn.style.display = 'block';
+                if (fullscreenBtn) fullscreenBtn.style.display = 'block';
             } else {
                 // Show placeholder
                 svgContainer.innerHTML = `
@@ -2038,8 +2045,9 @@ const LocalGraphManager = (function() {
                     </div>
                 `;
                 
-                // Hide delete button
+                // Hide delete and fullscreen buttons
                 if (deleteBtn) deleteBtn.style.display = 'none';
+                if (fullscreenBtn) fullscreenBtn.style.display = 'none';
             }
         } catch (error) {
             console.error('Error loading node SVG:', error);
@@ -5936,6 +5944,231 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
     }
 }
 
+    // Update the loadNodeSvg function to show/hide the fullscreen button (around line 2100):
+    async function loadNodeSvg(nodeId) {
+        try {
+            const response = await fetch(`/api/nodes/${nodeId}/attributes`);
+            const attributes = await response.json();
+            
+            const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
+            const svgContainer = document.getElementById(`svg-display-${nodeId}`);
+            const deleteBtn = svgContainer && svgContainer.parentElement.querySelector('.svg-delete-btn');
+            const fullscreenBtn = svgContainer && svgContainer.parentElement.querySelector('.svg-fullscreen-btn');
+            
+            if (svgAttribute && svgAttribute.value) {
+                // Display the SVG
+                svgContainer.innerHTML = `
+                    <div class="svg-content">
+                        ${svgAttribute.value}
+                    </div>
+                `;
+                
+                // Show delete and fullscreen buttons
+                if (deleteBtn) deleteBtn.style.display = 'block';
+                if (fullscreenBtn) fullscreenBtn.style.display = 'block';
+            } else {
+                // Show placeholder
+                svgContainer.innerHTML = `
+                    <div class="svg-placeholder">
+                        <div class="svg-placeholder-icon">📊</div>
+                        <div class="svg-placeholder-text">No diagram available</div>
+                        <div class="svg-placeholder-action">Click edit to create one</div>
+                    </div>
+                `;
+                
+                // Hide delete and fullscreen buttons
+                if (deleteBtn) deleteBtn.style.display = 'none';
+                if (fullscreenBtn) fullscreenBtn.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading node SVG:', error);
+        }
+    }
+
+    // Add the new fullscreen viewer function (around line 2200):
+    async function viewNodeSvgFullscreen(nodeId) {
+        try {
+            // Get the SVG content
+            const response = await fetch(`/api/nodes/${nodeId}/attributes`);
+            const attributes = await response.json();
+            const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
+            
+            if (!svgAttribute || !svgAttribute.value) {
+                showNotification('No diagram to display', 'warning');
+                return;
+            }
+            
+            // Create fullscreen modal
+            const modal = document.createElement('div');
+            modal.className = 'svg-fullscreen-modal';
+            modal.innerHTML = `
+                <div class="svg-fullscreen-overlay">
+                    <div class="svg-fullscreen-header">
+                        <h3>Node Diagram - Fullscreen View</h3>
+                        <div class="svg-fullscreen-controls">
+                            <button id="svg-zoom-out" class="svg-zoom-btn" title="Zoom Out">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M8 3.5a.5.5 0 0 0-1 0V7H3.5a.5.5 0 0 0 0 1H7v3.5a.5.5 0 0 0 1 0V8h3.5a.5.5 0 0 0 0-1H8V3.5z"/>
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                </svg>
+                            </button>
+                            <span id="svg-zoom-level">100%</span>
+                            <button id="svg-zoom-in" class="svg-zoom-btn" title="Zoom In">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                </svg>
+                            </button>
+                            <button id="svg-zoom-reset" class="svg-zoom-btn" title="Reset Zoom">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
+                                </svg>
+                            </button>
+                            <button id="svg-fullscreen-close" class="svg-fullscreen-close" title="Close">&times;</button>
+                        </div>
+                    </div>
+                    <div class="svg-fullscreen-content">
+                        <div class="svg-fullscreen-container" id="svg-fullscreen-container">
+                            ${svgAttribute.value}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize zoom functionality
+            initializeSvgFullscreenZoom(modal);
+            
+            // Add event listeners
+            const closeBtn = modal.querySelector('#svg-fullscreen-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+            }
+            
+            // Close on overlay click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Close on Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+            
+        } catch (error) {
+            console.error('Error opening fullscreen SVG viewer:', error);
+            showNotification('Error opening fullscreen viewer', 'error');
+        }
+    }
+
+    // Add zoom functionality (around line 2300):
+    function initializeSvgFullscreenZoom(modal) {
+        const container = modal.querySelector('#svg-fullscreen-container');
+        const zoomInBtn = modal.querySelector('#svg-zoom-in');
+        const zoomOutBtn = modal.querySelector('#svg-zoom-out');
+        const zoomResetBtn = modal.querySelector('#svg-zoom-reset');
+        const zoomLevel = modal.querySelector('#svg-zoom-level');
+        
+        let currentZoom = 1;
+        const minZoom = 0.1;
+        const maxZoom = 5;
+        const zoomStep = 0.2;
+        
+        function updateZoom() {
+            container.style.transform = `scale(${currentZoom})`;
+            zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+            
+            // Update button states
+            zoomInBtn.disabled = currentZoom >= maxZoom;
+            zoomOutBtn.disabled = currentZoom <= minZoom;
+        }
+        
+        function zoomIn() {
+            if (currentZoom < maxZoom) {
+                currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+                updateZoom();
+            }
+        }
+        
+        function zoomOut() {
+            if (currentZoom > minZoom) {
+                currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+                updateZoom();
+            }
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+        
+        // Add event listeners
+        zoomInBtn.addEventListener('click', zoomIn);
+        zoomOutBtn.addEventListener('click', zoomOut);
+        zoomResetBtn.addEventListener('click', resetZoom);
+        
+        // Mouse wheel zoom
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+        
+        // Keyboard shortcuts
+        const handleKeyboard = (e) => {
+            if (e.target.closest('.svg-fullscreen-modal')) {
+                switch(e.key) {
+                    case '+':
+                    case '=':
+                        e.preventDefault();
+                        zoomIn();
+                        break;
+                    case '-':
+                        e.preventDefault();
+                        zoomOut();
+                        break;
+                    case '0':
+                        e.preventDefault();
+                        resetZoom();
+                        break;
+                }
+            }
+        };
+        
+        document.addEventListener('keydown', handleKeyboard);
+        
+        // Clean up event listener when modal is removed
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === modal) {
+                            document.removeEventListener('keydown', handleKeyboard);
+                            observer.disconnect();
+                        }
+                    });
+                }
+            });
+        });
+        
+        observer.observe(document.body, { childList: true });
+        
+        // Initial zoom setup
+        updateZoom();
+    }
+
     // Public API
     return {
         initialize,
@@ -5954,7 +6187,8 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         isInitialized: () => isInitialized,
         calculateCentralityForNode,
         editNodeSvg: editNodeSvg,
-        deleteNodeSvg: deleteNodeSvg
+        deleteNodeSvg: deleteNodeSvg,
+        viewNodeSvgFullscreen: viewNodeSvgFullscreen  // Add this line
     };
 })();
 
