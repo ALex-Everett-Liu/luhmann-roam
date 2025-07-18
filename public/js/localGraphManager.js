@@ -2190,7 +2190,8 @@ window.clearSvgEditor = function() {
     }
 };
     
-    // Also update the showSvgEditorModal function to use proper event handlers instead of onclick
+    // Replace the existing showSvgEditorModal function with this corrected version:
+
 function showSvgEditorModal(nodeId, existingSvg) {
     // Create modal HTML
     const modal = document.createElement('div');
@@ -2262,7 +2263,7 @@ function showSvgEditorModal(nodeId, existingSvg) {
     
     document.body.appendChild(modal);
     
-    // Add event listeners instead of onclick
+    // Add event listeners
     const saveBtn = modal.querySelector('#save-svg-btn');
     const cancelBtn = modal.querySelector('#cancel-svg-btn');
     const clearBtn = modal.querySelector('#clear-svg-btn');
@@ -2286,49 +2287,79 @@ function showSvgEditorModal(nodeId, existingSvg) {
     
     // Initialize editor functionality
     initializeSvgEditor();
-}
     
-    function initializeSvgEditor() {
-        // Tab switching
-        const tabButtons = document.querySelectorAll('.svg-tab-btn');
-        const tabContents = document.querySelectorAll('.svg-tab-content');
-        
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const targetTab = this.dataset.tab;
-                
-                // Switch active tab
-                tabButtons.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                
-                this.classList.add('active');
-                document.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
+    // If there's existing SVG, show it in the advanced tab preview
+    if (existingSvg) {
+        setTimeout(() => {
+            const preview = document.getElementById('svg-preview');
+            if (preview) {
+                preview.innerHTML = existingSvg;
+            }
+        }, 100);
+    }
+}
+
+// Also update the initializeSvgEditor function to ensure proper tab switching:
+function initializeSvgEditor() {
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.svg-tab-btn');
+    const tabContents = document.querySelectorAll('.svg-tab-content');
+    
+    console.log('Tab buttons found:', tabButtons.length);
+    console.log('Tab contents found:', tabContents.length);
+    
+    tabButtons.forEach((btn, index) => {
+        btn.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
+            console.log('Tab clicked:', targetTab);
+            
+            // Switch active tab button
+            tabButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Switch active tab content
+            tabContents.forEach(c => {
+                c.classList.remove('active');
+                console.log('Removing active from:', c.dataset.tab);
             });
+            
+            const targetContent = document.querySelector(`[data-tab="${targetTab}"].svg-tab-content`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+                console.log('Adding active to:', targetTab);
+            } else {
+                console.error('Target content not found for tab:', targetTab);
+            }
         });
-        
-        // Advanced editor: Live preview
-        const codeEditor = document.getElementById('svg-code-editor');
-        const preview = document.getElementById('svg-preview');
-        
-        if (codeEditor && preview) {
-            codeEditor.addEventListener('input', function() {
-                try {
-                    const svgCode = this.value;
-                    if (svgCode.trim()) {
-                        preview.innerHTML = svgCode;
-                    } else {
-                        preview.innerHTML = '<div class="preview-placeholder">SVG preview will appear here</div>';
-                    }
-                } catch (error) {
-                    preview.innerHTML = '<div class="preview-error">Invalid SVG code</div>';
+    });
+    
+    // Advanced editor: Live preview
+    const codeEditor = document.getElementById('svg-code-editor');
+    const preview = document.getElementById('svg-preview');
+    
+    if (codeEditor && preview) {
+        console.log('Setting up live preview');
+        codeEditor.addEventListener('input', function() {
+            try {
+                const svgCode = this.value;
+                if (svgCode.trim()) {
+                    preview.innerHTML = svgCode;
+                } else {
+                    preview.innerHTML = '<div class="preview-placeholder">SVG preview will appear here</div>';
                 }
-            });
-        }
-        
-        // Simple editor: Tool handlers
-        const toolButtons = document.querySelectorAll('.tool-btn');
-        const canvas = document.getElementById('svg-editor-canvas');
-        
+            } catch (error) {
+                preview.innerHTML = '<div class="preview-error">Invalid SVG code</div>';
+            }
+        });
+    } else {
+        console.error('Code editor or preview not found');
+    }
+    
+    // Simple editor: Tool handlers
+    const toolButtons = document.querySelectorAll('.tool-btn');
+    const canvas = document.getElementById('svg-editor-canvas');
+    
+    if (canvas) {
         toolButtons.forEach(btn => {
             btn.addEventListener('click', function() {
                 const tool = this.dataset.tool;
@@ -2336,6 +2367,7 @@ function showSvgEditorModal(nodeId, existingSvg) {
             });
         });
     }
+}
     
     function activateSimpleTool(tool, canvas) {
         // Remove previous event listeners
