@@ -7,13 +7,18 @@ const SettingsManager = (function() {
     let isInitialized = false;
     let settingsModal = null;
     let modalOverlay = null;
-    let currentSection = 'plugins'; // Default section
+    let currentSection = 'general'; // Change default to general
     
     // Registered settings sections
     const settingsSections = new Map();
     
     // Available sections configuration
     const sectionConfig = {
+        general: {
+            title: 'General',
+            icon: '⚙️',
+            description: 'General application settings including language'
+        },
         plugins: {
             title: 'Plugins',
             icon: '🔌',
@@ -99,6 +104,15 @@ const SettingsManager = (function() {
      * Register built-in settings sections
      */
     function registerBuiltInSections() {
+        // Register general section (includes language)
+        registerSection('general', {
+            title: sectionConfig.general.title,
+            icon: sectionConfig.general.icon,
+            description: sectionConfig.general.description,
+            render: renderGeneralSection,
+            onSave: saveGeneralSettings
+        });
+        
         // Register plugins section
         if (window.PluginManager) {
             registerSection('plugins', {
@@ -440,6 +454,179 @@ const SettingsManager = (function() {
         
         // Also show error message
         alert(`Error saving settings: ${message}`);
+    }
+    
+    /**
+     * Render general section content (includes language settings)
+     */
+    function renderGeneralSection(container) {
+        const generalContent = document.createElement('div');
+        generalContent.className = 'general-settings-content';
+        
+        // Language Settings
+        const languageSection = document.createElement('div');
+        languageSection.className = 'settings-subsection';
+        languageSection.innerHTML = `
+            <h4 class="settings-subsection-title">🌐 Language Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">Interface Language:</label>
+                <div class="settings-control">
+                    <select id="language-select" class="settings-select">
+                        <option value="en">English</option>
+                        <option value="zh">中文 (Chinese)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-description">
+                    Choose the language for the application interface. This will update all menus, buttons, and messages.
+                </div>
+            </div>
+        `;
+        
+        // Auto-save Settings
+        const autoSaveSection = document.createElement('div');
+        autoSaveSection.className = 'settings-subsection';
+        autoSaveSection.innerHTML = `
+            <h4 class="settings-subsection-title">💾 Auto-save Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="auto-save-enabled" class="settings-checkbox">
+                    Enable auto-save
+                </label>
+            </div>
+            <div class="settings-row">
+                <label class="settings-label">Auto-save interval (seconds):</label>
+                <div class="settings-control">
+                    <input type="number" id="auto-save-interval" class="settings-input" min="10" max="300" value="30">
+                </div>
+            </div>
+        `;
+        
+        // Performance Settings
+        const performanceSection = document.createElement('div');
+        performanceSection.className = 'settings-subsection';
+        performanceSection.innerHTML = `
+            <h4 class="settings-subsection-title">⚡ Performance Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="lazy-loading-enabled" class="settings-checkbox">
+                    Enable lazy loading for large node trees
+                </label>
+            </div>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="animations-enabled" class="settings-checkbox">
+                    Enable animations
+                </label>
+            </div>
+        `;
+        
+        generalContent.appendChild(languageSection);
+        generalContent.appendChild(autoSaveSection);
+        generalContent.appendChild(performanceSection);
+        container.appendChild(generalContent);
+        
+        // Set current values
+        setCurrentGeneralSettings();
+        
+        // Add event listeners
+        setupGeneralSettingsListeners();
+    }
+    
+    /**
+     * Set current general settings values
+     */
+    function setCurrentGeneralSettings() {
+        // Set current language
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect && window.I18n) {
+            languageSelect.value = I18n.getCurrentLanguage();
+        }
+        
+        // Set auto-save settings (from localStorage or defaults)
+        const autoSaveEnabled = document.getElementById('auto-save-enabled');
+        const autoSaveInterval = document.getElementById('auto-save-interval');
+        
+        if (autoSaveEnabled) {
+            autoSaveEnabled.checked = localStorage.getItem('autoSaveEnabled') !== 'false';
+        }
+        
+        if (autoSaveInterval) {
+            autoSaveInterval.value = localStorage.getItem('autoSaveInterval') || '30';
+        }
+        
+        // Set performance settings
+        const lazyLoadingEnabled = document.getElementById('lazy-loading-enabled');
+        const animationsEnabled = document.getElementById('animations-enabled');
+        
+        if (lazyLoadingEnabled) {
+            lazyLoadingEnabled.checked = localStorage.getItem('lazyLoadingEnabled') !== 'false';
+        }
+        
+        if (animationsEnabled) {
+            animationsEnabled.checked = localStorage.getItem('animationsEnabled') !== 'false';
+        }
+    }
+    
+    /**
+     * Setup event listeners for general settings
+     */
+    function setupGeneralSettingsListeners() {
+        // Language change listener
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', function() {
+                const newLanguage = this.value;
+                const currentLanguage = window.I18n ? I18n.getCurrentLanguage() : 'en';
+                
+                if (newLanguage !== currentLanguage && window.I18n) {
+                    // Show confirmation dialog
+                    if (confirm('Change language? This will refresh the interface.')) {
+                        I18n.toggleLanguage();
+                        
+                        // Update the select value after language change
+                        setTimeout(() => {
+                            this.value = I18n.getCurrentLanguage();
+                        }, 100);
+                    } else {
+                        // Revert the select value
+                        this.value = currentLanguage;
+                    }
+                }
+            });
+        }
+    }
+    
+    /**
+     * Save general settings
+     */
+    function saveGeneralSettings() {
+        // Save auto-save settings
+        const autoSaveEnabled = document.getElementById('auto-save-enabled');
+        const autoSaveInterval = document.getElementById('auto-save-interval');
+        
+        if (autoSaveEnabled) {
+            localStorage.setItem('autoSaveEnabled', autoSaveEnabled.checked);
+        }
+        
+        if (autoSaveInterval) {
+            localStorage.setItem('autoSaveInterval', autoSaveInterval.value);
+        }
+        
+        // Save performance settings
+        const lazyLoadingEnabled = document.getElementById('lazy-loading-enabled');
+        const animationsEnabled = document.getElementById('animations-enabled');
+        
+        if (lazyLoadingEnabled) {
+            localStorage.setItem('lazyLoadingEnabled', lazyLoadingEnabled.checked);
+        }
+        
+        if (animationsEnabled) {
+            localStorage.setItem('animationsEnabled', animationsEnabled.checked);
+        }
+        
+        console.log('General settings saved');
     }
     
     /**
