@@ -3083,3 +3083,355 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* SVG Editor Styles */
+.node-svg-section {
+    margin: 16px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.svg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.svg-header h6 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: 0.5px;
+}
+
+.svg-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.svg-edit-btn,
+.svg-delete-btn {
+    padding: 6px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    transition: all 0.2s;
+}
+
+.svg-edit-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.svg-delete-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.svg-delete-btn svg {
+    fill: #dc2626;
+}
+
+.svg-display-container {
+    padding: 16px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.svg-placeholder {
+    text-align: center;
+    color: #6b7280;
+}
+
+.svg-placeholder-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.svg-placeholder-text {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.svg-placeholder-action {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.svg-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.svg-content svg {
+    max-width: 100%;
+    max-height: 200px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+
+/* SVG Editor Modal */
+.svg-editor-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.svg-editor-modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90vw;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.svg-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.svg-editor-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.svg-editor-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.svg-editor-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.svg-editor-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.svg-editor-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 24px;
+}
+
+.svg-tab-btn {
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.svg-tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+.svg-tab-btn:hover {
+    color: #374151;
+}
+
+.svg-tab-content {
+    display: none;
+    flex: 1;
+    overflow: auto;
+}
+
+.svg-tab-content.active {
+    display: block;
+}
+
+/* Simple Editor */
+.simple-editor-container {
+    display: flex;
+    height: 400px;
+}
+
+.simple-editor-tools {
+    width: 200px;
+    padding: 16px;
+    border-right: 1px solid #e5e7eb;
+    background: #f8f9fa;
+}
+
+.tool-group {
+    margin-bottom: 20px;
+}
+
+.tool-group h4 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+}
+
+.tool-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.tool-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.tool-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+.simple-editor-canvas {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#svg-stroke-width {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* Advanced Editor */
+.advanced-editor-container {
+    display: flex;
+    height: 400px;
+}
+
+.editor-section {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+#svg-code-editor {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    resize: none;
+    outline: none;
+}
+
+#svg-code-editor:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.svg-preview {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+}
+
+.preview-placeholder {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.preview-error {
+    color: #dc2626;
+    font-size: 14px;
+}
+
+.svg-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .svg-editor-modal-content {
+        width: 95vw;
+        max-height: 95vh;
+    }
+    
+    .simple-editor-container,
+    .advanced-editor-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .simple-editor-tools {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .editor-section {
+        flex: none;
+        height: 200px;
+    }
+}

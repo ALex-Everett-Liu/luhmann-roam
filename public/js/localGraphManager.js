@@ -1915,7 +1915,7 @@ const LocalGraphManager = (function() {
         }
     }
     
-    // Enhanced selectNode function with centrality data
+    // Enhanced selectNode function with centrality data and SVG display
     function selectNode(node) {
         const infoDiv = document.getElementById('selected-node-info');
         const distance = graphData.distances[node.id] || 0;
@@ -1927,6 +1927,32 @@ const LocalGraphManager = (function() {
             <div class="selected-node">
                 <h5>${node.content || 'Untitled'}</h5>
                 ${node.content_zh ? `<p class="node-content-zh">${node.content_zh}</p>` : ''}
+                
+                <!-- SVG Icon/Diagram Section -->
+                <div class="node-svg-section">
+                    <div class="svg-header">
+                        <h6>NODE DIAGRAM</h6>
+                        <div class="svg-controls">
+                            <button onclick="LocalGraphManager.editNodeSvg('${node.id}')" class="svg-edit-btn" title="Edit SVG Diagram">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81l-6.286 6.287a.25.25 0 00-.064.108l-.558 1.953 1.953-.558a.249.249 0 00.108-.064l6.286-6.286z"/>
+                                </svg>
+                            </button>
+                            <button onclick="LocalGraphManager.deleteNodeSvg('${node.id}')" class="svg-delete-btn" title="Delete SVG Diagram" style="display: none;">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H2.506a.58.58 0 000 1.157H3.5v9.85A1.994 1.994 0 005.5 15h5a1.994 1.994 0 002-2.493V3.657h.994a.58.58 0 000-1.157H11zM4.5 13.507c0 .274.226.5.5.5h5c.274 0 .5-.226.5-.5V3.657H4.5v9.85z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="svg-display-container" id="svg-display-${node.id}">
+                        <div class="svg-placeholder">
+                            <div class="svg-placeholder-icon">📊</div>
+                            <div class="svg-placeholder-text">No diagram available</div>
+                            <div class="svg-placeholder-action">Click edit to create one</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="node-metrics-container">
                     <div class="metric-section">
@@ -1977,6 +2003,598 @@ const LocalGraphManager = (function() {
         
         // Fetch and display centrality data asynchronously
         fetchAndDisplayCentralityData(node.id);
+        
+        // Load and display SVG diagram
+        loadNodeSvg(node.id);
+    }
+    
+    // SVG-related functions
+    async function loadNodeSvg(nodeId) {
+        try {
+            const response = await fetch(`/api/nodes/${nodeId}/attributes`);
+            const attributes = await response.json();
+            
+            const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
+            const svgContainer = document.getElementById(`svg-display-${nodeId}`);
+            const deleteBtn = svgContainer.parentElement.querySelector('.svg-delete-btn');
+            
+            if (svgAttribute && svgAttribute.value) {
+                // Display the SVG
+                svgContainer.innerHTML = `
+                    <div class="svg-content">
+                        ${svgAttribute.value}
+                    </div>
+                `;
+                
+                // Show delete button
+                if (deleteBtn) deleteBtn.style.display = 'block';
+            } else {
+                // Show placeholder
+                svgContainer.innerHTML = `
+                    <div class="svg-placeholder">
+                        <div class="svg-placeholder-icon">📊</div>
+                        <div class="svg-placeholder-text">No diagram available</div>
+                        <div class="svg-placeholder-action">Click edit to create one</div>
+                    </div>
+                `;
+                
+                // Hide delete button
+                if (deleteBtn) deleteBtn.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading node SVG:', error);
+        }
+    }
+    
+    async function editNodeSvg(nodeId) {
+        try {
+            // Get existing SVG if any
+            const response = await fetch(`/api/nodes/${nodeId}/attributes`);
+            const attributes = await response.json();
+            const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
+            
+            const existingSvg = svgAttribute ? svgAttribute.value : '';
+            
+            // Create and show SVG editor modal
+            showSvgEditorModal(nodeId, existingSvg);
+        } catch (error) {
+            console.error('Error opening SVG editor:', error);
+            showNotification('Error opening SVG editor', 'error');
+        }
+    }
+    
+    async function deleteNodeSvg(nodeId) {
+        if (!confirm('Are you sure you want to delete this diagram?')) {
+            return;
+        }
+        
+        try {
+            // Get the SVG attribute
+            const response = await fetch(`/api/nodes/${nodeId}/attributes`);
+            const attributes = await response.json();
+            const svgAttribute = attributes.find(attr => attr.key === 'svg_diagram');
+            
+            if (svgAttribute) {
+                // Delete the attribute
+                const deleteResponse = await fetch(`/api/node-attributes/${svgAttribute.id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (deleteResponse.ok) {
+                    // Refresh the SVG display
+                    loadNodeSvg(nodeId);
+                    showNotification('Diagram deleted successfully', 'success');
+                } else {
+                    throw new Error('Failed to delete diagram');
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting node SVG:', error);
+            showNotification('Error deleting diagram', 'error');
+        }
+    }
+
+    // Make these functions available globally for the onclick handlers
+window.saveSvgDiagram = async function(nodeId) {
+    try {
+        let svgContent = '';
+        
+        // Get SVG content based on active tab
+        const activeTab = document.querySelector('.svg-tab-content.active');
+        if (!activeTab) {
+            showNotification('No active tab found', 'error');
+            return;
+        }
+        
+        const tabType = activeTab.dataset.tab;
+        
+        if (tabType === 'simple') {
+            const canvas = document.getElementById('svg-editor-canvas');
+            if (canvas) {
+                svgContent = canvas.outerHTML;
+            }
+        } else {
+            const codeEditor = document.getElementById('svg-code-editor');
+            if (codeEditor) {
+                svgContent = codeEditor.value;
+            }
+        }
+        
+        // Validate SVG
+        if (!svgContent.trim()) {
+            showNotification('Please create a diagram first', 'warning');
+            return;
+        }
+        
+        // Save via API
+        const response = await fetch('/api/node-attributes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                node_id: nodeId,
+                key: 'svg_diagram',
+                value: svgContent
+            })
+        });
+        
+        if (response.ok) {
+            closeSvgEditorModal();
+            // Refresh the SVG display
+            if (typeof loadNodeSvg === 'function') {
+                loadNodeSvg(nodeId);
+            }
+            showNotification('Diagram saved successfully', 'success');
+        } else {
+            throw new Error('Failed to save diagram');
+        }
+    } catch (error) {
+        console.error('Error saving SVG diagram:', error);
+        showNotification('Error saving diagram', 'error');
+    }
+};
+
+window.closeSvgEditorModal = function() {
+    const modal = document.querySelector('.svg-editor-modal');
+    if (modal) {
+        modal.remove();
+    }
+};
+
+window.clearSvgEditor = function() {
+    const activeTab = document.querySelector('.svg-tab-content.active');
+    if (!activeTab) return;
+    
+    const tabType = activeTab.dataset.tab;
+    
+    if (tabType === 'simple') {
+        const canvas = document.getElementById('svg-editor-canvas');
+        if (canvas) {
+            // Clear all child elements
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+        }
+    } else {
+        const codeEditor = document.getElementById('svg-code-editor');
+        const preview = document.getElementById('svg-preview');
+        
+        if (codeEditor) {
+            codeEditor.value = '<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">\n  <!-- Your SVG content here -->\n</svg>';
+        }
+        
+        if (preview) {
+            preview.innerHTML = '<div class="preview-placeholder">SVG preview will appear here</div>';
+        }
+    }
+};
+    
+    // Also update the showSvgEditorModal function to use proper event handlers instead of onclick
+function showSvgEditorModal(nodeId, existingSvg) {
+    // Create modal HTML
+    const modal = document.createElement('div');
+    modal.className = 'svg-editor-modal';
+    modal.innerHTML = `
+        <div class="svg-editor-modal-content">
+            <div class="svg-editor-header">
+                <h3>Edit Node Diagram</h3>
+                <button class="svg-editor-close" id="svg-editor-close-btn">&times;</button>
+            </div>
+            
+            <div class="svg-editor-body">
+                <div class="svg-editor-tabs">
+                    <button class="svg-tab-btn active" data-tab="simple">Simple Editor</button>
+                    <button class="svg-tab-btn" data-tab="advanced">Advanced SVG</button>
+                </div>
+                
+                <!-- Simple Editor Tab -->
+                <div class="svg-tab-content active" data-tab="simple">
+                    <div class="simple-editor-container">
+                        <div class="simple-editor-tools">
+                            <div class="tool-group">
+                                <h4>Shapes</h4>
+                                <button class="tool-btn" data-tool="rectangle">Rectangle</button>
+                                <button class="tool-btn" data-tool="circle">Circle</button>
+                                <button class="tool-btn" data-tool="line">Line</button>
+                                <button class="tool-btn" data-tool="arrow">Arrow</button>
+                                <button class="tool-btn" data-tool="text">Text</button>
+                            </div>
+                            <div class="tool-group">
+                                <h4>Colors</h4>
+                                <input type="color" id="svg-fill-color" value="#4285f4">
+                                <input type="color" id="svg-stroke-color" value="#000000">
+                                <input type="range" id="svg-stroke-width" min="1" max="10" value="2">
+                            </div>
+                        </div>
+                        <div class="simple-editor-canvas">
+                            <svg id="svg-editor-canvas" width="300" height="200" style="border: 1px solid #ccc; background: white;">
+                                <!-- SVG content will be added here -->
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Editor Tab -->
+                <div class="svg-tab-content" data-tab="advanced">
+                    <div class="advanced-editor-container">
+                        <div class="editor-section">
+                            <h4>SVG Code</h4>
+                            <textarea id="svg-code-editor" placeholder="Enter SVG code...">${existingSvg || '<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">\n  <!-- Your SVG content here -->\n</svg>'}</textarea>
+                        </div>
+                        <div class="editor-section">
+                            <h4>Preview</h4>
+                            <div id="svg-preview" class="svg-preview">
+                                ${existingSvg || '<div class="preview-placeholder">SVG preview will appear here</div>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="svg-editor-footer">
+                <button id="save-svg-btn" class="primary-btn">Save Diagram</button>
+                <button id="cancel-svg-btn" class="secondary-btn">Cancel</button>
+                <button id="clear-svg-btn" class="secondary-btn">Clear</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners instead of onclick
+    const saveBtn = modal.querySelector('#save-svg-btn');
+    const cancelBtn = modal.querySelector('#cancel-svg-btn');
+    const clearBtn = modal.querySelector('#clear-svg-btn');
+    const closeBtn = modal.querySelector('#svg-editor-close-btn');
+    
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => window.saveSvgDiagram(nodeId));
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', window.closeSvgEditorModal);
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', window.clearSvgEditor);
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', window.closeSvgEditorModal);
+    }
+    
+    // Initialize editor functionality
+    initializeSvgEditor();
+}
+    
+    function initializeSvgEditor() {
+        // Tab switching
+        const tabButtons = document.querySelectorAll('.svg-tab-btn');
+        const tabContents = document.querySelectorAll('.svg-tab-content');
+        
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetTab = this.dataset.tab;
+                
+                // Switch active tab
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.querySelector(`[data-tab="${targetTab}"]`).classList.add('active');
+            });
+        });
+        
+        // Advanced editor: Live preview
+        const codeEditor = document.getElementById('svg-code-editor');
+        const preview = document.getElementById('svg-preview');
+        
+        if (codeEditor && preview) {
+            codeEditor.addEventListener('input', function() {
+                try {
+                    const svgCode = this.value;
+                    if (svgCode.trim()) {
+                        preview.innerHTML = svgCode;
+                    } else {
+                        preview.innerHTML = '<div class="preview-placeholder">SVG preview will appear here</div>';
+                    }
+                } catch (error) {
+                    preview.innerHTML = '<div class="preview-error">Invalid SVG code</div>';
+                }
+            });
+        }
+        
+        // Simple editor: Tool handlers
+        const toolButtons = document.querySelectorAll('.tool-btn');
+        const canvas = document.getElementById('svg-editor-canvas');
+        
+        toolButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tool = this.dataset.tool;
+                activateSimpleTool(tool, canvas);
+            });
+        });
+    }
+    
+    function activateSimpleTool(tool, canvas) {
+        // Remove previous event listeners
+        const newCanvas = canvas.cloneNode(true);
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        
+        let isDrawing = false;
+        let startX, startY;
+        
+        newCanvas.addEventListener('mousedown', function(e) {
+            isDrawing = true;
+            const rect = newCanvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            
+            if (tool === 'text') {
+                const text = prompt('Enter text:');
+                if (text) {
+                    addSvgText(newCanvas, startX, startY, text);
+                }
+            }
+        });
+        
+        newCanvas.addEventListener('mousemove', function(e) {
+            if (!isDrawing) return;
+            
+            const rect = newCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // Show preview of shape being drawn
+            clearPreview(newCanvas);
+            showShapePreview(newCanvas, tool, startX, startY, currentX, currentY);
+        });
+        
+        newCanvas.addEventListener('mouseup', function(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = newCanvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // Add the actual shape
+            addSvgShape(newCanvas, tool, startX, startY, endX, endY);
+            clearPreview(newCanvas);
+        });
+    }
+    
+    function addSvgShape(canvas, tool, startX, startY, endX, endY) {
+        const fillColor = document.getElementById('svg-fill-color').value;
+        const strokeColor = document.getElementById('svg-stroke-color').value;
+        const strokeWidth = document.getElementById('svg-stroke-width').value;
+        
+        let element;
+        
+        switch (tool) {
+            case 'rectangle':
+                element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                element.setAttribute('x', Math.min(startX, endX));
+                element.setAttribute('y', Math.min(startY, endY));
+                element.setAttribute('width', Math.abs(endX - startX));
+                element.setAttribute('height', Math.abs(endY - startY));
+                break;
+                
+            case 'circle':
+                const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                element.setAttribute('cx', startX);
+                element.setAttribute('cy', startY);
+                element.setAttribute('r', radius);
+                break;
+                
+            case 'line':
+                element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                element.setAttribute('x1', startX);
+                element.setAttribute('y1', startY);
+                element.setAttribute('x2', endX);
+                element.setAttribute('y2', endY);
+                break;
+                
+            case 'arrow':
+                element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', startX);
+                line.setAttribute('y1', startY);
+                line.setAttribute('x2', endX);
+                line.setAttribute('y2', endY);
+                line.setAttribute('stroke', strokeColor);
+                line.setAttribute('stroke-width', strokeWidth);
+                
+                // Add arrowhead
+                const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                const angle = Math.atan2(endY - startY, endX - startX);
+                const arrowLength = 10;
+                const arrowWidth = 6;
+                
+                const p1x = endX - arrowLength * Math.cos(angle - Math.PI / 6);
+                const p1y = endY - arrowLength * Math.sin(angle - Math.PI / 6);
+                const p2x = endX - arrowLength * Math.cos(angle + Math.PI / 6);
+                const p2y = endY - arrowLength * Math.sin(angle + Math.PI / 6);
+                
+                arrowHead.setAttribute('points', `${endX},${endY} ${p1x},${p1y} ${p2x},${p2y}`);
+                arrowHead.setAttribute('fill', strokeColor);
+                
+                element.appendChild(line);
+                element.appendChild(arrowHead);
+                break;
+        }
+        
+        if (element && tool !== 'arrow') {
+            element.setAttribute('fill', tool === 'line' ? 'none' : fillColor);
+            element.setAttribute('stroke', strokeColor);
+            element.setAttribute('stroke-width', strokeWidth);
+        }
+        
+        if (element) {
+            canvas.appendChild(element);
+        }
+    }
+    
+    function addSvgText(canvas, x, y, text) {
+        const element = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        element.setAttribute('x', x);
+        element.setAttribute('y', y);
+        element.setAttribute('font-family', 'Arial, sans-serif');
+        element.setAttribute('font-size', '14');
+        element.setAttribute('fill', document.getElementById('svg-fill-color').value);
+        element.textContent = text;
+        
+        canvas.appendChild(element);
+    }
+    
+    function clearPreview(canvas) {
+        const preview = canvas.querySelector('.preview-shape');
+        if (preview) {
+            preview.remove();
+        }
+    }
+    
+
+    // Also update the showShapePreview function to actually work
+    // Similar to addSvgShape but with preview styling
+    // Implementation depends on specific requirements
+function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
+    // Create preview element (similar to addSvgShape but with preview styling)
+    clearPreview(canvas);
+    
+    const preview = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    preview.classList.add('preview-shape');
+    
+    let element;
+    
+    switch (tool) {
+        case 'rectangle':
+            element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            element.setAttribute('x', Math.min(startX, currentX));
+            element.setAttribute('y', Math.min(startY, currentY));
+            element.setAttribute('width', Math.abs(currentX - startX));
+            element.setAttribute('height', Math.abs(currentY - startY));
+            break;
+            
+        case 'circle':
+            const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+            element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            element.setAttribute('cx', startX);
+            element.setAttribute('cy', startY);
+            element.setAttribute('r', radius);
+            break;
+            
+        case 'line':
+        case 'arrow':
+            element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            element.setAttribute('x1', startX);
+            element.setAttribute('y1', startY);
+            element.setAttribute('x2', currentX);
+            element.setAttribute('y2', currentY);
+            break;
+    }
+    
+    if (element) {
+        element.setAttribute('fill', tool === 'line' || tool === 'arrow' ? 'none' : 'rgba(66, 133, 244, 0.3)');
+        element.setAttribute('stroke', 'rgba(66, 133, 244, 0.8)');
+        element.setAttribute('stroke-width', '2');
+        element.setAttribute('stroke-dasharray', '5,5');
+        
+        preview.appendChild(element);
+        canvas.appendChild(preview);
+    }
+}
+    
+    async function saveSvgDiagram(nodeId) {
+        try {
+            let svgContent = '';
+            
+            // Get SVG content based on active tab
+            const activeTab = document.querySelector('.svg-tab-content.active');
+            const tabType = activeTab.dataset.tab;
+            
+            if (tabType === 'simple') {
+                const canvas = document.getElementById('svg-editor-canvas');
+                svgContent = canvas.outerHTML;
+            } else {
+                svgContent = document.getElementById('svg-code-editor').value;
+            }
+            
+            // Validate SVG
+            if (!svgContent.trim()) {
+                showNotification('Please create a diagram first', 'warning');
+                return;
+            }
+            
+            // Save via API
+            const response = await fetch('/api/node-attributes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    node_id: nodeId,
+                    key: 'svg_diagram',
+                    value: svgContent
+                })
+            });
+            
+            if (response.ok) {
+                closeSvgEditorModal();
+                loadNodeSvg(nodeId); // Refresh the display
+                showNotification('Diagram saved successfully', 'success');
+            } else {
+                throw new Error('Failed to save diagram');
+            }
+        } catch (error) {
+            console.error('Error saving SVG diagram:', error);
+            showNotification('Error saving diagram', 'error');
+        }
+    }
+    
+    function closeSvgEditorModal() {
+        const modal = document.querySelector('.svg-editor-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+    
+    function clearSvgEditor() {
+        const activeTab = document.querySelector('.svg-tab-content.active');
+        const tabType = activeTab.dataset.tab;
+        
+        if (tabType === 'simple') {
+            const canvas = document.getElementById('svg-editor-canvas');
+            // Clear all child elements except the SVG structure
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+        } else {
+            document.getElementById('svg-code-editor').value = '<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">\n  <!-- Your SVG content here -->\n</svg>';
+            document.getElementById('svg-preview').innerHTML = '<div class="preview-placeholder">SVG preview will appear here</div>';
+        }
     }
     
     // New function to fetch and display centrality data
@@ -5302,7 +5920,9 @@ function addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links) {
         locateNodeInGraph,
         editNode, // This function is now defined above
         isInitialized: () => isInitialized,
-        calculateCentralityForNode
+        calculateCentralityForNode,
+        editNodeSvg: editNodeSvg,
+        deleteNodeSvg: deleteNodeSvg
     };
 })();
 
