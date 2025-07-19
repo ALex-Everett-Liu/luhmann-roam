@@ -1983,7 +1983,7 @@ const LocalGraphManager = (function() {
                 
                 <div class="node-metrics-container">
                     <div class="metric-section">
-                        <h6>LOCAL GRAPH METRICS</h6>
+                        <h6>${I18n.t('localGraphMetrics')}</h6>
                         <div class="local-metrics">
                             <div class="metric-item">
                                 <span class="metric-label">Distance:</span>
@@ -1997,7 +1997,7 @@ const LocalGraphManager = (function() {
                     </div>
                     
                     <div class="metric-section">
-                        <h6>GLOBAL GRAPH METRICS</h6>
+                        <h6>${I18n.t('globalGraphMetrics')}</h6>
                         <div id="centrality-metrics-${node.id}" class="centrality-metrics">
                             <div class="loading-centrality">
                                 <div class="loading-spinner"></div>
@@ -2910,7 +2910,7 @@ function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
         const depthLevelsHtml = `
             <div class="levels-section">
                 <h5 style="margin: 0 0 8px 0; color: #24292e; font-size: 14px; font-weight: 600;">
-                    Depth Levels (Hops)
+                    ${I18n.t('depthLevelsHops')}
                 </h5>
                 <div class="depth-levels">
                     ${sortedDepths.map(depth => `
@@ -2931,7 +2931,7 @@ function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
         const distanceLevelsHtml = `
             <div class="levels-section" style="margin-top: 20px;">
                 <h5 style="margin: 0 0 8px 0; color: #24292e; font-size: 14px; font-weight: 600;">
-                    Distance Levels (Weights)
+                    ${I18n.t('distanceLevelsWeights')}
                 </h5>
                 <div class="distance-levels">
                     ${visibleDistances.map(distance => `
@@ -3222,10 +3222,18 @@ function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
         return container && container.style.display !== 'none';
     }
     
-    function showNotification(message, type = 'success') {
+    function showNotification(message, type = 'success', params = {}) {
         const notification = document.createElement('div');
         notification.className = `notification ${type} local-graph-notification`;
-        notification.textContent = I18n.t(messageKey, params);
+        
+        // Check if message is a translation key or direct text
+        if (typeof message === 'string' && window.I18n) {
+            // Try to get translation, fall back to original message if key not found
+            const translatedMessage = I18n.t(message, params);
+            notification.textContent = translatedMessage !== message ? translatedMessage : message;
+        } else {
+            notification.textContent = message;
+        }
         
         const baseStyles = {
             position: 'fixed',

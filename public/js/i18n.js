@@ -321,6 +321,10 @@ const I18n = (function() {
       createNode: "Create Node",
       createAtLeastNodes: "Create at least 2-3 nodes in your outliner",
       addLinksBetweenNodes: "Add some links between nodes using the Graph Management tool",
+      depthLevelsHops: "Depth Levels (Hops)",
+      distanceLevelsWeights: "Distance Levels (Weights)",
+      localGraphMetrics: "LOCAL GRAPH METRICS",
+      globalGraphMetrics: "GLOBAL GRAPH METRICS",
       returnToExplore: "Return here to explore local neighborhoods around any node"
     },
     zh: {
@@ -636,6 +640,10 @@ const I18n = (function() {
       createNode: "创建节点",
       createAtLeastNodes: "在您的大纲中创建至少2-3个节点",
       addLinksBetweenNodes: "使用图谱管理工具在节点之间添加一些链接",
+      depthLevelsHops: "深度层级（跳数）",
+      distanceLevelsWeights: "距离层级（权重）",
+      localGraphMetrics: "局部图谱指标",
+      globalGraphMetrics: "全局图谱指标",
       returnToExplore: "返回这里探索任何节点周围的局部邻域"
     }
   };
