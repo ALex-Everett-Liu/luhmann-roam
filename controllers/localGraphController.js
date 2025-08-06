@@ -818,3 +818,187 @@ exports.useQuickAccessNode = async (req, res) => {
   }
 };
 
+/**
+ * Export local graph as SVG with current node positions
+ * POST /api/local-graph/export-svg
+ */
+exports.exportGraphAsSVG = async (req, res) => {
+  try {
+    const { 
+      centerNodeId, 
+      maxDistance = 5, 
+      maxDepth = 3,
+      nodePositions = {},
+      layoutMode = 'hybrid'
+    } = req.body;
+
+    if (!centerNodeId) {
+      return res.status(400).json({ error: 'Center node ID is required' });
+    }
+
+    const db = req.db;
+
+    // Validate center node exists
+    const centerNode = await db.get('SELECT * FROM nodes WHERE id = ?', centerNodeId);
+    if (!centerNode) {
+      return res.status(404).json({ error: 'Center node not found' });
+    }
+
+    // Get all links for distance calculation
+    const links = await db.all('SELECT * FROM links');
+    
+    // Calculate distances and depths from center node
+    const { distances, depths } = getCachedDistances(
+      centerNodeId, 
+      links, 
+      parseFloat(maxDistance), 
+      parseInt(maxDepth)
+    );
+
+    // Get node IDs within distance threshold
+    const nodeIdsInRange = Array.from(distances.keys());
+    
+    if (nodeIdsInRange.length === 0) {
+      return res.status(200).json({
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><text x="200" y="150" text-anchor="middle">No nodes found within range</text></svg>',
+        stats: {
+          nodeCount: 1,
+          linkCount: 0,
+          maxDistance: parseFloat(maxDistance),
+          maxDepth: parseInt(maxDepth)
+        }
+      });
+    }
+
+    // Get nodes within distance threshold
+    const placeholders = nodeIdsInRange.map(() => '?').join(',');
+    const nodesQuery = `SELECT * FROM nodes WHERE id IN (${placeholders})`;
+    const nodes = await db.all(nodesQuery, nodeIdsInRange);
+
+    // Get links between nodes in range
+    const linksInRange = links.filter(link => 
+      distances.has(link.from_node_id) && distances.has(link.to_node_id)
+    );
+
+    // Convert distances and depths Maps to objects
+    const distancesObject = {};
+    const depthsObject = {};
+    distances.forEach((distance, nodeId) => {
+      distancesObject[nodeId] = distance;
+    });
+    depths.forEach((depth, nodeId) => {
+      depthsObject[nodeId] = depth;
+    });
+
+    // Generate SVG
+    const svg = generateSVG(nodes, linksInRange, distancesObject, depthsObject, centerNodeId, nodePositions, layoutMode);
+
+    res.json({
+      svg,
+      stats: {
+        nodeCount: nodes.length,
+        linkCount: linksInRange.length,
+        maxDistance: parseFloat(maxDistance),
+        maxDepth: parseInt(maxDepth)
+      },
+      metadata: {
+        centerNode: centerNode,
+        exportedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error generating SVG export:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Generate SVG from graph data
+ */
+function generateSVG(nodes, links, distances, depths, centerNodeId, nodePositions = {}, layoutMode = 'hybrid') {
+  const width = 800;
+  const height = 600;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  
+  // Create node position map
+  const positions = {};
+  
+  // Use provided positions or calculate layout
+  nodes.forEach(node => {
+    if (nodePositions[node.id]) {
+      positions[node.id] = nodePositions[node.id];
+    } else {
+      // Default layout calculation
+      const distance = distances[node.id] || 0;
+      const angle = (Math.PI * 2 * nodes.indexOf(node)) / Math.max(nodes.length, 1);
+      const radius = Math.min(width, height) * 0.3 * (distance / Math.max(...Object.values(distances)));
+      
+      positions[node.id] = {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
+      };
+    }
+  });
+
+  // Build SVG
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n`;
+  
+  // Add styles
+  svg += `  <defs>\n`;
+  svg += `    <style><![CDATA[\n`;
+  svg += `      .node-circle { fill: #3b82f6; stroke: #2563eb; stroke-width: 2; cursor: pointer; }\n`;
+  svg += `      .center-node { fill: #ef4444; stroke: #dc2626; stroke-width: 3; }\n`;
+  svg += `      .node-text { font-family: Arial, sans-serif; font-size: 12px; fill: #1f2937; text-anchor: middle; }\n`;
+  svg += `      .link-line { stroke: #94a3b8; stroke-width: 2; }\n`;
+  svg += `      .link-text { font-family: Arial, sans-serif; font-size: 10px; fill: #64748b; text-anchor: middle; }\n`;
+  svg += `      .pool-ring { stroke: #c0c0c0; stroke-width: 2; fill: none; }\n`;
+  svg += `    ]]></style>\n`;
+  svg += `  </defs>\n`;
+
+  // Add metadata
+  svg += `  <metadata>\n`;
+  svg += `    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n`;
+  svg += `      <rdf:Description rdf:about="Local Graph Export">\n`;
+  svg += `        <dc:date xmlns:dc="http://purl.org/dc/elements/1.1/">${new Date().toISOString()}</dc:date>\n`;
+  svg += `        <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Luhmann Roam</dc:creator>\n`;
+  svg += `      </rdf:Description>\n`;
+  svg += `    </rdf:RDF>\n`;
+  svg += `  </metadata>\n`;
+
+  // Add links
+  links.forEach(link => {
+    const sourcePos = positions[link.from_node_id];
+    const targetPos = positions[link.to_node_id];
+    if (sourcePos && targetPos) {
+      svg += `  <line class="link-line" x1="${sourcePos.x}" y1="${sourcePos.y}" x2="${targetPos.x}" y2="${targetPos.y}" />\n`;
+    }
+  });
+
+  // Add nodes
+  nodes.forEach(node => {
+    const pos = positions[node.id];
+    if (pos) {
+      const isCenter = node.id === centerNodeId;
+      const nodeClass = isCenter ? 'center-node' : 'node-circle';
+      
+      svg += `  <g class="node-group">\n`;
+      svg += `    <circle class="${nodeClass}" cx="${pos.x}" cy="${pos.y}" r="${isCenter ? 25 : 20}" />\n`;
+      svg += `    <text class="node-text" x="${pos.x}" y="${pos.y + 5}">${node.content || node.id}</text>\n`;
+      
+      // Add pool indicator if in pool
+      if (node.inPool) {
+        svg += `    <circle class="pool-ring" cx="${pos.x}" cy="${pos.y}" r="30" />\n`;
+      }
+      
+      svg += `  </g>\n`;
+    }
+  });
+
+  svg += `</svg>`;
+  
+  return svg;
+}
+
+
+

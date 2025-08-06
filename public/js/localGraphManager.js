@@ -169,6 +169,7 @@ const LocalGraphManager = (function() {
                             <div class="graph-actions">
                                 <button id="add-node-btn" class="primary-btn">${I18n.t('addNode')}</button>
                                 <button id="refresh-graph-btn" class="secondary-btn">${I18n.t('refresh')}</button>
+                                <button id="export-svg-btn" class="secondary-btn" title="Export current graph as SVG">📊 ${I18n.t('exportSVG')}</button>
                             </div>
                         </div>
                     </div>
@@ -510,6 +511,7 @@ const LocalGraphManager = (function() {
         const maxDistanceInput = document.getElementById('max-distance-input');
         const maxDepthInput = document.getElementById('max-depth-input');
         const saveToQuickAccessBtn = document.getElementById('save-to-quick-access-btn');
+        const exportSvgBtn = document.getElementById('export-svg-btn');
         
         // Only add event listeners if elements exist
         if (closeBtn) closeBtn.addEventListener('click', hide);
@@ -527,6 +529,7 @@ const LocalGraphManager = (function() {
         if (addNodeForm) addNodeForm.addEventListener('submit', createNewNode);
         if (cancelAddNodeBtn) cancelAddNodeBtn.addEventListener('click', closeAddNodeModal);
         if (saveToQuickAccessBtn) saveToQuickAccessBtn.addEventListener('click', saveCurrentCenterToQuickAccess);
+        if (exportSvgBtn) exportSvgBtn.addEventListener('click', exportCurrentGraphAsSVG);
         
         if (linkToCenterCheckbox) {
             linkToCenterCheckbox.addEventListener('change', function(e) {
@@ -1343,6 +1346,97 @@ const LocalGraphManager = (function() {
     // Distance-based layout removed - placeholder for future layout
     
     // Distance-based layout helper functions removed - placeholder for future layout
+    
+    function exportCurrentGraphAsSVG() {
+        if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+            alert('No graph data to export. Please explore a graph first.');
+            return;
+        }
+
+        try {
+            // Get the SVG element
+            const svg = document.querySelector('#local-graph-canvas svg');
+            if (!svg) {
+                alert('No SVG canvas found. Please render the graph first.');
+                return;
+            }
+
+            // Clone the SVG to avoid modifying the original
+            const clonedSvg = svg.cloneNode(true);
+            
+            // Get the main graph group which contains all elements
+            const mainGroup = clonedSvg.querySelector('#main-graph-group');
+            if (!mainGroup) {
+                alert('Graph structure not found.');
+                return;
+            }
+
+            // Set proper dimensions for the exported SVG
+            const boundingBox = mainGroup.getBBox();
+            const padding = 50;
+            const width = Math.max(800, boundingBox.width + padding * 2);
+            const height = Math.max(600, boundingBox.height + padding * 2);
+
+            // Set SVG attributes
+            clonedSvg.setAttribute('width', width);
+            clonedSvg.setAttribute('height', height);
+            clonedSvg.setAttribute('viewBox', `${boundingBox.x - padding} ${boundingBox.y - padding} ${width} ${height}`);
+            clonedSvg.removeAttribute('style'); // Remove inline styles
+
+            // Add metadata and styles
+            const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+            styleElement.textContent = `
+                .node-circle { cursor: pointer; }
+                .node-text { font-family: Arial, sans-serif; font-size: 12px; }
+                .link-line { stroke: #94a3b8; stroke-width: 2; }
+                .link-text { font-family: Arial, sans-serif; font-size: 10px; fill: #64748b; }
+                .pool-ring { stroke: #c0c0c0; stroke-width: 2; fill: none; }
+            `;
+            
+            // Insert style at the beginning
+            clonedSvg.insertBefore(styleElement, clonedSvg.firstChild);
+
+            // Add metadata
+            const metadata = document.createElementNS('http://www.w3.org/2000/svg', 'metadata');
+            metadata.textContent = `
+                Local Graph Export
+                Center Node: ${document.getElementById('current-center-node')?.textContent || 'Unknown'}
+                Exported: ${new Date().toISOString()}
+                Nodes: ${graphData.nodes.length}
+                Links: ${graphData.links.length}
+            `;
+            clonedSvg.insertBefore(metadata, clonedSvg.firstChild);
+
+            // Serialize the SVG to string
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(clonedSvg);
+
+            // Add XML declaration and DOCTYPE
+            svgString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + 
+                       '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n' + 
+                       svgString;
+
+            // Create blob and download
+            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `local-graph-${centerNodeId || 'export'}-${Date.now()}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            
+            console.log('SVG exported successfully');
+            
+        } catch (error) {
+            console.error('Error exporting SVG:', error);
+            alert('Error exporting SVG: ' + error.message);
+        }
+    }
     
     function createLinkElement(link, sourcePos, targetPos, layoutMode) {
         // CRITICAL FIX: Validate source and target positions

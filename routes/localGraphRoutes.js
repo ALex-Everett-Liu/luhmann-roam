@@ -28,4 +28,7 @@ router.post('/quick-access', localGraphController.addToQuickAccess);
 router.delete('/quick-access/:quickAccessId', localGraphController.removeFromQuickAccess);
 router.post('/quick-access/:nodeId/use', localGraphController.useQuickAccessNode);
 
+// SVG Export route
+router.post('/export-svg', localGraphController.exportGraphAsSVG);
+
 module.exports = router;
