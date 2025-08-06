@@ -12,16 +12,7 @@ const LocalGraphManager = (function() {
     let nodePoolStatus = new Map(); // Track which nodes are in pool
     let currentEditingNode = null; // Track the node being edited
     let currentNodeLinks = { outgoing: [], incoming: [] }; // Track links for editing
-    let currentLayoutMode = 'circular'; // 'circular', 'distance-based', or 'manual'
-    let manualPlacementState = {
-        isActive: false,
-        phase: 'initial', // 'initial', 'adjusting', 'placing'
-        placedNodes: new Set(),
-        nodesToPlace: [],
-        currentNodeIndex: 0,
-        initialNodes: new Set(), // nodes placed in initial phase (depth 1-2)
-        nodePositions: {} // store positions during manual placement
-    };
+    let currentLayoutMode = 'hybrid'; // 'hybrid' is now the default layout
     
     function initialize() {
         if (isInitialized) {
@@ -169,10 +160,10 @@ const LocalGraphManager = (function() {
                             <div class="layout-controls">
                                 <label>${I18n.t('layout')}</label>
                                 <select id="layout-mode-select" class="layout-select">
-                                    <option value="circular">${I18n.t('circular')}</option>
-                                    <option value="distance-based">${I18n.t('distanceBased')}</option>
                                     <option value="hybrid">${I18n.t('hybridConcentric')}</option>
-                                    <option value="manual">${I18n.t('manualPlacement')}</option>
+                                    <option value="placeholder1" disabled>Layout 1 (coming soon)</option>
+                                    <option value="placeholder2" disabled>Layout 2 (coming soon)</option>
+                                    <option value="placeholder3" disabled>Layout 3 (coming soon)</option>
                                 </select>
                             </div>
                             <div class="graph-actions">
@@ -580,27 +571,16 @@ const LocalGraphManager = (function() {
         if (editLinkForm) editLinkForm.addEventListener('submit', saveEditedLink);
         if (cancelEditLinkBtn) cancelEditLinkBtn.addEventListener('click', closeEditLinkModal);
         
-        // Setup manual placement handlers
-        setupManualPlacementHandlers();
+        // Manual placement handlers removed - no longer needed
     }
     
     function handleLayoutModeChange(e) {
         const newMode = e.target.value;
         
-        if (newMode === 'manual' && currentLayoutMode !== 'manual') {
-            // Switching to manual mode
-            if (graphData) {
-                startManualPlacement();
-            }
-        } else if (currentLayoutMode === 'manual' && newMode !== 'manual') {
-            // Switching away from manual mode
-            exitManualPlacement();
-        }
-        
-        currentLayoutMode = newMode;
-        
-        if (graphData && currentLayoutMode !== 'manual') {
-            renderGraph(); // Re-render with new layout
+        // Only allow hybrid layout for now
+        if (newMode === 'hybrid') {
+            currentLayoutMode = newMode;
+            renderGraph();
         }
     }
     
@@ -708,10 +688,6 @@ const LocalGraphManager = (function() {
     }
     
     function renderGraph() {
-        if (currentLayoutMode === 'manual' && manualPlacementState.isActive) {
-            renderManualGraph();
-            return;
-        }
         
         const canvasArea = document.getElementById('local-graph-canvas');
         
@@ -817,19 +793,11 @@ const LocalGraphManager = (function() {
         const centerY = 300;
         const maxRadius = 250;
         
-        // Choose layout algorithm based on current mode
-        const nodePositions = currentLayoutMode === 'distance-based' 
-            ? calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius)
-            : currentLayoutMode === 'hybrid'
-            ? calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRadius)
-            : calculateCircularLayout(nodes, distances, centerX, centerY, maxRadius);
+        // Use hybrid layout (only layout available)
+        const nodePositions = calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRadius);
         
-        // Add quadrant divider lines for distance-based layout
-        if (currentLayoutMode === 'distance-based') {
-            addQuadrantDividers(mainGroup, centerX, centerY);
-        } else if (currentLayoutMode === 'hybrid') {
-            addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links);
-        }
+        // Always add concentric circle guides for the hybrid layout
+        addConcentricCircleGuides(mainGroup, centerX, centerY, nodes, links);
         
         // Create links group
         const linksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -1250,254 +1218,6 @@ const LocalGraphManager = (function() {
         }
     }
     
-    function calculateCircularLayout(nodes, distances, centerX, centerY, maxRadius) {
-        // Group nodes by distance
-        const nodesByDistance = {};
-        nodes.forEach(node => {
-            const distance = distances[node.id] || 0;
-            if (!nodesByDistance[distance]) {
-                nodesByDistance[distance] = [];
-            }
-            nodesByDistance[distance].push(node);
-        });
-        
-        // Position nodes in circular layout
-        const nodePositions = {};
-        Object.keys(nodesByDistance).forEach(distance => {
-            const dist = parseFloat(distance);
-            const nodesAtDistance = nodesByDistance[distance];
-            const radius = (dist / maxDistance) * maxRadius;
-            
-            nodesAtDistance.forEach((node, index) => {
-                if (dist === 0) {
-                    // Center node
-                    nodePositions[node.id] = { x: centerX, y: centerY };
-                } else {
-                    // Arrange in circle
-                    const angle = (index / nodesAtDistance.length) * 2 * Math.PI;
-                    nodePositions[node.id] = {
-                        x: centerX + Math.cos(angle) * radius,
-                        y: centerY + Math.sin(angle) * radius
-                    };
-                }
-            });
-        });
-        
-        return nodePositions;
-    }
-    
-    function calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius) {
-        const nodePositions = {};
-        const BASE_EDGE_SCALE_FACTOR = 40; // Base scale factor to convert edge weights to pixels
-        
-        // Function to get scale factor based on depth
-        function getScaleFactorForDepth(depth) {
-            // For nodes at depth 1 and 2 hops, use 3x multiplier to push them away
-            if (depth <= 2) {
-                return BASE_EDGE_SCALE_FACTOR * 3; // 120 pixels per weight unit
-            }
-            // For nodes at depth > 2, use normal multiplier
-            return BASE_EDGE_SCALE_FACTOR; // 40 pixels per weight unit
-        }
-        
-        // Start with center node at origin
-        nodePositions[centerNodeId] = { x: centerX, y: centerY };
-        
-        // Build adjacency list with weights
-        const adjacencyList = new Map();
-        links.forEach(link => {
-            if (!adjacencyList.has(link.from_node_id)) {
-                adjacencyList.set(link.from_node_id, []);
-            }
-            if (!adjacencyList.has(link.to_node_id)) {
-                adjacencyList.set(link.to_node_id, []);
-            }
-            
-            adjacencyList.get(link.from_node_id).push({
-                nodeId: link.to_node_id,
-                weight: link.weight || 1.0,
-                linkId: link.id
-            });
-            adjacencyList.get(link.to_node_id).push({
-                nodeId: link.from_node_id,
-                weight: link.weight || 1.0,
-                linkId: link.id
-            });
-        });
-        
-        // Track which nodes have been positioned and their depths
-        const positioned = new Set([centerNodeId]);
-        const nodeDepths = new Map();
-        nodeDepths.set(centerNodeId, 0);
-        const toPosition = [];
-        
-        // Start with direct neighbors of center node
-        const centerNeighbors = adjacencyList.get(centerNodeId) || [];
-        centerNeighbors.forEach(neighbor => {
-            toPosition.push({
-                nodeId: neighbor.nodeId,
-                fromNodeId: centerNodeId,
-                edgeWeight: neighbor.weight,
-                priority: 1 // Distance from center in hops
-            });
-        });
-        
-        // Sort by priority (closer to center first) and then by edge weight
-        toPosition.sort((a, b) => {
-            if (a.priority !== b.priority) return a.priority - b.priority;
-            return a.edgeWeight - b.edgeWeight;
-        });
-        
-        // Assign quadrants to minimize edge crossings
-        const quadrantAssignments = {};
-        quadrantAssignments[centerNodeId] = -1; // Center node has no quadrant
-        let currentQuadrant = 0;
-        
-        // Process nodes level by level to maintain edge length constraints
-        while (toPosition.length > 0) {
-            const current = toPosition.shift();
-            
-            if (positioned.has(current.nodeId)) continue;
-            
-            const fromPos = nodePositions[current.fromNodeId];
-            if (!fromPos) continue; // Skip if parent not positioned yet
-            
-            // Store the depth for this node
-            nodeDepths.set(current.nodeId, current.priority);
-            
-            // Calculate desired distance based on edge weight and dynamic scaling
-            const scaleFactorForThisDepth = getScaleFactorForDepth(current.priority);
-            const desiredDistance = current.edgeWeight * scaleFactorForThisDepth;
-            
-            // Find best angle to minimize conflicts and avoid quadrant line crossings
-            let bestAngle = findBestAngleForNode(
-                current.nodeId,
-                fromPos,
-                desiredDistance,
-                nodePositions,
-                links,
-                positioned,
-                centerX,
-                centerY
-            );
-            
-            // Position the node
-            const newPos = {
-                x: fromPos.x + Math.cos(bestAngle) * desiredDistance,
-                y: fromPos.y + Math.sin(bestAngle) * desiredDistance
-            };
-            
-            nodePositions[current.nodeId] = newPos;
-            positioned.add(current.nodeId);
-            
-            // Assign quadrant based on position relative to center
-            quadrantAssignments[current.nodeId] = getQuadrantForPosition(newPos, centerX, centerY);
-            
-            // Add unpositioned neighbors of this node to the queue
-            const neighbors = adjacencyList.get(current.nodeId) || [];
-            neighbors.forEach(neighbor => {
-                if (!positioned.has(neighbor.nodeId) && 
-                    !toPosition.some(item => item.nodeId === neighbor.nodeId)) {
-                    toPosition.push({
-                        nodeId: neighbor.nodeId,
-                        fromNodeId: current.nodeId,
-                        edgeWeight: neighbor.weight,
-                        priority: current.priority + 1
-                    });
-                }
-            });
-            
-            // Re-sort queue by priority
-            toPosition.sort((a, b) => {
-                if (a.priority !== b.priority) return a.priority - b.priority;
-                return a.edgeWeight - b.edgeWeight;
-            });
-        }
-        
-        // Apply force-directed refinement to improve layout while preserving edge lengths
-        refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY);
-        
-        return nodePositions;
-    }
-    
-    function refineEdgeLengthLayoutWithDynamicScaling(nodePositions, links, adjacencyList, nodeDepths, getScaleFactorForDepth, centerNodeId, centerX, centerY) {
-        const MAX_ITERATIONS = 50;
-        const STEP_SIZE = 0.5;
-        
-        for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-            const forces = {};
-            
-            // Initialize forces
-            Object.keys(nodePositions).forEach(nodeId => {
-                forces[nodeId] = { x: 0, y: 0 };
-            });
-            
-            // Apply forces based on edge length constraints with dynamic scaling
-            links.forEach(link => {
-                const pos1 = nodePositions[link.from_node_id];
-                const pos2 = nodePositions[link.to_node_id];
-                
-                if (!pos1 || !pos2) return;
-                
-                const currentDistance = Math.sqrt(
-                    Math.pow(pos2.x - pos1.x, 2) + 
-                    Math.pow(pos2.y - pos1.y, 2)
-                );
-                
-                // Determine which node's depth to use for scaling
-                // Use the target node's depth (the one further from center)
-                const fromDepth = nodeDepths.get(link.from_node_id) || 0;
-                const toDepth = nodeDepths.get(link.to_node_id) || 0;
-                const edgeDepth = Math.max(fromDepth, toDepth); // Use the deeper node's depth
-                
-                const scaleFactor = getScaleFactorForDepth(edgeDepth);
-                const desiredDistance = (link.weight || 1.0) * scaleFactor;
-                const difference = currentDistance - desiredDistance;
-                
-                if (Math.abs(difference) > 1) { // Only adjust if significant difference
-                    const forceStrength = difference * 0.1;
-                    
-                    const dx = pos2.x - pos1.x;
-                    const dy = pos2.y - pos1.y;
-                    
-                    if (currentDistance > 0) {
-                        const unitX = dx / currentDistance;
-                        const unitY = dy / currentDistance;
-                        
-                        const forceX = unitX * forceStrength;
-                        const forceY = unitY * forceStrength;
-                        
-                        // Don't move the center node
-                        if (link.from_node_id !== centerNodeId) {
-                            forces[link.from_node_id].x += forceX;
-                            forces[link.from_node_id].y += forceY;
-                        }
-                        if (link.to_node_id !== centerNodeId) {
-                            forces[link.to_node_id].x -= forceX;
-                            forces[link.to_node_id].y -= forceY;
-                        }
-                    }
-                }
-            });
-            
-            // Apply forces with damping
-            let maxForce = 0;
-            Object.keys(forces).forEach(nodeId => {
-                if (nodeId === centerNodeId) return; // Don't move center node
-                
-                const force = forces[nodeId];
-                const forceMagnitude = Math.sqrt(force.x * force.x + force.y * force.y);
-                maxForce = Math.max(maxForce, forceMagnitude);
-                
-                nodePositions[nodeId].x += force.x * STEP_SIZE;
-                nodePositions[nodeId].y += force.y * STEP_SIZE;
-            });
-            
-            // Stop if forces are small enough
-            if (maxForce < 0.1) break;
-        }
-    }
-    
     function findBestAngleForNode(nodeId, fromPos, desiredDistance, existingPositions, links, positioned, centerX, centerY) {
         const candidateAngles = [];
         
@@ -1578,14 +1298,14 @@ const LocalGraphManager = (function() {
         
         return false;
     }
-    
+
     function getQuadrantForPosition(pos, centerX, centerY) {
         if (pos.x >= centerX && pos.y <= centerY) return 0; // Top-right
         if (pos.x < centerX && pos.y <= centerY) return 1;  // Top-left
         if (pos.x < centerX && pos.y > centerY) return 2;   // Bottom-left
         return 3; // Bottom-right
     }
-    
+
     function addQuadrantDividers(mainGroup, centerX, centerY) {
         // Create very light dotted lines for quadrant division
         const dividerStyle = {
@@ -1620,6 +1340,10 @@ const LocalGraphManager = (function() {
         mainGroup.insertBefore(horizontalLine, mainGroup.firstChild);
     }
     
+    // Distance-based layout removed - placeholder for future layout
+    
+    // Distance-based layout helper functions removed - placeholder for future layout
+    
     function createLinkElement(link, sourcePos, targetPos, layoutMode) {
         // CRITICAL FIX: Validate source and target positions
         if (!sourcePos || !targetPos || 
@@ -1638,33 +1362,9 @@ const LocalGraphManager = (function() {
                 : { x: 450, y: 350 };
         }
         
-        // Calculate actual distance between nodes
-        const actualDistance = Math.sqrt(
-            Math.pow(targetPos.x - sourcePos.x, 2) + 
-            Math.pow(targetPos.y - sourcePos.y, 2)
-        );
-        
-        // In distance-based mode, check if visual distance matches weight with dynamic scaling
         const weight = link.weight || 1.0;
-        let visuallyCorrect = true;
-        let expectedDistance = weight * 40; // Default scale factor
         
-        if (layoutMode === 'distance-based') {
-            // We need to determine the expected distance based on the nodes' depths
-            // For this, we need access to the graphData.depths
-            const fromDepth = graphData.depths[link.from_node_id] || 0;
-            const toDepth = graphData.depths[link.to_node_id] || 0;
-            const edgeDepth = Math.max(fromDepth, toDepth);
-            
-            // Use the same scaling logic as in layout calculation
-            const scaleFactor = edgeDepth <= 2 ? 120 : 40;
-            expectedDistance = weight * scaleFactor;
-            
-            const tolerance = expectedDistance * 0.2; // 20% tolerance
-            visuallyCorrect = Math.abs(actualDistance - expectedDistance) < tolerance;
-        }
-        
-        // Create link line with visual feedback
+        // Create link line
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         
         // CRITICAL FIX: Use safe coordinates for line attributes
@@ -1678,53 +1378,36 @@ const LocalGraphManager = (function() {
         line.setAttribute('x2', safeX2);
         line.setAttribute('y2', safeY2);
         
-        // IMPROVED: Calculate line width based on connection strength (inverse of distance)
-        // Smaller distance = stronger connection = thicker line
+        // Calculate line width based on weight
         function calculateLineWidth(weight) {
-            // Base configuration
-            const minWidth = 0.5;  // Minimum line width for very weak connections
-            const maxWidth = 4.0;  // Maximum line width for very strong connections
-            const baseWeight = 1.0; // Reference weight for normal connections
+            const minWidth = 0.5;
+            const maxWidth = 4.0;
+            const baseWeight = 1.0;
             
-            // Calculate connection strength (inverse of distance)
-            // For weight = 0.5 (close): strength = 2.0 (thick line)
-            // For weight = 1.0 (normal): strength = 1.0 (medium line) 
-            // For weight = 2.0 (far): strength = 0.5 (thin line)
             const connectionStrength = baseWeight / weight;
-            
-            // Map connection strength to line width with smooth scaling
-            // Use logarithmic scaling to handle extreme values gracefully
             const scaledStrength = Math.log(connectionStrength + 1) / Math.log(2);
             const lineWidth = minWidth + (maxWidth - minWidth) * Math.min(1, Math.max(0, scaledStrength / 2));
             
-            return Math.round(lineWidth * 10) / 10; // Round to 1 decimal place
+            return Math.round(lineWidth * 10) / 10;
         }
         
         const lineWidth = calculateLineWidth(weight);
-        const hoverLineWidth = Math.min(lineWidth + 1.5, 6.0); // Cap hover width
+        const hoverLineWidth = Math.min(lineWidth + 1.5, 6.0);
         
-        // Color coding for distance-based mode
-        if (layoutMode === 'distance-based') {
-            line.setAttribute('stroke', visuallyCorrect ? '#22c55e' : '#ef4444'); // Green if correct, red if not
-            line.setAttribute('stroke-width', lineWidth);
-        } else {
-            line.setAttribute('stroke', '#e2e8f0');
-            line.setAttribute('stroke-width', lineWidth);
-        }
-        
+        // Simple styling for all layouts
+        line.setAttribute('stroke', '#e2e8f0');
+        line.setAttribute('stroke-width', lineWidth);
         line.setAttribute('opacity', '0.7');
         line.setAttribute('data-from-node', link.from_node_id);
         line.setAttribute('data-to-node', link.to_node_id);
         
-        // Create distance label with improved positioning
+        // Create distance label
         const midX = (safeX1 + safeX2) / 2;
         const midY = (safeY1 + safeY2) / 2;
         
-        // Create background rectangle for better readability
         const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         const labelText = weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
         
-        // Calculate label dimensions
         const textWidth = labelText.length * 7 + 6;
         const textHeight = 14;
         
@@ -1732,17 +1415,12 @@ const LocalGraphManager = (function() {
         labelBg.setAttribute('y', midY - textHeight / 2);
         labelBg.setAttribute('width', textWidth);
         labelBg.setAttribute('height', textHeight);
-        labelBg.setAttribute('fill', layoutMode === 'distance-based' 
-            ? (visuallyCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)') 
-            : 'rgba(255, 255, 255, 0.9)');
-        labelBg.setAttribute('stroke', layoutMode === 'distance-based' 
-            ? (visuallyCorrect ? '#16a34a' : '#dc2626') 
-            : '#d1d5da');
+        labelBg.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+        labelBg.setAttribute('stroke', '#d1d5da');
         labelBg.setAttribute('stroke-width', '0.5');
         labelBg.setAttribute('rx', '3');
         labelBg.setAttribute('ry', '3');
         
-        // Create distance text
         const distanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         distanceText.setAttribute('x', midX);
         distanceText.setAttribute('y', midY + 4);
@@ -1750,37 +1428,10 @@ const LocalGraphManager = (function() {
         distanceText.setAttribute('font-size', '10');
         distanceText.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
         distanceText.setAttribute('font-weight', '700');
-        distanceText.setAttribute('fill', layoutMode === 'distance-based' 
-            ? 'white' 
-            : '#374151');
+        distanceText.setAttribute('fill', '#374151');
         distanceText.textContent = labelText;
         distanceText.style.pointerEvents = 'none';
         distanceText.style.userSelect = 'none';
-        
-        // Add actual distance display for distance-based mode with dynamic scaling info
-        if (layoutMode === 'distance-based') {
-            const actualDistanceText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            actualDistanceText.setAttribute('x', midX);
-            actualDistanceText.setAttribute('y', midY + 25);
-            actualDistanceText.setAttribute('text-anchor', 'middle');
-            actualDistanceText.setAttribute('font-size', '8');
-            actualDistanceText.setAttribute('font-family', 'monospace');
-            actualDistanceText.setAttribute('font-weight', '600');
-            actualDistanceText.setAttribute('fill', visuallyCorrect ? '#16a34a' : '#dc2626');
-            
-            // Show the scaled distance with indication of which scaling was used
-            const fromDepth = graphData.depths[link.from_node_id] || 0;
-            const toDepth = graphData.depths[link.to_node_id] || 0;
-            const edgeDepth = Math.max(fromDepth, toDepth);
-            const scaleFactor = edgeDepth <= 2 ? 120 : 40;
-            const scaledDistance = actualDistance / scaleFactor;
-            const scaleIndicator = edgeDepth <= 2 ? '×3' : '×1';
-            
-            actualDistanceText.textContent = `${scaledDistance.toFixed(1)}${scaleIndicator}`;
-            actualDistanceText.style.pointerEvents = 'none';
-            actualDistanceText.style.userSelect = 'none';
-            actualDistanceText.style.opacity = '0.8';
-        }
         
         // Create link group
         const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -1789,14 +1440,7 @@ const LocalGraphManager = (function() {
         linkGroup.appendChild(labelBg);
         linkGroup.appendChild(distanceText);
         
-        if (layoutMode === 'distance-based') {
-            const actualDistanceText = linkGroup.querySelector('text:last-child');
-            if (actualDistanceText) {
-                linkGroup.appendChild(actualDistanceText);
-            }
-        }
-        
-        // Add hover effects with improved line width calculation
+        // Add hover effects
         linkGroup.addEventListener('mouseenter', () => {
             line.setAttribute('stroke-width', hoverLineWidth);
             line.setAttribute('opacity', '1');
@@ -4637,680 +4281,14 @@ function showShapePreview(canvas, tool, startX, startY, currentX, currentY) {
         currentNodeLinks = { outgoing: [], incoming: [] };
     }
 
-    // Manual Placement Functions
-function startManualPlacement() {
-    manualPlacementState.isActive = true;
-    manualPlacementState.phase = 'initial';
-    manualPlacementState.placedNodes.clear();
-    manualPlacementState.initialNodes.clear();
-    manualPlacementState.nodesToPlace = [];
-    manualPlacementState.currentNodeIndex = 0;
-    
-    // Show manual placement controls
-    const controls = document.getElementById('manual-placement-controls');
-    if (controls) {
-        controls.style.display = 'block';
-    }
-    
-    // Calculate initial layout for depth 1-2 nodes only
-    const initialLayout = calculateManualInitialLayout();
-    manualPlacementState.nodePositions = initialLayout;
-    
-    // Render with initial placement
-    renderManualGraph();
-    
-    updateManualPlacementUI();
-}
+    // Manual Placement Functions - REMOVED
 
-function calculateManualInitialLayout() {
-    const nodes = graphData.nodes || [];
-    const links = graphData.links || [];
-    const distances = graphData.distances || {};
-    const depths = graphData.depths || {};
-    
-    // Filter nodes by depth (only depth 1-2)
-    const initialNodes = nodes.filter(node => {
-        const depth = depths[node.id] || 0;
-        return depth <= 2;
-    });
-    
-    // Nodes that will need manual placement (depth > 2)
-    const remainingNodes = nodes.filter(node => {
-        const depth = depths[node.id] || 0;
-        return depth > 2;
-    });
-    
-    // SORT REMAINING NODES BY DEPTH (3 hops, then 4 hops, then 5 hops, etc.)
-    remainingNodes.sort((a, b) => {
-        const depthA = depths[a.id] || 0;
-        const depthB = depths[b.id] || 0;
-        
-        // Primary sort: by depth (ascending - 3 hops first, then 4, then 5, etc.)
-        if (depthA !== depthB) {
-            return depthA - depthB;
-        }
-        
-        // Secondary sort: by node content for consistent ordering within same depth
-        const contentA = a.content || a.content_zh || '';
-        const contentB = b.content || b.content_zh || '';
-        return contentA.localeCompare(contentB);
-    });
-    
-    // Store which nodes are initial vs manual
-    initialNodes.forEach(node => {
-        manualPlacementState.initialNodes.add(node.id);
-        manualPlacementState.placedNodes.add(node.id);
-    });
-    
-    manualPlacementState.nodesToPlace = remainingNodes;
-    
-    // Use distance-based layout for initial nodes
-    const centerX = 400;
-    const centerY = 300;
-    const maxRadius = 250;
-    
-    // Calculate positions using the existing distance-based algorithm but only for initial nodes
-    const allPositions = calculateDistanceBasedLayout(nodes, links, distances, centerX, centerY, maxRadius);
-    
-    // Return only positions for initial nodes
-    const initialPositions = {};
-    initialNodes.forEach(node => {
-        if (allPositions[node.id]) {
-            initialPositions[node.id] = allPositions[node.id];
-        }
-    });
-    
-    return initialPositions;
-}
 
-function renderManualGraph() {
-    const canvasArea = document.getElementById('local-graph-canvas');
-    const nodes = graphData.nodes || [];
-    const links = graphData.links || [];
-    
-    // Clear canvas
-    canvasArea.innerHTML = '';
-    
-    // Create SVG with zoom and pan capabilities (similar to existing renderGraph)
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
-    svg.style.background = '#fff';
-    svg.style.cursor = manualPlacementState.phase === 'placing' ? 'crosshair' : 'grab';
-    
-    // Create main group for zoom/pan transformations
-    const mainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    mainGroup.setAttribute('id', 'main-graph-group');
-    
-    // Zoom and pan state - ADD THESE MISSING VARIABLES
-    let currentZoom = 1;
-    let currentPanX = 0;
-    let currentPanY = 0;
-    let isPanning = false;
-    let panStartX = 0;
-    let panStartY = 0;
-    let panStartPanX = 0;
-    let panStartPanY = 0;
-    
-    // Node dragging state
-    let draggedNode = null;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
-    let hasDragged = false;
-    
-    // Zoom constraints
-    const MIN_ZOOM = 0.2;
-    const MAX_ZOOM = 5;
-    
-    // Add gradients and filters (reuse from existing code)
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    
-    // Silver gradient for pool rings
-    const silverGradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-    silverGradient.setAttribute('id', 'silverGradient');
-    silverGradient.setAttribute('x1', '0%');
-    silverGradient.setAttribute('y1', '0%');
-    silverGradient.setAttribute('x2', '100%');
-    silverGradient.setAttribute('y2', '100%');
-    
-    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop1.setAttribute('offset', '0%');
-    stop1.setAttribute('stop-color', '#f8fafc');
-    stop1.setAttribute('stop-opacity', '1');
-    
-    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop2.setAttribute('offset', '50%');
-    stop2.setAttribute('stop-color', '#cbd5e1');
-    stop2.setAttribute('stop-opacity', '1');
-    
-    const stop3 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop3.setAttribute('offset', '100%');
-    stop3.setAttribute('stop-color', '#94a3b8');
-    stop3.setAttribute('stop-opacity', '1');
-    
-    silverGradient.appendChild(stop1);
-    silverGradient.appendChild(stop2);
-    silverGradient.appendChild(stop3);
-    defs.appendChild(silverGradient);
-    
-    // Subtle glow filter for pool nodes
-    const glowFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
-    glowFilter.setAttribute('id', 'poolGlow');
-    glowFilter.setAttribute('x', '-50%');
-    glowFilter.setAttribute('y', '-50%');
-    glowFilter.setAttribute('width', '200%');
-    glowFilter.setAttribute('height', '200%');
-    
-    const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
-    feGaussianBlur.setAttribute('stdDeviation', '2');
-    feGaussianBlur.setAttribute('result', 'coloredBlur');
-    
-    const feMerge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge');
-    const feMergeNode1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
-    feMergeNode1.setAttribute('in', 'coloredBlur');
-    const feMergeNode2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
-    feMergeNode2.setAttribute('in', 'SourceGraphic');
-    
-    feMerge.appendChild(feMergeNode1);
-    feMerge.appendChild(feMergeNode2);
-    glowFilter.appendChild(feGaussianBlur);
-    glowFilter.appendChild(feMerge);
-    defs.appendChild(glowFilter);
-    
-    svg.appendChild(defs);
-    
-    // Create links group
-    const linksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    linksGroup.setAttribute('id', 'links-group');
-    
-    // Create nodes group
-    const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    nodesGroup.setAttribute('id', 'nodes-group');
-    
-    // Only render placed nodes and their connections
-    const placedNodes = nodes.filter(node => manualPlacementState.placedNodes.has(node.id));
-    const placedNodeIds = new Set(placedNodes.map(n => n.id));
-    
-    // Filter links to only show connections between placed nodes
-    const visibleLinks = links.filter(link => 
-        placedNodeIds.has(link.from_node_id) && placedNodeIds.has(link.to_node_id)
-    );
-    
-    // Draw links
-    const linkElements = [];
-    visibleLinks.forEach(link => {
-        const sourcePos = manualPlacementState.nodePositions[link.from_node_id];
-        const targetPos = manualPlacementState.nodePositions[link.to_node_id];
-        
-        if (sourcePos && targetPos) {
-            const linkData = createLinkElement(link, sourcePos, targetPos, 'manual');
-            linksGroup.appendChild(linkData.linkGroup);
-            linkElements.push(linkData);
-        }
-    });
-    
-    // Draw nodes
-    const nodeElements = [];
-    placedNodes.forEach(node => {
-        const pos = manualPlacementState.nodePositions[node.id];
-        if (!pos) return;
-        
-        const nodeData = createManualNodeElement(node, pos);
-        nodeElements.push(nodeData);
-        nodesGroup.appendChild(nodeData.element);
-    });
 
-    
-    // Add manual placement interaction for placing new nodes (only in placing phase)
-    if (manualPlacementState.phase === 'placing') {
-        // Add click handler for placing nodes
-        svg.addEventListener('click', (e) => {
-            if (manualPlacementState.phase !== 'placing' || manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
-                return;
-            }
-            
-            // Don't place if we're dragging or panning
-            if (isPanning || draggedNode) return;
-            
-            // Get click position relative to SVG (accounting for zoom/pan)
-            const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
-            
-            // Place the current node
-            const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
-            manualPlacementState.nodePositions[currentNode.id] = { x: svgCoords.x, y: svgCoords.y };
-            manualPlacementState.placedNodes.add(currentNode.id);
-            
-            // Move to next node
-            manualPlacementState.currentNodeIndex++;
-            
-            // Re-render graph with new node
-            renderManualGraph();
-            
-            // Update UI
-            updateManualPlacementUI();
-            
-            // Check if we're done
-            if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
-                completeManualPlacement();
-            }
-        });
-    }
-    
-    // Mouse event handlers for both node dragging and canvas panning
-    svg.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        
-        // Check if we clicked on a node
-        const target = e.target.closest('g[data-node-id]');
-        if (target && manualPlacementState.phase === 'initial') {
-            // Start node dragging (only in initial phase)
-            const nodeId = target.getAttribute('data-node-id');
-            if (manualPlacementState.initialNodes.has(nodeId)) {
-                draggedNode = nodeElements.find(n => n.nodeId === nodeId);
-                
-                if (draggedNode) {
-                    const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
-                    dragStartX = e.clientX;
-                    dragStartY = e.clientY;
-                    dragOffsetX = svgCoords.x - draggedNode.position.x;
-                    dragOffsetY = svgCoords.y - draggedNode.position.y;
-                    hasDragged = false;
-                    
-                    draggedNode.element.style.cursor = 'grabbing';
-                    
-                    // Bring node to front
-                    nodesGroup.appendChild(draggedNode.element);
-                }
-            }
-        } else {
-            // Start canvas panning
-            isPanning = true;
-            svg.style.cursor = 'grabbing';
-            
-            panStartX = e.clientX;
-            panStartY = e.clientY;
-            panStartPanX = currentPanX;
-            panStartPanY = currentPanY;
-        }
-    });
-    
-    svg.addEventListener('mousemove', (e) => {
-        if (draggedNode) {
-            // Handle node dragging
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-            
-            // Check if we've moved enough to consider this a drag
-            if (!hasDragged && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
-                hasDragged = true;
-            }
-            
-            if (hasDragged) {
-                const svgCoords = screenToSVG(e.clientX, e.clientY, svg, currentPanX, currentPanY, currentZoom);
-                draggedNode.position.x = svgCoords.x - dragOffsetX;
-                draggedNode.position.y = svgCoords.y - dragOffsetY;
-                
-                // Update stored position
-                manualPlacementState.nodePositions[draggedNode.nodeId] = { 
-                    x: draggedNode.position.x, 
-                    y: draggedNode.position.y 
-                };
-                
-                updateNodePosition(draggedNode);
-                updateLinks(linkElements, nodeElements);
-            }
-        } else if (isPanning) {
-            // Handle canvas panning
-            const deltaX = e.clientX - panStartX;
-            const deltaY = e.clientY - panStartY;
-            
-            currentPanX = panStartPanX + deltaX;
-            currentPanY = panStartPanY + deltaY;
-            
-            updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
-        }
-    });
-    
-    svg.addEventListener('mouseup', (e) => {
-        if (draggedNode) {
-            draggedNode.element.style.cursor = 'move';
-            
-            // If we didn't drag, treat it as a click
-            if (!hasDragged) {
-                selectNode(draggedNode.node);
-            }
-            
-            draggedNode = null;
-            hasDragged = false;
-        }
-        
-        if (isPanning) {
-            isPanning = false;
-            svg.style.cursor = manualPlacementState.phase === 'placing' ? 'crosshair' : 'grab';
-        }
-    });
-    
-    // Add right-click context menu to nodes
-    nodeElements.forEach(nodeData => {
-        nodeData.element.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            showNodeContextMenu(e, nodeData.node);
-        });
-    });
-    
-    // Zoom functionality
-    svg.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        
-        const rect = svg.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Calculate zoom
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
-        
-        if (newZoom !== currentZoom) {
-            // Zoom towards mouse position
-            const zoomRatio = newZoom / currentZoom;
-            
-            currentPanX = mouseX - (mouseX - currentPanX) * zoomRatio;
-            currentPanY = mouseY - (mouseY - currentPanY) * zoomRatio;
-            currentZoom = newZoom;
-            
-            updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
-            updateZoomInfo();
-        }
-    });
-    
-    // Touch support for mobile
-    let touchStartDistance = 0;
-    let touchStartZoom = 1;
-    let touchStartPan = { x: 0, y: 0 };
-    
-    svg.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-            // Pinch zoom start
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            touchStartDistance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
-            touchStartZoom = currentZoom;
-            touchStartPan = { x: currentPanX, y: currentPanY };
-        }
-    });
-    
-    svg.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const currentDistance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
-            
-            if (touchStartDistance > 0) {
-                const zoomRatio = currentDistance / touchStartDistance;
-                const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, touchStartZoom * zoomRatio));
-                
-                if (newZoom !== currentZoom) {
-                    currentZoom = newZoom;
-                    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
-                    updateZoomInfo();
-                }
-            }
-        }
-    });
-    
-    // Function to update zoom info in UI
-    function updateZoomInfo() {
-        const zoomPercent = Math.round(currentZoom * 100);
-        const distanceDisplay = document.getElementById('distance-display');
-        if (distanceDisplay) {
-            const originalText = distanceDisplay.textContent.split(' | ')[0];
-            distanceDisplay.textContent = `${originalText} | Zoom: ${zoomPercent}%`;
-        }
-    }
-    
-    // Initial transform
-    updateTransform(mainGroup, currentPanX, currentPanY, currentZoom);
-    updateZoomInfo();
-    
-    canvasArea.appendChild(svg);
-}
 
-function createManualNodeElement(node, pos) {
-    const isCenter = node.id === centerNodeId;
-    const isInitial = manualPlacementState.initialNodes.has(node.id);
-    
-    // Create node group
-    const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    nodeGroup.setAttribute('data-node-id', node.id);
-    nodeGroup.style.cursor = isInitial ? 'move' : 'default';
-    
-    // Node circle with different styling for initial vs manual nodes
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', pos.x);
-    circle.setAttribute('cy', pos.y);
-    circle.setAttribute('r', isCenter ? 14 : 10);
-    circle.setAttribute('class', 'main-node-circle');
-    
-    if (isCenter) {
-        circle.setAttribute('fill', '#6366f1');
-        circle.setAttribute('stroke', '#4f46e5');
-        circle.setAttribute('stroke-width', '3');
-    } else if (isInitial) {
-        circle.setAttribute('fill', '#10b981'); // Green for initial nodes
-        circle.setAttribute('stroke', '#059669');
-        circle.setAttribute('stroke-width', '2');
-    } else {
-        circle.setAttribute('fill', '#8b5cf6'); // Purple for manually placed nodes
-        circle.setAttribute('stroke', '#7c3aed');
-        circle.setAttribute('stroke-width', '2');
-    }
-    
-    nodeGroup.appendChild(circle);
-    
-    // Node label
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', pos.x);
-    text.setAttribute('y', pos.y - (isCenter ? 20 : 16));
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', isCenter ? '11' : '9');
-    text.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-    text.setAttribute('font-weight', isCenter ? '600' : '500');
-    text.setAttribute('fill', '#1e293b');
-    text.textContent = (node.content || 'Untitled').substring(0, 20) + (node.content?.length > 20 ? '...' : '');
-    text.style.pointerEvents = 'none';
-    
-    nodeGroup.appendChild(text);
-    
-    return {
-        element: nodeGroup,
-        circle: circle,
-        text: text,
-        nodeId: node.id,
-        position: pos,
-        node: node
-    };
-}
 
-function updateManualPlacementUI() {
-    const titleElement = document.getElementById('manual-placement-title');
-    const progressText = document.getElementById('manual-progress-text');
-    const progressFill = document.getElementById('manual-progress-fill');
-    const currentNodeName = document.getElementById('current-node-name');
-    const remainingCount = document.getElementById('remaining-nodes-count');
-    
-    const totalPhases = 3;
-    let currentPhase = 1;
-    let progress = 0;
-    
-    switch (manualPlacementState.phase) {
-        case 'initial':
-            currentPhase = 1;
-            progress = 33;
-            if (titleElement) titleElement.textContent = 'Step 1: Initial Placement';
-            document.getElementById('manual-phase-initial').style.display = 'block';
-            document.getElementById('manual-phase-placing').style.display = 'none';
-            document.getElementById('manual-phase-complete').style.display = 'none';
-            break;
-            
-        case 'placing':
-            currentPhase = 2;
-            const placedCount = manualPlacementState.currentNodeIndex;
-            const totalToPlace = manualPlacementState.nodesToPlace.length;
-            progress = 33 + ((placedCount / totalToPlace) * 34);
-            
-            if (titleElement) titleElement.textContent = 'Step 2: Manual Placement';
-            document.getElementById('manual-phase-initial').style.display = 'none';
-            document.getElementById('manual-phase-placing').style.display = 'block';
-            document.getElementById('manual-phase-complete').style.display = 'none';
-            
-            if (manualPlacementState.currentNodeIndex < manualPlacementState.nodesToPlace.length) {
-                const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
-                if (currentNodeName) {
-                    currentNodeName.textContent = currentNode.content || currentNode.content_zh || 'Untitled';
-                }
-                if (remainingCount) {
-                    remainingCount.textContent = `Remaining: ${totalToPlace - placedCount} nodes`;
-                }
-            }
-            break;
-            
-        case 'complete':
-            currentPhase = 3;
-            progress = 100;
-            if (titleElement) titleElement.textContent = 'Step 3: Complete';
-            document.getElementById('manual-phase-initial').style.display = 'none';
-            document.getElementById('manual-phase-placing').style.display = 'none';
-            document.getElementById('manual-phase-complete').style.display = 'block';
-            break;
-    }
-    
-    if (progressText) {
-        progressText.textContent = `Step ${currentPhase} of ${totalPhases}`;
-    }
-    
-    if (progressFill) {
-        progressFill.style.width = `${progress}%`;
-    }
-}
 
-function setupManualPlacementHandlers() {
-    const proceedBtn = document.getElementById('manual-proceed-btn');
-    const resetBtn = document.getElementById('manual-reset-positions-btn');
-    const skipBtn = document.getElementById('manual-skip-node-btn');
-    const autoPlaceBtn = document.getElementById('manual-auto-place-remaining-btn');
-    const cancelBtn = document.getElementById('manual-cancel-btn');
-    const finishBtn = document.getElementById('manual-finish-btn');
-    
-    if (proceedBtn) {
-        proceedBtn.addEventListener('click', () => {
-            manualPlacementState.phase = 'placing';
-            updateManualPlacementUI();
-            renderManualGraph();
-        });
-    }
-    
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            // Reset initial positions to auto-calculated ones
-            const initialLayout = calculateManualInitialLayout();
-            Object.keys(initialLayout).forEach(nodeId => {
-                manualPlacementState.nodePositions[nodeId] = initialLayout[nodeId];
-            });
-            renderManualGraph();
-        });
-    }
-    
-    if (skipBtn) {
-        skipBtn.addEventListener('click', () => {
-            // Skip current node (place it at a default position)
-            if (manualPlacementState.currentNodeIndex < manualPlacementState.nodesToPlace.length) {
-                const currentNode = manualPlacementState.nodesToPlace[manualPlacementState.currentNodeIndex];
-                
-                // Place at a default position (e.g., top-right corner)
-                manualPlacementState.nodePositions[currentNode.id] = { x: 600, y: 100 + (manualPlacementState.currentNodeIndex * 30) };
-                manualPlacementState.placedNodes.add(currentNode.id);
-                manualPlacementState.currentNodeIndex++;
-                
-                renderManualGraph();
-                updateManualPlacementUI();
-                
-                if (manualPlacementState.currentNodeIndex >= manualPlacementState.nodesToPlace.length) {
-                    completeManualPlacement();
-                }
-            }
-        });
-    }
-    
-    if (autoPlaceBtn) {
-        autoPlaceBtn.addEventListener('click', () => {
-            // Auto-place all remaining nodes
-            const remaining = manualPlacementState.nodesToPlace.slice(manualPlacementState.currentNodeIndex);
-            remaining.forEach((node, index) => {
-                // Place in a grid pattern
-                const x = 500 + (index % 3) * 80;
-                const y = 200 + Math.floor(index / 3) * 60;
-                manualPlacementState.nodePositions[node.id] = { x, y };
-                manualPlacementState.placedNodes.add(node.id);
-            });
-            
-            manualPlacementState.currentNodeIndex = manualPlacementState.nodesToPlace.length;
-            completeManualPlacement();
-        });
-    }
-    
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
-            exitManualPlacement();
-            // Switch back to distance-based layout
-            const layoutSelect = document.getElementById('layout-mode-select');
-            if (layoutSelect) {
-                layoutSelect.value = 'distance-based';
-                currentLayoutMode = 'distance-based';
-                renderGraph();
-            }
-        });
-    }
-    
-    if (finishBtn) {
-        finishBtn.addEventListener('click', () => {
-            exitManualPlacement();
-            showNotification('Manual placement completed!', 'success');
-        });
-    }
-}
 
-function completeManualPlacement() {
-    manualPlacementState.phase = 'complete';
-    updateManualPlacementUI();
-    renderManualGraph();
-}
-
-function exitManualPlacement() {
-    manualPlacementState.isActive = false;
-    manualPlacementState.phase = 'initial';
-    manualPlacementState.placedNodes.clear();
-    manualPlacementState.initialNodes.clear();
-    manualPlacementState.nodesToPlace = [];
-    manualPlacementState.currentNodeIndex = 0;
-    manualPlacementState.nodePositions = {};
-    
-    // Hide manual placement controls
-    const controls = document.getElementById('manual-placement-controls');
-    if (controls) {
-        controls.style.display = 'none';
-    }
-}
 
 function calculateHybridLayout(nodes, links, distances, centerX, centerY, maxRadius) {
     const nodePositions = {};
