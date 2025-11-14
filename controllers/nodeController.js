@@ -253,12 +253,12 @@ exports.reorderNodes = async (req, res) => {
     // Update positions of nodes in old parent
     if (oldParentId) {
       await db.run(
-        'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position \u003e ?',
+        'UPDATE nodes SET position = position - 1 WHERE parent_id = ? AND position > ?',
         [oldParentId, oldPosition]
       );
     } else {
       await db.run(
-        'UPDATE nodes SET position = position - 1 WHERE parent_id IS NULL AND position \u003e ?',
+        'UPDATE nodes SET position = position - 1 WHERE parent_id IS NULL AND position > ?',
         oldPosition
       );
     }
@@ -266,12 +266,12 @@ exports.reorderNodes = async (req, res) => {
     // Update positions of nodes in new parent
     if (newParentId) {
       await db.run(
-        'UPDATE nodes SET position = position + 1 WHERE parent_id = ? AND position \u003e= ?',
+        'UPDATE nodes SET position = position + 1 WHERE parent_id = ? AND position >= ?',
         [newParentId, newPosition]
       );
     } else {
       await db.run(
-        'UPDATE nodes SET position = position + 1 WHERE parent_id IS NULL AND position \u003e= ?',
+        'UPDATE nodes SET position = position + 1 WHERE parent_id IS NULL AND position >= ?',
         newPosition
       );
     }
@@ -330,13 +330,13 @@ exports.shiftNodePositions = async (req, res) => {
     if (parentId) {
       // For child nodes under a parent
       nodesToUpdate = await db.all(
-        'SELECT id, position FROM nodes WHERE parent_id = ? AND position \u003e= ? ORDER BY position',
+        'SELECT id, position FROM nodes WHERE parent_id = ? AND position >= ? ORDER BY position',
         [parentId, position]
       );
     } else {
       // For root level nodes
       nodesToUpdate = await db.all(
-        'SELECT id, position FROM nodes WHERE parent_id IS NULL AND position \u003e= ? ORDER BY position',
+        'SELECT id, position FROM nodes WHERE parent_id IS NULL AND position >= ? ORDER BY position',
         [position]
       );
     }
@@ -381,7 +381,7 @@ exports.searchNodes = async (req, res) => {
     const params = [];
 
     // Build WHERE clause based on parameters
-    if (query && query.length \u003e= 2) {
+    if (query && query.length >= 2) {
       if (advanced) {
         // Parse advanced query with logical operators
         const contentField = lang === 'zh' ? 'content_zh' : 'content';
@@ -492,21 +492,21 @@ function parseAdvancedQuery(query, contentField) {
 
   // Handle AND operator
   tokenizedQuery.split(/\bAND\b/).forEach((andPart, index) => {
-    if (index \u003e 0) operators.push('AND');
+    if (index > 0) operators.push('AND');
 
     // Handle OR operator within AND blocks
     const orParts = andPart.split(/\bOR\b/);
-    if (orParts.length \u003e 1) {
+    if (orParts.length > 1) {
       // This is an OR block
       orParts.forEach((orPart, orIndex) => {
-        if (orIndex \u003e 0) operators.push('OR');
+        if (orIndex > 0) operators.push('OR');
 
         // Handle NOT operator
         const notParts = orPart.split(/\bNOT\b/);
-        if (notParts.length \u003e 1) {
+        if (notParts.length > 1) {
           // This has a NOT clause
           notParts.forEach((notPart, notIndex) => {
-            if (notIndex \u003e 0) operators.push('NOT');
+            if (notIndex > 0) operators.push('NOT');
             parts.push(notPart.trim());
           });
         } else {
@@ -516,10 +516,10 @@ function parseAdvancedQuery(query, contentField) {
     } else {
       // Handle NOT operator in a non-OR block
       const notParts = andPart.split(/\bNOT\b/);
-      if (notParts.length \u003e 1) {
+      if (notParts.length > 1) {
         // This has a NOT clause
         notParts.forEach((notPart, notIndex) => {
-          if (notIndex \u003e 0) operators.push('NOT');
+          if (notIndex > 0) operators.push('NOT');
           parts.push(notPart.trim());
         });
       } else {
@@ -535,11 +535,11 @@ function parseAdvancedQuery(query, contentField) {
   let clause = '';
   const queryParams = [];
 
-  for (let i = 0; i \u003c cleanParts.length; i++) {
+  for (let i = 0; i < cleanParts.length; i++) {
     let part = cleanParts[i];
 
     // Restore tokens
-    for (let j = 0; j \u003c tokens.length; j++) {
+    for (let j = 0; j < tokens.length; j++) {
       const tokenKey = `__TOKEN${j}__`;
       if (part.includes(tokenKey)) {
         const token = tokens[j];
@@ -607,7 +607,7 @@ exports.getNodeBySequenceId = async (req, res) => {
 
     // Validate input
     const sequenceIdNum = parseInt(sequence_id);
-    if (isNaN(sequenceIdNum) || sequenceIdNum \u003c= 0) {
+    if (isNaN(sequenceIdNum) || sequenceIdNum <= 0) {
       return res.status(400).json({ error: 'Invalid sequence ID format' });
     }
 
@@ -640,7 +640,7 @@ exports.checkNodesExist = async (req, res) => {
     console.log('Query result:', result);
 
     const response = {
-      exists: result.count \u003e 0,
+      exists: result.count > 0,
       count: result.count
     };
     console.log('Sending response:', response);

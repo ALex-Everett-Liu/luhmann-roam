@@ -1,7 +1,6 @@
 // nodeRoutes.js - Routes for node operations
 const express = require('express');
 const nodeController = require('../controllers/nodeController');
-const linkController = require('../controllers/linkController');
 
 const router = express.Router();
 
@@ -10,10 +9,7 @@ console.log('Setting up node routes...');
 
 // Add this BEFORE routes with :id params
 router.get('/search', nodeController.searchNodes);
-router.get('/exists', (req, res, next) => {
-    console.log('EXISTS route hit!');
-    nodeController.checkNodesExist(req, res, next);
-});
+router.get('/exists', nodeController.checkNodesExist);
 
 console.log('Node routes setup complete');
 
@@ -44,12 +40,9 @@ router.post('/reorder/shift', nodeController.shiftNodePositions);
 // Toggle node expansion
 router.post('/:id/toggle', nodeController.toggleNode);
 
-// Get links for a node
-router.get('/:id/links', linkController.getNodeLinks);
+// Links functionality removed for minimal version
 
+// Get node by sequence ID
 router.get('/sequence/:sequence_id', nodeController.getNodeBySequenceId);
-
-// Add additional routes for other node operations...
-// (Routes for indenting, outdenting, fixing positions, etc.)
 
 module.exports = router;

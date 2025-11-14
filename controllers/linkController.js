@@ -1,6 +1,6 @@
 // linkController.js - Logic for link operations
 const { v4: uuidv4 } = require('uuid');
-const { invalidateDistanceCache } = require('./localGraphController');
+// const { invalidateDistanceCache } = require('./localGraphController');
 
 /**
  * Get all links for a node (both incoming and outgoing)
@@ -68,7 +68,7 @@ exports.createLink = async (req, res) => {
     );
     
     // Invalidate distance cache since we added a link
-    invalidateDistanceCache();
+    // invalidateDistanceCache(); // Commented for minimal version
     
     const link = await db.get('SELECT * FROM links WHERE id = ?', id);
     res.status(201).json(link);
@@ -107,7 +107,7 @@ exports.updateLink = async (req, res) => {
     await db.run(query, params);
     
     // Invalidate distance cache since we modified a link
-    invalidateDistanceCache();
+    // invalidateDistanceCache(); // Commented for minimal version
     
     const link = await db.get('SELECT * FROM links WHERE id = ?', id);
     
@@ -138,7 +138,7 @@ exports.deleteLink = async (req, res) => {
     await db.run('DELETE FROM links WHERE id = ?', id);
     
     // Invalidate distance cache since we deleted a link
-    invalidateDistanceCache();
+    // invalidateDistanceCache(); // Commented for minimal version
     
     res.status(204).send();
   } catch (error) {
