@@ -2,7 +2,6 @@
 const express = require('express');
 const nodeController = require('../controllers/nodeController');
 const linkController = require('../controllers/linkController');
-const attributeController = require('../controllers/attributeController');
 
 const router = express.Router();
 
@@ -47,12 +46,6 @@ router.post('/:id/toggle', nodeController.toggleNode);
 
 // Get links for a node
 router.get('/:id/links', linkController.getNodeLinks);
-
-// Get attributes for a node
-router.get('/:id/attributes', attributeController.getNodeAttributes);
-
-// Query nodes by attributes
-router.post('/query', attributeController.queryNodesByAttributes);
 
 router.get('/sequence/:sequence_id', nodeController.getNodeBySequenceId);
 
