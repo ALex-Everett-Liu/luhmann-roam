@@ -1,38 +1,43 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const path = require('path');
+const sqlite3 = require("sqlite3").verbose();
+const { open } = require("sqlite");
+const path = require("path");
 
 // Create a database connection
 async function getDb(vaultName) {
-  const dbName = vaultName || global.currentVault || 'main';
-  const dbPath = dbName === 'main' 
-    ? path.join(__dirname, 'outliner.db')
-    : path.join(__dirname, 'vaults', `${dbName}.db`);
-  
+  const dbName = vaultName || global.currentVault || "main";
+  const dbPath =
+    dbName === "main"
+      ? path.join(__dirname, "outliner.db")
+      : path.join(__dirname, "vaults", `${dbName}.db`);
+
   return open({
     filename: dbPath,
-    driver: sqlite3.Database
+    driver: sqlite3.Database,
   });
 }
 
 // Initialize database
 async function initializeDatabase(vaultName) {
   const db = await getDb(vaultName);
-  
+
   // Check if the database already has tables instead of using a global flag
   try {
     // Try to query the nodes table to see if it exists
-    await db.get('SELECT count(*) as count FROM sqlite_master WHERE type="table" AND name="nodes"');
-    
+    await db.get(
+      'SELECT count(*) as count FROM sqlite_master WHERE type="table" AND name="nodes"',
+    );
+
     // If we get here, the database already has tables
-    console.log(`Database ${vaultName} already initialized, checking tables...`);
+    console.log(
+      `Database ${vaultName} already initialized, checking tables...`,
+    );
   } catch (error) {
     // If we get an error, the database doesn't have tables yet
     console.log(`Initializing database for vault: ${vaultName}`);
   }
-  
+
   // Always proceed with ensuring all tables exist (won't harm if they already do)
-  
+
   // Create nodes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS nodes (
@@ -50,15 +55,18 @@ async function initializeDatabase(vaultName) {
     )
   `);
 
-    // Add node_size column to existing tables if it doesn't exist
-    try {
-      await db.exec(`ALTER TABLE nodes ADD COLUMN node_size INTEGER DEFAULT 20`);
-      console.log('Added node_size column to nodes table');
-    } catch (error) {
-      // Column likely already exists, which is fine
-      console.log('node_size column already exists or other error:', error.message);
-    }
-  
+  // Add node_size column to existing tables if it doesn't exist
+  try {
+    await db.exec(`ALTER TABLE nodes ADD COLUMN node_size INTEGER DEFAULT 20`);
+    console.log("Added node_size column to nodes table");
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log(
+      "node_size column already exists or other error:",
+      error.message,
+    );
+  }
+
   // Create links table
   await db.exec(`    CREATE TABLE IF NOT EXISTS links (
       id TEXT PRIMARY KEY,
@@ -72,7 +80,7 @@ async function initializeDatabase(vaultName) {
       FOREIGN KEY (to_node_id) REFERENCES nodes (id) ON DELETE CASCADE
     )
   `);
-  
+
   // Create tasks table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
@@ -87,7 +95,7 @@ async function initializeDatabase(vaultName) {
       updated_at INTEGER
     )
   `);
-  
+
   // Create task_categories table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS task_categories (
@@ -100,7 +108,7 @@ async function initializeDatabase(vaultName) {
       sequence_id INTEGER
     )
   `);
-  
+
   // Create task_category_assignments table to link tasks to categories
   await db.exec(`
     CREATE TABLE IF NOT EXISTS task_category_assignments (
@@ -114,7 +122,7 @@ async function initializeDatabase(vaultName) {
       UNIQUE(task_id, category_id)
     )
   `);
-  
+
   // Create node_attributes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS node_attributes (
@@ -128,7 +136,7 @@ async function initializeDatabase(vaultName) {
       UNIQUE(node_id, key)
     )
   `);
-  
+
   // Create bookmarks table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS bookmarks (
@@ -140,7 +148,7 @@ async function initializeDatabase(vaultName) {
       FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE
     )
   `);
-  
+
   // Create blog_pages table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS blog_pages (
@@ -154,7 +162,7 @@ async function initializeDatabase(vaultName) {
       FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
     )
   `);
-  
+
   // Create dcim_images table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS dcim_images (
@@ -167,14 +175,14 @@ async function initializeDatabase(vaultName) {
       tags TEXT,
       creation_time INTEGER,
       person TEXT,
-      location TEXT, 
+      location TEXT,
       type TEXT,
       thumbnail_path TEXT,
       created_at INTEGER,
       updated_at INTEGER
     )
   `);
-  
+
   // Create dcim_image_settings table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS dcim_image_settings (
@@ -186,7 +194,7 @@ async function initializeDatabase(vaultName) {
       FOREIGN KEY (image_id) REFERENCES dcim_images (id) ON DELETE CASCADE
     )
   `);
-  
+
   // Create dcim_directories table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS dcim_directories (
@@ -198,28 +206,36 @@ async function initializeDatabase(vaultName) {
       updated_at INTEGER
     )
   `);
-  
+
   // Add file_path column to dcim_images table if it doesn't exist
   try {
     await db.exec(`ALTER TABLE dcim_images ADD COLUMN file_path TEXT`);
-    console.log('Added file_path column to dcim_images table');
+    console.log("Added file_path column to dcim_images table");
   } catch (error) {
     // Column likely already exists, which is fine
-    console.log('file_path column already exists or other error:', error.message);
+    console.log(
+      "file_path column already exists or other error:",
+      error.message,
+    );
   }
 
   // Add parent_id column to dcim_images table for subsidiary images
   try {
     await db.exec(`ALTER TABLE dcim_images ADD COLUMN parent_id TEXT`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_parent_id ON dcim_images(parent_id)`);
-    console.log('Added parent_id column to dcim_images table');
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_parent_id ON dcim_images(parent_id)`,
+    );
+    console.log("Added parent_id column to dcim_images table");
   } catch (error) {
     // Column likely already exists, which is fine
-    console.log('parent_id column already exists or other error:', error.message);
+    console.log(
+      "parent_id column already exists or other error:",
+      error.message,
+    );
   }
 
-// Create metro_stations table
-await db.exec(`
+  // Create metro_stations table
+  await db.exec(`
   CREATE TABLE IF NOT EXISTS metro_stations (
     id TEXT PRIMARY KEY,
     node_id TEXT NOT NULL,
@@ -236,26 +252,34 @@ await db.exec(`
   )
 `);
 
-// Add transit_type column to metro_stations table if it doesn't exist
-try {
-  await db.exec(`ALTER TABLE metro_stations ADD COLUMN transit_type TEXT DEFAULT 'metro'`);
-  console.log('Added transit_type column to metro_stations table');
-} catch (error) {
-  // Column likely already exists, which is fine
-  console.log('transit_type column already exists in metro_stations or other error:', error.message);
-}
+  // Add transit_type column to metro_stations table if it doesn't exist
+  try {
+    await db.exec(
+      `ALTER TABLE metro_stations ADD COLUMN transit_type TEXT DEFAULT 'metro'`,
+    );
+    console.log("Added transit_type column to metro_stations table");
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log(
+      "transit_type column already exists in metro_stations or other error:",
+      error.message,
+    );
+  }
 
-// Add city column to metro_stations table if it doesn't exist
-try {
-  await db.exec(`ALTER TABLE metro_stations ADD COLUMN city TEXT DEFAULT ''`);
-  console.log('Added city column to metro_stations table');
-} catch (error) {
-  // Column likely already exists, which is fine
-  console.log('city column already exists in metro_stations or other error:', error.message);
-}
+  // Add city column to metro_stations table if it doesn't exist
+  try {
+    await db.exec(`ALTER TABLE metro_stations ADD COLUMN city TEXT DEFAULT ''`);
+    console.log("Added city column to metro_stations table");
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log(
+      "city column already exists in metro_stations or other error:",
+      error.message,
+    );
+  }
 
-// Create metro_lines table
-await db.exec(`
+  // Create metro_lines table
+  await db.exec(`
   CREATE TABLE IF NOT EXISTS metro_lines (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -269,23 +293,31 @@ await db.exec(`
   )
 `);
 
-// Add transit_type column to metro_lines table if it doesn't exist
-try {
-  await db.exec(`ALTER TABLE metro_lines ADD COLUMN transit_type TEXT DEFAULT 'metro'`);
-  console.log('Added transit_type column to metro_lines table');
-} catch (error) {
-  // Column likely already exists, which is fine
-  console.log('transit_type column already exists in metro_lines or other error:', error.message);
-}
+  // Add transit_type column to metro_lines table if it doesn't exist
+  try {
+    await db.exec(
+      `ALTER TABLE metro_lines ADD COLUMN transit_type TEXT DEFAULT 'metro'`,
+    );
+    console.log("Added transit_type column to metro_lines table");
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log(
+      "transit_type column already exists in metro_lines or other error:",
+      error.message,
+    );
+  }
 
-// Add city column to metro_lines table if it doesn't exist
-try {
-  await db.exec(`ALTER TABLE metro_lines ADD COLUMN city TEXT DEFAULT ''`);
-  console.log('Added city column to metro_lines table');
-} catch (error) {
-  // Column likely already exists, which is fine
-  console.log('city column already exists in metro_lines or other error:', error.message);
-}
+  // Add city column to metro_lines table if it doesn't exist
+  try {
+    await db.exec(`ALTER TABLE metro_lines ADD COLUMN city TEXT DEFAULT ''`);
+    console.log("Added city column to metro_lines table");
+  } catch (error) {
+    // Column likely already exists, which is fine
+    console.log(
+      "city column already exists in metro_lines or other error:",
+      error.message,
+    );
+  }
 
   // Add indices for better performance
   await db.exec(`
@@ -296,11 +328,15 @@ try {
 
   // Add city indices to metro tables
   try {
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_metro_stations_city ON metro_stations(city);`);
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_metro_lines_city ON metro_lines(city);`);
-    console.log('Added city indices to metro tables');
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_metro_stations_city ON metro_stations(city);`,
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_metro_lines_city ON metro_lines(city);`,
+    );
+    console.log("Added city indices to metro tables");
   } catch (error) {
-    console.log('City indices may already exist:', error.message);
+    console.log("City indices may already exist:", error.message);
   }
 
   // Add triggers for auto-assigning sequence IDs
@@ -310,7 +346,7 @@ try {
     FOR EACH ROW
     WHEN NEW.sequence_id IS NULL
     BEGIN
-      UPDATE metro_stations 
+      UPDATE metro_stations
       SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM metro_stations)
       WHERE id = NEW.id;
     END;
@@ -322,23 +358,28 @@ try {
     FOR EACH ROW
     WHEN NEW.sequence_id IS NULL
     BEGIN
-      UPDATE metro_lines 
+      UPDATE metro_lines
       SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM metro_lines)
       WHERE id = NEW.id;
     END;
   `);
-  
+
   // Add sequence_id column to nodes table
   try {
     await db.exec(`ALTER TABLE nodes ADD COLUMN sequence_id INTEGER;`);
-    console.log('Added sequence_id column to nodes table');
-    
+    console.log("Added sequence_id column to nodes table");
+
     // Create an index on the new column for better query performance
-    await db.exec(`CREATE INDEX IF NOT EXISTS idx_nodes_sequence_id ON nodes(sequence_id);`);
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_nodes_sequence_id ON nodes(sequence_id);`,
+    );
   } catch (error) {
-    console.log('sequence_id column or index already exists or other error:', error.message);
+    console.log(
+      "sequence_id column or index already exists or other error:",
+      error.message,
+    );
   }
-  
+
   // Create word_groups table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS word_groups (
@@ -351,7 +392,7 @@ try {
       sequence_id INTEGER
     )
   `);
-  
+
   // Create word_group_items table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS word_group_items (
@@ -365,14 +406,14 @@ try {
       UNIQUE(group_id, word)
     )
   `);
-  
+
   // Add indices for word groups
   await db.exec(`
     CREATE INDEX IF NOT EXISTS idx_word_group_items_group_id ON word_group_items(group_id);
     CREATE INDEX IF NOT EXISTS idx_word_group_items_word ON word_group_items(word);
     CREATE INDEX IF NOT EXISTS idx_word_groups_name ON word_groups(name);
   `);
-  
+
   // Add these graph tables to the initializeDatabase function
 
   // Create graph_vertices table - separate from outliner nodes
@@ -474,15 +515,15 @@ try {
   // Create triggers for graph and word group tables
   try {
     const additionalTables = [
-      'graph_vertices',
-      'graph_edges', 
-      'graph_layouts',
-      'graph_analysis_results',
-      'graph_communities',
-      'word_groups',
-      'word_group_items'
+      "graph_vertices",
+      "graph_edges",
+      "graph_layouts",
+      "graph_analysis_results",
+      "graph_communities",
+      "word_groups",
+      "word_group_items",
     ];
-    
+
     for (const table of additionalTables) {
       await db.exec(`
         CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
@@ -490,43 +531,47 @@ try {
         FOR EACH ROW
         WHEN NEW.sequence_id IS NULL
         BEGIN
-          UPDATE ${table} 
+          UPDATE ${table}
           SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
           WHERE id = NEW.id;
         END;
       `);
-      console.log(`Created trigger for auto-assigning sequence IDs in ${table}`);
+      console.log(
+        `Created trigger for auto-assigning sequence IDs in ${table}`,
+      );
     }
   } catch (error) {
-    console.log('Some additional triggers might already exist:', error.message);
+    console.log("Some additional triggers might already exist:", error.message);
   }
 
   // Add indices for sequence_id columns on graph and word group tables
   try {
     const graphAndWordTables = [
-      'graph_vertices',
-      'graph_edges',
-      'graph_layouts', 
-      'graph_analysis_results',
-      'graph_communities',
-      'word_groups',
-      'word_group_items'
+      "graph_vertices",
+      "graph_edges",
+      "graph_layouts",
+      "graph_analysis_results",
+      "graph_communities",
+      "word_groups",
+      "word_group_items",
     ];
-    
+
     for (const table of graphAndWordTables) {
-      await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+      await db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`,
+      );
       console.log(`Created sequence_id index for ${table} table`);
     }
   } catch (error) {
-    console.log('Some sequence_id indices may already exist:', error.message);
+    console.log("Some sequence_id indices may already exist:", error.message);
   }
 
   // Run migration for existing databases
   await migrateCodeMethodCallsTable(vaultName);
 
   // Create simple code graph tables for the new clean system
-  console.log('Creating simple code graph tables...');
-  
+  console.log("Creating simple code graph tables...");
+
   try {
     await db.exec(`
       CREATE TABLE IF NOT EXISTS simple_projects (
@@ -589,9 +634,9 @@ try {
       )
     `);
 
-    console.log('Simple code graph tables created successfully');
+    console.log("Simple code graph tables created successfully");
   } catch (error) {
-    console.log('Simple code graph tables may already exist:', error.message);
+    console.log("Simple code graph tables may already exist:", error.message);
   }
 
   // Add indices for simple code graph tables
@@ -608,9 +653,9 @@ try {
       CREATE INDEX IF NOT EXISTS idx_simple_variables_sequence_id ON simple_variables(sequence_id);
       CREATE INDEX IF NOT EXISTS idx_simple_dependencies_sequence_id ON simple_dependencies(sequence_id);
     `);
-    console.log('Simple code graph indices created successfully');
+    console.log("Simple code graph indices created successfully");
   } catch (error) {
-    console.log('Simple code graph indices may already exist:', error.message);
+    console.log("Simple code graph indices may already exist:", error.message);
   }
 
   // Add triggers for simple code graph tables
@@ -621,7 +666,7 @@ try {
       FOR EACH ROW
       WHEN NEW.sequence_id IS NULL
       BEGIN
-        UPDATE simple_projects 
+        UPDATE simple_projects
         SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_projects)
         WHERE id = NEW.id;
       END;
@@ -633,7 +678,7 @@ try {
       FOR EACH ROW
       WHEN NEW.sequence_id IS NULL
       BEGIN
-        UPDATE simple_functions 
+        UPDATE simple_functions
         SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_functions)
         WHERE id = NEW.id;
       END;
@@ -645,7 +690,7 @@ try {
       FOR EACH ROW
       WHEN NEW.sequence_id IS NULL
       BEGIN
-        UPDATE simple_variables 
+        UPDATE simple_variables
         SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_variables)
         WHERE id = NEW.id;
       END;
@@ -657,19 +702,19 @@ try {
       FOR EACH ROW
       WHEN NEW.sequence_id IS NULL
       BEGIN
-        UPDATE simple_dependencies 
+        UPDATE simple_dependencies
         SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM simple_dependencies)
         WHERE id = NEW.id;
       END;
     `);
 
-    console.log('Simple code graph triggers created successfully');
+    console.log("Simple code graph triggers created successfully");
   } catch (error) {
-    console.log('Simple code graph triggers may already exist:', error.message);
+    console.log("Simple code graph triggers may already exist:", error.message);
   }
 
   // Create enhanced code graph tables for the comprehensive system
-  console.log('Creating enhanced code graph tables...');
+  console.log("Creating enhanced code graph tables...");
 
   try {
     // Enhanced Projects table with additional metadata
@@ -769,7 +814,7 @@ try {
     // Project Statistics View (computed)
     await db.exec(`
       CREATE VIEW IF NOT EXISTS project_statistics AS
-      SELECT 
+      SELECT
         p.id,
         p.name,
         p.description,
@@ -790,9 +835,9 @@ try {
       GROUP BY p.id, p.name, p.description, p.status, p.tags, p.metadata, p.created_at, p.updated_at
     `);
 
-    console.log('Enhanced code graph tables created successfully');
+    console.log("Enhanced code graph tables created successfully");
   } catch (error) {
-    console.log('Enhanced code graph tables may already exist:', error.message);
+    console.log("Enhanced code graph tables may already exist:", error.message);
   }
 
   // Add indices for enhanced code graph tables
@@ -812,15 +857,23 @@ try {
       CREATE INDEX IF NOT EXISTS idx_enhanced_variables_sequence_id ON enhanced_variables(sequence_id);
       CREATE INDEX IF NOT EXISTS idx_enhanced_dependencies_sequence_id ON enhanced_dependencies(sequence_id);
     `);
-    console.log('Enhanced code graph indices created successfully');
+    console.log("Enhanced code graph indices created successfully");
   } catch (error) {
-    console.log('Enhanced code graph indices may already exist:', error.message);
+    console.log(
+      "Enhanced code graph indices may already exist:",
+      error.message,
+    );
   }
 
   // Add triggers for enhanced code graph tables
   try {
-    const enhancedTables = ['enhanced_projects', 'enhanced_functions', 'enhanced_variables', 'enhanced_dependencies'];
-    
+    const enhancedTables = [
+      "enhanced_projects",
+      "enhanced_functions",
+      "enhanced_variables",
+      "enhanced_dependencies",
+    ];
+
     for (const table of enhancedTables) {
       await db.exec(`
         CREATE TRIGGER IF NOT EXISTS assign_sequence_id_${table}
@@ -828,15 +881,18 @@ try {
         FOR EACH ROW
         WHEN NEW.sequence_id IS NULL
         BEGIN
-          UPDATE ${table} 
+          UPDATE ${table}
           SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM ${table})
           WHERE id = NEW.id;
         END;
       `);
     }
-    console.log('Enhanced code graph triggers created successfully');
+    console.log("Enhanced code graph triggers created successfully");
   } catch (error) {
-    console.log('Enhanced code graph triggers may already exist:', error.message);
+    console.log(
+      "Enhanced code graph triggers may already exist:",
+      error.message,
+    );
   }
 
   // Create local graph pool tables
@@ -880,7 +936,7 @@ try {
     FOR EACH ROW
     WHEN NEW.sequence_id IS NULL
     BEGIN
-      UPDATE local_graph_pool 
+      UPDATE local_graph_pool
       SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM local_graph_pool)
       WHERE id = NEW.id;
     END;
@@ -892,214 +948,11 @@ try {
     FOR EACH ROW
     WHEN NEW.sequence_id IS NULL
     BEGIN
-      UPDATE local_graph_pool_links 
+      UPDATE local_graph_pool_links
       SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM local_graph_pool_links)
       WHERE id = NEW.id;
     END;
   `);
-
-    // Create chess_games table
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS chess_games (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        game_status TEXT DEFAULT 'active',
-        current_player TEXT DEFAULT 'white',
-        move_count INTEGER DEFAULT 0,
-        board_state TEXT,
-        moves_history TEXT,
-        winner TEXT,
-        game_result TEXT,
-        started_at INTEGER DEFAULT (strftime('%s', 'now')),
-        ended_at INTEGER,
-        last_move_at INTEGER DEFAULT (strftime('%s', 'now')),
-        sequence_id INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-  
-    // Add indices for chess_games table
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_chess_games_status ON chess_games(game_status);
-      CREATE INDEX IF NOT EXISTS idx_chess_games_started_at ON chess_games(started_at);
-      CREATE INDEX IF NOT EXISTS idx_chess_games_sequence_id ON chess_games(sequence_id);
-    `);
-  
-    // Add trigger for chess_games table
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_chess_games
-      AFTER INSERT ON chess_games
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE chess_games 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM chess_games)
-        WHERE id = NEW.id;
-      END;
-    `);
-
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_chess_games
-      AFTER INSERT ON chess_games
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE chess_games 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM chess_games)
-        WHERE id = NEW.id;
-      END;
-    `);
-
-    // Create combat game tables
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS combat_games (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        game_status TEXT DEFAULT 'active',
-        current_player TEXT DEFAULT 'player1',
-        current_turn INTEGER DEFAULT 1,
-        board_size INTEGER DEFAULT 8,
-        board_state TEXT,
-        turn_history TEXT,
-        winner TEXT,
-        game_result TEXT,
-        started_at INTEGER DEFAULT (strftime('%s', 'now')),
-        ended_at INTEGER,
-        last_move_at INTEGER DEFAULT (strftime('%s', 'now')),
-        sequence_id INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-
-    // Create unit templates table for pre-defined and custom units
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS combat_unit_templates (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        unit_type TEXT DEFAULT 'infantry',
-        max_hp INTEGER DEFAULT 100,
-        attack_power INTEGER DEFAULT 10,
-        defense INTEGER DEFAULT 5,
-        movement_range INTEGER DEFAULT 2,
-        attack_range INTEGER DEFAULT 1,
-        skills TEXT, -- JSON array of skill objects
-        sprite_url TEXT,
-        is_custom BOOLEAN DEFAULT 0,
-        created_by TEXT,
-        sequence_id INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-
-    // Create game units table for units in specific games
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS combat_game_units (
-        id TEXT PRIMARY KEY,
-        game_id TEXT NOT NULL,
-        template_id TEXT NOT NULL,
-        player TEXT NOT NULL,
-        position_x INTEGER NOT NULL,
-        position_y INTEGER NOT NULL,
-        current_hp INTEGER NOT NULL,
-        status TEXT DEFAULT 'active',
-        has_moved BOOLEAN DEFAULT 0,
-        has_attacked BOOLEAN DEFAULT 0,
-        status_effects TEXT, -- JSON array of active effects
-        sequence_id INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-        FOREIGN KEY (game_id) REFERENCES combat_games (id) ON DELETE CASCADE,
-        FOREIGN KEY (template_id) REFERENCES combat_unit_templates (id)
-      )
-    `);
-
-    // Create skills table for unit abilities
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS combat_skills (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        skill_type TEXT DEFAULT 'attack',
-        damage INTEGER DEFAULT 0,
-        healing INTEGER DEFAULT 0,
-        range INTEGER DEFAULT 1,
-        area_of_effect INTEGER DEFAULT 0,
-        cooldown INTEGER DEFAULT 0,
-        mana_cost INTEGER DEFAULT 0,
-        effects TEXT, -- JSON array of special effects
-        sequence_id INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-      )
-    `);
-
-    // Add indices for combat game tables
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_combat_games_status ON combat_games(game_status);
-      CREATE INDEX IF NOT EXISTS idx_combat_games_started_at ON combat_games(started_at);
-      CREATE INDEX IF NOT EXISTS idx_combat_games_sequence_id ON combat_games(sequence_id);
-      CREATE INDEX IF NOT EXISTS idx_combat_unit_templates_type ON combat_unit_templates(unit_type);
-      CREATE INDEX IF NOT EXISTS idx_combat_unit_templates_sequence_id ON combat_unit_templates(sequence_id);
-      CREATE INDEX IF NOT EXISTS idx_combat_game_units_game_id ON combat_game_units(game_id);
-      CREATE INDEX IF NOT EXISTS idx_combat_game_units_player ON combat_game_units(player);
-      CREATE INDEX IF NOT EXISTS idx_combat_game_units_position ON combat_game_units(position_x, position_y);
-      CREATE INDEX IF NOT EXISTS idx_combat_game_units_sequence_id ON combat_game_units(sequence_id);
-      CREATE INDEX IF NOT EXISTS idx_combat_skills_type ON combat_skills(skill_type);
-      CREATE INDEX IF NOT EXISTS idx_combat_skills_sequence_id ON combat_skills(sequence_id);
-    `);
-
-    // Add triggers for combat game tables
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_games
-      AFTER INSERT ON combat_games
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE combat_games 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_games)
-        WHERE id = NEW.id;
-      END;
-    `);
-
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_unit_templates
-      AFTER INSERT ON combat_unit_templates
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE combat_unit_templates 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_unit_templates)
-        WHERE id = NEW.id;
-      END;
-    `);
-
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_game_units
-      AFTER INSERT ON combat_game_units
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE combat_game_units 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_game_units)
-        WHERE id = NEW.id;
-      END;
-    `);
-
-    await db.exec(`
-      CREATE TRIGGER IF NOT EXISTS assign_sequence_id_combat_skills
-      AFTER INSERT ON combat_skills
-      FOR EACH ROW
-      WHEN NEW.sequence_id IS NULL
-      BEGIN
-        UPDATE combat_skills 
-        SET sequence_id = (SELECT COALESCE(MAX(sequence_id), 0) + 1 FROM combat_skills)
-        WHERE id = NEW.id;
-      END;
-    `);
 
   return db;
 }
@@ -1107,79 +960,88 @@ try {
 // Function to add sequence_id columns to existing tables that might not have them
 async function addMissingSequenceIdColumns() {
   const db = await getDb();
-  
+
   try {
     // Tables that might need sequence_id columns added
     const tablesToUpdate = [
-      'graph_layouts',
-      'graph_analysis_results', 
-      'graph_communities'
+      "graph_layouts",
+      "graph_analysis_results",
+      "graph_communities",
     ];
-    
+
     for (const table of tablesToUpdate) {
       try {
         await db.exec(`ALTER TABLE ${table} ADD COLUMN sequence_id INTEGER;`);
-        await db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`);
+        await db.exec(
+          `CREATE INDEX IF NOT EXISTS idx_${table}_sequence_id ON ${table}(sequence_id);`,
+        );
         console.log(`Added sequence_id column and index to ${table} table`);
       } catch (error) {
         // Column likely already exists, which is fine
-        console.log(`sequence_id column may already exist in ${table} or other error:`, error.message);
+        console.log(
+          `sequence_id column may already exist in ${table} or other error:`,
+          error.message,
+        );
       }
     }
   } catch (error) {
-    console.log('Error adding missing sequence_id columns:', error.message);
+    console.log("Error adding missing sequence_id columns:", error.message);
   }
 }
 
 // Function to populate sequence IDs for graph and word group tables specifically
 async function populateGraphAndWordGroupSequenceIds() {
   const db = await getDb();
-  
+
   // Start a transaction for consistency
-  await db.run('BEGIN TRANSACTION');
-  
+  await db.run("BEGIN TRANSACTION");
+
   try {
     // Graph and word group tables that need sequence IDs
     const graphAndWordTables = [
-      'graph_vertices',
-      'graph_edges',
-      'graph_layouts',
-      'graph_analysis_results',
-      'graph_communities',
-      'word_groups',
-      'word_group_items'
+      "graph_vertices",
+      "graph_edges",
+      "graph_layouts",
+      "graph_analysis_results",
+      "graph_communities",
+      "word_groups",
+      "word_group_items",
     ];
-    
+
     // Process each table
     for (const table of graphAndWordTables) {
       try {
         // First check if we need to populate sequence IDs for this table
         const unpopulatedCount = await db.get(
-          `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`
+          `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`,
         );
-        
+
         if (unpopulatedCount.count > 0) {
-          console.log(`Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`);
-          
-          // Get records ordered by appropriate timestamp column
-          let orderByColumn = 'created_at';
-          if (table === 'graph_analysis_results') {
-            orderByColumn = 'computed_at';
-          }
-          
-          const records = await db.all(
-            `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
+          console.log(
+            `Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`,
           );
-          
+
+          // Get records ordered by appropriate timestamp column
+          let orderByColumn = "created_at";
+          if (table === "graph_analysis_results") {
+            orderByColumn = "computed_at";
+          }
+
+          const records = await db.all(
+            `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`,
+          );
+
           // Assign sequence IDs sequentially
           for (let i = 0; i < records.length; i++) {
-            await db.run(
-              `UPDATE ${table} SET sequence_id = ? WHERE id = ?`,
-              [i + 1, records[i].id]
-            );
+            await db.run(`UPDATE ${table} SET sequence_id = ? WHERE id = ?`, [
+              i + 1,
+              records[i].id,
+            ]);
           }
-          
-          console.log(`Successfully populated sequence IDs for ${records.length} records in ${table}`);
+
+          console.log(
+            `Successfully populated sequence IDs for ${records.length} records in ${table}`,
+          );
         } else {
           console.log(`All records in ${table} already have sequence IDs`);
         }
@@ -1188,129 +1050,135 @@ async function populateGraphAndWordGroupSequenceIds() {
         // Continue with other tables
       }
     }
-    
-    await db.run('COMMIT');
+
+    await db.run("COMMIT");
     return true;
   } catch (error) {
-    await db.run('ROLLBACK');
-    console.error('Error populating graph and word group sequence IDs:', error);
+    await db.run("ROLLBACK");
+    console.error("Error populating graph and word group sequence IDs:", error);
     return false;
   }
 }
 
 async function populateSequenceIds() {
   const db = await getDb();
-  
+
   // Start a transaction for consistency
-  await db.run('BEGIN TRANSACTION');
-  
+  await db.run("BEGIN TRANSACTION");
+
   try {
     // Tables that need sequence IDs - including enhanced code graph tables
     const tables = [
-      'nodes',
-      'links', 
-      'node_attributes',
-      'tasks',
-      'bookmarks',
-      'blog_pages',
-      'dcim_images',
-      'metro_stations',
-      'metro_lines',
-      'graph_vertices',
-      'graph_edges',
-      'graph_layouts',
-      'graph_analysis_results',
-      'graph_communities',
-      'word_groups',
-      'word_group_items',
-      'simple_projects',
-      'simple_functions',
-      'simple_variables',
-      'simple_dependencies',
-      'enhanced_projects',
-      'enhanced_functions',
-      'enhanced_variables',
-      'enhanced_dependencies'
+      "nodes",
+      "links",
+      "node_attributes",
+      "tasks",
+      "bookmarks",
+      "blog_pages",
+      "dcim_images",
+      "metro_stations",
+      "metro_lines",
+      "graph_vertices",
+      "graph_edges",
+      "graph_layouts",
+      "graph_analysis_results",
+      "graph_communities",
+      "word_groups",
+      "word_group_items",
+      "simple_projects",
+      "simple_functions",
+      "simple_variables",
+      "simple_dependencies",
+      "enhanced_projects",
+      "enhanced_functions",
+      "enhanced_variables",
+      "enhanced_dependencies",
     ];
-    
+
     // Process each table
     for (const table of tables) {
       // First check if we need to populate sequence IDs for this table
       const unpopulatedCount = await db.get(
-        `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`
+        `SELECT COUNT(*) as count FROM ${table} WHERE sequence_id IS NULL`,
       );
-      
+
       if (unpopulatedCount.count > 0) {
-        console.log(`Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`);
-        
+        console.log(
+          `Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`,
+        );
+
         // Get records ordered by created_at timestamp (or another appropriate column)
         // Adapt the ORDER BY column if some tables don't have created_at
-        let orderByColumn = 'created_at';
-        if (table === 'blog_pages') {
-          orderByColumn = 'created_at';
-        } else if (table === 'graph_analysis_results') {
-          orderByColumn = 'computed_at';
-        } else if (table === 'bookmarks') {
-          orderByColumn = 'added_at';
-        } else if (table === 'dcim_images') {
-          orderByColumn = 'creation_time';
+        let orderByColumn = "created_at";
+        if (table === "blog_pages") {
+          orderByColumn = "created_at";
+        } else if (table === "graph_analysis_results") {
+          orderByColumn = "computed_at";
+        } else if (table === "bookmarks") {
+          orderByColumn = "added_at";
+        } else if (table === "dcim_images") {
+          orderByColumn = "creation_time";
         }
-        
+
         const records = await db.all(
-          `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`
+          `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`,
         );
-        
+
         // Assign sequence IDs sequentially
         for (let i = 0; i < records.length; i++) {
-          await db.run(
-            `UPDATE ${table} SET sequence_id = ? WHERE id = ?`,
-            [i + 1, records[i].id]
-          );
+          await db.run(`UPDATE ${table} SET sequence_id = ? WHERE id = ?`, [
+            i + 1,
+            records[i].id,
+          ]);
         }
-        
-        console.log(`Successfully populated sequence IDs for ${records.length} records in ${table}`);
+
+        console.log(
+          `Successfully populated sequence IDs for ${records.length} records in ${table}`,
+        );
       } else {
         console.log(`All records in ${table} already have sequence IDs`);
       }
     }
-    
-    await db.run('COMMIT');
+
+    await db.run("COMMIT");
     return true;
   } catch (error) {
-    await db.run('ROLLBACK');
-    console.error('Error populating sequence IDs:', error);
+    await db.run("ROLLBACK");
+    console.error("Error populating sequence IDs:", error);
     return false;
   }
 }
 
 // Add this function after the existing functions in database.js
-async function migrateCodeMethodCallsTable(vaultName = 'default') {
+async function migrateCodeMethodCallsTable(vaultName = "default") {
   try {
     const db = await getDb(vaultName);
     console.log(`Migrating code_method_calls table for vault: ${vaultName}`);
-    
+
     // Check if expression_type column exists
     const tableInfo = await db.all("PRAGMA table_info(code_method_calls)");
-    const columnNames = tableInfo.map(col => col.name);
-    
-    console.log('Existing columns:', columnNames);
-    
+    const columnNames = tableInfo.map((col) => col.name);
+
+    console.log("Existing columns:", columnNames);
+
     // Add missing columns if they don't exist
     const columnsToAdd = [
-      { name: 'expression_type', definition: 'TEXT' },
-      { name: 'parameters_used', definition: 'TEXT' },
-      { name: 'external_dependencies', definition: 'TEXT' },
-      { name: 'builtin_dependencies', definition: 'TEXT' },
-      { name: 'sequence_id', definition: 'INTEGER' }
+      { name: "expression_type", definition: "TEXT" },
+      { name: "parameters_used", definition: "TEXT" },
+      { name: "external_dependencies", definition: "TEXT" },
+      { name: "builtin_dependencies", definition: "TEXT" },
+      { name: "sequence_id", definition: "INTEGER" },
     ];
-    
+
     for (const column of columnsToAdd) {
       if (!columnNames.includes(column.name)) {
         console.log(`Adding missing column: ${column.name}`);
-        await db.exec(`ALTER TABLE code_method_calls ADD COLUMN ${column.name} ${column.definition}`);
+        await db.exec(
+          `ALTER TABLE code_method_calls ADD COLUMN ${column.name} ${column.definition}`,
+        );
       }
     }
-    
+
     console.log(`Migration completed for vault: ${vaultName}`);
     return true;
   } catch (error) {
@@ -1319,4 +1187,11 @@ async function migrateCodeMethodCallsTable(vaultName = 'default') {
   }
 }
 
-module.exports = { getDb, initializeDatabase, populateSequenceIds, addMissingSequenceIdColumns, populateGraphAndWordGroupSequenceIds, migrateCodeMethodCallsTable }; 
+module.exports = {
+  getDb,
+  initializeDatabase,
+  populateSequenceIds,
+  addMissingSequenceIdColumns,
+  populateGraphAndWordGroupSequenceIds,
+  migrateCodeMethodCallsTable,
+};
