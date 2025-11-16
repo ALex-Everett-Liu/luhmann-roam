@@ -1321,16 +1321,6 @@ document.addEventListener("DOMContentLoaded", () => {
     CommandPaletteManager.initialize();
   }
 
-  // Initialize the CodeAnalyzerManager
-  if (window.CodeAnalyzerManager) {
-    CodeAnalyzerManager.initialize();
-  }
-
-  // Initialize the DevTestPanelManager
-  if (window.DevTestPanelManager) {
-    DevTestPanelManager.initialize();
-  }
-
   // Add this to the initialization section in app.js where other managers are initialized
   if (window.DatabaseExportImportManager) {
     DatabaseExportImportManager.initialize();

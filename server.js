@@ -11,7 +11,6 @@ const fs = require("fs");
 const path = require("path");
 const taskRoutes = require("./routes/taskRoutes");
 const nodeRoutes = require("./routes/nodeRoutes");
-const codeAnalysisRoutes = require("./routes/codeAnalysisRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
@@ -25,7 +24,6 @@ const attributeRoutes = require("./routes/attributeRoutes");
 const dcimRoutes = require("./routes/dcimRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
-const devTestRoutes = require("./routes/devTestRoutes");
 const databaseExportImportRoutes = require("./routes/databaseExportImportRoutes");
 const vaultRoutes = require("./routes/vaultRoutes");
 const metroMapRoutes = require("./routes/metroMapRoutes");
@@ -35,9 +33,6 @@ const wordGroupRoutes = require("./routes/wordGroupRoutes");
 const graphRoutes = require("./routes/graphRoutes");
 const graphManagementRoutes = require("./routes/graphManagementRoutes");
 const localGraphRoutes = require("./routes/localGraphRoutes");
-const codeGraphRoutes = require("./routes/codeGraphRoutes");
-const newCodeGraphRoutes = require("./routes/newCodeGraphRoutes");
-const enhancedCodeGraphRoutes = require("./routes/enhancedCodeGraphRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -405,9 +400,6 @@ app.post("/api/nodes/:id/move-down", async (req, res) => {
 
 // Set up task routes
 app.use("/api/tasks", taskRoutes);
-
-// Add this where you set up the other routes (near the taskRoutes)
-app.use("/api/code-analysis", codeAnalysisRoutes);
 
 // Add this middleware to ensure correct MIME types for CSS files
 app.use("*.css", (req, res, next) => {
@@ -790,10 +782,6 @@ app.use("/api/node-attributes", attributeRoutes);
 // Use the DCIM routes
 app.use("/api/dcim", dcimRoutes);
 
-// Use the dev test routes
-app.use("/api/dev-test", devTestRoutes);
-app.use("/api/code-graph", codeGraphRoutes);
-
 // Use the database export/import routes
 app.use("/api/database", databaseExportImportRoutes);
 
@@ -835,10 +823,6 @@ app.use((req, res, next) => {
 // Add the markdown search routes
 app.use("/api/markdown", markdownSearchRoutes);
 app.use("/api/search", markdownSearchRoutes);
-
-// Use the new code graph routes
-app.use("/api/new-code-graph", newCodeGraphRoutes);
-app.use("/api/enhanced-code-graph", enhancedCodeGraphRoutes);
 
 // Start the server
 app.listen(PORT, () => {
