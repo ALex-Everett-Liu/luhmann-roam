@@ -41,12 +41,6 @@ const PluginAwareInitializer = (function () {
         pluginId: "dragDropManager",
       },
 
-      nodeGridVisualizer: {
-        name: "Node Grid Visualizer",
-        initialize: initializeNodeGridVisualizer,
-        pluginId: "nodeGridVisualizerManager",
-      },
-
       graphManagementUI: {
         name: "Graph Management UI",
         initialize: initializeGraphManagementUI,
@@ -138,30 +132,6 @@ const PluginAwareInitializer = (function () {
       // Add sidebar button
       addDragDropButton();
     }
-  }
-
-  /**
-   * Initialize Node Grid Visualizer only if plugin is enabled
-   */
-  function initializeNodeGridVisualizer() {
-    if (!window.NodeGridVisualizer) {
-      console.log("❌ NodeGridVisualizer not available");
-      return false;
-    }
-
-    console.log("✅ Initializing NodeGridVisualizer");
-    NodeGridVisualizer.initialize();
-
-    // Hide the grid by default
-    const container = document.getElementById("node-grid-container");
-    if (container) {
-      container.style.display = "none";
-    }
-
-    // Add the button
-    addNodeGridVisualizerButton();
-
-    return true;
   }
 
   /**
@@ -338,33 +308,6 @@ const PluginAwareInitializer = (function () {
     window.addButtonToSidebar(toggleDragDropButton);
   }
 
-  function addNodeGridVisualizerButton() {
-    // Add a toggle button for the grid visualizer
-    const toggleGridButton = document.createElement("button");
-    toggleGridButton.id = "toggle-grid-view";
-    toggleGridButton.className = "feature-toggle";
-    toggleGridButton.textContent = "Grid View";
-    toggleGridButton.title = "View nodes in a grid layout";
-
-    toggleGridButton.addEventListener("click", function () {
-      if (
-        window.PluginManager &&
-        !PluginManager.isPluginEnabled("nodeGridVisualizerManager")
-      ) {
-        alert(
-          "Node Grid Visualizer plugin is disabled. Please enable it in Settings > Plugins.",
-        );
-        return;
-      }
-
-      if (window.NodeGridVisualizer) {
-        NodeGridVisualizer.toggleVisibility();
-      }
-    });
-
-    window.addButtonToSidebar(toggleGridButton);
-  }
-
   function addLocalGraphButton() {
     // Check if addButtonToSidebar is available
     if (!window.addButtonToSidebar) {
@@ -447,9 +390,6 @@ const PluginAwareInitializer = (function () {
         case "dragDropManager":
           initializeDragDropManager();
           break;
-        case "nodeGridVisualizerManager":
-          initializeNodeGridVisualizer();
-          break;
 
         case "graphManagementUI":
           initializeGraphManagementUI();
@@ -475,15 +415,6 @@ const PluginAwareInitializer = (function () {
         case "dragDropManager":
           if (window.DragDropManager) {
             DragDropManager.disable();
-          }
-          break;
-        case "nodeGridVisualizerManager":
-          if (window.NodeGridVisualizer) {
-            // Hide the grid if it's visible
-            const container = document.getElementById("node-grid-container");
-            if (container) {
-              container.style.display = "none";
-            }
           }
           break;
 
