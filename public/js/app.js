@@ -67,6 +67,24 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentModalNodeId = null;
   let lastFocusedNodeId = null; // Add this variable to track the currently focused node
   let isInitialLoading = true; // Flag to indicate initial loading
+  
+  // Manual save mode: Track unsaved changes
+  let unsavedChanges = new Map(); // nodeId -> {content, originalContent}
+  
+  // Get auto-save setting from localStorage (default: true for backward compatibility)
+  function getAutoSaveEnabled() {
+    const setting = localStorage.getItem("autoSaveEnabled");
+    return setting !== "false"; // Default to true if not set
+  }
+  
+  // Update auto-save setting (called when setting changes)
+  function updateAutoSaveSetting(enabled) {
+    localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
+    updateSaveButtonVisibility();
+  }
+  
+  // Make updateAutoSaveSetting available globally for settings manager
+  window.updateAutoSaveSetting = updateAutoSaveSetting;
 
   // Application functions
   // Language functionality removed - English only
@@ -291,23 +309,48 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log(`- Normalized original: "${normalizedOriginal}"`);
 
       if (currentContent !== normalizedOriginal) {
-        console.log(`Content changed for node ${node.id}, saving...`);
+        const autoSaveEnabled = getAutoSaveEnabled();
+        
+        if (autoSaveEnabled) {
+          // Auto-save mode: save immediately
+          console.log(`Content changed for node ${node.id}, auto-saving...`);
 
-        const success = await updateNodeContent(
-          node.id,
-          savedContent,
-          undefined,
-        );
+          const success = await updateNodeContent(
+            node.id,
+            savedContent,
+            undefined,
+          );
 
-        if (success) {
-          console.log(`Successfully saved content for node ${node.id}`);
-          // Update the local node data
-          node.content = currentContent;
+          if (success) {
+            console.log(`Successfully saved content for node ${node.id}`);
+            // Update the local node data
+            node.content = currentContent;
+            // Remove from unsaved changes if it was there
+            unsavedChanges.delete(node.id);
+            nodeText.classList.remove("unsaved");
+          } else {
+            console.error(`Failed to save content for node ${node.id}`);
+          }
         } else {
-          console.error(`Failed to save content for node ${node.id}`);
+          // Manual save mode: track as unsaved
+          console.log(`Content changed for node ${node.id}, tracking as unsaved`);
+          unsavedChanges.set(node.id, {
+            content: savedContent,
+            originalContent: originalContent
+          });
+          // Add visual indicator
+          nodeText.classList.add("unsaved");
+          // Update save button
+          updateSaveButtonText();
         }
       } else {
         console.log(`No content change detected for node ${node.id}`);
+        // Remove from unsaved changes if content matches original
+        if (unsavedChanges.has(node.id)) {
+          unsavedChanges.delete(node.id);
+          nodeText.classList.remove("unsaved");
+          updateSaveButtonText();
+        }
       }
     });
 
@@ -642,6 +685,128 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================================================
   // Create move node modal
 
+  // ===================================================================
+  // MANUAL SAVE MODE FUNCTIONS
+  // ===================================================================
+  
+  // Update the Save Changes button text with unsaved count
+  function updateSaveButtonText() {
+    const saveButton = document.getElementById("save-changes");
+    if (!saveButton) return;
+    
+    const unsavedCount = unsavedChanges.size;
+    if (unsavedCount > 0) {
+      saveButton.textContent = `Save Changes (${unsavedCount})`;
+      saveButton.classList.add("has-unsaved");
+    } else {
+      saveButton.textContent = "Save Changes";
+      saveButton.classList.remove("has-unsaved");
+    }
+  }
+  
+  // Update save button visibility based on auto-save setting
+  function updateSaveButtonVisibility() {
+    const saveButton = document.getElementById("save-changes");
+    if (!saveButton) return;
+    
+    const autoSaveEnabled = getAutoSaveEnabled();
+    if (autoSaveEnabled) {
+      // Hide button in auto-save mode
+      saveButton.style.display = "none";
+    } else {
+      // Show button in manual save mode
+      saveButton.style.display = "block";
+      updateSaveButtonText();
+    }
+  }
+  
+  // Save all pending changes
+  async function saveAllChanges() {
+    if (unsavedChanges.size === 0) {
+      const saveButton = document.getElementById("save-changes");
+      if (saveButton) {
+        const originalText = saveButton.textContent;
+        saveButton.textContent = "No changes to save";
+        setTimeout(() => {
+          saveButton.textContent = originalText;
+        }, 1500);
+      }
+      return;
+    }
+    
+    const saveButton = document.getElementById("save-changes");
+    const originalText = saveButton ? saveButton.textContent : "Save Changes";
+    
+    if (saveButton) {
+      saveButton.textContent = "Saving...";
+      saveButton.disabled = true;
+    }
+    
+    try {
+      // Save all pending changes
+      const promises = Array.from(unsavedChanges.entries()).map(
+        async ([nodeId, {content}]) => {
+          const success = await updateNodeContent(nodeId, content, undefined);
+          if (success) {
+            // Update local node data
+            const nodeElement = document.querySelector(`.node[data-id="${nodeId}"] .node-text`);
+            if (nodeElement) {
+              const node = nodes.find(n => n.id === nodeId);
+              if (node) {
+                node.content = nodeElement.innerText;
+              }
+              nodeElement.classList.remove("unsaved");
+            }
+            return true;
+          }
+          return false;
+        }
+      );
+      
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r).length;
+      const failCount = results.length - successCount;
+      
+      // Clear successfully saved changes
+      Array.from(unsavedChanges.entries()).forEach(([nodeId, _], index) => {
+        if (results[index]) {
+          unsavedChanges.delete(nodeId);
+        }
+      });
+      
+      // Update button text
+      updateSaveButtonText();
+      
+      if (saveButton) {
+        if (failCount > 0) {
+          saveButton.textContent = `Saved ${successCount}, ${failCount} failed`;
+        } else {
+          saveButton.textContent = "Saved!";
+        }
+        
+        setTimeout(() => {
+          saveButton.textContent = originalText;
+          saveButton.disabled = false;
+          updateSaveButtonText();
+        }, 2000);
+      }
+      
+      console.log(`Saved ${successCount} of ${results.length} changes`);
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      if (saveButton) {
+        saveButton.textContent = "Error!";
+        setTimeout(() => {
+          saveButton.textContent = originalText;
+          saveButton.disabled = false;
+        }, 2000);
+      }
+    }
+  }
+  
+  // Make saveAllChanges available globally
+  window.saveAllChanges = saveAllChanges;
+
   // Add this function to check container settings
   function checkContainerSettings() {
     const contentContainer = document.querySelector(".content");
@@ -743,7 +908,15 @@ document.addEventListener("DOMContentLoaded", () => {
   addRootNodeButton.addEventListener("click", addRootNode);
   // languageToggle no longer exists - I18n removed
 
+  // Add event listener for save changes button
+  const saveChangesButton = document.getElementById("save-changes");
+  if (saveChangesButton) {
+    saveChangesButton.addEventListener("click", saveAllChanges);
+  }
+
   // Initial setup - no language toggle needed
+  // Initialize save button visibility based on auto-save setting
+  updateSaveButtonVisibility();
 
   // Call this function during initialization
   checkContainerSettings();

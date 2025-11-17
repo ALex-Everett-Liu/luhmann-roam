@@ -46,6 +46,20 @@
   background-color: #fff;
 }
 
+/* Visual indicator for unsaved changes */
+.node-text.unsaved {
+  border-left: 3px solid #ff6b6b;
+  background-color: #fff5f5;
+}
+
+.node-text.unsaved:focus {
+  border-left: 3px solid #ff6b6b;
+  border-right: 1px solid #ccc;
+  border-top: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+  background-color: #fff;
+}
+
 .children {
   margin-left: 24px;
   position: relative;

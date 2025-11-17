@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.1] - 2025-11-18
+
+### Added
+- **Manual Save Mode**: Toggle between auto-save and manual save modes via Settings
+- **Save Changes Button**: Manual save button appears in sidebar when auto-save is disabled
+- **Unsaved Changes Tracking**: Visual indicators (red border + pink background) for nodes with unsaved edits
+- **Batch Save Functionality**: Save all pending changes with a single click
+- **Unsaved Count Display**: Save button shows count of unsaved changes (e.g., "Save Changes (3)")
+- **Auto-save Toggle**: Settings panel includes toggle to switch between save modes
+
+### Changed
+- **Blur Handler Behavior**: Node content blur handler now respects auto-save setting
+- **Save Button Visibility**: Save Changes button automatically shows/hides based on save mode
+- **Settings Integration**: Auto-save setting persists across sessions and updates UI immediately
+
+### Technical Details
+- **Unsaved Changes Map**: Tracks modified nodes with their content in manual mode
+- **Visual Feedback**: CSS classes `.unsaved` and `.has-unsaved` provide clear visual indicators
+- **Mode Switching**: Switching to auto-save mode automatically saves any pending changes
+- **Node Operations**: Structural changes (add/delete/indent) always save immediately regardless of mode
+
+### Benefits
+- **User Control**: Choose between seamless auto-save or deliberate manual save workflow
+- **Methodical Editing**: Manual mode allows organizing thoughts without pressure of immediate persistence
+- **Visual Clarity**: Clear indicators show which nodes have unsaved changes
+- **Backward Compatible**: Auto-save enabled by default maintains existing user experience
+
+### Affected Components
+- `public/js/app.js` - Added unsaved changes tracking, manual save functions, and mode-aware blur handler
+- `public/js/settingsManager.js` - Added auto-save toggle event listeners and save mode switching logic
+- `public/index.html` - Re-added Save Changes button to sidebar
+- `public/css/components/buttons.css` - Added styling for save button with unsaved indicator
+- `public/css/components/outliner.css` - Added `.unsaved` class styling for visual feedback
+
+Hybrid save system: auto-save by default for seamless capture, manual mode for deliberate editing!
+
 ## [0.32.10] - 2025-11-18
 
 ### Removed

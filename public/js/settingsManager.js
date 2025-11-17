@@ -584,6 +584,36 @@ const SettingsManager = (function () {
         }
       });
     }
+    
+    // Auto-save toggle listener
+    const autoSaveEnabled = document.getElementById("auto-save-enabled");
+    if (autoSaveEnabled) {
+      autoSaveEnabled.addEventListener("change", function () {
+        const enabled = this.checked;
+        localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
+        
+        // Notify app.js to update save button visibility
+        if (window.updateAutoSaveSetting) {
+          window.updateAutoSaveSetting(enabled);
+        }
+        
+        // If switching to auto-save mode, save any pending changes
+        if (enabled && window.saveAllChanges) {
+          // Small delay to ensure UI updates first
+          setTimeout(() => {
+            window.saveAllChanges();
+          }, 100);
+        }
+      });
+    }
+    
+    // Auto-save interval listener (for future use)
+    const autoSaveInterval = document.getElementById("auto-save-interval");
+    if (autoSaveInterval) {
+      autoSaveInterval.addEventListener("change", function () {
+        localStorage.setItem("autoSaveInterval", this.value);
+      });
+    }
   }
 
   /**
@@ -595,7 +625,13 @@ const SettingsManager = (function () {
     const autoSaveInterval = document.getElementById("auto-save-interval");
 
     if (autoSaveEnabled) {
-      localStorage.setItem("autoSaveEnabled", autoSaveEnabled.checked);
+      const enabled = autoSaveEnabled.checked;
+      localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
+      
+      // Notify app.js to update save button visibility
+      if (window.updateAutoSaveSetting) {
+        window.updateAutoSaveSetting(enabled);
+      }
     }
 
     if (autoSaveInterval) {

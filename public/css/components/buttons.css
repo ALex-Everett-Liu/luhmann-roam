@@ -135,10 +135,26 @@ button:hover {
 }
 
 /* Primary action buttons */
-.sidebar > #add-root-node {
+.sidebar > #add-root-node,
+.sidebar > #save-changes {
   background-color: var(--primary-color);
   color: white;
   margin-bottom: 5px;
+}
+
+/* Save Changes button with unsaved changes indicator */
+.sidebar > #save-changes.has-unsaved {
+  background-color: #ff6b6b;
+  animation: pulse-unsaved 2s ease-in-out infinite;
+}
+
+@keyframes pulse-unsaved {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
 }
 
 /* Secondary functional buttons */
