@@ -38,9 +38,6 @@ router.delete("/:id", nodeController.deleteNode);
 // Reorder nodes (when dragging)
 router.post("/reorder", nodeController.reorderNodes);
 
-// Shift node positions
-router.post("/reorder/shift", nodeController.shiftNodePositions);
-
 // Toggle node expansion
 router.post("/:id/toggle", nodeController.toggleNode);
 

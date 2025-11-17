@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.10] - 2025-11-18
+
+### Removed
+- Unused position management endpoints: `/api/nodes/reorder/shift`, `/api/nodes/fix-positions`, `/api/nodes/fix-position-conflict`
+- Position conflict resolution modal UI
+- `shiftNodePositions` controller function
+
+### Changed
+- Simplified `addSiblingNode` to create nodes directly without position shifting
+- `fixNodePositions` now only detects and logs conflicts instead of showing resolution UI
+
 ## [0.32.6] - 2025-11-17
 
 ### Removed
