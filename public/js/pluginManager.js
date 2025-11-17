@@ -76,14 +76,7 @@
         category: "visualization",
       });
 
-      // Register StyleSettingsManager
-      this.registerPlugin("styleSettingsManager", {
-        name: "Style Settings",
-        description: "Customizes the appearance of the app",
-        defaultEnabled: true,
-        category: "appearance",
-      });
-
+      // Style Settings functionality removed - basic theme options maintained
 
       // Register BookmarkManager
       this.registerPlugin("bookmarkManager", {

@@ -123,16 +123,14 @@ const SettingsManager = (function () {
       });
     }
 
-    // Register appearance section
-    if (window.StyleSettingsManager) {
-      registerSection("appearance", {
-        title: sectionConfig.appearance.title,
-        icon: sectionConfig.appearance.icon,
-        description: sectionConfig.appearance.description,
-        render: renderAppearanceSection,
-        onSave: saveAppearanceSettings,
-      });
-    }
+    // Register basic appearance section
+    registerSection("appearance", {
+      title: sectionConfig.appearance.title,
+      icon: sectionConfig.appearance.icon,
+      description: "Basic theme switches and appearance settings",
+      render: renderBasicAppearanceSection,
+      onSave: saveBasicAppearanceSettings,
+    });
 
     // Register fonts section
     if (window.BasicFontSettings) {
@@ -664,33 +662,53 @@ const SettingsManager = (function () {
   }
 
   /**
-   * Render appearance section content
+   * Render basic appearance section content
    */
-  function renderAppearanceSection(container) {
-    if (!window.StyleSettingsManager) {
-      container.innerHTML =
-        '<div class="settings-error">StyleSettingsManager not available</div>';
-      return;
-    }
+  function renderBasicAppearanceSection(container) {
+    container.innerHTML = `
+      <div class="settings-section-content">
+        <div class="basic-appearance-settings">
+          <div class="setting-item">
+            <label for="theme-toggle-basic">Theme</label>
+            <select id="theme-toggle-basic" class="setting-input">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="setting-note">
+            Toggle between light and dark themes for the interface
+          </div>
+        </div>
+      </div>
+    `;
 
-    // Use StyleSettingsManager's renderAppearanceSettings method
-    if (StyleSettingsManager.renderAppearanceSettings) {
-      StyleSettingsManager.renderAppearanceSettings(container);
-    } else {
-      container.innerHTML =
-        '<div class="settings-info">Appearance settings will be integrated here</div>';
+    // Set current theme based on document class
+    const themeSelector = container.querySelector('#theme-toggle-basic');
+    if (themeSelector) {
+      const isDark = document.body.classList.contains('dark-theme');
+      themeSelector.value = isDark ? 'dark' : 'light';
     }
   }
 
   /**
-   * Save appearance settings
+   * Save basic appearance settings
    */
-  function saveAppearanceSettings() {
-    if (
-      window.StyleSettingsManager &&
-      StyleSettingsManager.saveAppearanceSettings
-    ) {
-      StyleSettingsManager.saveAppearanceSettings();
+  function saveBasicAppearanceSettings() {
+    const themeSelector = document.getElementById('theme-toggle-basic');
+    if (themeSelector) {
+      const selectedTheme = themeSelector.value;
+      const isDark = selectedTheme === 'dark';
+
+      // Apply theme
+      if (isDark) {
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+      }
+
+      // Save to localStorage
+      localStorage.setItem('basicTheme', selectedTheme);
+      console.log('Basic theme saved:', selectedTheme);
     }
   }
 

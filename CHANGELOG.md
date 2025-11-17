@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.8] - 2025-11-17
+
+### Changed
+- **Simplified Styling System**: Replaced complex StyleSettingsManager with basic theme functionality
+- **Streamlined UI**: Removed comprehensive aesthetic customization in favor of simple light/dark toggle
+- **Reduced Feature Overhead**: Eliminated background images, color pickers, and complex visual settings
+- **Improved Performance**: Removed complex DOM manipulation and extensive CSS selectors
+
+### Removed
+- **Complete Style Settings System**: Deleted `public/js/styleSettingsManager.js` (~1000 lines)
+- **Complex Styling CSS**: Removed `public/css/features/style-settings.css` (~600 lines)
+- **Plugin Registration**: Removed styleSettingsManager from plugin system
+- **Advanced Visual Features**: Background images, color pickers, opacity controls, accessibility modifiers
+- **Complex DOM Elements**: Extensive setting panels, sliders, upload interfaces
+
+### Added
+- **Basic Theme Toggle**: Simple dropdown for light/dark theme selection in settings
+- **Sidebar Theme Button**: Quick-access theme toggle for immediate theme changes
+- **Streamlined Settings**: Clean, focused appearance section with minimal options
+- **CSS Variable Preservation**: Maintained existing dark theme infrastructure
+
+### Affected Components
+- `public/js/settingsManager.js` - Replaced style settings with basic appearance section
+- `public/js/pluginManager.js` - Removed style settings plugin registration
+- `public/css/index.css` - Removed style-settings.css import, added removal note
+- `public/index.html` - Removed styleSettingsManager.js script import
+- `public/css/settings-manager.css` - Added basic appearance settings styling
+- `public/js/app.js` - Added basic theme initialization and management
+
+### Retained Functionality
+- **BasicFontSettings**: Simple font preferences still available in settings
+- **Dark Theme Infrastructure**: Existing CSS variables and dark theme classes preserved
+- **Local Storage**: Theme preferences persist between sessions
+- **Settings Integration**: Theme options remain accessible through settings modal
+
+### Benefits
+- **Code Reduction**: Removed ~1600 lines of complex styling code
+- **Performance Gain**: Eliminated complex DOM operations and extensive CSS rules
+- **Simplified UX**: Reduced cognitive load with focused, minimal options
+- **Maintenance Ease**: Single interaction pattern for all theme-related functionality
+- **Faster Load**: Reduced bundle size and CSS complexity
+
 ## [0.31.7] - 2025-11-17
 
 ### Changed

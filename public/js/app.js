@@ -17,6 +17,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // ================================================================
   // ALL APPLICATION CODE AND FUNCTIONS SHOULD BE DEFINED INSIDE HERE
   // =
+
+  // Basic Theme Management - Simple light/dark theme functionality
+  function initializeBasicTheme() {
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('basicTheme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark-theme');
+    }
+
+    // Add theme toggle to UI if not already present
+    if (!document.getElementById('theme-toggler')) {
+      addBasicThemeToggle();
+    }
+  }
+
+  function addBasicThemeToggle() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      const themeToggle = document.createElement('button');
+      themeToggle.id = 'basic-theme-toggler';
+      themeToggle.className = 'feature-toggle';
+      themeToggle.textContent = document.body.classList.contains('dark-theme') ? '☀️ Light' : '🌙 Dark';
+      themeToggle.title = 'Toggle between light and dark themes';
+
+      themeToggle.addEventListener('click', () => {
+        const isDark = document.body.classList.toggle('dark-theme');
+        localStorage.setItem('basicTheme', isDark ? 'dark' : 'light');
+        themeToggle.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+      });
+
+      // Insert before backup button if it exists
+      const backupButton = document.getElementById('backup-database');
+      if (backupButton) {
+        sidebar.insertBefore(themeToggle, backupButton);
+      } else {
+        sidebar.appendChild(themeToggle);
+      }
+    }
+  }
+
   const outlinerContainer = document.getElementById("outliner-container");
   const addRootNodeButton = document.getElementById("add-root-node");
   const languageToggle = document.getElementById("language-toggle");
@@ -1167,11 +1207,11 @@ document.addEventListener("DOMContentLoaded", () => {
     TimestampManager.initialize();
   }
 
-  // Initialize the StyleSettingsManager
-  if (window.StyleSettingsManager) {
-    console.log("Setting up StyleSettingsManager initialization from app.js");
-    StyleSettingsManager.initialize();
-  }
+  // Style Settings Manager removed - basic theme functionality only
+  // Font settings are handled by BasicFontSettings in settings modal
+
+  // Initialize basic theme functionality
+  initializeBasicTheme();
 
   // Initialize the AttributeManager
   if (window.AttributeManager) {

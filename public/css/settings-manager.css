@@ -561,18 +561,61 @@
     background-color: #63b3ed;
   }
   
+  /* Basic appearance settings styles */
+  .basic-appearance-settings .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .dark-theme .basic-appearance-settings .setting-item {
+    background-color: #374151;
+  }
+
+  .basic-appearance-settings label {
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .dark-theme .basic-appearance-settings label {
+    color: #e5e7eb;
+  }
+
+  .basic-appearance-settings .setting-input {
+    margin-left: 12px;
+  }
+
+  .basic-appearance-settings .setting-note {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .dark-theme .basic-appearance-settings .setting-note {
+    color: #9ca3af;
+  }
+
   /* Appearance settings styles */
-  .settings-modal .appearance-settings-content .style-settings-section {
+  .settings-modal .appearance-settings-content .basic-appearance-settings {
     margin-bottom: 32px;
     padding-bottom: 24px;
     border-bottom: 1px solid #f1f5f9;
   }
-  
-  .dark-theme .settings-modal .appearance-settings-content .style-settings-section {
+
+  .dark-theme .settings-modal .appearance-settings-content .basic-appearance-settings {
     border-bottom-color: #4a5568;
   }
-  
-  .settings-modal .appearance-settings-content .style-settings-section:last-child {
+
+  .settings-modal .appearance-settings-content .basic-appearance-settings:last-child {
+    border-bottom: none;
+  }
+
+  .settings-modal .appearance-settings-content .basic-appearance-settings:last-child {
     border-bottom: none;
   }
   
