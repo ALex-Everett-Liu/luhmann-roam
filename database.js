@@ -152,8 +152,6 @@ async function populateSequenceIds() {
         let orderByColumn = "created_at";
         if (table === "bookmarks") {
           orderByColumn = "added_at";
-        } else if (table === "dcim_images") {
-          orderByColumn = "creation_time";
         }
 
         const records = await db.all(
