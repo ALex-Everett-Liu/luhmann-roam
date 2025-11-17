@@ -25,11 +25,8 @@ window.BackupManager = (function() {
         backupButton.textContent = 'Backing up...';
         backupButton.disabled = true;
         
-        // Get current vault from VaultManager
-        const currentVault = window.VaultManager?.getCurrentVault() || 'main';
-        
-        // Call the backup API endpoint with the current vault
-        const response = await fetch(`${BASE_URL}/${currentVault}`, {
+        // Call the backup API endpoint
+        const response = await fetch(BASE_URL, {
           method: 'POST'
         });
         
@@ -40,12 +37,12 @@ window.BackupManager = (function() {
         
         const result = await response.json();
         
-        // Show success message with vault name
-        backupButton.textContent = `${currentVault} Backup Successful!`;
+        // Show success message
+        backupButton.textContent = 'Backup Successful!';
         backupButton.classList.add('success');
         
         // Maybe show a notification with the backup filename
-        console.log(`Backup created for vault ${result.vault}:`, result.filename);
+        console.log(`Backup created:`, result.filename);
         
         // Reset button after delay
         setTimeout(() => {

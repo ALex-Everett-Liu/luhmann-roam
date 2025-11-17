@@ -77,8 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Add this function to save the current focus as default
   function setDefaultFocusNode(nodeId) {
-    const vault = window.VaultManager?.getCurrentVault() || "main";
-    localStorage.setItem(`${vault}_default_focus_node`, nodeId);
+    localStorage.setItem(`main_default_focus_node`, nodeId);
     alert("This node is now set as the default focus on startup.");
   }
 
@@ -89,9 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       // Get default focus node if initial loading
-      const vault = window.VaultManager?.getCurrentVault() || "main";
       const defaultFocusNodeId = localStorage.getItem(
-        `${vault}_default_focus_node`,
+        `main_default_focus_node`,
       );
 
       // If we have a default focus node and this is initial loading, only load that subtree
@@ -106,10 +104,10 @@ document.addEventListener("DOMContentLoaded", () => {
             `/api/nodes/${defaultFocusNodeId}?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ""}`,
           );
 
-          // Check if node exists in this vault
+          // Check if node exists
           if (focusNodeResponse.status === 404) {
             console.log(
-              `Default focus node ${defaultFocusNodeId} not found in vault ${vault}, loading all nodes instead`,
+              `Default focus node ${defaultFocusNodeId} not found, loading all nodes instead`,
             );
             // Load all nodes instead
             const allNodesResponse = await fetch(
@@ -1111,8 +1109,7 @@ document.addEventListener("DOMContentLoaded", () => {
   clearDefaultFocusButton.textContent = "Clear Default Focus";
   clearDefaultFocusButton.title = "Clear the default focus node setting";
   clearDefaultFocusButton.addEventListener("click", () => {
-    const vault = window.VaultManager?.getCurrentVault() || "main";
-    localStorage.removeItem(`${vault}_default_focus_node`);
+    localStorage.removeItem(`main_default_focus_node`);
     alert("Default focus cleared. All nodes will load on next startup.");
   });
 
@@ -1222,9 +1219,6 @@ document.addEventListener("DOMContentLoaded", () => {
     DatabaseExportImportManager.initialize();
   }
 
-  if (window.VaultManager) {
-    VaultManager.initialize();
-  }
 
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;

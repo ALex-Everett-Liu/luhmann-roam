@@ -19,7 +19,6 @@ const attributeRoutes = require("./routes/attributeRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
 const databaseExportImportRoutes = require("./routes/databaseExportImportRoutes");
-const vaultRoutes = require("./routes/vaultRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -63,7 +62,7 @@ initializeDatabase()
 // Add this middleware to create a fresh db connection for each request
 app.use(async (req, res, next) => {
   try {
-    req.db = await getDb(); // This will use the current global.currentVault
+    req.db = await getDb(); // Use main database only
     next();
   } catch (err) {
     console.error("Error creating database connection:", err);
@@ -694,13 +693,10 @@ app.use("/css", express.static(path.join(__dirname, "public", "css")));
 app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 
 // Add this to your existing routes
-app.post("/api/backup/:vault?", async (req, res) => {
+app.post("/api/backup", async (req, res) => {
   try {
     const fs = require("fs");
     const path = require("path");
-
-    // Get vault name from params or use current vault
-    const vaultName = req.params.vault || global.currentVault || "main";
 
     // Create backups directory if it doesn't exist
     const backupDir = path.join(__dirname, "backups");
@@ -714,15 +710,9 @@ app.post("/api/backup/:vault?", async (req, res) => {
       .replace(/:/g, "-") // Replace colons with hyphens for valid filename
       .replace(/\..+/, ""); // Remove milliseconds
 
-    // Define source and destination paths
-    let dbPath;
-    if (vaultName === "main") {
-      dbPath = path.join(__dirname, "outliner.db");
-    } else {
-      dbPath = path.join(__dirname, "vaults", `${vaultName}.db`);
-    }
-
-    const backupFilename = `${vaultName}-${timestamp}.db`;
+    // Define source path for main database
+    const dbPath = path.join(__dirname, "outliner.db");
+    const backupFilename = `main-${timestamp}.db`;
     const backupPath = path.join(backupDir, backupFilename);
 
     // Copy the database file
@@ -733,7 +723,7 @@ app.post("/api/backup/:vault?", async (req, res) => {
     res.status(200).json({
       success: true,
       filename: backupFilename,
-      vault: vaultName,
+      vault: "main",
       timestamp: timestamp,
     });
   } catch (error) {
@@ -753,30 +743,6 @@ app.use("/api/node-attributes", attributeRoutes);
 
 // Use the database export/import routes
 app.use("/api/database", databaseExportImportRoutes);
-
-// Use the vault routes
-app.use("/api/vaults", vaultRoutes);
-
-// Add this after the database initialization
-// Create vaults directory if it doesn't exist
-const vaultsDir = path.join(__dirname, "vaults");
-if (!fs.existsSync(vaultsDir)) {
-  fs.mkdirSync(vaultsDir);
-}
-
-// Modify the database connection to support multiple vaults
-let currentVault = "main"; // Default to main database
-global.currentVault = "main"; // Also set the global variable
-
-// New middleware to set the current vault based on request
-app.use((req, res, next) => {
-  if (req.query.vault) {
-    currentVault = req.query.vault;
-    global.currentVault = req.query.vault; // Add this line
-  }
-  req.currentVault = currentVault;
-  next();
-});
 
 // Start the server
 app.listen(PORT, () => {

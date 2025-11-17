@@ -3,12 +3,8 @@ const { open } = require("sqlite");
 const path = require("path");
 
 // Create a database connection
-async function getDb(vaultName) {
-  const dbName = vaultName || global.currentVault || "main";
-  const dbPath =
-    dbName === "main"
-      ? path.join(__dirname, "outliner.db")
-      : path.join(__dirname, "vaults", `${dbName}.db`);
+async function getDb() {
+  const dbPath = path.join(__dirname, "outliner.db");
 
   return open({
     filename: dbPath,
@@ -17,8 +13,8 @@ async function getDb(vaultName) {
 }
 
 // Initialize database
-async function initializeDatabase(vaultName) {
-  const db = await getDb(vaultName);
+async function initializeDatabase() {
+  const db = await getDb();
 
   // Check if the database already has tables instead of using a global flag
   try {
@@ -28,12 +24,10 @@ async function initializeDatabase(vaultName) {
     );
 
     // If we get here, the database already has tables
-    console.log(
-      `Database ${vaultName} already initialized, checking tables...`,
-    );
+    console.log("Database already initialized, checking tables...");
   } catch (error) {
     // If we get an error, the database doesn't have tables yet
-    console.log(`Initializing database for vault: ${vaultName}`);
+    console.log("Initializing database");
   }
 
   // Always proceed with ensuring all tables exist (won't harm if they already do)

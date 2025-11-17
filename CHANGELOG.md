@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1] - 2025-11-17
+
+### Removed
+- **Complete Vault System**: Deleted `vaultManager.js`, `vaultRoutes.js`, `vault-manager.css`, and related vault files
+- **Multi-Database Support**: Removed vault-based database switching functionality
+- **Vault Middleware**: Eliminated `req.currentVault` and vault-related request handling
+- **Vault UI Elements**: Removed vault switching buttons and vault-based UI components
+- **Global Vault State**: Removed `global.currentVault` and vault-based localStorage keys
+
+### Changed
+- **Simplified Database Architecture**: Single `outliner.db` database only - no vault switching
+- **Streamlined Backup System**: Removed vault parameter from backup API calls
+- **Simplified Default Focus**: Vault-aware node focus replaced with simple `main_default_focus_node`
+- **Reduced Server Routing**: Removed `/api/vaults` endpoints and related middleware
+
+### Technical Details
+- **Database Layer**: Modified `getDb()` to always use main database path
+- **Backup System**: `backupManager.js` now calls `/api/backup` without vault parameters
+- **Focus Management**: Default focus node storage simplified to single key
+- **Server Configuration**: Removed vault directory creation and multi-database middleware
+
+### Affected Components
+- `server.js` - Removed vault routes, middleware, and multi-database logic
+- `database.js` - Simplified to single database connection
+- `public/js/app.js` - Removed vault manager references and vault-aware focus logic
+- `public/js/backupManager.js` - Eliminated vault parameter from backup calls
+
+### Benefits
+- **Code Reduction**: Removed vault system complexity (~300+ lines)
+- **Maintenance Simplification**: Single database model eliminates vault switching issues
+- **Performance Improvement**: Removed vault middleware overhead
+- **Architecture Streamlining**: Simplified to core outliner functionality without database complexity
+
 ## [0.32.0] - 2025-11-17
 
 ### Added
