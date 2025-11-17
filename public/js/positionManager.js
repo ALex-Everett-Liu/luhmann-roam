@@ -6,12 +6,8 @@ const PositionManager = (function() {
   
   // Initialize the manager
   function initialize() {
-    // Get the initial language setting from I18n if available
-    if (window.I18n) {
-      currentLanguage = I18n.getCurrentLanguage();
-    } else {
-      currentLanguage = localStorage.getItem('preferredLanguage') || 'en';
-    }
+    // English only - no I18n needed
+    currentLanguage = 'en';
     console.log('PositionManager initialized with language:', currentLanguage);
   }
   
@@ -37,7 +33,7 @@ const PositionManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = window.I18n ? I18n.t('adjustPosition') : 'Adjust Node Position';
+    modalTitle.textContent = 'Adjust Node Position';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -54,19 +50,19 @@ const PositionManager = (function() {
     // Current position info
     const currentPositionInfo = document.createElement('div');
     currentPositionInfo.className = 'current-position-info';
-    currentPositionInfo.innerHTML = `<p>${window.I18n ? I18n.t('loadingPositionInfo') : 'Loading position information...'}</p>`;
+    currentPositionInfo.innerHTML = `<p>Loading position information...</p>`;
     modalBody.appendChild(currentPositionInfo);
     
     // Position input
     const positionLabel = document.createElement('label');
-    positionLabel.textContent = window.I18n ? I18n.t('newPosition') : 'New Position (0-based index):';
+    positionLabel.textContent = 'New Position (0-based index):';
     modalBody.appendChild(positionLabel);
     
     const positionInput = document.createElement('input');
     positionInput.type = 'number';
     positionInput.min = '0';
     positionInput.className = 'position-input';
-    positionInput.placeholder = window.I18n ? I18n.t('enterNewPosition') : 'Enter new position';
+    positionInput.placeholder = 'Enter new position';
     modalBody.appendChild(positionInput);
     
     // Create modal footer
@@ -75,7 +71,7 @@ const PositionManager = (function() {
     
     const applyButton = document.createElement('button');
     applyButton.className = 'btn btn-primary';
-    applyButton.textContent = window.I18n ? I18n.t('apply') : 'Apply';
+    applyButton.textContent = 'Apply';
     applyButton.addEventListener('click', () => {
       const newPosition = parseInt(positionInput.value, 10);
       adjustNodePosition(nodeId, newPosition);
@@ -83,7 +79,7 @@ const PositionManager = (function() {
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'btn btn-secondary';
-    cancelButton.textContent = window.I18n ? I18n.t('cancel') : 'Cancel';
+    cancelButton.textContent = 'Cancel';
     cancelButton.addEventListener('click', closeModal);
     
     modalFooter.appendChild(cancelButton);
@@ -125,31 +121,19 @@ const PositionManager = (function() {
       positionInput.value = node.position;
       positionInput.max = siblings.length - 1;
       
-      // Update position info using I18n
-      const nodeContent = currentLanguage === 'en' ? 
-        node.content : (node.content_zh || node.content);
+      // English only - single language content
+      const nodeContent = node.content;
       
       let parentInfoText;
       if (node.parent_id) {
-        const parentNodeContent = currentLanguage === 'en' ? 
-          siblings[0].content : (siblings[0].content_zh || siblings[0].content);
-          
-        if (window.I18n) {
-          parentInfoText = I18n.t('underParent', { parent: parentNodeContent });
-        } else {
-          parentInfoText = `under parent node "${parentNodeContent}"`;
-        }
+        const parentNodeContent = siblings[0].content;
+        parentInfoText = `under parent node "${parentNodeContent}"`;
       } else {
-        parentInfoText = window.I18n ? I18n.t('atRootLevel') : 'at root level';
+        parentInfoText = 'at root level';
       }
-      
-      const currentPosText = window.I18n ? 
-        I18n.t('currentPosition', { position: node.position }) : 
-        `Current position: <strong>${node.position}</strong>`;
-        
-      const totalSiblingsText = window.I18n ? 
-        I18n.t('totalSiblings', { count: siblings.length, validPositions: `0-${siblings.length - 1}` }) : 
-        `Total siblings: <strong>${siblings.length}</strong> (Valid positions: 0-${siblings.length - 1})`;
+
+      const currentPosText = `Current position: <strong>${node.position}</strong>`;
+      const totalSiblingsText = `Total siblings: <strong>${siblings.length}</strong> (Valid positions: 0-${siblings.length - 1})`;
       
       currentPositionInfo.innerHTML = `
         <p>${currentPosText} ${parentInfoText}</p>
@@ -163,12 +147,7 @@ const PositionManager = (function() {
       }, 100);
     } catch (error) {
       console.error('Error getting node info:', error);
-      currentPositionInfo.innerHTML = `<p class="error">${window.I18n ? I18n.t('errorLoadingPositionInfo') : 'Error loading position information'}</p>`;
-    }
-  }
-  
-  // Close modal
-  function closeModal() {
+      currentPositionInfo.innerHTML = `<p class="error">Error loading position information</p>`;
     // Select ALL modal overlays to ensure we remove everything
     const modalOverlays = document.querySelectorAll('.modal-overlay');
     if (modalOverlays.length > 0) {
@@ -234,7 +213,7 @@ const PositionManager = (function() {
       closeModal();
     } catch (error) {
       console.error(`Error adjusting position for node ${nodeId}:`, error);
-      alert(window.I18n ? I18n.t('errorAdjustingPosition') : 'Error adjusting node position');
+      alert('Error adjusting node position');
     }
   }
   
@@ -254,7 +233,7 @@ const PositionManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = window.I18n ? I18n.t('moveNode') : 'Move Node';
+    modalTitle.textContent = 'Move Node';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -282,7 +261,7 @@ const PositionManager = (function() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.className = 'position-search-input';
-    searchInput.placeholder = window.I18n ? I18n.t('searchParentNodePlaceholder') : 'Type to search for a parent node...';
+    searchInput.placeholder = 'Type to search for a parent node...';
     
     const searchResults = document.createElement('div');
     searchResults.className = 'position-search-results';
@@ -298,7 +277,7 @@ const PositionManager = (function() {
     // Selected node display
     const selectedNodeDisplay = document.createElement('div');
     selectedNodeDisplay.className = 'selected-node';
-    selectedNodeDisplay.innerHTML = `<span class="no-selection">${window.I18n ? I18n.t('noParentSelected') : 'No parent node selected (will become a root node)'}</span>`;
+    selectedNodeDisplay.innerHTML = `<span class="no-selection">No parent node selected (will become a root node)</span>`;
     
     // Add search functionality
     searchInput.addEventListener('input', debounce(async (e) => {
@@ -315,7 +294,7 @@ const PositionManager = (function() {
         searchResults.innerHTML = '';
         
         if (results.length === 0) {
-          searchResults.innerHTML = `<div class="position-no-results">${window.I18n ? I18n.t('noMatchingNodes') : 'No matching nodes found'}</div>`;
+          searchResults.innerHTML = `<div class="position-no-results">No matching nodes found</div>`;
           return;
         }
         
@@ -324,13 +303,12 @@ const PositionManager = (function() {
           resultItem.className = 'position-search-result-item';
           resultItem.dataset.id = node.id;
           
-          const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
-          resultItem.textContent = nodeContent;
+          resultItem.textContent = node.content;
           
           resultItem.addEventListener('click', () => {
             // Set the selected node
             selectedNodeInput.value = node.id;
-            selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${nodeContent}</div>`;
+            selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${node.content}</div>`;
             searchResults.innerHTML = '';
             searchInput.value = '';
           });
@@ -339,25 +317,25 @@ const PositionManager = (function() {
         });
       } catch (error) {
         console.error('Error searching nodes:', error);
-        searchResults.innerHTML = `<div class="position-search-error">${window.I18n ? I18n.t('errorSearchingNodes') : 'Error searching nodes'}</div>`;
+        searchResults.innerHTML = `<div class="position-search-error">Error searching nodes</div>`;
       }
     }, 300));
     
     // Position selection
     const positionLabel = document.createElement('label');
-    positionLabel.textContent = window.I18n ? I18n.t('position') : 'Position:';
+    positionLabel.textContent = 'Position:';
     
     const positionInput = document.createElement('input');
     positionInput.type = 'number';
     positionInput.min = '0';
     positionInput.value = '0';
     positionInput.className = 'position-input';
-    positionInput.placeholder = window.I18n ? I18n.t('positionPlaceholder') : 'Position (0 = first child)';
+    positionInput.placeholder = 'Position (0 = first child)';
     
     // Move button
     const moveButton = document.createElement('button');
     moveButton.className = 'btn btn-primary';
-    moveButton.textContent = window.I18n ? I18n.t('moveNode') : 'Move Node';
+    moveButton.textContent = 'Move Node';
     moveButton.addEventListener('click', () => {
       moveNodeToParent(nodeId, selectedNodeInput.value, parseInt(positionInput.value, 10));
     });
@@ -365,18 +343,18 @@ const PositionManager = (function() {
     // Make root node button
     const makeRootButton = document.createElement('button');
     makeRootButton.className = 'btn btn-secondary';
-    makeRootButton.textContent = window.I18n ? I18n.t('makeRootNode') : 'Make Root Node';
+    makeRootButton.textContent = 'Make Root Node';
     makeRootButton.addEventListener('click', () => {
       moveNodeToParent(nodeId, null, parseInt(positionInput.value, 10));
     });
     
     const searchLabel = document.createElement('label');
-    searchLabel.textContent = window.I18n ? I18n.t('searchForParentNode') : 'Search for a parent node:';
+    searchLabel.textContent = 'Search for a parent node:';
     modalBody.appendChild(searchLabel);
     modalBody.appendChild(searchContainer);
     
     const selectedLabel = document.createElement('label');
-    selectedLabel.textContent = window.I18n ? I18n.t('selectedParent') : 'Selected parent:';
+    selectedLabel.textContent = 'Selected parent:';
     modalBody.appendChild(selectedLabel);
     modalBody.appendChild(selectedNodeDisplay);
     modalBody.appendChild(selectedNodeInput);
@@ -389,7 +367,7 @@ const PositionManager = (function() {
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'btn btn-secondary';
-    cancelButton.textContent = window.I18n ? I18n.t('cancel') : 'Cancel';
+    cancelButton.textContent = 'Cancel';
     cancelButton.addEventListener('click', closeModalHandler, { once: true });
     
     modalFooter.appendChild(makeRootButton);
@@ -505,7 +483,7 @@ const PositionManager = (function() {
       closeModal();
     } catch (error) {
       console.error('Error moving node:', error);
-      alert(window.I18n ? I18n.t('errorMovingNode') : 'Error moving node');
+      alert('Error moving node');
     }
   }
   

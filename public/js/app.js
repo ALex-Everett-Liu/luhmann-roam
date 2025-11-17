@@ -356,17 +356,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // English only - no other language content
 
-      // Create the other language content container
-      const otherLanguageContainer = document.createElement("div");
-      otherLanguageContainer.className = "node-text-other-language-container";
-      otherLanguageContainer.style.display = "none"; // Hidden by default
-      otherLanguageContainer.style.marginTop = "8px";
-      otherLanguageContainer.style.paddingLeft = "20px"; // Indent to show it's related
-
-      const otherLanguageText = document.createElement("div");
-      otherLanguageText.className = "node-text-other-language";
-      otherLanguageText.textContent = otherLangContent.replace(/\\n/g, "\n"); // Ensure newlines are displayed
-
       // Improved styling for read-only view
       otherLanguageText.style.fontSize = "0.9em";
       otherLanguageText.style.color = "#555";

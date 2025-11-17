@@ -175,7 +175,7 @@ const BreadcrumbManager = (function() {
       const homeItem = document.createElement('div');
       homeItem.className = 'breadcrumb-item breadcrumb-home';
       homeItem.innerHTML = '🏠';
-      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
+      homeItem.title = 'Return to root level';
       homeItem.addEventListener('click', () => {
         clearFocus();
       });
@@ -194,10 +194,8 @@ const BreadcrumbManager = (function() {
         item.className = 'breadcrumb-item';
         item.dataset.id = ancestor.id;
         
-        // Use appropriate language content
-        const content = currentLanguage === 'en' ? 
-          ancestor.content : 
-          (ancestor.content_zh || ancestor.content);
+        // Single language content
+        const content = ancestor.content;
         
         item.textContent = content;
         
@@ -469,7 +467,7 @@ const BreadcrumbManager = (function() {
     // Update the home icon tooltip
     const homeItem = document.querySelector('.breadcrumb-home');
     if (homeItem) {
-      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
+      homeItem.title = 'Return to root level';
     }
     
   // Rebuild the breadcrumb trail with the new language
