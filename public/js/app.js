@@ -131,6 +131,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.scrollTo(0, scrollPosition);
       }, 10);
 
+    } catch (error) {
+      console.error('Error fetching nodes:', error);
+      // Optionally show user-friendly error message or fallback behavior
+    }
   }
 
   // Fetch children for a node
