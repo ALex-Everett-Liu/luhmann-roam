@@ -896,21 +896,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add to sidebar using helper function
   addButtonToSidebar(clearDefaultFocusButton);
 
-  // Initialize the BookmarkManager
-  if (window.BookmarkManager) {
-    console.log("Setting up BookmarkManager initialization from app.js");
-
-    // Only initialize once when the DOM is fully loaded
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        BookmarkManager.initialize();
-      });
-    } else {
-      // DOM already loaded, initialize now
-      BookmarkManager.initialize();
-    }
-  }
-
   // Initialize the BackupManager
   if (window.BackupManager) {
     console.log("Setting up BackupManager initialization from app.js");
@@ -962,12 +947,6 @@ document.addEventListener("DOMContentLoaded", () => {
    *    - Fall back to BreadcrumbManager if available
    *    - Use first available node as last resort
    */
-
-  // Initialize the BlogManager
-  if (window.BlogManager) {
-    console.log("Setting up BlogManager initialization from app.js");
-    BlogManager.initialize();
-  }
 
   // Just call fetchNodes by itself
   fetchNodes();
