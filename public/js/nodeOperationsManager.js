@@ -36,9 +36,9 @@ const NodeOperationsManager = (function() {
           ? Math.max(...nodesArray.map(n => n.position)) + 1 
           : 0;
         
-        // Use the I18n system for default content
-        const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
-        
+        // English only - no I18n needed
+        const defaultContent = 'New Node';
+
         const response = await fetch('/api/nodes', {
           method: 'POST',
           headers: {
@@ -94,10 +94,10 @@ const NodeOperationsManager = (function() {
         const childrenResponse = await fetch(`/api/nodes/${parentId}/children`);
         const children = await childrenResponse.json();
         const position = children.length;
-        
-        // Use the I18n system for default content
-        const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
-        
+
+        // English only - hardcoded new node content
+        const defaultContent = 'New Node';
+
         // Create the new node
         const newNodeResponse = await fetch('/api/nodes', {
           method: 'POST',
@@ -171,7 +171,8 @@ const NodeOperationsManager = (function() {
     
     // Delete a node with optimized DOM update
     async function deleteNode(nodeId) {
-      if (confirm(I18n.t('confirmDeleteNode'))) {
+      // English only - rename to plain text confirmation
+        if (confirm('Are you sure you want to delete this node and all its children?')) {
         try {
           await fetch(`/api/nodes/${nodeId}`, {
             method: 'DELETE'
@@ -748,8 +749,9 @@ const NodeOperationsManager = (function() {
           throw new Error('Failed to update node positions');
         }
         
-        // Use the I18n system for default content
-        const defaultContent = I18n.getCurrentLanguage() === 'en' ? I18n.t('newNode') : I18n.t('newNode');
+
+        // English only - hardcoded new node content
+        const defaultContent = 'New Node';
         
         // Create the new node at the desired position
         const newNodeResponse = await fetch('/api/nodes', {
