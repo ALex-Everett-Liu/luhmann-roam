@@ -88,18 +88,6 @@ async function initializeDatabase() {
     )
   `);
 
-  // Create bookmarks table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS bookmarks (
-      id TEXT PRIMARY KEY,
-      node_id TEXT NOT NULL,
-      title TEXT,
-      added_at INTEGER,
-      created_at INTEGER,
-      FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE
-    )
-  `);
-
   // Add sequence_id column to nodes table
   try {
     await db.exec(`ALTER TABLE nodes ADD COLUMN sequence_id INTEGER;`);
@@ -127,7 +115,7 @@ async function populateSequenceIds() {
 
   try {
     // Tables that need sequence IDs
-    const tables = ["nodes", "links", "node_attributes", "bookmarks"];
+    const tables = ["nodes", "links", "node_attributes"];
 
     // Process each table
     for (const table of tables) {
@@ -144,10 +132,6 @@ async function populateSequenceIds() {
         // Get records ordered by created_at timestamp (or another appropriate column)
         // Adapt the ORDER BY column if some tables don't have created_at
         let orderByColumn = "created_at";
-        if (table === "bookmarks") {
-          orderByColumn = "added_at";
-        }
-
         const records = await db.all(
           `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`,
         );
