@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New Plugin System**: Simple, extensible plugin architecture replacing complex plugin manager
 - **Built-in Sample Plugin**: Tutorial Explorer plugin demonstrating the new system
 - **Hook System**: Plugin hooks for event-driven architecture
-- **Clean Settings Integration**: Plugin management integrated into settings modal
+- **Standalone Plugin Management Dialog**: Complete plugin management UI accessible via Alt+P shortcut
 - **Plugin CSS Framework**: Comprehensive styling for plugin management UI
+- **Plugin Dialog Integration**: Sidebar button and command palette commands for easy access
 
 ### Changed
 - **Simplified Plugin Architecture**:
@@ -23,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clear plugin lifecycle (init/cleanup)
   - Hook system for plugins to interact with core features
   - Built-in sample plugin as development template
+  - **Plugin Dialog System**: Professional standalone dialog for plugin management
 - **Streamlined Integration**:
-  - Settings modal shows all plugins with enable/disable toggles
-  - Removed separate plugin manager modal complexity
-  - Plugin-system interactions are cleaner and more predictable
+  - New plugin dialog accessible via sidebar button and Alt+P keyboard shortcut
+  - Command palette integration for plugin management
+  - Clean, professional dialog following SettingsManager design patterns
+  - Settings modal also shows plugins via PluginSystem integration
 
 ### Removed
 - **Complex Plugin Manager**: Deleted 340+ line `pluginManager.js` with complex state management
@@ -48,7 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   });
   ```
 - **Hook System**: `registerHook()` and `triggerHook()` for plugin interactions
-- **Settings Integration**: Automatic plugin discovery and UI generation
+- **Plugin Dialog Architecture**:
+  - **Standalone Modal**: Self-contained dialog following SettingsManager patterns
+  - **Real CSS Variables**: Uses actual `--theme` variables from variables.css
+  - **Dark Theme Support**: Complete dark mode implementation with proper variables
+  - **Entry Points**: Sidebar button, Alt+P keyboard shortcut, command palette commands
+  - **Professional Styling**: Card-based UI with toggle switches, no `!important` abuse
+  - **Mobile Responsive**: Proper adaptation for small screens
+- **Settings Integration**: Automatic plugin discovery and UI generation for both dialog and settings modal
 - **Extensible Design**: Plugins can add commands, UI, and functionality
 
 ### Built-in Sample Plugin
