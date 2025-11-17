@@ -7,7 +7,7 @@ const SearchManager = (function() {
   let currentLanguage = 'en';
   let searchModalElement = null;
   let recentSearches = [];
-  let currentSearchResults = { nodes: [], markdown: [] }; // Store current results for sorting
+  let currentSearchResults = { nodes: [] }; // Store current results for sorting
   
   // Define constant for localStorage key
   const STORAGE_KEY = 'luhmann_roam_recent_searches';
@@ -159,9 +159,8 @@ const SearchManager = (function() {
       }
     };
     
-    // Sort both nodes and markdown results
+    // Sort node results
     currentSearchResults.nodes.sort(sortFunction);
-    currentSearchResults.markdown.sort(sortFunction);
     
     // Re-render the search results
     renderSearchResults();
@@ -176,17 +175,17 @@ const SearchManager = (function() {
     
     searchResults.innerHTML = '';
     
-    const totalResults = (currentSearchResults.nodes.length || 0) + (currentSearchResults.markdown.length || 0);
-    
+    const totalResults = currentSearchResults.nodes.length || 0;
+
     if (totalResults === 0) {
       searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching results found'}</div>`;
       return;
     }
-    
+
     // Add sorting controls
     const sortingControls = createSortingControls();
     searchResults.appendChild(sortingControls);
-    
+
     // Add a header showing result counts
     const headerDiv = document.createElement('div');
     headerDiv.className = 'search-results-header';
@@ -194,7 +193,6 @@ const SearchManager = (function() {
       <div class="results-summary">
         <span class="total-count">${totalResults} total results</span>
         <span class="node-count">${currentSearchResults.nodes.length} nodes</span>
-        <span class="markdown-count">${currentSearchResults.markdown.length} markdown files</span>
       </div>
     `;
     searchResults.appendChild(headerDiv);
@@ -205,22 +203,9 @@ const SearchManager = (function() {
       nodeHeader.className = 'result-category-header';
       nodeHeader.innerHTML = `<h4>📝 Node Content (${currentSearchResults.nodes.length})</h4>`;
       searchResults.appendChild(nodeHeader);
-      
+
       currentSearchResults.nodes.forEach(node => {
         const resultItem = createNodeResultItem(node);
-        searchResults.appendChild(resultItem);
-      });
-    }
-    
-    // Display markdown results
-    if (currentSearchResults.markdown && currentSearchResults.markdown.length > 0) {
-      const markdownHeader = document.createElement('div');
-      markdownHeader.className = 'result-category-header';
-      markdownHeader.innerHTML = `<h4>📄 Markdown Files (${currentSearchResults.markdown.length})</h4>`;
-      searchResults.appendChild(markdownHeader);
-      
-      currentSearchResults.markdown.forEach(markdownResult => {
-        const resultItem = createMarkdownResultItem(markdownResult);
         searchResults.appendChild(resultItem);
       });
     }
@@ -533,7 +518,7 @@ const SearchManager = (function() {
       const query = e.target.value.trim();
       if (query.length < 2) {
         searchResults.innerHTML = '';
-        currentSearchResults = { nodes: [], markdown: [] };
+        currentSearchResults = { nodes: [] };
         return;
       }
       
@@ -544,16 +529,14 @@ const SearchManager = (function() {
         // Include the current language in the search request
         const advancedMode = advancedSearchToggle.checked;
         
-        // Get combined results (nodes + markdown)
+        // Get node search results only
         const response = await fetch(
-          `/api/search/combined?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
+          `/api/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
         );
-        const data = await response.json();
-        
+
         // Store current results for sorting
         currentSearchResults = {
-          nodes: data.nodes || [],
-          markdown: data.markdown || []
+          nodes: await response.json() || []
         };
         
         // Render the results
@@ -979,82 +962,6 @@ const SearchManager = (function() {
     return resultItem;
   }
   
-  /**
-   * Create a result item for markdown search results
-   */
-  function createMarkdownResultItem(markdownResult) {
-    const resultItem = document.createElement('div');
-    resultItem.className = 'search-result-item markdown-result';
-    resultItem.dataset.id = markdownResult.id;
-    
-    const nodeContent = markdownResult.nodeContent;
-    const matchContext = markdownResult.matchContext;
-    
-    // Create breadcrumb if there's a parent
-    let breadcrumb = '';
-    if (markdownResult.parent_content) {
-      breadcrumb = `<div class="search-result-path">Parent: ${markdownResult.parent_content}</div>`;
-    }
-    
-    // Create timestamp information for markdown results
-    const timestampInfo = document.createElement('div');
-    timestampInfo.className = 'search-result-timestamps';
-    timestampInfo.style.display = 'flex';
-    timestampInfo.style.justifyContent = 'space-between';
-    timestampInfo.style.fontSize = '12px';
-    timestampInfo.style.color = '#6c757d';
-    timestampInfo.style.marginTop = '8px';
-    timestampInfo.style.padding = '6px 8px';
-    timestampInfo.style.backgroundColor = '#f8f9fa';
-    timestampInfo.style.borderRadius = '4px';
-    timestampInfo.style.border = '1px solid #e9ecef';
-    
-    const createdInfo = document.createElement('span');
-    createdInfo.innerHTML = `<strong>Created:</strong> ${formatTimestamp(markdownResult.created_at)}`;
-    
-    const updatedInfo = document.createElement('span');
-    updatedInfo.innerHTML = `&nbsp;&nbsp;<strong>Updated:</strong> ${formatTimestamp(markdownResult.updated_at)}`;
-    
-    timestampInfo.appendChild(createdInfo);
-    timestampInfo.appendChild(updatedInfo);
-    
-    resultItem.innerHTML = `
-      <div class="result-type-badge markdown-badge">Markdown</div>
-      <div class="search-result-node-title">${nodeContent}</div>
-      <div class="search-result-markdown-context">${matchContext}</div>
-      ${breadcrumb}
-      <div class="search-result-meta">
-        <span class="file-info">📄 ${markdownResult.filename}</span>
-        <span class="content-length">${Math.round(markdownResult.contentLength / 1000)}k chars</span>
-      </div>
-    `;
-    
-    // Add timestamp info after the main content
-    resultItem.appendChild(timestampInfo);
-    
-    resultItem.addEventListener('click', () => {
-      // Get the search input value from the DOM when clicked
-      const searchInput = searchModalElement?.querySelector('.node-search');
-      if (searchInput && searchInput.value.trim()) {
-        // Save the search immediately when user clicks a result
-        addRecentSearch(searchInput.value.trim());
-      }
-      
-      // Navigate to the node and open its markdown
-      navigateToNode(markdownResult.id);
-      
-      // Open markdown modal after a short delay to ensure navigation completes
-      setTimeout(() => {
-        if (window.MarkdownManager) {
-          MarkdownManager.openModal(markdownResult.id);
-        }
-      }, 300);
-      
-      closeSearchModal();
-    });
-    
-    return resultItem;
-  }
   
   /**
    * Adds a search button to the sidebar
