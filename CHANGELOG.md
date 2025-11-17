@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.2] - 2025-11-17
+
+### Removed
+- **Complete Database Export/Import System**: Deleted `databaseExportImportManager.js`, `databaseExportImportController.js`, `databaseExportImportRoutes.js`
+- **Export/Import CSS**: Removed `export-import.css` styling files
+- **Export/Import UI Elements**: Removed export/import buttons and modals
+- **Export Node Tree Functionality**: Eliminated node tree export from node actions
+- **Database Table APIs**: Removed `/api/database/export`, `/api/database/import`, `/api/database/tables` endpoints
+
+### Rationale
+- **Core Functionality Redundancy**: Database export/import system overlapped with existing backup functionality
+- **Backup Manager Sufficiency**: `@public/jsackupManager.js` provides complete database backup/restore functionality
+- **Code Reduction**: Removed ~1300 lines of export/import management code
+- **Architecture Streamlining**: Single backup system eliminates feature overlap
+
+### Affected Components
+- `server.js` - Removed database API route usage
+- `public/index.html` - Removed export/import script references
+- `public/css/index.css` - Removed export-import CSS imports
+- `public/js/app.js` - Removed DatabaseExportImportManager initialization and export tree button creation
+
+### Retained Functionality
+- **Backup System**: `@public	sackupManager.js` provides comprehensive database backup/restore
+- **Node Operations**: All core node creation, editing, and management preserved
+- **Data Integrity**: Backup system maintains database consistency without table-specific complexity
+
+### Technical Details
+- **Code Reduction**: Eliminated ~1300 lines across JavaScript, CSS, and server files
+- **Performance Improvement**: Removed unnecessary export/import APIs and DOM elements
+- **UI Cleanup**: Eliminated export/import buttons, modals, and related UI complexity
+- **Single Solution**: Unified backup approach for data management
+
 ## [0.32.1] - 2025-11-17
 
 ### Removed

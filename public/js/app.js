@@ -610,16 +610,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     nodeActions.appendChild(defaultFocusButton);
 
-    // Export tree button
-    if (
-      window.DatabaseExportImportManager &&
-      DatabaseExportImportManager.addExportTreeButtonToNodeActions
-    ) {
-      DatabaseExportImportManager.addExportTreeButtonToNodeActions(
-        nodeActions,
-        node.id,
-      );
-    }
 
     // Copy content buttons (only show if there's content to copy)
     if (
@@ -1214,10 +1204,6 @@ document.addEventListener("DOMContentLoaded", () => {
     CommandPaletteManager.initialize();
   }
 
-  // Add this to the initialization section in app.js where other managers are initialized
-  if (window.DatabaseExportImportManager) {
-    DatabaseExportImportManager.initialize();
-  }
 
 
   // Make fetchNodes available globally for the SearchManager

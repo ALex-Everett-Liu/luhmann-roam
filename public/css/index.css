@@ -27,7 +27,7 @@
 /* Style Settings removed - basic theme options only */
 @import "./features/high-contrast.css";
 @import "./features/plugin-manager.css";
-@import "./features/export-import.css";
+/* Export Import removed - replaced by backup functionality */
 /* @import './features/hotkeys.css'; */
 
 /* Utilities - import last to override if needed */

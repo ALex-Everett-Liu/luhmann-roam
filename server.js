@@ -18,7 +18,6 @@ const linkRoutes = require("./routes/linkRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
-const databaseExportImportRoutes = require("./routes/databaseExportImportRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -660,9 +659,6 @@ app.use("/api/links", linkRoutes);
 
 // Use the attribute routes
 app.use("/api/node-attributes", attributeRoutes);
-
-// Use the database export/import routes
-app.use("/api/database", databaseExportImportRoutes);
 
 // Start the server
 app.listen(PORT, () => {
