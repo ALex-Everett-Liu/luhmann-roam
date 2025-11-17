@@ -5,7 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.32.4] - 2025-11-17
+## [0.32.2] - 2025-11-17
+
+### Fixed
+**Link System Completeness**:
+- **Resolved startup error**: Removed unresolved `linkController` import in `routes/nodeRoutes.js`
+- **Database schema finalization**: Cleaned up remaining link references and table creation
+- **Controller cleanup**: Removed `link_count` subqueries from node fetch operations
+
+### Technical Details
+
+**Server Operational Fix**:
+```
+Error: Cannot find module '../controllers/linkController'
+Error resolved by removing lingering import references
+```
+
+**Completed Link System Elimination**:
+- **Database layer**: Removed `links` table schema creation, eliminated from `populateSequenceIds()`
+- **API layer**: Cleaned all link-related queries in `nodeController.js`
+- **Route layer**: Removed final `linkController` references in `nodeRoutes.js`
+
+### Comprehensive Changes from v0.32.1 ➜ v0.32.2
+Following v0.32.1 vault system simplification:
+
+**Complete Feature Consolidation**:
+- **Database Export/Import System**: Deleted entirely, replaced by backup manager
+- **Link Management System**: Completely removed - pure node operations sufficient
+- **Database Schema**: Simplified to core tables (nodes, attributes, bookmarks)
+
+**Architecture Benefits**:
+- **Pure Node Operations**: No connections, links, or complex relationships
+- **Performance Enhancement**: Simplified SQL queries without JOIN complexity
+- **Interface Clarity**: Clean UI with only essential node actions
+- **Codebase Streamlined**: ~1,800+ lines removed across the system
+
+System now operates with ultimate simplicity: pure hierarchical node-based outliner!
 
 ### Removed
 - **Complete Link System Database Schema**: Removed links table creation from `database.js`

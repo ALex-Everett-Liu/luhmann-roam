@@ -1,7 +1,8 @@
 // nodeRoutes.js - Routes for node operations
 const express = require('express');
 const nodeController = require('../controllers/nodeController');
-const linkController = require('../controllers/linkController');
+// Link system removed - pure node operations sufficient
+// const linkController = require('../controllers/linkController');
 const attributeController = require('../controllers/attributeController');
 
 const router = express.Router();
@@ -44,9 +45,6 @@ router.post('/reorder/shift', nodeController.shiftNodePositions);
 
 // Toggle node expansion
 router.post('/:id/toggle', nodeController.toggleNode);
-
-// Get links for a node
-router.get('/:id/links', linkController.getNodeLinks);
 
 // Get attributes for a node
 router.get('/:id/attributes', attributeController.getNodeAttributes);
