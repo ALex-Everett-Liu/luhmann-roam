@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.9] - 2025-11-17
+
+### Removed
+- **Complete Node Size Management System**: Deleted `nodeSizeManager.js` and `nodeSizeManager.js` (~1000 lines)
+- **Node Size Highlighting**: Removed `nodeSizeHighlightManager.js` and related CSS styling (~800 lines)
+- **Size Adjustment UI**: Eliminated size buttons (⚙️) from node actions
+- **Size Highlight Commands**: Removed palette commands for node size adjustment
+- **Complex Styling**: Deleted background styling, size indicators, and highlight animations
+
+### Changed
+- **Simplified Node Actions**: Removed size adjustment button from node creation
+- **Streamlined Command Palette**: Reduced command set by removing size-related commands
+- **Cleaner UI**: Eliminated size indicators and highlight effects from node interface
+- **Reduced Complexity**: Simplified breadcrumb manager and command palette logic
+
+### Affected Components
+- `public/js/app.js` - Removed size button creation and size highlight toggle
+- `public/js/breadcrumbManager.js` - Simplified refresh logic by removing size highlight calls
+- `public/js/commandPaletteManager.js` - Removed "Adjust Node Size" command
+- `public/index.html` - Removed node size script imports
+- `public/css/index.css` - Eliminated size manager and highlight CSS imports
+
+### Retained Functionality
+- **Basic Node Operations**: All core node manipulation preserved (create, move, edit, delete)
+- **Keyboard Navigation**: Tab/Enter/Alt+key shortcuts remain intact
+- **Core Features**: Links, bookmarks, attributes, and other essential features kept
+- **Theme System**: Basic light/dark theme toggle functionality maintained
+
+### Benefits
+- **Code Reduction**: Eliminated ~1800 lines of node size management code
+- **Performance Gain**: Removed complex DOM manipulation and highlighting computations
+- **Simplified Interaction**: Pure keyboard operation without visual size cues
+- **Lower Cognitive Load**: Users focus on content rather than styling options
+- **Faster Load**: Smaller bundle size reduces initial loading time
+
 ## [0.31.8] - 2025-11-17
 
 ### Changed

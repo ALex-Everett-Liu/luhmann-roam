@@ -122,13 +122,6 @@ const BreadcrumbManager = (function() {
         // Drag & Drop functionality removed - keyboard-focused operation only
 
         console.log('Focus view created with complete node element');
-        
-        // Refresh size highlights if enabled
-        if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-          setTimeout(() => {
-            NodeSizeHighlightManager.refreshHighlights();
-          }, 100);
-        }
       } else {
         console.error('window.createNodeElement not available - fallback to simple view');
         // Fallback to simpler node creation (should not happen in normal cases)
@@ -444,24 +437,12 @@ const BreadcrumbManager = (function() {
 
       console.log('Restored original content');
       
-      // Refresh size highlights if enabled
-      if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-        setTimeout(() => {
-          NodeSizeHighlightManager.refreshHighlights();
-        }, 100);
-      }
+      // Node size highlighting removed for simplification
     } else {
       // If original content wasn't saved, refresh nodes
       if (window.fetchNodes) {
         window.fetchNodes();
         console.log('Refreshing nodes from server');
-        
-        // Refresh size highlights if enabled after nodes are refreshed
-        if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-          setTimeout(() => {
-            NodeSizeHighlightManager.refreshHighlights();
-          }, 200);
-        }
       }
     }
     

@@ -206,13 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Drag & Drop functionality removed - keyboard-focused operation only
 
-    // Refresh size highlights if enabled
-    if (
-      window.NodeSizeHighlightManager &&
-      window.NodeSizeHighlightManager.getEnabled()
-    ) {
-      NodeSizeHighlightManager.refreshHighlights();
-    }
+    // Removed node size highlighting functionality for simplification
 
     // Try to restore scroll position
     setTimeout(() => {
@@ -555,20 +549,6 @@ document.addEventListener("DOMContentLoaded", () => {
       addSiblingNode(node.id, "after"),
     );
     nodeActions.appendChild(addSiblingAfterButton);
-
-    // Size button
-    const sizeButton = document.createElement("button");
-    sizeButton.className = "size-button";
-    sizeButton.innerHTML = "⚙️";
-    sizeButton.title = "Adjust node size in grid view";
-    sizeButton.addEventListener("click", () => {
-      if (window.NodeSizeManager) {
-        NodeSizeManager.openNodeSizeModal(node.id);
-      } else {
-        console.error("NodeSizeManager not available");
-      }
-    });
-    nodeActions.appendChild(sizeButton);
 
     const addButton = document.createElement("button");
     addButton.innerHTML = "+";
@@ -1516,58 +1496,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Setting up SettingsManager initialization from app.js");
     SettingsManager.initialize();
   }
-
-  // Initialize the NodeSizeHighlightManager (remove duplicate initialization)
-  // The manager initializes itself, so we don't need to do it here
-  // Just check if it exists
-  if (window.NodeSizeHighlightManager) {
-    console.log("NodeSizeHighlightManager is available");
-  } else {
-    console.error("NodeSizeHighlightManager not found on window object");
-  }
-
-  // Add a toggle button for the node size highlight feature
-  const toggleSizeHighlightButton = document.createElement("button");
-  toggleSizeHighlightButton.id = "toggle-size-highlight";
-  toggleSizeHighlightButton.className = "feature-toggle";
-  toggleSizeHighlightButton.textContent = "Enable Size Highlights";
-  toggleSizeHighlightButton.title =
-    "Highlight nodes with the largest size in their family group";
-
-  toggleSizeHighlightButton.addEventListener("click", function () {
-    console.log("Size Highlight button clicked");
-    if (window.NodeSizeHighlightManager) {
-      NodeSizeHighlightManager.toggle();
-
-      // Update button text
-      const isEnabled = NodeSizeHighlightManager.getEnabled();
-      toggleSizeHighlightButton.textContent = isEnabled
-        ? "Disable Size Highlights"
-        : "Enable Size Highlights";
-
-      // Show notification
-      const notification = document.createElement("div");
-      notification.className = "size-highlight-notification";
-      notification.textContent = isEnabled
-        ? "Size highlights enabled!"
-        : "Size highlights disabled.";
-
-      document.body.appendChild(notification);
-
-      // Remove notification after 3 seconds
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 3000);
-    } else {
-      console.error("NodeSizeHighlightManager not available");
-    }
-  });
-
-  console.log("About to add Size Highlight button to sidebar");
-  addButtonToSidebar(toggleSizeHighlightButton);
-  console.log("Size Highlight button added to sidebar");
 
   // Initialize PluginManager first
   if (window.PluginManager) {

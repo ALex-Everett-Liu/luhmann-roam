@@ -1094,30 +1094,7 @@ const CommandPaletteManager = (function () {
       ],
     });
 
-    // Add node size adjustment command
-    registerCommand({
-      name: "Adjust Node Size (Current Node)",
-      action: () => {
-        const nodeId = getCurrentFocusedNodeId();
-        if (nodeId && window.NodeSizeManager) {
-          window.NodeSizeManager.openNodeSizeModal(nodeId);
-        } else if (!nodeId) {
-          alert("No node is currently focused. Please click on a node first.");
-        } else {
-          alert("Node Size Manager not available");
-        }
-      },
-      category: "Nodes",
-      keywords: [
-        "size",
-        "adjust",
-        "resize",
-        "node",
-        "current",
-        "scale",
-        "dimension",
-      ],
-    });
+    // Node size commands removed for simplification
 
     // Add Bookmark commands if BookmarkManager exists
     if (window.BookmarkManager) {
