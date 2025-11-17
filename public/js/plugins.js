@@ -38,6 +38,8 @@ const PluginSystem = (function() {
    * Register a plugin
    */
   function register(config) {
+    console.log('PluginSystem: Attempting to register plugin:', config.id, config.name);
+
     if (!config.id || !config.name) {
       console.error('Plugin must have id and name');
       return false;
@@ -62,7 +64,7 @@ const PluginSystem = (function() {
     pluginConfig.enabled = savedState !== null ? savedState === 'true' : pluginConfig.defaultEnabled;
 
     plugins.set(config.id, pluginConfig);
-    console.log(`Plugin '${config.name}' registered`);
+    console.log(`Plugin '${config.name}' registered with state: ${pluginConfig.enabled ? 'enabled' : 'disabled'}`);
 
     return true;
   }
@@ -238,8 +240,11 @@ The new plugin system allows:
   }
 
   function initializeEnabledPlugins() {
+    console.log('PluginSystem: Initializing enabled plugins, total in registry:', plugins.size);
+
     plugins.forEach((plugin, id) => {
       if (plugin.enabled && plugin.init) {
+        console.log(`PluginSystem: Initializing plugin ${id} (enabled: ${plugin.enabled})`);
         try {
           plugin.init();
         } catch (error) {
@@ -251,15 +256,29 @@ The new plugin system allows:
   }
 
   /**
-   * Plugin settings UI
+   * Plugin settings UI - FIXED VERSION
    */
   function createPluginSection(container) {
+    console.log('PluginSystem: Creating plugin section, total plugins:', plugins.size);
+
     const section = document.createElement('div');
     section.className = 'plugin-settings-section';
 
     const header = document.createElement('h3');
     header.textContent = 'Plugins';
     section.appendChild(header);
+
+    // If no plugins, show helpful message
+    if (plugins.size === 0) {
+      section.innerHTML = `
+        <div class="plugin-system-status">
+          <p><strong>No plugins available</strong></p>
+          <p>Create a plugin by calling PluginSystem.register() with a plugin configuration object.</p>
+        </div>
+      `;
+      container.appendChild(section);
+      return section;
+    }
 
     // Group by category
     const categories = new Map();
@@ -271,6 +290,8 @@ The new plugin system allows:
       categories.get(category).push({ id, ...plugin });
     });
 
+    console.log('PluginSystem: Found categories:', Array.from(categories.keys()));
+
     // Create category sections
     categories.forEach((plugins, category) => {
       const categoryDiv = document.createElement('div');
@@ -281,6 +302,7 @@ The new plugin system allows:
       categoryDiv.appendChild(categoryHeader);
 
       plugins.forEach(plugin => {
+        console.log('PluginSystem: Creating item for:', plugin.name);
         const pluginItem = createPluginItem(plugin);
         categoryDiv.appendChild(pluginItem);
       });
@@ -289,6 +311,7 @@ The new plugin system allows:
     });
 
     container.appendChild(section);
+    console.log('PluginSystem: Plugin section created and appended to container');
     return section;
   }
 

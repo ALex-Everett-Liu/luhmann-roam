@@ -20,7 +20,8 @@
       "Bash(echo \"✓ No major style references found\" echo echo \"3. File status check:\" if [ ! -f \"public/js/styleSettingsManager.js\" ])",
       "Bash(then echo \"✓ styleSettingsManager.js - DELETED\" else echo \"✗ styleSettingsManager.js - STILL PRESENT\" fi if [ ! -f \"public/css/features/style-settings.css\" ])",
       "Bash(then echo \"✓ style-settings.css - DELETED\" else echo \"✗ style-settings.css - STILL PRESENT\" fi echo echo \"4. Theme functionality verification:\" grep -q \"basic.*theme\\|dark.*theme\\|initializeBasicTheme\" public/js/app.js)",
-      "Bash(/dev/null)"
+      "Bash(/dev/null)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

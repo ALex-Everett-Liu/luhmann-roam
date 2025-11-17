@@ -639,11 +639,15 @@ const SettingsManager = (function () {
    * Render plugins section content
    */
   function renderPluginsSection(container) {
+    console.log('Setting Manager: Rendering plugins section');
+
     if (!window.PluginSystem) {
       container.innerHTML =
         '<div class="settings-error">PluginSystem not available</div>';
       return;
     }
+
+    console.log('Setting Manager: PluginSystem available, creating section');
 
     // Show plugin system info
     const infoSection = document.createElement('div');
@@ -655,7 +659,8 @@ const SettingsManager = (function () {
     container.appendChild(infoSection);
 
     // Use PluginSystem to create plugin section
-    PluginSystem.createPluginSection(container);
+    const pluginSection = PluginSystem.createPluginSection(container);
+    console.log('Setting Manager: Created plugin section:', pluginSection);
   }
 
   /**
