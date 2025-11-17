@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.3] - 2025-11-17
+
+### Removed
+- **Complete Link Management System**: Deleted `linkManager.js`, `linkController.js`, `linkRoutes.js`, and `link-manager.css`
+- **Link APIs**: Removed `/api/links` GET, POST, PUT, DELETE endpoints
+- **Link Web UI**: Eliminated link `🔗` button from node actions
+- **Link Modal Features**: Removed link creation, editing, search functionality with modals
+- **Link Count Display**: Removed link count indicators from node content display
+- **Bidirectional Links**: Eliminated connection between nodes with weights and descriptions
+
+### Rationale
+- **Core Functionality Sufficiency**: Pure node operations comprehensively satisfy user needs
+- **Complexity Elimination**: Link management introduced unnecessary UX complexity
+- **Workflow Focus**: Outliner experience refined to core node hierarchy operations
+- **Interface Cleanup**: Removed visual clutter with 🔗 buttons and link count indicators
+
+### Affected Components
+- `server.js` - Removed link routes and API endpoint registration
+- `public/js/app.js` - Eliminated link button creation and node action
+- `public/index.html` - Removed linkManager.js script references
+- `public/css/index.css` - Removed link-manager CSS styling imports
+
+### Technical Changes
+- **API Layer**: Cleaned up URL paths `/api/links/*` endpoints
+- **Frontend UI**: Streamlined node action button set
+- **Code Reduction**: Removed ~675 lines across JavaScript/CSS/Server files
+- **Bundle Size**: Reduced client-side dependencies and startup complexity
+
+### Retained Functionality
+- **Core Outliner Operations**: Node creation, editing, moving, hierarchical organization preserved
+- **Database Integrity**: Underlying nodes and foreign key relationships maintained
+- **API Stability**: `/api/nodes/*` endpoints remain fully functional
+- **User Workflow**: Pure node-based information architecture intact
+
+### Benefits
+- **Code Reduction**: Eliminated ~675 lines of link management complexity
+- **Performance Gain**: Faster UI initialization without link components
+- **UX Simplification**: Cleaner node interface without 🔗 buttons
+- **Architecture Focus**: Streamlined to core outliner functionality
+
 ## [0.32.2] - 2025-11-17
 
 ### Removed

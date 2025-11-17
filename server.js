@@ -14,7 +14,6 @@ const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
 const sanitizeHtml = require("sanitize-html");
-const linkRoutes = require("./routes/linkRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
@@ -587,25 +586,6 @@ app.get("/api/debug/node/:id", async (req, res) => {
   }
 });
 
-// Get a specific link by ID
-app.get("/api/links/:id", async (req, res) => {
-  try {
-    const db = await getDb();
-    const link = await db.get(
-      "SELECT * FROM links WHERE id = ?",
-      req.params.id,
-    );
-
-    if (!link) {
-      return res.status(404).json({ error: "Link not found" });
-    }
-
-    res.json(link);
-  } catch (error) {
-    console.error("Error getting link:", error);
-    res.status(500).json({ error: "Database error" });
-  }
-});
 
 // Add these routes if not already present (similar to what you have)
 app.use("/css", express.static(path.join(__dirname, "public", "css")));
@@ -653,9 +633,6 @@ app.post("/api/backup", async (req, res) => {
     });
   }
 });
-
-// Use the routes
-app.use("/api/links", linkRoutes);
 
 // Use the attribute routes
 app.use("/api/node-attributes", attributeRoutes);

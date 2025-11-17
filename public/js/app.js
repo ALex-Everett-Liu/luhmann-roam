@@ -510,13 +510,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     nodeActions.appendChild(timestampButton);
 
-    // Link button
-    const linkButton = document.createElement("button");
-    linkButton.className = "link-button";
-    linkButton.innerHTML = "🔗";
-    linkButton.title = "Manage links";
-    linkButton.addEventListener("click", () => LinkManager.openModal(node.id));
-    nodeActions.appendChild(linkButton);
+    // Link button removed - pure node operations sufficient
 
     // Move node button
     const moveNodeButton = document.createElement("button");

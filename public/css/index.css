@@ -12,7 +12,7 @@
 /* @import './components/forms.css'; */
 
 /* Feature-Specific Styles */
-@import "./features/link-manager.css";
+/* Link Manager removed - pure node operations sufficient */
 @import "./features/search-filter.css";
 @import "./features/position-manager.css";
 @import "./features/breadcrumbs.css";
