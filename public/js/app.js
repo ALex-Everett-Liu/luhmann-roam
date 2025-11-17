@@ -896,9 +896,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add to sidebar using helper function
   addButtonToSidebar(clearDefaultFocusButton);
 
-  // Initialize the SearchManager
-  SearchManager.initialize();
-
   // Initialize the BookmarkManager
   if (window.BookmarkManager) {
     console.log("Setting up BookmarkManager initialization from app.js");
@@ -941,19 +938,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize basic theme functionality
   initializeBasicTheme();
 
-  // Initialize the HotkeyManager
-  if (window.HotkeyManager) {
-    HotkeyManager.initialize();
-  }
-
   // Initialize the PersistentTooltipManager
   if (window.PersistentTooltipManager) {
     PersistentTooltipManager.initialize();
-  }
-
-  // Add this to the initialization code
-  if (window.CommandPaletteManager) {
-    CommandPaletteManager.initialize();
   }
 
   // Make fetchNodes available globally for the SearchManager

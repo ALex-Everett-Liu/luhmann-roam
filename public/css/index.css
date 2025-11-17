@@ -13,7 +13,6 @@
 
 /* Feature-Specific Styles */
 /* Link Manager removed - pure node operations sufficient */
-@import "./features/search-filter.css";
 @import "./features/position-manager.css";
 @import "./features/breadcrumbs.css";
 @import "./features/node.css";

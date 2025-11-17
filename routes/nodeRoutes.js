@@ -10,7 +10,6 @@ const router = express.Router();
 console.log("Setting up node routes...");
 
 // Add this BEFORE routes with :id params
-router.get("/search", nodeController.searchNodes);
 router.get("/exists", (req, res, next) => {
   console.log("EXISTS route hit!");
   nodeController.checkNodesExist(req, res, next);

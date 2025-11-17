@@ -261,21 +261,6 @@ const PositionManager = (function () {
     const modalBody = document.createElement("div");
     modalBody.className = "modal-body";
 
-    // Search container
-    const searchContainer = document.createElement("div");
-    searchContainer.className = "position-search-container";
-
-    const searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.className = "position-search-input";
-    searchInput.placeholder = "Type to search for a parent node...";
-
-    const searchResults = document.createElement("div");
-    searchResults.className = "position-search-results";
-
-    searchContainer.appendChild(searchInput);
-    searchContainer.appendChild(searchResults);
-
     // Hidden input to store the selected node ID
     const selectedNodeInput = document.createElement("input");
     selectedNodeInput.type = "hidden";
@@ -285,53 +270,6 @@ const PositionManager = (function () {
     const selectedNodeDisplay = document.createElement("div");
     selectedNodeDisplay.className = "selected-node";
     selectedNodeDisplay.innerHTML = `<span class="no-selection">No parent node selected (will become a root node)</span>`;
-
-    // Add search functionality
-    searchInput.addEventListener(
-      "input",
-      debounce(async (e) => {
-        const query = e.target.value.trim();
-        if (query.length < 2) {
-          searchResults.innerHTML = "";
-          return;
-        }
-
-        try {
-          const response = await fetch(
-            `/api/nodes/search?q=${encodeURIComponent(query)}&excludeId=${nodeId}`,
-          );
-          const results = await response.json();
-
-          searchResults.innerHTML = "";
-
-          if (results.length === 0) {
-            searchResults.innerHTML = `<div class="position-no-results">No matching nodes found</div>`;
-            return;
-          }
-
-          results.forEach((node) => {
-            const resultItem = document.createElement("div");
-            resultItem.className = "position-search-result-item";
-            resultItem.dataset.id = node.id;
-
-            resultItem.textContent = node.content;
-
-            resultItem.addEventListener("click", () => {
-              // Set the selected node
-              selectedNodeInput.value = node.id;
-              selectedNodeDisplay.innerHTML = `<div class="selected-node-content">${node.content}</div>`;
-              searchResults.innerHTML = "";
-              searchInput.value = "";
-            });
-
-            searchResults.appendChild(resultItem);
-          });
-        } catch (error) {
-          console.error("Error searching nodes:", error);
-          searchResults.innerHTML = `<div class="position-search-error">Error searching nodes</div>`;
-        }
-      }, 300),
-    );
 
     // Position selection
     const positionLabel = document.createElement("label");
@@ -363,11 +301,6 @@ const PositionManager = (function () {
     makeRootButton.addEventListener("click", () => {
       moveNodeToParent(nodeId, null, parseInt(positionInput.value, 10));
     });
-
-    const searchLabel = document.createElement("label");
-    searchLabel.textContent = "Search for a parent node:";
-    modalBody.appendChild(searchLabel);
-    modalBody.appendChild(searchContainer);
 
     const selectedLabel = document.createElement("label");
     selectedLabel.textContent = "Selected parent:";
