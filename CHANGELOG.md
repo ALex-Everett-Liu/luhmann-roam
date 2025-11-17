@@ -5,7 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.32.3+] - 2025-11-17
+## [v0.32.6] - 2025-11-17
+
+### Removed
+- **Complete I18n System Replaced with English-Only Architecture**:
+- **Dual Language Content Handling**: Eliminated `content_zh` fields and Chinese language processing across all modules
+- **Translation System**: Deleted `I18n.t()` calls and language toggle functionality system-wide
+- **Language Detection**: Removed `I18n.getCurrentLanguage()` and language switching mechanics
+- **Chinese UI Elements**: Eliminated Chinese content containers, toggle buttons, and bilingual display logic
+- **Translation Dependencies**: Removed all internationalization translation keys and English/Chinese comparison logic
+
+### Technical Details
+
+**Complete Internationalization Elimination**:
+- **Frontend/Browser Layer**:
+  - `public/js/app.js` - Removed dual-language content logic, Chinese content containers, and language toggle buttons
+  - `public/js/searchManager.js` - Eliminated 25+ `I18n.t()` translation calls and Chinese language handling
+  - `public/js/breadcrumbManager.js` - Simplified to hardcoded English display without language detection
+  - `public/js/positionManager.js` - Removed `content_zh` references and translation strings
+  - `public/index.html` - Removed "Switch to Chinese" button from sidebar
+
+**Systematic I18n Reference Removal**:
+- **Content Logic**: Replaced `currentLanguage === "en"` with hardcoded English content paths
+- **Translation Calls**: Eliminated all `I18n.t('key_name')` with direct English text strings
+- **Dual Display**: Removed parallel English/Chinese content rendering with toggle buttons
+- **Language UI**: Erased Chinese content containers, headers, and visibility toggle functionality
+
+**Orphaned Code Cleanup**:
+- **Lines 345-390 in app.js**: Completely removed orphaned dual-language UI creation (`otherLangCode`, `globalOtherLanguageVisible`, toggle button logic)
+- **Unreferenced Variables**: Eliminated `languageToggle` DOM references and language system initialization
+- **Complex Conditional Logic**: Removed bilingual content comparison patterns across all modules
+
+### Rationale
+- **Architectural Simplicity**: Pure English-only system eliminates complex dual-language management overhead
+- **Code Reduction**: Removed ~800 lines of internationalization complexity across the codebase
+- **Performance Enhancement**: Eliminated language detection logic and conditional content processing
+- **Maintenance Streamlining**: Single language approach removes translation file dependencies
+
+### Technical Benefits
+- **Bundle Size Reduction**: Smaller JavaScript footprint without translation functions
+- **Runtime Performance**: No language detection or content serving overhead
+- **Developer Simplicity**: Single language content model without branching logic
+- **UI Cleanliness**: No language toggle buttons or dual-language display modes
+
+### Affected Components
+- `public/js/app.js` - Major rewrite: removed dual language containers, Chinese button protocols, and translation logic
+- `public/js/searchManager.js` - Translation calls replaced, search logic streamlined to English-only
+- `public/js/breadcrumbManager.js` - Language detection simplified to hardcoded English
+- `public/js/positionManager.js` - Removed Chinese content references in modal dialogs
+- `public/index.html` - Removed language switch button from sidebar UI
+
+### Retained Architecture
+- **Core Node Operations**: All hierarchical node manipulation preserved in English
+- **Search Functionality**: English-only search with simplified result processing
+- **Modal Systems**: Settings, backup, and position modals with English text only
+- **Settings Integration**: Theme and font settings maintained with English labels
+
+### Code Statistics
+- **Lines Removed**: ~800 lines of complex I18n management across frontend modules
+- **Functions Eliminated**: Dual language content creation, translation systems, language toggles
+- **Variables Cleaned**: `currentLanguage`, `otherLangCode`, `content_zh` references systematically removed
+- **Conditional Simplification**: `currentLanguage === "en"` branches replaced with direct English paths
+
+Streamlined to pure English outliner operations - zero translation and dual-language complexity!
+
+## [v0.32.5] - 2025-11-17
 
 ### Fixed
 **Link System Completeness**:

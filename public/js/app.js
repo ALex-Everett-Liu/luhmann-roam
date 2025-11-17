@@ -342,51 +342,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // English only - no other language content
 
-      // Add a small header to indicate what language this is
-      const languageHeader = document.createElement("div");
-      languageHeader.style.fontSize = "0.8em";
-      languageHeader.style.color = "#888";
-      languageHeader.style.marginBottom = "4px";
-      languageHeader.style.fontWeight = "bold";
-      languageHeader.textContent =
-        otherLangCode === "zh" ? "中文内容:" : "English Content:";
-
-      otherLanguageContainer.appendChild(languageHeader);
-      otherLanguageContainer.appendChild(otherLanguageText);
-
-      // Toggle functionality
-      toggleOtherLangButton.addEventListener("click", (e) => {
-        e.stopPropagation(); // Prevent event bubbling
-        const isVisible = otherLanguageContainer.style.display !== "none";
-
-        if (isVisible) {
-          otherLanguageContainer.style.display = "none";
-          toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
-          toggleOtherLangButton.style.backgroundColor = "#f0f0f0";
-        } else {
-          otherLanguageContainer.style.display = "block";
-          toggleOtherLangButton.innerHTML = `🙈 ${otherLangCode.toUpperCase()}`;
-          toggleOtherLangButton.style.backgroundColor = "#e8f0fe";
-        }
-      });
-
-      // Set initial state based on global preference
-      if (globalOtherLanguageVisible) {
-        otherLanguageContainer.style.display = "block";
-        toggleOtherLangButton.innerHTML = `🙈 ${otherLangCode.toUpperCase()}`;
-        toggleOtherLangButton.style.backgroundColor = "#e8f0fe";
-      } else {
-        otherLanguageContainer.style.display = "none";
-        toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
-        toggleOtherLangButton.style.backgroundColor = "#f0f0f0";
-      }
-
-      // Add the toggle button to the node actions area (we'll add it later)
-      // Store reference for later use
-      nodeContent._toggleOtherLangButton = toggleOtherLangButton;
-      nodeContent._otherLanguageContainer = otherLanguageContainer;
-    }
-
     // Node actions
     const nodeActions = document.createElement("div");
     nodeActions.className = "node-actions";
