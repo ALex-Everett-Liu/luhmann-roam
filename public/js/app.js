@@ -816,83 +816,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Add this function to set up the resizable sidebar
-  function setupResizableSidebar() {
-    const appContainer = document.querySelector(".app-container"); // selecting the main application container; public/css/core/layout.css
-    const sidebar = document.querySelector(".sidebar");
-    const content = document.querySelector(".content");
-
-    // Create the resize handle with a visible grip
-    const resizeHandle = document.createElement("div");
-    resizeHandle.className = "resize-handle";
-    resizeHandle.innerHTML = '<div class="resize-grip"></div>'; // users can click and drag to resize the sidebar
-
-    // Insert the handle into the DOM between sidebar and content area
-    appContainer.insertBefore(resizeHandle, content);
-
-    // Get the initial sidebar width from localStorage or use default
-    const savedWidth = localStorage.getItem("sidebarWidth");
-    if (savedWidth) {
-      sidebar.style.width = savedWidth + "px";
-      // Also update the handle position
-      resizeHandle.style.left = `${parseInt(savedWidth)}px`;
-    }
-
-    // Variables for tracking resize state
-    let isResizing = false;
-
-    // Mouse down event on the resize handle
-    resizeHandle.addEventListener("mousedown", (e) => {
-      isResizing = true;
-
-      // Add a class to the body during resize to prevent text selection
-      document.body.classList.add("resizing");
-
-      // Prevent text selection during resize
-      e.preventDefault();
-    });
-
-    // Mouse move event for resizing
-    document.addEventListener("mousemove", (e) => {
-      if (!isResizing) return;
-
-      // Calculate new width based on mouse position
-      const newWidth = Math.max(
-        200,
-        Math.min(e.clientX, window.innerWidth * 0.8),
-      );
-
-      // Update sidebar width
-      sidebar.style.width = `${newWidth}px`;
-
-      // Update handle position
-      resizeHandle.style.left = `${newWidth}px`;
-
-      // Save the width to localStorage
-      localStorage.setItem("sidebarWidth", newWidth);
-    });
-
-    // Mouse up event to stop resizing
-    document.addEventListener("mouseup", () => {
-      if (isResizing) {
-        isResizing = false;
-        document.body.classList.remove("resizing");
-      }
-    });
-
-    // Handle window resize
-    window.addEventListener("resize", () => {
-      // Make sure sidebar doesn't exceed max width when window is resized
-      const currentWidth = parseInt(getComputedStyle(sidebar).width);
-      const maxWidth = window.innerWidth * 0.8;
-
-      if (currentWidth > maxWidth) {
-        sidebar.style.width = maxWidth + "px";
-        resizeHandle.style.left = `${maxWidth}px`;
-        localStorage.setItem("sidebarWidth", maxWidth);
-      }
-    });
-  }
+  // Resizable sidebar functionality removed - will be replaced with a better solution later
 
   // Event listeners
   addRootNodeButton.addEventListener("click", addRootNode);
@@ -911,8 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Call this function during initialization
   checkContainerSettings();
 
-  // Set up resizable sidebar
-  setupResizableSidebar();
+  // Resizable sidebar removed - will be replaced with a better solution later
 
   // Add clear default focus button (just once)
   const clearDefaultFocusButton = document.createElement("button");
