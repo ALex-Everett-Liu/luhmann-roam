@@ -34,12 +34,7 @@ const PluginAwareInitializer = (function () {
         enabled: true,
       },
 
-      // Plugin-dependent modules
-      dragDropManager: {
-        name: "Drag & Drop Manager",
-        initialize: initializeDragDropManager,
-        pluginId: "dragDropManager",
-      },
+      // Plugin-dependent modules (removed dragDropManager)
     };
 
     // Initialize each module if its plugin is enabled
@@ -94,87 +89,16 @@ const PluginAwareInitializer = (function () {
   }
 
   /**
-   * Initialize Drag & Drop Manager only if plugin is enabled
-   */
-  function initializeDragDropManager() {
-    if (window.DragDropManager && !window.DragDropManager.isInitialized) {
-      DragDropManager.initialize();
-      // Add sidebar button
-      addDragDropButton();
-    }
-  }
-
-  /**
-   * Helper functions to add sidebar buttons
-   */
-
-  function addDragDropButton() {
-    const toggleDragDropButton = document.createElement("button");
-    toggleDragDropButton.id = "toggle-drag-drop";
-    toggleDragDropButton.className = "feature-toggle";
-    toggleDragDropButton.textContent = DragDropManager.isEnabled()
-      ? "Disable Drag & Drop"
-      : "Enable Drag & Drop";
-    toggleDragDropButton.classList.toggle(
-      "active",
-      DragDropManager.isEnabled(),
-    );
-    toggleDragDropButton.title =
-      "Toggle drag and drop functionality (improves performance when disabled)";
-
-    toggleDragDropButton.addEventListener("click", () => {
-      if (
-        window.PluginManager &&
-        !PluginManager.isPluginEnabled("dragDropManager")
-      ) {
-        alert(
-          "Drag & Drop plugin is disabled. Please enable it in Settings > Plugins.",
-        );
-        return;
-      }
-      DragDropManager.toggle();
-      // Update button text
-      const isEnabled = DragDropManager.isEnabled();
-      toggleDragDropButton.textContent = isEnabled
-        ? "Disable Drag & Drop"
-        : "Enable Drag & Drop";
-      toggleDragDropButton.classList.toggle("active", isEnabled);
-    });
-
-    window.addButtonToSidebar(toggleDragDropButton);
-  }
-
-  /**
    * Handle plugin state changes (when user enables/disables plugins)
    */
   function handlePluginStateChange(pluginId, enabled) {
     console.log(`Plugin ${pluginId} ${enabled ? "enabled" : "disabled"}`);
 
-    if (enabled) {
-      // Initialize the module if it wasn't already
-      switch (pluginId) {
-        case "dragDropManager":
-          initializeDragDropManager();
-          break;
+    // Note: Drag & Drop functionality removed - keyboard-focused operation only
+    // All dragDropManager plugin references have been removed
 
-        default:
-          console.log(
-            `No specific initialization handler for plugin: ${pluginId}`,
-          );
-      }
-    } else {
-      // Handle plugin disable
-      switch (pluginId) {
-        case "dragDropManager":
-          if (window.DragDropManager) {
-            DragDropManager.disable();
-          }
-          break;
-
-        default:
-          console.log(`No specific cleanup handler for plugin: ${pluginId}`);
-      }
-    }
+    // Handle other plugin state changes here if needed
+    console.log(`No specific handler for plugin: ${pluginId}`);
   }
 
   // Public API

@@ -116,15 +116,7 @@ button:hover {
   z-index: 1;
 }
 
-.drag-handle {
-  cursor: move;
-  opacity: 0.3;
-  margin-right: 5px;
-}
-
-.drag-handle:hover {
-  opacity: 0.8;
-}
+/* Drag & Drop functionality removed - keyboard-focused operation only */
 
 /* Node actions tooltip - improved design */
 .node-actions {

@@ -255,11 +255,8 @@ const NodeExpansionManager = (function() {
             }
             
             nodeElement.appendChild(childrenContainer);
-            
-            // Setup drag and drop for the new nodes
-            if (window.DragDropManager) {
-              window.DragDropManager.setupDragAndDrop();
-            }
+
+            // Drag & Drop functionality removed - keyboard-focused operation only
           } else {
             // If createNodeElement is not available, we can't add children this way
             // Fall back to full refresh

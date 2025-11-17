@@ -118,12 +118,9 @@ const BreadcrumbManager = (function() {
       if (window.createNodeElement) {
         const nodeElement = await window.createNodeElement(focusedNode);
         outlinerContainer.appendChild(nodeElement);
-        
-        // Setup any additional event handlers or drag-drop functionality
-        if (window.DragDropManager) {
-          window.DragDropManager.setupDragAndDrop();
-        }
-        
+
+        // Drag & Drop functionality removed - keyboard-focused operation only
+
         console.log('Focus view created with complete node element');
         
         // Refresh size highlights if enabled
@@ -442,12 +439,9 @@ const BreadcrumbManager = (function() {
     if (outlinerContainer && outlinerContainer._originalContent) {
       outlinerContainer.innerHTML = outlinerContainer._originalContent;
       delete outlinerContainer._originalContent;
-      
-      // Reattach event handlers that might have been lost
-      if (window.DragDropManager) {
-        window.DragDropManager.setupDragAndDrop();
-      }
-      
+
+      // Drag & Drop functionality removed - keyboard-focused operation only
+
       console.log('Restored original content');
       
       // Refresh size highlights if enabled

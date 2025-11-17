@@ -64,12 +64,9 @@ const NodeOperationsManager = (function() {
           if (outlinerContainer) {
             const newNodeElement = await window.createNodeElement(newNode);
             outlinerContainer.appendChild(newNodeElement);
-            
-            // Setup drag and drop for the new node
-            if (window.DragDropManager) {
-              window.DragDropManager.setupDragAndDrop();
-            }
-            
+
+            // Drag & Drop functionality removed - keyboard-focused operation only
+
             return newNode;
           }
         }
@@ -153,16 +150,13 @@ const NodeOperationsManager = (function() {
             // Create the new node element and append it to the children container
             const newNodeElement = await window.createNodeElement(newNode);
             childrenContainer.appendChild(newNodeElement);
-            
-            // Setup drag and drop for the new node
-            if (window.DragDropManager) {
-              window.DragDropManager.setupDragAndDrop();
-            }
-            
+
+            // Drag & Drop functionality removed - keyboard-focused operation only
+
             return newNode;
           }
         }
-        
+
         // Fallback to full refresh if direct DOM manipulation isn't possible
         if (window.fetchNodes) {
           await window.fetchNodes(true);
@@ -541,12 +535,9 @@ const NodeOperationsManager = (function() {
         
         // Add the node to the end of the children container
         childrenContainer.appendChild(nodeElement);
-        
-        // Setup drag and drop for the moved node
-        if (window.DragDropManager) {
-          window.DragDropManager.setupDragAndDrop();
-        }
-        
+
+        // Drag & Drop functionality removed - keyboard-focused operation only
+
         return true;
       } catch (error) {
         console.error('Error in performIndentDOMManipulation:', error);
@@ -613,11 +604,9 @@ const NodeOperationsManager = (function() {
           }
         }
         
-        // Setup drag and drop for the moved node
-        if (window.DragDropManager) {
-          window.DragDropManager.setupDragAndDrop();
-        }
-        
+        // Drag & Drop functionality removed - keyboard-focused operation only
+
+
         return true;
       } catch (error) {
         console.error('Error in performOutdentDOMManipulation:', error);
@@ -871,11 +860,8 @@ const NodeOperationsManager = (function() {
             }
             
             nodeElement.appendChild(childrenContainer);
-            
-            // Setup drag and drop for the refreshed nodes
-            if (window.DragDropManager) {
-              window.DragDropManager.setupDragAndDrop();
-            }
+
+            // Drag & Drop functionality removed - keyboard-focused operation only
           }
         } else {
           // No children, make sure we show a bullet instead of collapse icon

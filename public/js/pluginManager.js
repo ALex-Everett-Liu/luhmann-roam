@@ -66,13 +66,7 @@
 
     // Register all built-in plugins
     registerBuiltInPlugins: function () {
-      // Register DragDropManager
-      this.registerPlugin("dragDropManager", {
-        name: "Drag & Drop",
-        description: "Allows dragging and dropping nodes to reorganize them",
-        defaultEnabled: true,
-        category: "interaction",
-      });
+      // Drag & Drop functionality removed - keyboard-focused operation only
 
       // Register NodeGridVisualizer
       this.registerPlugin("nodeGridVisualizerManager", {

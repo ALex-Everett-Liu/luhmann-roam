@@ -164,14 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       outlinerContainer.appendChild(nodeElement);
     }
 
-    // Use DragDropManager instead of local function - ONLY if plugin is enabled
-    if (
-      window.DragDropManager &&
-      window.PluginManager &&
-      PluginManager.isPluginEnabled("dragDropManager")
-    ) {
-      DragDropManager.setupDragAndDrop();
-    }
+    // Drag & Drop functionality removed - keyboard-focused operation only
 
     // Refresh size highlights if enabled
     if (
@@ -223,13 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const nodeContent = document.createElement("div");
     nodeContent.className = "node-content";
 
-    // Drag handle
-    const dragHandle = document.createElement("span");
-    dragHandle.className = "drag-handle";
-    dragHandle.innerHTML = "⋮⋮";
-    dragHandle.draggable = true;
-    dragHandle.dataset.id = node.id;
-    nodeContent.appendChild(dragHandle);
+    // Drag handle removed - keyboard-focused operation only
 
     // Collapse/expand button
     const children = await fetchChildren(node.id);
