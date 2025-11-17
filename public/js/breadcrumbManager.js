@@ -446,10 +446,7 @@ const BreadcrumbManager = (function() {
       }
     }
     
-    // Reapply any filters if the FilterManager is active
-    if (window.FilterManager) {
-      window.FilterManager.applyFilters();
-    }
+    // No filters to reapply - FilterManager removed
   }
   
   /**

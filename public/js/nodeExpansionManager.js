@@ -128,10 +128,7 @@ const NodeExpansionManager = (function() {
             }, 10);
           }
           
-          // Reapply filters after the nodes are updated
-          if (window.FilterManager) {
-            FilterManager.applyFilters();
-          }
+          // No filters to reapply - FilterManager removed
           
           return true;
         }

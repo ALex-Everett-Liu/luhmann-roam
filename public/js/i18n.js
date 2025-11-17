@@ -694,10 +694,7 @@ const I18n = (function() {
       SearchManager.updateLanguage(currentLanguage);
     }
     
-    if (window.FilterManager && FilterManager.updateLanguage) {
-      FilterManager.updateLanguage(currentLanguage);
-    }
-    
+    // No FilterManager to update language - removed
     if (window.PositionManager && PositionManager.updateLanguage) {
       PositionManager.updateLanguage(currentLanguage);
     }
@@ -760,9 +757,7 @@ const I18n = (function() {
         // Execute all refreshes and restore scroll position when done
         Promise.all(refreshPromises).then(() => {
           // Apply filters if they exist
-          if (window.FilterManager) {
-            window.FilterManager.applyFilters();
-          }
+          // No filters to reapply - FilterManager removed
           
           // Restore scroll position
           setTimeout(() => {
