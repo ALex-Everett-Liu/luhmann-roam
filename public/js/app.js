@@ -1307,15 +1307,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Make fetchChildren available globally for the NodeGridVisualizer
   window.fetchChildren = fetchChildren;
 
-  // Initialize the Font Manager
-  if (window.FontManager) {
-    FontManager.initialize();
-  }
-
   // Initialize the TaskStatisticsManager
   if (window.TaskStatisticsManager) {
     console.log("Setting up TaskStatisticsManager initialization from app.js");
     TaskStatisticsManager.initialize();
+  }
+
+  // Initialize the Basic Font Settings
+  if (window.BasicFontSettings) {
+    BasicFontSettings.initialize();
   }
 
 

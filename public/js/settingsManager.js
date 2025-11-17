@@ -32,7 +32,7 @@ const SettingsManager = (function () {
     fonts: {
       title: "Fonts",
       icon: "🔤",
-      description: "Configure font families and typography",
+      description: "Basic font preferences",
     },
     attributes: {
       title: "Attributes",
@@ -135,7 +135,7 @@ const SettingsManager = (function () {
     }
 
     // Register fonts section
-    if (window.FontManager) {
+    if (window.BasicFontSettings) {
       registerSection("fonts", {
         title: sectionConfig.fonts.title,
         icon: sectionConfig.fonts.icon,
@@ -683,25 +683,6 @@ const SettingsManager = (function () {
   }
 
   /**
-   * Render fonts section content
-   */
-  function renderFontsSection(container) {
-    if (!window.FontManager) {
-      container.innerHTML =
-        '<div class="settings-error">FontManager not available</div>';
-      return;
-    }
-
-    // Use FontManager's renderFontSettings method
-    if (FontManager.renderFontSettings) {
-      FontManager.renderFontSettings(container);
-    } else {
-      container.innerHTML =
-        '<div class="settings-info">Font settings will be integrated here</div>';
-    }
-  }
-
-  /**
    * Save appearance settings
    */
   function saveAppearanceSettings() {
@@ -714,11 +695,29 @@ const SettingsManager = (function () {
   }
 
   /**
+   * Render fonts section content
+   */
+  function renderFontsSection(container) {
+    if (!window.BasicFontSettings) {
+      container.innerHTML =
+        '<div class="settings-error">Font settings not available</div>';
+      return;
+    }
+
+    // Use BasicFontSettings to render font settings
+    BasicFontSettings.renderFontSettings(container);
+  }
+
+  /**
    * Save font settings
    */
   function saveFontSettings() {
-    if (window.FontManager && FontManager.saveFontSettings) {
-      FontManager.saveFontSettings();
+    if (window.BasicFontSettings) {
+      // BasicFontSettings applies immediately when settings are changed
+      const applyButton = document.querySelector('#apply-font-settings');
+      if (applyButton) {
+        applyButton.click();
+      }
     }
   }
 

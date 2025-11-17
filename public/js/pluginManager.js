@@ -90,13 +90,6 @@
         category: "appearance",
       });
 
-      // Register FontManager
-      this.registerPlugin("fontManager", {
-        name: "Font Manager",
-        description: "Customizes fonts used in the app",
-        defaultEnabled: true,
-        category: "appearance",
-      });
 
       // Register BookmarkManager
       this.registerPlugin("bookmarkManager", {

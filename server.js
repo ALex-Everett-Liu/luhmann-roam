@@ -14,7 +14,6 @@ const nodeRoutes = require("./routes/nodeRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
-const fontRoutes = require("./routes/fontRoutes");
 const sanitizeHtml = require("sanitize-html");
 const linkRoutes = require("./routes/linkRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
@@ -755,7 +754,6 @@ app.post("/api/backup/:vault?", async (req, res) => {
 
 // Use the routes
 app.use("/api/links", linkRoutes);
-app.use("/api/fonts", fontRoutes);
 
 // Use the attribute routes
 app.use("/api/node-attributes", attributeRoutes);

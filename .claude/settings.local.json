@@ -8,7 +8,9 @@
       "Bash(sed:*)",
       "Bash(node:*)",
       "Bash(curl -s \"http://localhost:3003/api/nodes/search?q=test&lang=en&advanced=false\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
