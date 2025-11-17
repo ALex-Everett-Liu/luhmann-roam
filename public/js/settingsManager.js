@@ -1,6 +1,6 @@
 /**
  * Settings Manager Module
- * Central hub for managing all application settings including plugins, appearance, fonts, etc.
+ * Central hub for managing all application settings including appearance, fonts, etc.
  */
 const SettingsManager = (function () {
   // Private variables
@@ -18,11 +18,6 @@ const SettingsManager = (function () {
       title: "General",
       icon: "⚙️",
       description: "General application settings including language",
-    },
-    plugins: {
-      title: "Plugins",
-      icon: "🔌",
-      description: "Manage application features and plugins",
     },
     appearance: {
       title: "Appearance",
@@ -109,19 +104,6 @@ const SettingsManager = (function () {
       onSave: saveGeneralSettings,
     });
 
-    // Register plugins section
-    if (window.PluginManager) {
-      registerSection("plugins", {
-        title: sectionConfig.plugins.title,
-        icon: sectionConfig.plugins.icon,
-        description: sectionConfig.plugins.description,
-        render: renderPluginsSection,
-        onSave: () => {
-          // Plugin settings are saved automatically
-          console.log("Plugin settings saved");
-        },
-      });
-    }
 
     // Register basic appearance section
     registerSection("appearance", {
@@ -635,33 +617,6 @@ const SettingsManager = (function () {
     console.log("General settings saved");
   }
 
-  /**
-   * Render plugins section content
-   */
-  function renderPluginsSection(container) {
-    console.log('Setting Manager: Rendering plugins section');
-
-    if (!window.PluginSystem) {
-      container.innerHTML =
-        '<div class="settings-error">PluginSystem not available</div>';
-      return;
-    }
-
-    console.log('Setting Manager: PluginSystem available, creating section');
-
-    // Show plugin system info
-    const infoSection = document.createElement('div');
-    infoSection.className = 'plugin-info-section';
-    infoSection.innerHTML = `
-      <p><strong>Plugin System Active</strong></p>
-      <p>Manage optional features below. Selected plugins will be loaded on startup.</p>
-    `;
-    container.appendChild(infoSection);
-
-    // Use PluginSystem to create plugin section
-    const pluginSection = PluginSystem.createPluginSection(container);
-    console.log('Setting Manager: Created plugin section:', pluginSection);
-  }
 
   /**
    * Render basic appearance section content

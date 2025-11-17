@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="css/fonts/NotoSerifSC.css">
   <link rel="stylesheet" href="css/index.css">
   <link rel="stylesheet" href="css/settings-manager.css">
-  <link rel="stylesheet" href="css/plugin-dialog.css">
   <link rel="stylesheet" href="css/basic-font-settings.css">
 </head>
 <body>
@@ -24,10 +23,7 @@
     </div>
   </div>
 
-  <!-- Load plugin system early -->
-  <script src="js/plugins.js"></script>
-
-  <!-- Load settings manager (after plugin system) -->
+  <!-- Load settings manager -->
   <script src="js/settingsManager.js"></script>
 
   <!-- Then load other modules -->
@@ -42,13 +38,6 @@
   <script src="js/basicFontSettings.js"></script>
   <script src="js/backupManager.js"></script>
   <!-- Database Export/Import Manager removed - replaced by backup functionality -->
-
-  <!-- Plugin Management Dialog -->
-  <script src="js/plugin-dialog.js"></script>
-
-  <!-- Sample Plugin - Demonstrates extensibility -->
-  <script src="js/plugin-tutorialsample.js"></script>
-
 
   <!-- Add Cytoscape.js library and graph analysis -->
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>

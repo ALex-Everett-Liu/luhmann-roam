@@ -1049,6 +1049,4 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("Setting up SettingsManager initialization from app.js");
     SettingsManager.initialize();
   }
-
-  // PluginSystem initialization is handled by the system itself
 });

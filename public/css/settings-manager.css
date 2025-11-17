@@ -444,69 +444,6 @@
     }
   }
   
-  /* Plugin category styles */
-  .settings-modal .plugin-category {
-    margin-bottom: 24px;
-  }
-  
-  .settings-modal .plugin-category h3 {
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #4a5568;
-    text-transform: capitalize;
-  }
-  
-  .dark-theme .settings-modal .plugin-category h3 {
-    color: #e2e8f0;
-  }
-  
-  .settings-modal .plugin-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  
-  .dark-theme .settings-modal .plugin-item {
-    border-bottom-color: #4a5568;
-  }
-  
-  .settings-modal .plugin-item:last-child {
-    border-bottom: none;
-  }
-  
-  .settings-modal .plugin-info {
-    flex: 1;
-  }
-  
-  .settings-modal .plugin-name {
-    font-weight: 500;
-    color: #2d3748;
-    margin-bottom: 2px;
-  }
-  
-  .dark-theme .settings-modal .plugin-name {
-    color: #e2e8f0;
-  }
-  
-  .settings-modal .plugin-description {
-    font-size: 13px;
-    color: #718096;
-    line-height: 1.4;
-  }
-  
-  .dark-theme .settings-modal .plugin-description {
-    color: #a0aec0;
-  }
-  
-  .settings-modal .reload-required {
-    color: #d69e2e;
-    font-size: 11px;
-    font-weight: normal;
-  }
-  
   /* Toggle switch styles */
   .settings-modal .switch {
     position: relative;
