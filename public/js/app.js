@@ -66,14 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentModalNodeId = null;
   let lastFocusedNodeId = null; // Add this variable to track the currently focused node
   let isInitialLoading = true; // Flag to indicate initial loading
-  let globalOtherLanguageVisible = false; // Global state for other language visibility
 
   // Application functions
-  // Update language toggle button text
-  function updateLanguageToggle() {
-    const toggleButton = document.getElementById("language-toggle");
-    toggleButton.textContent = I18n.t("switchToLanguage");
-  }
+  // Language functionality removed - English only
 
   // Add this function to save the current focus as default
   function setDefaultFocusNode(nodeId) {
@@ -101,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           // Try to get the focused node and its children
           const focusNodeResponse = await fetch(
-            `/api/nodes/${defaultFocusNodeId}?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ""}`,
+            `/api/nodes/${defaultFocusNodeId}?lang=en${forceFresh ? `&_=${Date.now()}` : ""}`,
           );
 
           // Check if node exists
@@ -111,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             // Load all nodes instead
             const allNodesResponse = await fetch(
-              `/api/nodes?lang=${I18n.getCurrentLanguage()}${forceFresh ? `&_=${Date.now()}` : ""}`,
+              `/api/nodes?lang=en${forceFresh ? `&_=${Date.now()}` : ""}`,
             );
             nodes = await allNodesResponse.json();
             await renderOutliner();
@@ -145,12 +140,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Normal loading without focus
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : "";
-      const currentLanguage = I18n.getCurrentLanguage();
+      const currentLanguage = "en";
       console.log(
         `Fetching nodes with lang=${currentLanguage}${forceFresh ? " (forced fresh load)" : ""}`,
       );
       const response = await fetch(
-        `/api/nodes?lang=${currentLanguage}${cacheBuster}`,
+        `/api/nodes?lang=en${cacheBuster}`,
       );
       nodes = await response.json();
       await renderOutliner();
@@ -176,9 +171,8 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       // Add cache-busting parameter to prevent stale data
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : "";
-      const currentLanguage = I18n.getCurrentLanguage();
       const response = await fetch(
-        `/api/nodes/${nodeId}/children?lang=${currentLanguage}${cacheBuster}`,
+        `/api/nodes/${nodeId}/children?lang=en${cacheBuster}`,
       );
       return await response.json();
     } catch (error) {
@@ -230,12 +224,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 10);
   }
 
-  // Add this function to detect Chinese text
-  function hasChineseText(text) {
-    return /[\u4E00-\u9FFF]/.test(text);
-  }
-
-  // Modify your createNodeElement function to set the lang attribute correctly
+  // Modify your createNodeElement function to show content
   async function createNodeElement(node) {
     const nodeDiv = document.createElement("div");
     nodeDiv.className = "node";
@@ -267,18 +256,8 @@ document.addEventListener("DOMContentLoaded", () => {
     nodeText.className = "node-text";
     nodeText.contentEditable = true;
 
-    const currentLanguage = I18n.getCurrentLanguage();
-    let displayContent, otherLangContent, otherLangCode;
-
-    if (currentLanguage === "en") {
-      displayContent = node.content;
-      otherLangContent = node.content_zh;
-      otherLangCode = "zh";
-    } else {
-      displayContent = node.content_zh || node.content; // Fallback to EN if ZH is empty
-      otherLangContent = node.content;
-      otherLangCode = "en";
-    }
+    // English only - simplified
+    const displayContent = node.content;
 
     // Make sure displayContent is never undefined or null for the editable field
     nodeText.textContent = displayContent || ""; // Use empty string if null/undefined
@@ -287,13 +266,6 @@ document.addEventListener("DOMContentLoaded", () => {
     nodeText.style.whiteSpace = "pre-wrap";
     nodeText.style.wordWrap = "break-word";
     nodeText.style.overflowWrap = "break-word";
-
-    // Set language attribute for the editable field
-    if (currentLanguage === "zh" || hasChineseText(nodeText.textContent)) {
-      nodeText.setAttribute("lang", "zh");
-    } else {
-      nodeText.removeAttribute("lang");
-    }
 
     // ADD FOCUS TRACKING TO NODE TEXT
     nodeText.addEventListener("focus", function () {
@@ -382,21 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     nodeContent.appendChild(nodeText); // Add the editable text field
 
-    // Read-only view for the OTHER language (moved below and made toggleable)
-    if (otherLangContent) {
-      // Only show if there's content in the other language
-      // Create toggle button
-      const toggleOtherLangButton = document.createElement("button");
-      toggleOtherLangButton.className = "toggle-other-lang-button";
-      toggleOtherLangButton.innerHTML = `👁️ ${otherLangCode.toUpperCase()}`;
-      toggleOtherLangButton.title = `Toggle ${otherLangCode === "zh" ? "Chinese" : "English"} content`;
-      toggleOtherLangButton.style.fontSize = "11px";
-      toggleOtherLangButton.style.padding = "2px 6px";
-      toggleOtherLangButton.style.marginLeft = "8px";
-      toggleOtherLangButton.style.backgroundColor = "#f0f0f0";
-      toggleOtherLangButton.style.border = "1px solid #ccc";
-      toggleOtherLangButton.style.borderRadius = "3px";
-      toggleOtherLangButton.style.cursor = "pointer";
+    // English only - no other language content
 
       // Create the other language content container
       const otherLanguageContainer = document.createElement("div");
@@ -602,62 +560,10 @@ document.addEventListener("DOMContentLoaded", () => {
     nodeActions.appendChild(defaultFocusButton);
 
 
-    // Copy content buttons (only show if there's content to copy)
-    if (
-      node.content &&
-      node.content.trim() !== "" &&
-      node.content !== I18n.t("newNode")
-    ) {
-      const copyToChineseButton = document.createElement("button");
-      copyToChineseButton.className = "copy-content-button";
-      copyToChineseButton.innerHTML = "EN→中";
-      copyToChineseButton.title = "Copy English content to Chinese";
-      copyToChineseButton.style.fontSize = "10px";
-      copyToChineseButton.style.padding = "2px 4px";
-      copyToChineseButton.style.marginLeft = "3px";
-      copyToChineseButton.style.backgroundColor = "#e8f5e8";
-      copyToChineseButton.style.border = "1px solid #4CAF50";
-      copyToChineseButton.style.borderRadius = "3px";
-      copyToChineseButton.style.cursor = "pointer";
-      copyToChineseButton.style.color = "#2E7D32";
-      copyToChineseButton.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await copyContentBetweenLanguages(node.id, "en-to-zh");
-      });
-      nodeActions.appendChild(copyToChineseButton);
-    }
-
-    if (
-      node.content_zh &&
-      node.content_zh.trim() !== "" &&
-      node.content_zh !== I18n.t("newNode")
-    ) {
-      const copyToEnglishButton = document.createElement("button");
-      copyToEnglishButton.className = "copy-content-button";
-      copyToEnglishButton.innerHTML = "中→EN";
-      copyToEnglishButton.title = "Copy Chinese content to English";
-      copyToEnglishButton.style.fontSize = "10px";
-      copyToEnglishButton.style.padding = "2px 4px";
-      copyToEnglishButton.style.marginLeft = "3px";
-      copyToEnglishButton.style.backgroundColor = "#e3f2fd";
-      copyToEnglishButton.style.border = "1px solid #2196F3";
-      copyToEnglishButton.style.borderRadius = "3px";
-      copyToEnglishButton.style.cursor = "pointer";
-      copyToEnglishButton.style.color = "#1565C0";
-      copyToEnglishButton.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await copyContentBetweenLanguages(node.id, "zh-to-en");
-      });
-      nodeActions.appendChild(copyToEnglishButton);
-    }
+    // English only - no dual language functionality
 
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
-
-    // Add the other language container after the main node content
-    if (nodeContent._otherLanguageContainer) {
-      nodeDiv.appendChild(nodeContent._otherLanguageContainer);
-    }
 
     // Children container
     if (children.length > 0 && node.is_expanded) {
