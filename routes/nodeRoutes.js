@@ -1,58 +1,51 @@
 // nodeRoutes.js - Routes for node operations
-const express = require('express');
-const nodeController = require('../controllers/nodeController');
+const express = require("express");
+const nodeController = require("../controllers/nodeController");
 // Link system removed - pure node operations sufficient
 // const linkController = require('../controllers/linkController');
-const attributeController = require('../controllers/attributeController');
 
 const router = express.Router();
 
 // Add debug logging
-console.log('Setting up node routes...');
+console.log("Setting up node routes...");
 
 // Add this BEFORE routes with :id params
-router.get('/search', nodeController.searchNodes);
-router.get('/exists', (req, res, next) => {
-    console.log('EXISTS route hit!');
-    nodeController.checkNodesExist(req, res, next);
+router.get("/search", nodeController.searchNodes);
+router.get("/exists", (req, res, next) => {
+  console.log("EXISTS route hit!");
+  nodeController.checkNodesExist(req, res, next);
 });
 
-console.log('Node routes setup complete');
+console.log("Node routes setup complete");
 
 // Get all top-level nodes
-router.get('/', nodeController.getAllRootNodes);
+router.get("/", nodeController.getAllRootNodes);
 
 // Get a single node by ID
-router.get('/:id', nodeController.getNodeById);
+router.get("/:id", nodeController.getNodeById);
 
 // Get children of a node
-router.get('/:id/children', nodeController.getChildNodes);
+router.get("/:id/children", nodeController.getChildNodes);
 
 // Create a new node
-router.post('/', nodeController.createNode);
+router.post("/", nodeController.createNode);
 
 // Update a node
-router.put('/:id', nodeController.updateNode);
+router.put("/:id", nodeController.updateNode);
 
 // Delete a node
-router.delete('/:id', nodeController.deleteNode);
+router.delete("/:id", nodeController.deleteNode);
 
 // Reorder nodes (when dragging)
-router.post('/reorder', nodeController.reorderNodes);
+router.post("/reorder", nodeController.reorderNodes);
 
 // Shift node positions
-router.post('/reorder/shift', nodeController.shiftNodePositions);
+router.post("/reorder/shift", nodeController.shiftNodePositions);
 
 // Toggle node expansion
-router.post('/:id/toggle', nodeController.toggleNode);
+router.post("/:id/toggle", nodeController.toggleNode);
 
-// Get attributes for a node
-router.get('/:id/attributes', attributeController.getNodeAttributes);
-
-// Query nodes by attributes
-router.post('/query', attributeController.queryNodesByAttributes);
-
-router.get('/sequence/:sequence_id', nodeController.getNodeBySequenceId);
+router.get("/sequence/:sequence_id", nodeController.getNodeBySequenceId);
 
 // Add additional routes for other node operations...
 // (Routes for indenting, outdenting, fixing positions, etc.)

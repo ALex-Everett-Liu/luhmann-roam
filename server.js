@@ -14,7 +14,6 @@ const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
 const sanitizeHtml = require("sanitize-html");
-const attributeRoutes = require("./routes/attributeRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
 
@@ -586,7 +585,6 @@ app.get("/api/debug/node/:id", async (req, res) => {
   }
 });
 
-
 // Add these routes if not already present (similar to what you have)
 app.use("/css", express.static(path.join(__dirname, "public", "css")));
 app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
@@ -633,9 +631,6 @@ app.post("/api/backup", async (req, res) => {
     });
   }
 });
-
-// Use the attribute routes
-app.use("/api/node-attributes", attributeRoutes);
 
 // Start the server
 app.listen(PORT, () => {

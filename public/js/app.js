@@ -21,34 +21,36 @@ document.addEventListener("DOMContentLoaded", () => {
   // Basic Theme Management - Simple light/dark theme functionality
   function initializeBasicTheme() {
     // Load saved theme preference
-    const savedTheme = localStorage.getItem('basicTheme');
-    if (savedTheme === 'dark') {
-      document.body.classList.add('dark-theme');
+    const savedTheme = localStorage.getItem("basicTheme");
+    if (savedTheme === "dark") {
+      document.body.classList.add("dark-theme");
     }
 
     // Add theme toggle to UI if not already present
-    if (!document.getElementById('theme-toggler')) {
+    if (!document.getElementById("theme-toggler")) {
       addBasicThemeToggle();
     }
   }
 
   function addBasicThemeToggle() {
-    const sidebar = document.querySelector('.sidebar');
+    const sidebar = document.querySelector(".sidebar");
     if (sidebar) {
-      const themeToggle = document.createElement('button');
-      themeToggle.id = 'basic-theme-toggler';
-      themeToggle.className = 'feature-toggle';
-      themeToggle.textContent = document.body.classList.contains('dark-theme') ? '☀️ Light' : '🌙 Dark';
-      themeToggle.title = 'Toggle between light and dark themes';
+      const themeToggle = document.createElement("button");
+      themeToggle.id = "basic-theme-toggler";
+      themeToggle.className = "feature-toggle";
+      themeToggle.textContent = document.body.classList.contains("dark-theme")
+        ? "☀️ Light"
+        : "🌙 Dark";
+      themeToggle.title = "Toggle between light and dark themes";
 
-      themeToggle.addEventListener('click', () => {
-        const isDark = document.body.classList.toggle('dark-theme');
-        localStorage.setItem('basicTheme', isDark ? 'dark' : 'light');
-        themeToggle.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.body.classList.toggle("dark-theme");
+        localStorage.setItem("basicTheme", isDark ? "dark" : "light");
+        themeToggle.textContent = isDark ? "☀️ Light" : "🌙 Dark";
       });
 
       // Insert before backup button if it exists
-      const backupButton = document.getElementById('backup-database');
+      const backupButton = document.getElementById("backup-database");
       if (backupButton) {
         sidebar.insertBefore(themeToggle, backupButton);
       } else {
@@ -142,9 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log(
         `Fetching nodes with lang=en${forceFresh ? " (forced fresh load)" : ""}`,
       );
-      const response = await fetch(
-        `/api/nodes?lang=en${cacheBuster}`,
-      );
+      const response = await fetch(`/api/nodes?lang=en${cacheBuster}`);
       nodes = await response.json();
       await renderOutliner();
 
@@ -293,7 +293,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (currentContent !== normalizedOriginal) {
         console.log(`Content changed for node ${node.id}, saving...`);
 
-        const success = await updateNodeContent(node.id, savedContent, undefined);
+        const success = await updateNodeContent(
+          node.id,
+          savedContent,
+          undefined,
+        );
 
         if (success) {
           console.log(`Successfully saved content for node ${node.id}`);
@@ -459,7 +463,6 @@ document.addEventListener("DOMContentLoaded", () => {
       setDefaultFocusNode(node.id),
     );
     nodeActions.appendChild(defaultFocusButton);
-
 
     // English only - no dual language functionality
 
@@ -893,7 +896,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add to sidebar using helper function
   addButtonToSidebar(clearDefaultFocusButton);
 
-
   // Initialize the SearchManager
   SearchManager.initialize();
 
@@ -939,15 +941,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize basic theme functionality
   initializeBasicTheme();
 
-  // Initialize the AttributeManager
-  if (window.AttributeManager) {
-    // Only initialize the manager itself, not the node buttons
-    AttributeManager.initialize();
-
-    // Don't apply attributes to all nodes immediately
-    // Remove or comment out any code that adds attribute buttons at startup
-  }
-
   // Initialize the HotkeyManager
   if (window.HotkeyManager) {
     HotkeyManager.initialize();
@@ -962,8 +955,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.CommandPaletteManager) {
     CommandPaletteManager.initialize();
   }
-
-
 
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
@@ -1053,7 +1044,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Global language functionality removed - English only
 
   // Content copying removed - English only
-  window.copyContentBetweenLanguages = function() { return false; }; // Stub function for compatibility
+  window.copyContentBetweenLanguages = function () {
+    return false;
+  }; // Stub function for compatibility
 
   // Make lastFocusedNodeId available globally for command palette and other modules
   window.lastFocusedNodeId = lastFocusedNodeId;

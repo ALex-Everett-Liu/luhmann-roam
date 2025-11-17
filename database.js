@@ -72,20 +72,6 @@ async function initializeDatabase() {
   //
   // Now application uses pure node hierarchy exclusively
 
-  // Create node_attributes table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS node_attributes (
-      id TEXT PRIMARY KEY,
-      node_id TEXT NOT NULL,
-      key TEXT NOT NULL,
-      value TEXT,
-      created_at INTEGER,
-      updated_at INTEGER,
-      FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE,
-      UNIQUE(node_id, key)
-    )
-  `);
-
   // Add sequence_id column to nodes table
   try {
     await db.exec(`ALTER TABLE nodes ADD COLUMN sequence_id INTEGER;`);
@@ -113,7 +99,7 @@ async function populateSequenceIds() {
 
   try {
     // Tables that need sequence IDs
-    const tables = ["nodes", "node_attributes"]
+    const tables = ["nodes"];
 
     // Process each table
     for (const table of tables) {

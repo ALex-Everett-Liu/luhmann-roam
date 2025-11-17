@@ -16,7 +16,6 @@
 @import "./features/search-filter.css";
 @import "./features/position-manager.css";
 @import "./features/breadcrumbs.css";
-@import "./features/attribute-manager.css";
 @import "./features/node.css";
 @import "./features/timestamp.css";
 /* Node size manager CSS removed for simplification */
