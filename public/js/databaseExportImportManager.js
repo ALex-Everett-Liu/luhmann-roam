@@ -114,7 +114,6 @@ window.DatabaseExportImportManager = (function () {
           ? [
               { id: "nodes", name: "Nodes" },
               { id: "links", name: "Links" },
-              { id: "tasks", name: "Tasks" },
               { id: "node_attributes", name: "Node Attributes" },
               { id: "bookmarks", name: "Bookmarks" },
               { id: "dcim_images", name: "DCIM Images" },

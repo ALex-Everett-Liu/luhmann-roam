@@ -9,7 +9,6 @@ const {
 } = require("./database");
 const fs = require("fs");
 const path = require("path");
-const taskRoutes = require("./routes/taskRoutes");
 const nodeRoutes = require("./routes/nodeRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
@@ -384,11 +383,6 @@ app.post("/api/nodes/:id/move-down", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// Task Management API Endpoints
-
-// Set up task routes
-app.use("/api/tasks", taskRoutes);
 
 // Add this middleware to ensure correct MIME types for CSS files
 app.use("*.css", (req, res, next) => {

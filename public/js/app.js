@@ -130,9 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log(`Restoring scroll position to: ${scrollPosition}px`);
         window.scrollTo(0, scrollPosition);
       }, 10);
-
     } catch (error) {
-      console.error('Error fetching nodes:', error);
+      console.error("Error fetching nodes:", error);
       // Optionally show user-friendly error message or fallback behavior
     }
   }
@@ -207,7 +206,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log(`Restoring scroll position to: ${scrollPosition}px`);
       window.scrollTo(0, scrollPosition);
     }, 10);
-
   }
 
   // Add this function to detect Chinese text
@@ -1182,11 +1180,6 @@ document.addEventListener("DOMContentLoaded", () => {
     TimestampManager.initialize();
   }
 
-  // Initialize the TaskManager
-  if (window.TaskManager) {
-    TaskManager.initialize();
-  }
-
   // Initialize the StyleSettingsManager
   if (window.StyleSettingsManager) {
     console.log("Setting up StyleSettingsManager initialization from app.js");
@@ -1225,7 +1218,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.VaultManager) {
     VaultManager.initialize();
   }
-
 
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
@@ -1307,17 +1299,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Make fetchChildren available globally for the NodeGridVisualizer
   window.fetchChildren = fetchChildren;
 
-  // Initialize the TaskStatisticsManager
-  if (window.TaskStatisticsManager) {
-    console.log("Setting up TaskStatisticsManager initialization from app.js");
-    TaskStatisticsManager.initialize();
-  }
-
   // Initialize the Basic Font Settings
   if (window.BasicFontSettings) {
     BasicFontSettings.initialize();
   }
-
 
   // Add this function after the other helper functions
   function toggleAllOtherLanguageContent() {

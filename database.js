@@ -80,48 +80,6 @@ async function initializeDatabase(vaultName) {
     )
   `);
 
-  // Create tasks table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      date TEXT NOT NULL,
-      start_time INTEGER,
-      total_duration INTEGER DEFAULT 0,
-      is_completed BOOLEAN DEFAULT 0,
-      is_active BOOLEAN DEFAULT 0,
-      created_at INTEGER,
-      updated_at INTEGER
-    )
-  `);
-
-  // Create task_categories table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS task_categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      description TEXT,
-      color TEXT DEFAULT '#4285f4',
-      created_at INTEGER,
-      updated_at INTEGER,
-      sequence_id INTEGER
-    )
-  `);
-
-  // Create task_category_assignments table to link tasks to categories
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS task_category_assignments (
-      id TEXT PRIMARY KEY,
-      task_id TEXT NOT NULL,
-      category_id TEXT NOT NULL,
-      created_at INTEGER,
-      updated_at INTEGER,
-      FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
-      FOREIGN KEY (category_id) REFERENCES task_categories (id) ON DELETE CASCADE,
-      UNIQUE(task_id, category_id)
-    )
-  `);
-
   // Create node_attributes table
   await db.exec(`
     CREATE TABLE IF NOT EXISTS node_attributes (
@@ -250,7 +208,6 @@ async function populateSequenceIds() {
       "nodes",
       "links",
       "node_attributes",
-      "tasks",
       "bookmarks",
       "dcim_images",
     ];
