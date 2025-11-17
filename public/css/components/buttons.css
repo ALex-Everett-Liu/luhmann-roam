@@ -135,8 +135,7 @@ button:hover {
 }
 
 /* Primary action buttons */
-.sidebar > #add-root-node,
-.sidebar > #save-changes {
+.sidebar > #add-root-node {
   background-color: var(--primary-color);
   color: white;
   margin-bottom: 5px;

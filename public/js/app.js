@@ -642,40 +642,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================================================
   // Create move node modal
 
-  // Save changes function - provides visual feedback
-  function saveChanges() {
-    const saveButton = document.getElementById("save-changes");
-    const originalText = saveButton.textContent;
-
-    // Change button text to show saving in progress
-    saveButton.textContent = "Saving...";
-    saveButton.disabled = true;
-
-    // Actually try to manually save by refreshing data from server
-    console.log("Save button clicked, forcing fresh data load from server");
-    fetchNodes(true)
-      .then(() => {
-        console.log("Data refreshed from server with forced fresh load");
-
-        saveButton.textContent = "Saved!";
-
-        // Reset button after 2 seconds
-        setTimeout(() => {
-          saveButton.textContent = originalText;
-          saveButton.disabled = false;
-        }, 2000);
-      })
-      .catch((error) => {
-        console.error("Error refreshing data:", error);
-        saveButton.textContent = "Error!";
-
-        setTimeout(() => {
-          saveButton.textContent = originalText;
-          saveButton.disabled = false;
-        }, 2000);
-      });
-  }
-
   // Add this function to check container settings
   function checkContainerSettings() {
     const contentContainer = document.querySelector(".content");
@@ -776,10 +742,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Event listeners
   addRootNodeButton.addEventListener("click", addRootNode);
   // languageToggle no longer exists - I18n removed
-
-  // Add event listener for save changes button
-  const saveChangesButton = document.getElementById("save-changes");
-  saveChangesButton.addEventListener("click", saveChanges);
 
   // Initial setup - no language toggle needed
 
