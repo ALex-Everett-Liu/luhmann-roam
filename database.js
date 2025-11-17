@@ -60,19 +60,17 @@ async function initializeDatabase() {
     );
   }
 
-  // Create links table
-  await db.exec(`    CREATE TABLE IF NOT EXISTS links (
-      id TEXT PRIMARY KEY,
-      from_node_id TEXT NOT NULL,
-      to_node_id TEXT NOT NULL,
-      weight REAL DEFAULT 1.0,
-      description TEXT,
-      created_at INTEGER,
-      updated_at INTEGER,
-      FOREIGN KEY (from_node_id) REFERENCES nodes (id) ON DELETE CASCADE,
-      FOREIGN KEY (to_node_id) REFERENCES nodes (id) ON DELETE CASCADE
-    )
-  `);
+  // Remove links table creation - pure node operations sufficient
+  //
+  // Links table removed as link management system was eliminated in v0.32.3
+  // Database maintains simplicity with nodes, attributes, bookmarks only
+  //
+  // Links table previously enabled connections between nodes with:
+  // - bidirectional relationships
+  // - weight and description metadata
+  // - complex modal management
+  //
+  // Now application uses pure node hierarchy exclusively
 
   // Create node_attributes table
   await db.exec(`
@@ -115,7 +113,7 @@ async function populateSequenceIds() {
 
   try {
     // Tables that need sequence IDs
-    const tables = ["nodes", "links", "node_attributes"];
+    const tables = ["nodes", "node_attributes"]
 
     // Process each table
     for (const table of tables) {

@@ -11,10 +11,9 @@ exports.getAllRootNodes = async (req, res) => {
   try {
     const db = req.db;
 
-    // Get nodes with link counts
+    // Get nodes without link complexity
     const nodes = await db.all(`
-      SELECT n.*, n.sequence_id,
-        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count
+      SELECT n.*, n.sequence_id
       FROM nodes n
       WHERE n.parent_id IS NULL
       ORDER BY n.position
@@ -57,11 +56,10 @@ exports.getChildNodes = async (req, res) => {
     const { id } = req.params;
     const db = req.db;
 
-    // Get children with link counts
+    // Get children without link complexity
     const nodes = await db.all(
       `
-      SELECT n.*,
-        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count
+      SELECT n.*
       FROM nodes n
       WHERE n.parent_id = ?
       ORDER BY n.position
@@ -209,10 +207,13 @@ exports.deleteNode = async (req, res) => {
       }
 
       // Delete links associated with this node
-      await db.run(
-        "DELETE FROM links WHERE from_node_id = ? OR to_node_id = ?",
-        [nodeId, nodeId],
-      );
+      // Links deletion removed - pure node operations
+      //
+      // Previously deleted links when a node was removed
+      // This functionality was part of the link management system
+      // that was eliminated in v0.32.3
+      //
+      // Now application operates with simple node hierarchy only
 
       // Delete the node
       await db.run("DELETE FROM nodes WHERE id = ?", nodeId);
@@ -462,7 +463,6 @@ exports.searchNodes = async (req, res) => {
         n.position,
         n.created_at,
         n.updated_at,
-        (SELECT COUNT(*) FROM links WHERE from_node_id = n.id OR to_node_id = n.id) as link_count,
         p.content as parent_content,
         p.content_zh as parent_content_zh
       FROM

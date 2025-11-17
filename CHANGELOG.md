@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.4] - 2025-11-17
+
+### Removed
+- **Complete Link System Database Schema**: Removed links table creation from `database.js`
+- **Links Table Reference**: Eliminated links from `populateSequenceIds()` function
+- **Node Controller Link Counts**: Removed `link_count` subqueries from node queries
+- **Node Deletion Cascade**: Removed automatic link deletion when nodes are deleted
+
+### Technical Details
+
+**Database Layer Changes**:
+- Removed `links` table schema creation from `initializeDatabase()` function
+- Eliminated links table from `populateSequenceIds()` to only process nodes and attributes
+- Links table previously enabled bidirectional node connections with weight/metadata
+
+**API Layer Cleanup**:
+- Removed `link_count` subqueries from `nodeController.js` node fetch operations
+  - Previously returned link count for each node in `/api/nodes` and `/api/nodes/:id/children`
+  - Search functionality no longer includes link count information
+- Eliminated automatic link deletion during node removal operations
+  - Previously: `DELETE FROM links WHERE from_node_id = ? OR to_node_id = ?`
+  - Now: Pure node hierarchy operations only
+
+**Foundation Simplification**:
+- Database maintains only: `nodes`, `node_attributes`, `bookmarks` tables
+- Sequence ID functionality operates only on relevant tables
+- Foreign key relationships simplified to core outliner components
+
+### Rationale
+- **Architectural Completeness**: Link system elimination finalized at database level
+- **Data Integrity**: Maintains existing databases without breaking changes
+- **Performance Enhancement**: Simplified SQL queries without JOIN complexity
+- **Foundation Clarity**: Pure hierarchical node-only operations at database core
+
+### Affected Components
+- `database.js` - Removed table creation, simplified sequence ID population
+- `controllers/nodeController.js` - Cleaned all link-related SQL queries and operations
+- **Database Schema**: Simplified to nodes + attributes + bookmarks only
+
+### Preserved Architecture
+- **Backward Compatibility**: Existing databases continue functioning
+- **Core Tables**: Nodes, attributes, bookmarks maintain full functionality
+- **API Stability**: All `/api/nodes/*` endpoints fully operational
+- **Data Migration**: No breaking changes to existing data
+
+Streamlined to core database foundation with pure node hierarchy - zero link complexity!
+
 ## [0.32.3] - 2025-11-17
 
 ### Removed
