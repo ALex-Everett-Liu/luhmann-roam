@@ -127,33 +127,26 @@ const BookmarkManager = (function() {
       
       section.appendChild(header);
       section.appendChild(bookmarksContainer);
-      
-      // Find the correct insertion point - right after task-manager but before anything else
-      const taskManager = document.querySelector('.task-manager');
-      if (taskManager) {
-        // Get h1 element for the outliner title
-        const outlinerTitle = document.getElementById('app-title');
-        
-        // Insert bookmark section right after task manager
-        // Check if task manager is the last element
-        if (taskManager.nextElementSibling) {
-          sidebar.insertBefore(section, taskManager.nextElementSibling);
+
+      // Find consistent insertion point - after the elements that matter
+      const addRootNodeButton = document.getElementById('add-root-node');
+
+      if (addRootNodeButton) {
+        // Insert after the "Add Root Node" button section
+        const nextElement = addRootNodeButton.nextElementSibling;
+        if (nextElement) {
+          sidebar.insertBefore(section, nextElement);
         } else {
-          // If task manager is the last element, just append
-          sidebar.appendChild(section);
+          // If no next element, insert the new section after the button
+          addRootNodeButton.parentNode.insertBefore(section, addRootNodeButton.nextSibling);
         }
       } else {
-        // Fallback: Insert at a specific position relative to app-title if present
+        // Fallback: Insert at a logical position relative to app-title if present
         const appTitle = document.getElementById('app-title');
-        if (appTitle) {
-          // Insert after app-title
-          if (appTitle.nextElementSibling) {
-            sidebar.insertBefore(section, appTitle.nextElementSibling);
-          } else {
-            sidebar.appendChild(section);
-          }
+        if (appTitle && appTitle.nextElementSibling) {
+          sidebar.insertBefore(section, appTitle.nextElementSibling);
         } else {
-          // Last resort: just append to sidebar
+          // Last resort: append to sidebar
           sidebar.appendChild(section);
         }
       }

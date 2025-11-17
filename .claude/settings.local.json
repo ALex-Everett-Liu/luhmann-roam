@@ -11,7 +11,8 @@
       "Bash(curl:*)",
       "Bash(find:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm run test)"
     ],
     "deny": []
   }
