@@ -414,28 +414,6 @@ document.addEventListener("DOMContentLoaded", () => {
     deleteButton.addEventListener("click", () => deleteNode(node.id));
     nodeActions.appendChild(deleteButton);
 
-    // Position fixer button
-    const positionFixerButton = document.createElement("button");
-    positionFixerButton.className = "position-fixer-button";
-    positionFixerButton.innerHTML = "🛠️";
-    positionFixerButton.title = "Check/fix position conflicts";
-    positionFixerButton.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const result = await NodeOperationsManager.fixNodePositions(node.id);
-
-      if (result.error) {
-        alert(`Error checking positions: ${result.error}`);
-        return;
-      }
-
-      if (result.fixed) {
-        alert(`Fixed ${result.conflicts.length} position conflicts!`);
-      } else {
-        alert("No position conflicts found at this level.");
-      }
-    });
-    nodeActions.appendChild(positionFixerButton);
-
     // Add bookmark button to node actions
     if (window.BookmarkManager) {
       BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
@@ -597,43 +575,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  // Helper function to find a node by ID in our local data structure
-  function findNodeById(nodeId) {
-    // First check top-level nodes
-    for (const node of nodes) {
-      if (node.id === nodeId) {
-        return node;
-      }
-
-      // Recursively check children if the node has any
-      if (node.children) {
-        const found = findNodeInChildren(node.children, nodeId);
-        if (found) return found;
-      }
-    }
-
-    // Node not found in our local data
-    return null;
-  }
-
-  // Helper function to recursively search for a node in children
-  function findNodeInChildren(children, nodeId) {
-    if (!children || children.length === 0) return null;
-
-    for (const child of children) {
-      if (child.id === nodeId) {
-        return child;
-      }
-
-      if (child.children) {
-        const found = findNodeInChildren(child.children, nodeId);
-        if (found) return found;
-      }
-    }
-
-    return null;
-  }
-
   // Delete a node
   async function deleteNode(nodeId) {
     if (window.NodeOperationsManager) {
@@ -700,16 +641,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // DEPENDENCIES: fetchNodes, debounce
   // ===================================================================
   // Create move node modal
-
-  // Add this right after the fixNodePositions function definition
-  window.fixNodePositions = function (nodeId) {
-    if (window.PositionManager) {
-      return PositionManager.fixNodePositions(nodeId);
-    } else {
-      console.error("PositionManager not available");
-      return Promise.resolve({ error: "PositionManager not available" });
-    }
-  };
 
   // Save changes function - provides visual feedback
   function saveChanges() {

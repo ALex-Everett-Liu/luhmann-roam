@@ -897,56 +897,6 @@ const NodeOperationsManager = (function () {
     }
   }
 
-  // Add a function to the NodeOperationsManager to fix node positions
-  async function fixNodePositions(nodeId) {
-    try {
-      const response = await fetch(`/api/nodes/${nodeId}`);
-      const node = await response.json();
-
-      // Get all siblings at the same level
-      let siblings;
-      if (node.parent_id) {
-        // Get nodes with the same parent
-        const siblingsResponse = await fetch(
-          `/api/nodes/${node.parent_id}/children`,
-        );
-        siblings = await siblingsResponse.json();
-      } else {
-        // Get all root nodes
-        const rootResponse = await fetch("/api/nodes");
-        siblings = await rootResponse.json();
-      }
-
-      // Check for position conflicts (informational only)
-      const positions = {};
-      const conflicts = [];
-
-      siblings.forEach((sibling) => {
-        if (positions[sibling.position] === undefined) {
-          positions[sibling.position] = sibling.id;
-        } else {
-          // Check if this conflict is already tracked
-          if (!conflicts.some((c) => c.position === sibling.position)) {
-            conflicts.push({
-              position: sibling.position,
-              nodes: siblings.filter((s) => s.position === sibling.position),
-            });
-          }
-        }
-      });
-
-      if (conflicts.length > 0) {
-        console.warn("Position conflicts detected:", conflicts);
-        return { fixed: false, conflicts: conflicts };
-      }
-
-      return { fixed: false, conflicts: [] };
-    } catch (error) {
-      console.error("Error fixing node positions:", error);
-      return { error: error.message };
-    }
-  }
-
   // Public API
   return {
     initialize,
@@ -959,7 +909,6 @@ const NodeOperationsManager = (function () {
     moveNodeDown,
     addSiblingNode,
     refreshSubtree,
-    fixNodePositions,
   };
 })();
 
