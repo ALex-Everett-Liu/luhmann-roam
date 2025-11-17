@@ -1497,22 +1497,5 @@ document.addEventListener("DOMContentLoaded", () => {
     SettingsManager.initialize();
   }
 
-  // Initialize PluginManager first
-  if (window.PluginManager) {
-    console.log("Initializing PluginManager...");
-    PluginManager.initialize();
-
-    // Set up plugin state change listener
-    PluginManager.onPluginStateChange = function (pluginId, enabled) {
-      if (window.PluginAwareInitializer) {
-        PluginAwareInitializer.handlePluginStateChange(pluginId, enabled);
-      }
-    };
-
-    // ADDED: Initialize all enabled plugins after PluginManager is ready
-    if (window.PluginAwareInitializer) {
-      console.log("Initializing enabled modules via PluginAwareInitializer...");
-      PluginAwareInitializer.initializeEnabledModules();
-    }
-  }
+  // PluginSystem initialization is handled by the system itself
 });

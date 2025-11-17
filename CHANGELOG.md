@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2025-11-17
+
+### Added
+- **New Plugin System**: Simple, extensible plugin architecture replacing complex plugin manager
+- **Built-in Sample Plugin**: Tutorial Explorer plugin demonstrating the new system
+- **Hook System**: Plugin hooks for event-driven architecture
+- **Clean Settings Integration**: Plugin management integrated into settings modal
+- **Plugin CSS Framework**: Comprehensive styling for plugin management UI
+
+### Changed
+- **Simplified Plugin Architecture**:
+  - Replaced complex `pluginManager.js` with lightweight `plugins.js`
+  - Removed dependency chains and complex initialization flows
+  - Simplified registration to basic object definition
+- **Enhanced Developer Experience**:
+  - Clear plugin lifecycle (init/cleanup)
+  - Hook system for plugins to interact with core features
+  - Built-in sample plugin as development template
+- **Streamlined Integration**:
+  - Settings modal shows all plugins with enable/disable toggles
+  - Removed separate plugin manager modal complexity
+  - Plugin-system interactions are cleaner and more predictable
+
+### Removed
+- **Complex Plugin Manager**: Deleted 340+ line `pluginManager.js` with complex state management
+- **Plugin Aware Initializer**: Removed 113+ line `pluginAwareInitializer.js` dependency
+- **Plugin Manager CSS**: Eliminated complex plugin management styling
+- **Plugin Registration Middleware**: Removed plugin-to-plugin interaction complexity
+- **Legacy Plugin UI**: Deleted separate plugin management interfaces
+
+### Technical Details
+- **New Plugin Architecture**:
+  ```javascript
+  // Simple plugin definition
+  window.PluginSystem.register({
+    id: 'tutorial-sample',
+    name: 'Tutorial Explorer',
+    description: 'Interactive tutorial system',
+    init: function() { /* startup logic */ },
+    cleanup: function() { /* shutdown logic */ }
+  });
+  ```
+- **Hook System**: `registerHook()` and `triggerHook()` for plugin interactions
+- **Settings Integration**: Automatic plugin discovery and UI generation
+- **Extensible Design**: Plugins can add commands, UI, and functionality
+
+### Built-in Sample Plugin
+
+The new `plugin-tutorialsample.js` demonstrates:
+- Plugin registration and initialization
+- UI element insertion (sidebar button)
+- Command palette integration
+- Event-driven hooks
+- Interactive tutorials
+- Clean startup/shutdown lifecycle
+
+This serves as a template for future plugin development.
+
+### Benefits
+
+1. **Developer-Friendly**: Simplified API for creating plugins
+2. **Maintainable**: Clear separation of core vs. plugin functionality
+3. **Extensible**: Easy to add new features as plugins
+4. **Modular**: Each plugin is self-contained with clear boundaries
+5. **Testable**: Plugin lifecycle is predictable and isolated
+6. **Future-Ready**: Clear path for plugin-based feature development
+
 ## [0.31.9] - 2025-11-17
 
 ### Removed

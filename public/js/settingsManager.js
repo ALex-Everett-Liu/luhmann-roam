@@ -639,26 +639,23 @@ const SettingsManager = (function () {
    * Render plugins section content
    */
   function renderPluginsSection(container) {
-    if (!window.PluginManager) {
+    if (!window.PluginSystem) {
       container.innerHTML =
-        '<div class="settings-error">PluginManager not available</div>';
+        '<div class="settings-error">PluginSystem not available</div>';
       return;
     }
 
-    // Get the plugin list content from PluginManager
-    const pluginListContainer = document.createElement("div");
-    pluginListContainer.className = "plugins-section-content";
+    // Show plugin system info
+    const infoSection = document.createElement('div');
+    infoSection.className = 'plugin-info-section';
+    infoSection.innerHTML = `
+      <p><strong>Plugin System Active</strong></p>
+      <p>Manage optional features below. Selected plugins will be loaded on startup.</p>
+    `;
+    container.appendChild(infoSection);
 
-    // Use PluginManager's populatePluginList method
-    if (PluginManager.populatePluginList) {
-      PluginManager.populatePluginList(pluginListContainer);
-    } else {
-      // Fallback: create a basic plugin list
-      pluginListContainer.innerHTML =
-        '<div class="settings-info">Plugin management will be integrated here</div>';
-    }
-
-    container.appendChild(pluginListContainer);
+    // Use PluginSystem to create plugin section
+    PluginSystem.createPluginSection(container);
   }
 
   /**
