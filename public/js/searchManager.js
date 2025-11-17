@@ -531,12 +531,26 @@ const SearchManager = (function() {
         
         // Get node search results only
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
+          `/api/nodes/search?q=${encodeURIComponent(query)}&lang=${currentLanguage}&advanced=${advancedMode}`
         );
+
+        // Check if response is OK
+        if (!response.ok) {
+          throw new Error(`Search failed with status: ${response.status}`);
+        }
+
+        // Try to parse JSON
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('Error parsing JSON response:', jsonError);
+          throw new Error('Invalid response from search API');
+        }
 
         // Store current results for sorting
         currentSearchResults = {
-          nodes: await response.json() || []
+          nodes: data || []
         };
         
         // Render the results
