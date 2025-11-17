@@ -16,7 +16,7 @@
 @import "./features/position-manager.css";
 @import "./features/breadcrumbs.css";
 @import "./features/node.css";
-@import "./features/timestamp.css";
+/* timestamp.css removed - will be redesigned later */
 /* Node size manager CSS removed for simplification */
 /* Node size highlight CSS removed for simplification */
 @import "./features/font-manager.css";

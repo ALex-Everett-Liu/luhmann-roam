@@ -403,16 +403,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     nodeActions.appendChild(positionButton);
 
-    // Timestamp button
-    const timestampButton = document.createElement("button");
-    timestampButton.className = "timestamp-button";
-    timestampButton.innerHTML = "🕒";
-    timestampButton.title = "View timestamps";
-    timestampButton.addEventListener("click", () =>
-      TimestampManager.openModal(node.id),
-    );
-    nodeActions.appendChild(timestampButton);
-
     // Link button removed - pure node operations sufficient
 
     // Move node button
@@ -954,10 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
     PositionManager.initialize();
   }
 
-  // Initialize the TimestampManager
-  if (window.TimestampManager) {
-    TimestampManager.initialize();
-  }
+  // TimestampManager removed - will be redesigned later
 
   // Style Settings Manager removed - basic theme functionality only
   // Font settings are handled by BasicFontSettings in settings modal
