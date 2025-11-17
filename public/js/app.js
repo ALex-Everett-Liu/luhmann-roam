@@ -131,60 +131,6 @@ document.addEventListener("DOMContentLoaded", () => {
         window.scrollTo(0, scrollPosition);
       }, 10);
 
-      // Trigger LocalGraphIndicators refresh after outliner loads
-      if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
-        console.log(
-          "Outliner loaded, scheduling LocalGraphIndicators refresh...",
-        );
-
-        // Use a longer delay and multiple attempts
-        setTimeout(() => {
-          console.log("=== First LocalGraphIndicators attempt ===");
-          const elementsWithDataId = document.querySelectorAll("[data-id]");
-          console.log(
-            "Elements with data-id found:",
-            elementsWithDataId.length,
-          );
-
-          if (elementsWithDataId.length > 0) {
-            console.log(
-              "Found elements with data-id, refreshing indicators...",
-            );
-            LocalGraphIndicators.refreshPoolData();
-          } else {
-            console.log(
-              "No elements with data-id found, trying again in 500ms...",
-            );
-
-            // Try again after another delay
-            setTimeout(() => {
-              console.log("=== Second LocalGraphIndicators attempt ===");
-              const elementsWithDataId2 =
-                document.querySelectorAll("[data-id]");
-              console.log(
-                "Elements with data-id found (2nd attempt):",
-                elementsWithDataId2.length,
-              );
-
-              if (elementsWithDataId2.length > 0) {
-                LocalGraphIndicators.refreshPoolData();
-              } else {
-                console.log(
-                  "Still no elements found, trying manual trigger...",
-                );
-                // Force a manual check
-                setTimeout(() => {
-                  LocalGraphIndicators.updateVisibleIndicators();
-                }, 1000);
-              }
-            }, 500);
-          }
-        }, 500); // Increased from 200ms to 500ms
-      }
-    } catch (error) {
-      console.error("Error fetching nodes:", error);
-      isInitialLoading = false;
-    }
   }
 
   // Fetch children for a node
@@ -258,37 +204,6 @@ document.addEventListener("DOMContentLoaded", () => {
       window.scrollTo(0, scrollPosition);
     }, 10);
 
-    // Trigger LocalGraphIndicators refresh after outliner renders
-    if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
-      console.log(
-        "Outliner rendered, scheduling LocalGraphIndicators refresh...",
-      );
-
-      // Wait for DOM to be fully ready
-      setTimeout(() => {
-        console.log("=== RenderOutliner LocalGraphIndicators attempt ===");
-        const elementsWithDataId = document.querySelectorAll("[data-id]");
-        console.log(
-          "Elements with data-id after render:",
-          elementsWithDataId.length,
-        );
-
-        // Also check for breadcrumb elements specifically
-        const breadcrumbElements = document.querySelectorAll(
-          ".breadcrumb-item[data-id]",
-        );
-        console.log(
-          "Breadcrumb elements with data-id:",
-          breadcrumbElements.length,
-        );
-
-        if (elementsWithDataId.length > 0 || breadcrumbElements.length > 0) {
-          LocalGraphIndicators.refreshPoolData();
-        } else {
-          console.log("No elements ready yet, will try again...");
-        }
-      }, 300);
-    }
   }
 
   // Add this function to detect Chinese text
@@ -772,14 +687,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // After creating the node element and before returning it
     if (window.BreadcrumbManager) {
       BreadcrumbManager.addNodeFocusHandler(nodeDiv, node.id);
-    }
-
-    // Trigger LocalGraphIndicators for this specific node if it's a breadcrumb
-    if (window.LocalGraphIndicators && LocalGraphIndicators.isInitialized()) {
-      // Check if this node might be in the pool and trigger a specific update
-      setTimeout(() => {
-        LocalGraphIndicators.updateIndicatorForNode(node.id);
-      }, 50);
     }
 
     return nodeDiv;
@@ -1315,11 +1222,6 @@ document.addEventListener("DOMContentLoaded", () => {
     VaultManager.initialize();
   }
 
-  // Initialize the WordFrequencyManager
-  if (window.WordFrequencyManager) {
-    console.log("Setting up WordFrequencyManager initialization from app.js");
-    WordFrequencyManager.initialize();
-  }
 
   // Make fetchNodes available globally for the SearchManager
   window.fetchNodes = fetchNodes;
@@ -1412,124 +1314,6 @@ document.addEventListener("DOMContentLoaded", () => {
     TaskStatisticsManager.initialize();
   }
 
-  // Add a toggle button for the metro map visualizer
-  const toggleMetroMapButton = document.createElement("button");
-  toggleMetroMapButton.id = "toggle-metro-map";
-  toggleMetroMapButton.className = "feature-toggle";
-  toggleMetroMapButton.textContent = "Metro Map View";
-  toggleMetroMapButton.title = "View nodes as a metro/subway map";
-
-  toggleMetroMapButton.addEventListener("click", function () {
-    console.log("Metro Map button clicked");
-    console.log("MetroMapVisualizer exists:", !!window.MetroMapVisualizer);
-
-    if (window.MetroMapVisualizer) {
-      const isVisible = MetroMapVisualizer.isVisible();
-      console.log("Is currently visible:", isVisible);
-
-      if (isVisible) {
-        console.log("Hiding metro map");
-        MetroMapVisualizer.hide();
-      } else {
-        // Get current node ID using similar logic to 2D cosmic view
-        let nodeToShow = lastFocusedNodeId;
-        console.log("Initial nodeToShow:", nodeToShow);
-
-        if (
-          !nodeToShow &&
-          window.BreadcrumbManager &&
-          BreadcrumbManager.getCurrentFocusedNodeId
-        ) {
-          nodeToShow = BreadcrumbManager.getCurrentFocusedNodeId();
-          console.log("Got nodeId from BreadcrumbManager:", nodeToShow);
-        }
-
-        // If still no node ID, get the first visible node
-        if (!nodeToShow && nodes.length > 0) {
-          nodeToShow = nodes[0].id;
-          console.log("Falling back to first visible node:", nodeToShow);
-        }
-
-        console.log("Final nodeToShow:", nodeToShow);
-
-        if (nodeToShow) {
-          try {
-            console.log("Calling MetroMapVisualizer.show()");
-            MetroMapVisualizer.show(nodeToShow);
-          } catch (error) {
-            console.error("Error calling show():", error);
-          }
-        } else {
-          console.warn("No node selected");
-          alert("Please select a node first");
-        }
-      }
-    } else {
-      console.error("MetroMapVisualizer is not available");
-    }
-  });
-
-  // Function to focus a node in the outliner (for Local Graph Manager integration)
-  window.focusNodeInOutliner = async function (pathToRoot) {
-    try {
-      if (!pathToRoot || pathToRoot.length === 0) {
-        console.warn("No path provided to focus node");
-        return;
-      }
-
-      const targetNodeId = pathToRoot[pathToRoot.length - 1];
-
-      // If BreadcrumbManager is available, use it
-      if (window.BreadcrumbManager && BreadcrumbManager.focusOnNode) {
-        console.log("Using BreadcrumbManager to focus node:", targetNodeId);
-        BreadcrumbManager.focusOnNode(targetNodeId);
-        return;
-      }
-
-      // Fallback: manually expand the path and scroll to node
-      console.log("Using manual focus for node:", targetNodeId);
-
-      // Expand all nodes in the path
-      for (let i = 0; i < pathToRoot.length - 1; i++) {
-        const nodeId = pathToRoot[i];
-        const nodeElement = document.querySelector(
-          `.node[data-id="${nodeId}"]`,
-        );
-        if (nodeElement) {
-          const expandButton = nodeElement.querySelector(".expand-button");
-          if (expandButton && !nodeElement.classList.contains("expanded")) {
-            expandButton.click();
-            // Wait a bit for expansion
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
-      }
-
-      // Wait a bit more and then scroll to target
-      setTimeout(() => {
-        const targetElement = document.querySelector(
-          `.node[data-id="${targetNodeId}"]`,
-        );
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-
-          // Add highlight effect
-          targetElement.classList.add("highlight-focus");
-          setTimeout(() => {
-            targetElement.classList.remove("highlight-focus");
-          }, 2000);
-
-          // Update global last focused node
-          updateGlobalLastFocusedNodeId(targetNodeId);
-        }
-      }, 200);
-    } catch (error) {
-      console.error("Error focusing node in outliner:", error);
-    }
-  };
-
-  // Add to sidebar using helper function
-  addButtonToSidebar(toggleMetroMapButton);
 
   // Add this function after the other helper functions
   function toggleAllOtherLanguageContent() {
