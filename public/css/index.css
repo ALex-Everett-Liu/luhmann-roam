@@ -19,8 +19,6 @@
 @import "./features/attribute-manager.css";
 @import "./features/node.css";
 @import "./features/timestamp.css";
-@import "./features/command-palette.css";
-@import "./features/node-grid-visualizer.css";
 /* Node size manager CSS removed for simplification */
 /* Node size highlight CSS removed for simplification */
 @import "./features/font-manager.css";
