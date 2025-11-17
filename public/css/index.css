@@ -27,7 +27,6 @@
 @import "./features/style-settings.css";
 @import "./features/high-contrast.css";
 @import "./features/plugin-manager.css";
-@import "./features/dcim-manager.css";
 @import "./features/export-import.css";
 @import "./features/vault-manager.css";
 /* @import './features/hotkeys.css'; */

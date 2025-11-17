@@ -23,17 +23,7 @@ exports.exportTables = async (req, res) => {
       // Process each requested table
       for (const table of tables) {
         // Validate table name to prevent SQL injection
-        const validTables = [
-          "nodes",
-          "links",
-          "tasks",
-          "node_attributes",
-          "bookmarks",
-          "dcim_images",
-          "dcim_image_settings",
-          "dcim_directories",
-          "dev_test_entries",
-        ];
+        const validTables = ["nodes", "links", "node_attributes", "bookmarks"];
 
         if (!validTables.includes(table)) {
           console.warn(`Invalid table name requested: ${table}`);
@@ -97,17 +87,7 @@ exports.importData = async (req, res) => {
         if (tableName === "metadata") continue;
 
         // Validate table name to prevent SQL injection
-        const validTables = [
-          "nodes",
-          "links",
-          "tasks",
-          "node_attributes",
-          "bookmarks",
-          "dcim_images",
-          "dcim_image_settings",
-          "dcim_directories",
-          "dev_test_entries",
-        ];
+        const validTables = ["nodes", "links", "node_attributes", "bookmarks"];
 
         if (!validTables.includes(tableName)) {
           result.errors.push(`Invalid table name: ${tableName}`);
@@ -248,17 +228,7 @@ exports.getTableSchema = async (req, res) => {
     const db = await getDb();
 
     // Validate table name to prevent SQL injection
-    const validTables = [
-      "nodes",
-      "links",
-      "tasks",
-      "node_attributes",
-      "bookmarks",
-      "dcim_images",
-      "dcim_image_settings",
-      "dcim_directories",
-      "dev_test_entries",
-    ];
+    const validTables = ["nodes", "links", "node_attributes", "bookmarks"];
 
     if (!validTables.includes(table)) {
       return res.status(400).json({ error: "Invalid table name" });
@@ -324,17 +294,7 @@ exports.exportNodeTree = async (req, res) => {
       // Process each requested table
       for (const table of includeTables) {
         // Validate table name to prevent SQL injection
-        const validTables = [
-          "nodes",
-          "links",
-          "tasks",
-          "node_attributes",
-          "bookmarks",
-          "dcim_images",
-          "dcim_image_settings",
-          "dcim_directories",
-          "dev_test_entries",
-        ];
+        const validTables = ["nodes", "links", "node_attributes", "bookmarks"];
 
         if (!validTables.includes(table)) {
           console.warn(`Invalid table name requested: ${table}`);

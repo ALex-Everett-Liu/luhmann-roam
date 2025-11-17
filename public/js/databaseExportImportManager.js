@@ -116,7 +116,6 @@ window.DatabaseExportImportManager = (function () {
               { id: "links", name: "Links" },
               { id: "node_attributes", name: "Node Attributes" },
               { id: "bookmarks", name: "Bookmarks" },
-              { id: "dcim_images", name: "DCIM Images" },
             ]
           : tables.map((t) => (typeof t === "string" ? { id: t, name: t } : t));
 

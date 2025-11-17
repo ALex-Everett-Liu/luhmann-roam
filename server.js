@@ -16,7 +16,6 @@ const url = require("url");
 const sanitizeHtml = require("sanitize-html");
 const linkRoutes = require("./routes/linkRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
-const dcimRoutes = require("./routes/dcimRoutes");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
 const databaseExportImportRoutes = require("./routes/databaseExportImportRoutes");
@@ -751,9 +750,6 @@ app.use("/api/links", linkRoutes);
 
 // Use the attribute routes
 app.use("/api/node-attributes", attributeRoutes);
-
-// Use the DCIM routes
-app.use("/api/dcim", dcimRoutes);
 
 // Use the database export/import routes
 app.use("/api/database", databaseExportImportRoutes);

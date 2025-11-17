@@ -106,77 +106,6 @@ async function initializeDatabase(vaultName) {
     )
   `);
 
-  // Create dcim_images table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS dcim_images (
-      id TEXT PRIMARY KEY,
-      filename TEXT NOT NULL,
-      url TEXT,
-      file_size INTEGER,
-      rating INTEGER,
-      ranking REAL,
-      tags TEXT,
-      creation_time INTEGER,
-      person TEXT,
-      location TEXT,
-      type TEXT,
-      thumbnail_path TEXT,
-      created_at INTEGER,
-      updated_at INTEGER
-    )
-  `);
-
-  // Create dcim_image_settings table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS dcim_image_settings (
-      id TEXT PRIMARY KEY,
-      image_id TEXT NOT NULL,
-      settings_json TEXT NOT NULL,
-      created_at INTEGER,
-      updated_at INTEGER,
-      FOREIGN KEY (image_id) REFERENCES dcim_images (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create dcim_directories table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS dcim_directories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      path TEXT NOT NULL,
-      type TEXT NOT NULL,
-      created_at INTEGER,
-      updated_at INTEGER
-    )
-  `);
-
-  // Add file_path column to dcim_images table if it doesn't exist
-  try {
-    await db.exec(`ALTER TABLE dcim_images ADD COLUMN file_path TEXT`);
-    console.log("Added file_path column to dcim_images table");
-  } catch (error) {
-    // Column likely already exists, which is fine
-    console.log(
-      "file_path column already exists or other error:",
-      error.message,
-    );
-  }
-
-  // Add parent_id column to dcim_images table for subsidiary images
-  try {
-    await db.exec(`ALTER TABLE dcim_images ADD COLUMN parent_id TEXT`);
-    await db.exec(
-      `CREATE INDEX IF NOT EXISTS idx_parent_id ON dcim_images(parent_id)`,
-    );
-    console.log("Added parent_id column to dcim_images table");
-  } catch (error) {
-    // Column likely already exists, which is fine
-    console.log(
-      "parent_id column already exists or other error:",
-      error.message,
-    );
-  }
-
   // Add sequence_id column to nodes table
   try {
     await db.exec(`ALTER TABLE nodes ADD COLUMN sequence_id INTEGER;`);
@@ -204,13 +133,7 @@ async function populateSequenceIds() {
 
   try {
     // Tables that need sequence IDs
-    const tables = [
-      "nodes",
-      "links",
-      "node_attributes",
-      "bookmarks",
-      "dcim_images",
-    ];
+    const tables = ["nodes", "links", "node_attributes", "bookmarks"];
 
     // Process each table
     for (const table of tables) {
