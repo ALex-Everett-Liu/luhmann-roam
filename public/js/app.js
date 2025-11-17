@@ -59,7 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const outlinerContainer = document.getElementById("outliner-container");
   const addRootNodeButton = document.getElementById("add-root-node");
-  const languageToggle = document.getElementById("language-toggle");
 
   // Variables and state
   let nodes = [];
@@ -140,9 +139,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Normal loading without focus
       const cacheBuster = forceFresh ? `&_=${Date.now()}` : "";
-      const currentLanguage = "en";
       console.log(
-        `Fetching nodes with lang=${currentLanguage}${forceFresh ? " (forced fresh load)" : ""}`,
+        `Fetching nodes with lang=en${forceFresh ? " (forced fresh load)" : ""}`,
       );
       const response = await fetch(
         `/api/nodes?lang=en${cacheBuster}`,
@@ -279,10 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Only clear it if we're focusing on a different node
 
       const currentContent = nodeText.innerText; // Use innerText to preserve line breaks
-      const originalContent =
-        currentLanguage === "en"
-          ? node.content || ""
-          : node.content_zh || node.content || "";
+      const originalContent = node.content || "";
 
       console.log(`Blur event for node ${node.id}:`);
       console.log(`- Current content: "${currentContent}"`);
@@ -298,21 +293,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (currentContent !== normalizedOriginal) {
         console.log(`Content changed for node ${node.id}, saving...`);
 
-        let success;
-        if (currentLanguage === "en") {
-          success = await updateNodeContent(node.id, savedContent, undefined);
-        } else {
-          success = await updateNodeContent(node.id, undefined, savedContent);
-        }
+        const success = await updateNodeContent(node.id, savedContent, undefined);
 
         if (success) {
           console.log(`Successfully saved content for node ${node.id}`);
           // Update the local node data
-          if (currentLanguage === "en") {
-            node.content = currentContent;
-          } else {
-            node.content_zh = currentContent;
-          }
+          node.content = currentContent;
         } else {
           console.error(`Failed to save content for node ${node.id}`);
         }
@@ -355,30 +341,6 @@ document.addEventListener("DOMContentLoaded", () => {
     nodeContent.appendChild(nodeText); // Add the editable text field
 
     // English only - no other language content
-
-      // Improved styling for read-only view
-      otherLanguageText.style.fontSize = "0.9em";
-      otherLanguageText.style.color = "#555";
-      otherLanguageText.style.backgroundColor = "#f8f9fa";
-      otherLanguageText.style.padding = "8px";
-      otherLanguageText.style.border = "1px dashed #ddd";
-      otherLanguageText.style.borderRadius = "4px";
-      otherLanguageText.style.whiteSpace = "pre-wrap";
-      otherLanguageText.style.wordWrap = "break-word";
-      otherLanguageText.style.overflowWrap = "break-word";
-      otherLanguageText.style.lineHeight = "1.5";
-      otherLanguageText.style.maxHeight = "200px"; // Limit height for very long content
-      otherLanguageText.style.overflowY = "auto"; // Add scrolling for long content
-
-      // Set lang attribute for the read-only field
-      if (
-        otherLangCode === "zh" ||
-        hasChineseText(otherLanguageText.textContent)
-      ) {
-        otherLanguageText.setAttribute("lang", "zh");
-      } else {
-        otherLanguageText.removeAttribute("lang");
-      }
 
       // Add a small header to indicate what language this is
       const languageHeader = document.createElement("div");
@@ -428,11 +390,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Node actions
     const nodeActions = document.createElement("div");
     nodeActions.className = "node-actions";
-
-    // Add the toggle button to node actions if it exists
-    if (nodeContent._toggleOtherLangButton) {
-      nodeActions.appendChild(nodeContent._toggleOtherLangButton);
-    }
 
     // Position button
     const positionButton = document.createElement("button");
@@ -611,21 +568,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Update node content
-  async function updateNodeContent(nodeId, content, content_zh) {
+  async function updateNodeContent(nodeId, content) {
     try {
       console.log(`updateNodeContent called for ${nodeId} with:`, {
         content_param: content,
-        content_zh_param: content_zh,
       });
 
-      // Simple approach: just pass the content as-is since the blur handler already formatted it correctly
+      // English only - simple approach
       const updateData = {};
 
       if (content !== undefined) {
         updateData.content = content;
-      }
-      if (content_zh !== undefined) {
-        updateData.content_zh = content_zh;
       }
 
       console.log(
@@ -656,9 +609,6 @@ document.addEventListener("DOMContentLoaded", () => {
         content: updatedNodeFromServer.content
           ? updatedNodeFromServer.content.replace(/\\n/g, "\n")
           : updatedNodeFromServer.content,
-        content_zh: updatedNodeFromServer.content_zh
-          ? updatedNodeFromServer.content_zh.replace(/\\n/g, "\n")
-          : updatedNodeFromServer.content_zh,
       };
       updateLocalNodeData(nodeId, processedUpdateForLocalCache);
 
@@ -676,9 +626,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (nodes[i].id === nodeId) {
         if (updateData.content !== undefined) {
           nodes[i].content = updateData.content;
-        }
-        if (updateData.content_zh !== undefined) {
-          nodes[i].content_zh = updateData.content_zh;
         }
         console.log(`Updated local data for top-level node ${nodeId}`);
         return;
@@ -816,7 +763,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================================================
   // FEATURE: Move Node Modal
   // LOCATION: Inside DOMContentLoaded event listener
-  // DEPENDENCIES: fetchNodes, debounce, currentLanguage
+  // DEPENDENCIES: fetchNodes, debounce
   // ===================================================================
   // Create move node modal
 
@@ -963,14 +910,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Event listeners
   addRootNodeButton.addEventListener("click", addRootNode);
-  languageToggle.addEventListener("click", I18n.toggleLanguage);
+  // languageToggle no longer exists - I18n removed
 
   // Add event listener for save changes button
   const saveChangesButton = document.getElementById("save-changes");
   saveChangesButton.addEventListener("click", saveChanges);
 
-  // Initial setup
-  updateLanguageToggle();
+  // Initial setup - no language toggle needed
 
   // Call this function during initialization
   checkContainerSettings();
@@ -1149,176 +1095,10 @@ document.addEventListener("DOMContentLoaded", () => {
     BasicFontSettings.initialize();
   }
 
-  // Add this function after the other helper functions
-  function toggleAllOtherLanguageContent() {
-    globalOtherLanguageVisible = !globalOtherLanguageVisible;
+  // Global language functionality removed - English only
 
-    // Update all existing other language containers
-    const allContainers = document.querySelectorAll(
-      ".node-text-other-language-container",
-    );
-    const allToggleButtons = document.querySelectorAll(
-      ".toggle-other-lang-button",
-    );
-
-    allContainers.forEach((container) => {
-      container.style.display = globalOtherLanguageVisible ? "block" : "none";
-    });
-
-    allToggleButtons.forEach((button) => {
-      const langCode = button.innerHTML.includes("ZH") ? "zh" : "en";
-      if (globalOtherLanguageVisible) {
-        button.innerHTML = `🙈 ${langCode.toUpperCase()}`;
-        button.style.backgroundColor = "#e8f0fe";
-      } else {
-        button.innerHTML = `👁️ ${langCode.toUpperCase()}`;
-        button.style.backgroundColor = "#f0f0f0";
-      }
-    });
-
-    // Update the global toggle button
-    const globalToggleButton = document.getElementById(
-      "global-toggle-other-lang",
-    );
-    if (globalToggleButton) {
-      if (globalOtherLanguageVisible) {
-        globalToggleButton.textContent = "🙈 Hide All Translations";
-        globalToggleButton.classList.add("active");
-      } else {
-        globalToggleButton.textContent = "👁️ Show All Translations";
-        globalToggleButton.classList.remove("active");
-      }
-    }
-
-    // Save preference to localStorage
-    localStorage.setItem(
-      "globalOtherLanguageVisible",
-      globalOtherLanguageVisible.toString(),
-    );
-  }
-
-  // Add this after the other sidebar buttons (around line 820 where other buttons are added)
-  // Add global toggle for other language content
-  const globalToggleOtherLangButton = document.createElement("button");
-  globalToggleOtherLangButton.id = "global-toggle-other-lang";
-  globalToggleOtherLangButton.className = "feature-toggle";
-  globalToggleOtherLangButton.textContent = "👁️ Show All Translations";
-  globalToggleOtherLangButton.title =
-    "Toggle visibility of all other language content";
-  globalToggleOtherLangButton.addEventListener(
-    "click",
-    toggleAllOtherLanguageContent,
-  );
-
-  // Add to sidebar using helper function
-  addButtonToSidebar(globalToggleOtherLangButton);
-
-  // Add this near the initialization code to restore the saved preference
-  // Restore global other language visibility preference
-  const savedGlobalOtherLanguageVisible = localStorage.getItem(
-    "globalOtherLanguageVisible",
-  );
-  if (savedGlobalOtherLanguageVisible === "true") {
-    globalOtherLanguageVisible = true;
-    const globalToggleButton = document.getElementById(
-      "global-toggle-other-lang",
-    );
-    if (globalToggleButton) {
-      globalToggleButton.textContent = "🙈 Hide All Translations";
-      globalToggleButton.classList.add("active");
-    }
-  }
-
-  // Add this function after the other helper functions
-  async function copyContentBetweenLanguages(nodeId, direction) {
-    try {
-      // Get the current node data
-      const response = await fetch(`/api/nodes/${nodeId}`);
-      const nodeData = await response.json();
-
-      let sourceContent, targetField, successMessage;
-
-      if (direction === "en-to-zh") {
-        sourceContent = nodeData.content || "";
-        targetField = "content_zh";
-        successMessage = "English content copied to Chinese";
-      } else if (direction === "zh-to-en") {
-        sourceContent = nodeData.content_zh || "";
-        targetField = "content";
-        successMessage = "Chinese content copied to English";
-      } else {
-        console.error("Invalid direction:", direction);
-        return false;
-      }
-
-      if (!sourceContent || sourceContent.trim() === "") {
-        alert("Source content is empty, nothing to copy");
-        return false;
-      }
-
-      console.log(`Copying content for node ${nodeId}:`);
-      console.log(`- Direction: ${direction}`);
-      console.log(`- Source content: "${sourceContent}"`);
-
-      // Update the node with the copied content
-      const updateData = {};
-      updateData[targetField] = sourceContent;
-
-      const updateResponse = await fetch(`/api/nodes/${nodeId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error("Failed to update node");
-      }
-
-      console.log(`Successfully copied content for node ${nodeId}`);
-
-      // CHANGED: Instead of full refresh, just update the local node data
-      // Find and update the node in the local nodes array
-      updateLocalNodeData(nodeId, updateData);
-
-      // Update the DOM element directly if it exists
-      const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
-      if (nodeElement) {
-        // Find the other language container and update it
-        const otherLangContainer = nodeElement.querySelector(
-          ".node-text-other-language",
-        );
-        if (otherLangContainer) {
-          const newContent = sourceContent.replace(/\\n/g, "\n");
-          otherLangContainer.textContent = newContent;
-          console.log(`Updated DOM for node ${nodeId} with new content`);
-        }
-      }
-
-      // Show success message
-      const notification = document.createElement("div");
-      notification.className = "content-copy-notification";
-      notification.textContent = successMessage;
-      document.body.appendChild(notification);
-
-      // Remove notification after 2 seconds
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 2000);
-
-      return true;
-    } catch (error) {
-      console.error("Error copying content between languages:", error);
-      alert("Failed to copy content. Please try again.");
-      return false;
-    }
-  }
-
-  // Make copyContentBetweenLanguages available globally for command palette and other modules
-  window.copyContentBetweenLanguages = copyContentBetweenLanguages;
+  // Content copying removed - English only
+  window.copyContentBetweenLanguages = function() { return false; }; // Stub function for compatibility
 
   // Make lastFocusedNodeId available globally for command palette and other modules
   window.lastFocusedNodeId = lastFocusedNodeId;

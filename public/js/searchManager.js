@@ -51,7 +51,7 @@ const SearchManager = (function() {
     
     // Sort by label
     const sortLabel = document.createElement('span');
-    sortLabel.textContent = window.I18n ? I18n.t('sortBy') : 'Sort by:';
+    sortLabel.textContent = 'Sort by:';
     sortLabel.style.fontWeight = 'bold';
     sortLabel.style.fontSize = '14px';
     
@@ -62,11 +62,11 @@ const SearchManager = (function() {
     sortBySelect.style.borderRadius = '4px';
     sortBySelect.style.border = '1px solid #ddd';
     
-    const sortOptions = [
-      { value: 'relevance', text: window.I18n ? I18n.t('relevance') : 'Relevance' },
-      { value: 'created', text: window.I18n ? I18n.t('creationTime') : 'Creation Time' },
-      { value: 'updated', text: window.I18n ? I18n.t('lastModified') : 'Last Modified' },
-      { value: 'content', text: window.I18n ? I18n.t('content') : 'Content' }
+const sortOptions = [
+      { value: 'relevance', text: 'Relevance' },
+      { value: 'created', text: 'Creation Time' },
+      { value: 'updated', text: 'Last Modified' },
+      { value: 'content', text: 'Content' }
     ];
     
     sortOptions.forEach(option => {
@@ -84,8 +84,8 @@ const SearchManager = (function() {
     sortOrderSelect.style.border = '1px solid #ddd';
     
     const orderOptions = [
-      { value: 'desc', text: window.I18n ? I18n.t('descending') : 'Newest First' },
-      { value: 'asc', text: window.I18n ? I18n.t('ascending') : 'Oldest First' }
+      { value: 'desc', text: 'Newest First' },
+      { value: 'asc', text: 'Oldest First' }
     ];
     
     orderOptions.forEach(option => {
@@ -132,9 +132,8 @@ const SearchManager = (function() {
           bValue = b.updated_at || 0;
           break;
         case 'content':
-          const currentLang = currentLanguage;
-          aValue = (currentLang === 'en' ? a.content : (a.content_zh || a.content)) || '';
-          bValue = (currentLang === 'en' ? b.content : (b.content_zh || b.content)) || '';
+          aValue = a.content || '';
+          bValue = b.content || '';
           aValue = aValue.toLowerCase();
           bValue = bValue.toLowerCase();
           break;
@@ -178,7 +177,7 @@ const SearchManager = (function() {
     const totalResults = currentSearchResults.nodes.length || 0;
 
     if (totalResults === 0) {
-      searchResults.innerHTML = `<div class="no-results">${window.I18n ? I18n.t('noSearchResults') : 'No matching results found'}</div>`;
+      searchResults.innerHTML = `<div class="no-results">No matching results found</div>`;
       return;
     }
 
@@ -238,7 +237,7 @@ const SearchManager = (function() {
     
     const modalTitle = document.createElement('div');
     modalTitle.className = 'modal-title';
-    modalTitle.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
+    modalTitle.textContent = 'Search Nodes';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'modal-close';
@@ -265,7 +264,7 @@ const SearchManager = (function() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.className = 'node-search';
-    searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
+    searchInput.placeholder = 'Type to search for nodes...';
     searchInput.autofocus = true;
     
     searchInputContainer.appendChild(searchInput);
@@ -286,13 +285,13 @@ const SearchManager = (function() {
     
     const advancedSearchLabel = document.createElement('label');
     advancedSearchLabel.htmlFor = 'advanced-search-toggle';
-    advancedSearchLabel.textContent = window.I18n ? I18n.t('advancedSearch') : 'Advanced Search';
+    advancedSearchLabel.textContent = 'Advanced Search';
     
     // Advanced search help icon
     const advancedSearchHelp = document.createElement('span');
     advancedSearchHelp.className = 'advanced-search-help';
     advancedSearchHelp.innerHTML = '?';
-    advancedSearchHelp.title = window.I18n ? I18n.t('advancedSearchHelp') : 
+    advancedSearchHelp.title =
       'Use operators AND, OR, NOT, and parentheses. Examples:\n' +
       '• term1 AND term2: Find nodes containing both terms\n' +
       '• term1 OR term2: Find nodes containing either term\n' +
@@ -330,7 +329,7 @@ const SearchManager = (function() {
     commonPatternsContainer.style.marginBottom = '10px';
     
     const commonPatternsTitle = document.createElement('h5');
-    commonPatternsTitle.textContent = window.I18n ? I18n.t('commonPatterns') : 'Common Search Patterns';
+    commonPatternsTitle.textContent = 'Common Search Patterns';
     commonPatternsTitle.style.marginTop = '0';
     commonPatternsTitle.style.marginBottom = '5px';
     
@@ -378,7 +377,7 @@ const SearchManager = (function() {
     edgeCasesContainer.style.marginTop = '10px';
     
     const edgeCasesTitle = document.createElement('h5');
-    edgeCasesTitle.textContent = window.I18n ? I18n.t('edgeCases') : 'Common Edge Cases';
+    edgeCasesTitle.textContent = 'Common Edge Cases';
     edgeCasesTitle.style.marginTop = '0';
     edgeCasesTitle.style.marginBottom = '5px';
     
@@ -455,7 +454,7 @@ const SearchManager = (function() {
     recentSearchesPanel.style.height = '100%'; // Ensure it takes full available height
     
     const recentSearchesTitle = document.createElement('h4');
-    recentSearchesTitle.textContent = window.I18n ? I18n.t('recentSearches') : 'Recent Searches';
+    recentSearchesTitle.textContent = 'Recent Searches';
     recentSearchesTitle.style.marginTop = '0';
     recentSearchesTitle.style.marginBottom = '8px';
     recentSearchesTitle.style.flex = '0 0 auto';
@@ -483,7 +482,7 @@ const SearchManager = (function() {
     searchResultsPanel.style.overflow = 'hidden';
     
     const searchResultsTitle = document.createElement('h4');
-    searchResultsTitle.textContent = window.I18n ? I18n.t('searchResults') : 'Search Results';
+    searchResultsTitle.textContent = 'Search Results';
     searchResultsTitle.style.marginTop = '0';
     searchResultsTitle.style.marginBottom = '8px';
     searchResultsTitle.style.flex = '0 0 auto';
@@ -558,7 +557,7 @@ const SearchManager = (function() {
         
       } catch (error) {
         console.error('Error searching:', error);
-        searchResults.innerHTML = `<div class="search-error">${window.I18n ? I18n.t('searchError') : 'Error performing search'}</div>`;
+        searchResults.innerHTML = `<div class="search-error">Error performing search</div>`;
       }
     }, 300));
     
@@ -573,7 +572,7 @@ const SearchManager = (function() {
     
     const closeModalButton = document.createElement('button');
     closeModalButton.className = 'btn btn-secondary';
-    closeModalButton.textContent = window.I18n ? I18n.t('close') : 'Close';
+    closeModalButton.textContent = 'Close';
     closeModalButton.addEventListener('click', closeSearchModal);
     
     modalFooter.appendChild(closeModalButton);
@@ -623,14 +622,12 @@ const SearchManager = (function() {
    */
   function getNodePath(node) {
     if (node.parent_id) {
-      // Use the parent content from the server response based on current language
-      const parentContent = currentLanguage === 'en' 
-        ? (node.parent_content || '(Unknown)')
-        : (node.parent_content_zh || node.parent_content || '(Unknown)');
-      
-      return `${window.I18n ? I18n.t('parent') : 'Parent'}: ${parentContent}`;
+      // English only
+      const parentContent = node.parent_content || '(Unknown)';
+
+      return `Parent: ${parentContent}`;
     } else {
-      return window.I18n ? I18n.t('rootLevel') : 'Root level';
+      return 'Root level';
     }
   }
   
@@ -734,27 +731,25 @@ const SearchManager = (function() {
     if (searchModalElement) {
       const modalTitle = searchModalElement.querySelector('.modal-title');
       if (modalTitle) {
-        modalTitle.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
+        modalTitle.textContent = 'Search Nodes';
       }
       
       const searchInput = searchModalElement.querySelector('.node-search');
       if (searchInput) {
-        searchInput.placeholder = window.I18n ? I18n.t('searchPlaceholder') : 'Type to search for nodes...';
+        searchInput.placeholder = 'Type to search for nodes...';
       }
       
       const closeButton = searchModalElement.querySelector('.btn-secondary');
       if (closeButton) {
-        closeButton.textContent = window.I18n ? I18n.t('close') : 'Close';
+        closeButton.textContent = 'Close';
       }
     }
     
     // Update the search button text in the sidebar
     const searchButton = document.getElementById('search-nodes-button');
     if (searchButton) {
-      searchButton.textContent = window.I18n ? I18n.t('searchNodes') : 'Search Nodes';
-      searchButton.title = window.I18n ? 
-        I18n.t('searchShortcutHint') : 
-        'Search for nodes (Ctrl+F)';
+      searchButton.textContent = 'Search Nodes';
+      searchButton.title = 'Search for nodes (Ctrl+F)';
     }
   }
   
@@ -854,7 +849,7 @@ const SearchManager = (function() {
     if (recentSearches.length === 0) {
       const noSearches = document.createElement('div');
       noSearches.className = 'no-searches';
-      noSearches.textContent = window.I18n ? I18n.t('noRecentSearches') : 'No recent searches';
+      noSearches.textContent = 'No recent searches';
       noSearches.style.padding = '10px';
       noSearches.style.color = '#888';
       noSearches.style.fontStyle = 'italic';
@@ -922,7 +917,7 @@ const SearchManager = (function() {
     resultItem.className = 'search-result-item node-result';
     resultItem.dataset.id = node.id;
     
-    const nodeContent = currentLanguage === 'en' ? node.content : (node.content_zh || node.content);
+    const nodeContent = node.content;
     
     // Create a breadcrumb path for the node if it has a parent
     let breadcrumb = '';
