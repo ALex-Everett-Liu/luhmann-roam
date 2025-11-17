@@ -12,13 +12,10 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Multilingual Interface**: Toggle between English and Chinese
 - **Node Operations**: Indent, outdent, reorder, and reposition nodes
 - **Visual Feedback**: Highlighting for focus and active branches
-- **Search & Filter**: Quickly find and focus on specific content
 - **Task Management**: Track daily tasks with time tracking functionality
 - **Timestamp Tracking**: View creation and modification times for nodes
 - **Position Management**: Precisely adjust node positions and hierarchy
-- **Node Attributes**: Add, edit, and query custom attributes for nodes
 - **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails
-- **Bookmark Management**: Save and organize important nodes for quick access
 - **Command Palette**: Access commands and features with a searchable interface
 - **Keyboard Shortcuts**: Comprehensive hotkey system for efficient workflows
 - **2D Cosmic Visualization**: Visualize node relationships in an interactive cosmic view
@@ -118,12 +115,6 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Add weight and description to the link
 - View both incoming and outgoing links
 
-### Managing Attributes
-- Click the attribute button on a node
-- Add, edit, or delete custom attributes
-- Use the query interface to find nodes with specific attributes
-- Browse recent queries or save complex queries for future use
-
 ### Using Breadcrumbs
 - Double-click on a node to focus on it and its descendants
 - Use the breadcrumb trail to navigate up the hierarchy
@@ -135,12 +126,6 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Click on bookmarked nodes in the sidebar for quick access
 - Bookmarks display usage statistics and can be sorted by frequency
 - Remove bookmarks with a single click
-
-### Using Command Palette
-- Press Ctrl+P (or Cmd+P on Mac) to open the command palette
-- Search for commands by name, category, or keywords
-- Execute commands with the Enter key
-- View keyboard shortcuts for frequently used commands
 
 ### Using Keyboard Shortcuts
 - Press ? to view all available shortcuts
@@ -204,7 +189,6 @@ luhmann-roam/
 │   │   ├── app.js                 # Main application logic
 │   │   ├── markdownManager.js     # Markdown editing functionality
 │   │   ├── linkManager.js         # Link management functionality
-│   │   ├── searchManager.js       # Search functionality
 │   │   ├── filterManager.js       # Filter functionality
 │   │   ├── bookmarkManager.js     # Bookmark management functionality
 │   │   ├── commandPaletteManager.js # Command palette functionality
@@ -214,10 +198,7 @@ luhmann-roam/
 │   │   ├── taskManager.js         # Task management functionality
 │   │   ├── timestampManager.js    # Timestamp display functionality
 │   │   ├── positionManager.js     # Node positioning functionality
-│   │   ├── attributeManager.js    # Node attributes functionality
 │   │   ├── breadcrumbManager.js   # Node navigation functionality
-│   │   ├── codeAnalyzerManager.js # Code structure analysis
-│   │   ├── hotkeyManager.js       # Keyboard shortcuts functionality
 │   │   ├── i18n.js                # Internationalization support
 │   │   ├── nodeExpansionManager.js # Node expansion functionality
 │   │   ├── nodeOperationsManager.js # Core node operations
@@ -226,8 +207,6 @@ luhmann-roam/
 ├── routes/            # Express route handlers
 │   ├── nodeRoutes.js  # Node-related API endpoints
 │   ├── linkRoutes.js  # Link-related API endpoints
-│   ├── blogRoutes.js  # Blog publishing endpoints
-│   └── imageRoutes.js # Image management endpoints
 └── README.md          # This file
 ```
 
