@@ -16,9 +16,6 @@ const axios = require("axios");
 const url = require("url");
 const fontRoutes = require("./routes/fontRoutes");
 const sanitizeHtml = require("sanitize-html");
-const blogRoutes = require("./routes/blogRoutes");
-const blogController = require("./controllers/blogController");
-const markdownRoutes = require("./routes/markdownRoutes");
 const linkRoutes = require("./routes/linkRoutes");
 const attributeRoutes = require("./routes/attributeRoutes");
 const dcimRoutes = require("./routes/dcimRoutes");
@@ -27,7 +24,6 @@ const upload = require("./middleware/upload");
 const databaseExportImportRoutes = require("./routes/databaseExportImportRoutes");
 const vaultRoutes = require("./routes/vaultRoutes");
 const metroMapRoutes = require("./routes/metroMapRoutes");
-const markdownSearchRoutes = require("./routes/markdownSearchRoutes");
 const wordFrequencyRoutes = require("./routes/wordFrequencyRoutes");
 const wordGroupRoutes = require("./routes/wordGroupRoutes");
 const graphRoutes = require("./routes/graphRoutes");
@@ -767,15 +763,6 @@ app.post("/api/backup/:vault?", async (req, res) => {
 app.use("/api/links", linkRoutes);
 app.use("/api/fonts", fontRoutes);
 
-// Use the blog routes
-app.use("/api/blog", blogRoutes);
-
-// Use the markdown routes - note the proper approach for nested routes
-app.use("/api/nodes/:id/markdown", markdownRoutes);
-
-// Add a special route for serving blog pages
-app.get("/blog/:slug", blogController.serveBlogPage);
-
 // Use the attribute routes
 app.use("/api/node-attributes", attributeRoutes);
 
@@ -819,10 +806,6 @@ app.use((req, res, next) => {
   req.currentVault = currentVault;
   next();
 });
-
-// Add the markdown search routes
-app.use("/api/markdown", markdownSearchRoutes);
-app.use("/api/search", markdownSearchRoutes);
 
 // Start the server
 app.listen(PORT, () => {

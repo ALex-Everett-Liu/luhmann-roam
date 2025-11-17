@@ -306,11 +306,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const nodeContent = document.createElement("div");
     nodeContent.className = "node-content";
 
-    // Add 'has-markdown' class if node has markdown
-    if (node.has_markdown) {
-      nodeContent.classList.add("has-markdown");
-    }
-
     // Drag handle
     const dragHandle = document.createElement("span");
     dragHandle.className = "drag-handle";
@@ -616,16 +611,6 @@ document.addEventListener("DOMContentLoaded", () => {
       addSiblingNode(node.id, "after"),
     );
     nodeActions.appendChild(addSiblingAfterButton);
-
-    // Markdown button
-    const markdownButton = document.createElement("button");
-    markdownButton.className = "markdown-button";
-    markdownButton.innerHTML = "📝";
-    markdownButton.title = "Edit markdown notes";
-    markdownButton.addEventListener("click", () =>
-      MarkdownManager.openModal(node.id),
-    );
-    nodeActions.appendChild(markdownButton);
 
     // Size button
     const sizeButton = document.createElement("button");

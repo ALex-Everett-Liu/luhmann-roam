@@ -47,7 +47,6 @@ async function initializeDatabase(vaultName) {
       parent_id TEXT,
       position INTEGER,
       is_expanded BOOLEAN DEFAULT 1,
-      has_markdown BOOLEAN DEFAULT 0,
       node_size INTEGER DEFAULT 20,
       created_at INTEGER,
       updated_at INTEGER,
@@ -146,20 +145,6 @@ async function initializeDatabase(vaultName) {
       added_at INTEGER,
       created_at INTEGER,
       FOREIGN KEY (node_id) REFERENCES nodes (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create blog_pages table
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS blog_pages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      node_id TEXT NOT NULL,
-      template_id TEXT,
-      title TEXT,
-      slug TEXT UNIQUE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
     )
   `);
 
@@ -745,7 +730,6 @@ async function populateSequenceIds() {
       "node_attributes",
       "tasks",
       "bookmarks",
-      "blog_pages",
       "dcim_images",
       "metro_stations",
       "metro_lines",
@@ -781,9 +765,7 @@ async function populateSequenceIds() {
         // Get records ordered by created_at timestamp (or another appropriate column)
         // Adapt the ORDER BY column if some tables don't have created_at
         let orderByColumn = "created_at";
-        if (table === "blog_pages") {
-          orderByColumn = "created_at";
-        } else if (table === "graph_analysis_results") {
+        if (table === "graph_analysis_results") {
           orderByColumn = "computed_at";
         } else if (table === "bookmarks") {
           orderByColumn = "added_at";
