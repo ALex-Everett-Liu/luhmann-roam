@@ -21,6 +21,7 @@
 @import "./features/timestamp.css";
 /* Node size manager CSS removed for simplification */
 /* Node size highlight CSS removed for simplification */
+@import "./features/plugin-dialog.css";
 @import "./features/plugins.css";
 @import "./features/font-manager.css";
 /* Style Settings removed - basic theme options only */
