@@ -24,7 +24,9 @@
       "Bash(git commit:*)",
       "Bash(dir:*)",
       "Bash(del:*)",
-      "Bash(egrep:*)"
+      "Bash(egrep:*)",
+      "Bash(cd C: u0026u0026 find . -name \"test-syntax.js\" -type f)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

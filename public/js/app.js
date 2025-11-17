@@ -1028,8 +1028,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Initialize I18n before other components
-  I18n.initialize();
+  // I18n removed - English only
+  // No initialization needed
 
   // Initialize the NodeExpansionManager
   if (window.NodeExpansionManager) {

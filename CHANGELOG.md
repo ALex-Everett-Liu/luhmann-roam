@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.32.6] - 2025-11-17
+## [0.32.6] - 2025-11-17
 
 ### Removed
 - **Complete I18n System Replaced with English-Only Architecture**:
@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Streamlined to pure English outliner operations - zero translation and dual-language complexity!
 
-## [v0.32.5] - 2025-11-17
+## [v0.32.3+] - 2025-11-17
 
 ### Fixed
 **Link System Completeness**:
