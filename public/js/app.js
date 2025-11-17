@@ -677,30 +677,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Move node up
-  async function moveNodeUp(nodeId) {
-    if (window.NodeOperationsManager) {
-      await preserveFocusState(async () => {
-        return NodeOperationsManager.moveNodeUp(nodeId);
-      });
-    } else {
-      console.error("NodeOperationsManager not available");
-      return false;
-    }
-  }
-
-  // Move node down
-  async function moveNodeDown(nodeId) {
-    if (window.NodeOperationsManager) {
-      await preserveFocusState(async () => {
-        return NodeOperationsManager.moveNodeDown(nodeId);
-      });
-    } else {
-      console.error("NodeOperationsManager not available");
-      return false;
-    }
-  }
-
   // Add a sibling node
   async function addSiblingNode(nodeId, position) {
     if (window.NodeOperationsManager) {
