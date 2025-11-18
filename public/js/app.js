@@ -981,9 +981,8 @@ document.addEventListener("DOMContentLoaded", () => {
     SettingsManager.initialize();
   }
 
-  // Initialize the ResizableSidebar
-  if (window.ResizableSidebar) {
-    console.log("Setting up ResizableSidebar initialization from app.js");
-    ResizableSidebar.initialize();
+  // Initialize the resizable sidebar
+  if (window.setupSidebarResize) {
+    setupSidebarResize();
   }
 });
