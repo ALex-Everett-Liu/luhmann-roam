@@ -5,7 +5,6 @@
 
 class GraphPluginLauncher {
   constructor() {
-    this.pluginPort = 3001;
     this.modal = null;
     this.iframe = null;
     this.loadingIndicator = null;
@@ -148,19 +147,18 @@ class GraphPluginLauncher {
   async openGraphModal() {
     console.log('[Graph Plugin] Opening modal...');
     
-    // Check if plugin server is running (should be auto-started with main app)
+    // Check if graph API is available (using main server)
     try {
-      console.log(`[Graph Plugin] Checking server at http://localhost:${this.pluginPort}/api/graph`);
-      const response = await fetch(`http://localhost:${this.pluginPort}/api/graph`);
-      console.log(`[Graph Plugin] Server response status:`, response.status);
-      if (!response.ok) throw new Error(`Server responded with status ${response.status}`);
-      console.log('[Graph Plugin] Server is running!');
+      console.log('[Graph Plugin] Checking API at /api/plugins/graph');
+      const response = await fetch('/api/plugins/graph');
+      console.log(`[Graph Plugin] API response status:`, response.status);
+      if (!response.ok) throw new Error(`API responded with status ${response.status}`);
+      console.log('[Graph Plugin] API is available!');
     } catch (error) {
-      console.error('[Graph Plugin] Server check failed:', error);
+      console.error('[Graph Plugin] API check failed:', error);
       alert(
-        'Graph plugin server is not responding.\n\n' +
-        'The plugin server should start automatically with the main app.\n' +
-        'Please restart the main app (npm start) or check the console for errors.\n\n' +
+        'Graph plugin API is not responding.\n\n' +
+        'Please make sure the main app server is running.\n\n' +
         `Error: ${error.message}`
       );
       return;
@@ -170,8 +168,8 @@ class GraphPluginLauncher {
     console.log('[Graph Plugin] Showing modal...');
     this.modal.classList.add('visible');
 
-    // Load iframe
-    const iframeUrl = `http://localhost:${this.pluginPort}/index.html`;
+    // Load iframe from main server
+    const iframeUrl = '/plugins/graph/index.html';
     console.log(`[Graph Plugin] Loading iframe: ${iframeUrl}`);
     
     // Remove loading class if it exists

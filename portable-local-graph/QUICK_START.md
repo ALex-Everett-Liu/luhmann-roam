@@ -13,10 +13,8 @@ npm start
 You should see:
 ```
 Server running on port 3003
-Starting graph plugin server...
 Graph plugin database initialized
-Graph database ready
-Graph plugin server running on http://localhost:3001
+Graph plugin available at /plugins/graph/index.html
 ```
 
 ### 2. Open the Plugin
@@ -28,7 +26,7 @@ Graph plugin server running on http://localhost:3001
 4. Click the ⛶ button to toggle fullscreen
 
 **Option B**: Direct Access
-- Open your browser to: `http://localhost:3001/index.html`
+- Open your browser to: `http://localhost:3003/plugins/graph/index.html`
 
 ### 3. Start Creating!
 
@@ -109,10 +107,10 @@ Done! Your graph is saved in the database.
 
 ## 🔧 Troubleshooting
 
-**Button says "server not responding"?**
-→ The plugin server should start automatically with `npm start`
-→ Check the console output when starting the main app
-→ If you see errors, restart the main app
+**Button says "API not responding"?**
+→ Make sure the main app server is running (`npm start`)
+→ Check the console output for any errors
+→ The plugin uses the main server - no separate server needed
 
 **Nothing saves?**
 → Check the terminal for error messages

@@ -1,0 +1,11 @@
+# DEPRECATED - This file is no longer used
+
+The graph plugin now uses the main app server instead of a separate server.
+
+- API routes moved to `server.js` at `/api/plugins/graph/*`
+- Static files served from `/plugins/graph/*`
+- Database remains separate (`graph.db`)
+
+This file is kept for reference but is not executed.
+You can safely delete this file if you want.
+

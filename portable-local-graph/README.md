@@ -1,11 +1,11 @@
 # Portable Local Graph - Independent Plugin
 
-A completely independent graph visualization tool with its own database and backend server. This plugin runs separately from the main Luhmann Roam application and maintains its own data.
+A completely independent graph visualization tool with its own database. This plugin uses the main app server but maintains its own separate database for complete data isolation.
 
 ## Key Features
 
-- **Independent Operation**: Runs on its own port (3001) with separate database
-- **Own Database**: Uses `graph.db` - completely separate from main app
+- **Independent Database**: Uses `graph.db` - completely separate from main app
+- **Shared Server**: Uses main app server (no separate server needed)
 - **Persistent Storage**: All nodes and edges are automatically saved to database
 - **Interactive Canvas**: Drag, create, and edit nodes and edges
 - **File Import/Export**: Save and load graph layouts as JSON
@@ -15,19 +15,16 @@ A completely independent graph visualization tool with its own database and back
 ## Architecture
 
 ```
-Graph Plugin (Port 3001)
-├── graph.db (SQLite)         # Plugin's own database
-├── graph-server.js            # Express backend server
-├── graph-database.js          # Database operations
-├── index.html                 # Frontend UI
-├── graph.js                   # Canvas rendering
-└── app.js                     # Application logic
+Main App Server (Port 3003)
+├── API Routes: /api/plugins/graph/*  # Graph plugin API endpoints
+├── Static Files: /plugins/graph/*    # Graph plugin UI files
+└── Database: graph.db (SQLite)       # Plugin's own database
 ```
 
-**Completely separate from:**
+**Data Independence:**
 ```
-Main App (Port 3000)
-└── outliner.db                # Main app database
+Main App Database: outliner.db        # Main app data
+Graph Plugin Database: graph.db        # Plugin data (separate)
 ```
 
 ## Installation
@@ -46,20 +43,18 @@ The plugin requires the same dependencies as the main app (already installed):
 
 ### Starting the Plugin
 
-**The graph plugin server starts automatically when you start the main app!**
+**The graph plugin is integrated into the main app - no separate server needed!**
 
 1. **Start the main app**:
    ```bash
    npm start
    ```
 
-2. You'll see both servers starting:
+2. You'll see the server starting with graph plugin initialized:
    ```
    Server running on port 3003
-   Starting graph plugin server...
    Graph plugin database initialized
-   Graph database ready
-   Graph plugin server running on http://localhost:3001
+   Graph plugin available at /plugins/graph/index.html
    ```
 
 3. **Open the plugin**:
@@ -67,7 +62,7 @@ The plugin requires the same dependencies as the main app (already installed):
    - The plugin opens in a modal dialog inside the app
    - Use the ⛶ button to toggle fullscreen
 
-**Note**: The plugin server runs as a child process of the main app, so stopping the main app (`Ctrl+C`) will also stop the plugin server.
+**Note**: The plugin uses the main app server - just one server process!
 
 ### Basic Operations
 
@@ -148,56 +143,56 @@ CREATE TABLE graph_edges (
 
 ## API Endpoints
 
-The plugin exposes a RESTful API on port 3001:
+The plugin exposes a RESTful API through the main server at `/api/plugins/graph`:
 
 ### Get All Graph Data
 ```
-GET /api/graph
+GET /api/plugins/graph
 ```
 Returns all nodes and edges
 
 ### Create Node
 ```
-POST /api/graph/nodes
+POST /api/plugins/graph/nodes
 Body: { id, x, y, label, color, radius, full_content }
 ```
 
 ### Update Node
 ```
-PUT /api/graph/nodes/:id
+PUT /api/plugins/graph/nodes/:id
 Body: { x, y, label, color, radius, full_content }
 ```
 
 ### Delete Node
 ```
-DELETE /api/graph/nodes/:id
+DELETE /api/plugins/graph/nodes/:id
 ```
 
 ### Create Edge
 ```
-POST /api/graph/edges
+POST /api/plugins/graph/edges
 Body: { id, from_node_id, to_node_id, weight }
 ```
 
 ### Update Edge
 ```
-PUT /api/graph/edges/:id
+PUT /api/plugins/graph/edges/:id
 Body: { weight }
 ```
 
 ### Delete Edge
 ```
-DELETE /api/graph/edges/:id
+DELETE /api/plugins/graph/edges/:id
 ```
 
 ### Clear All Data
 ```
-DELETE /api/graph/clear
+DELETE /api/plugins/graph/clear
 ```
 
 ### Import Data (Bulk)
 ```
-POST /api/graph/import
+POST /api/plugins/graph/import
 Body: { nodes: [...], edges: [...] }
 ```
 
@@ -206,16 +201,15 @@ Body: { nodes: [...], edges: [...] }
 The main Luhmann Roam app includes a launcher button:
 
 1. Button appears in the sidebar: "📊 Graph Plugin"
-2. Clicking it checks if the plugin server is running
-3. If running, opens the plugin in a modal dialog inside the app
-4. If not running, shows instructions to start it
-5. Modal features:
+2. Clicking it checks if the plugin API is available
+3. Opens the plugin in a modal dialog inside the app
+4. Modal features:
    - ⛶ Fullscreen button - Expand to fullscreen or restore
    - ✕ Close button - Close the plugin
    - Click outside modal - Close the plugin
    - ESC key - Exit fullscreen or close the plugin
 
-The button does NOT sync data between apps - they remain completely independent.
+The plugin uses the main app server but has its own database - data remains completely independent.
 
 ## Data Independence
 
@@ -258,37 +252,29 @@ While focused on canvas:
 
 ## Troubleshooting
 
-### Plugin button shows "server not running"
-→ Start the graph server: `node graph-server.js` in the `portable-local-graph` directory
+### Plugin button shows "API not responding"
+→ Make sure the main app server is running (`npm start`)
 
 ### Changes not saving
 → Check the server console for error messages
 → Ensure `graph.db` file permissions are correct
-
-### Port 3001 already in use
-→ Stop other services using port 3001, or modify the port in `graph-server.js`
 
 ### Database file location
 → `portable-local-graph/graph.db` (created automatically on first run)
 
 ## Development
 
-### Running Standalone
+### Running the Plugin
+The plugin runs as part of the main app:
 ```bash
-cd portable-local-graph
-node graph-server.js
-# Open http://localhost:3001/index.html
+npm start
+# Plugin available at http://localhost:3003/plugins/graph/index.html
 ```
 
-### Modifying the Port
-Edit `graph-server.js`:
+### API Base URL
+The plugin uses relative paths, so it works with the main server automatically:
 ```javascript
-const PORT = 3001; // Change to desired port
-```
-
-Also update `app.js`:
-```javascript
-const API_BASE = 'http://localhost:3001/api/graph';
+const API_BASE = '/api/plugins/graph';
 ```
 
 ## Technical Details

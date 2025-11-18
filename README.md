@@ -153,14 +153,14 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Access blog posts through dedicated routes
 
 ### Using Graph Plugin (Optional, Independent Tool)
-The graph plugin is a completely separate tool with its own database:
-- **Starts automatically** when you run `npm start` (no separate command needed!)
+The graph plugin is integrated into the main app with its own database:
+- **No separate server needed** - uses main app server (simpler!)
 - Click the "📊 Graph Plugin" button in the sidebar to open it in a modal
 - Use the ⛶ button to expand to fullscreen, ✕ to close
 - Create and edit nodes and edges in the graph canvas
-- All data is saved to a separate `graph.db` file
+- All data is saved to a separate `graph.db` file (completely independent)
 - Use for mind maps, concept diagrams, or any graph structures
-- Completely independent from your notes database
+- Shared server, separate database - best of both worlds!
 
 ### Task Management
 - Create daily tasks in the sidebar
@@ -193,14 +193,14 @@ luhmann-roam/
 ├── database.js        # Database configuration and initialization
 ├── server.js          # Express server and API endpoints
 ├── markdown/          # Markdown content storage
-├── portable-local-graph/  # Independent graph plugin (separate server & database)
-│   ├── graph-server.js    # Plugin's own Express server (port 3001)
+├── portable-local-graph/  # Independent graph plugin (separate database)
 │   ├── graph-database.js  # Plugin's own database layer
 │   ├── graph.db           # Plugin's SQLite database (auto-created)
 │   ├── index.html         # Plugin UI
 │   ├── graph.js           # Canvas rendering logic
 │   ├── app.js             # Plugin application logic
 │   └── README.md          # Plugin documentation
+│   Note: API routes in server.js at /api/plugins/graph/*
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file
 │   ├── css/           # Stylesheets

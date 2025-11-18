@@ -6,10 +6,10 @@ The portable-local-graph plugin has been successfully integrated as a **complete
 
 ### New Files
 
-1. **Backend (Server & Database)**
-   - `graph-server.js` - Express server on port 3001
+1. **Backend (Database Only)**
    - `graph-database.js` - Database initialization and connection
    - `graph.db` - SQLite database (will be created on first run)
+   - API routes integrated into main `server.js`
 
 2. **Updated Frontend**
    - `app.js` - Added database persistence with callbacks
@@ -38,10 +38,10 @@ The portable-local-graph plugin has been successfully integrated as a **complete
 ## 🔑 Key Features
 
 ### Complete Independence
-- ✅ Separate server (port 3001)
-- ✅ Separate database (`graph.db`)
+- ✅ Separate database (`graph.db`) - completely isolated data
+- ✅ Shared server - simpler architecture
 - ✅ No data sharing with main app
-- ✅ Own API endpoints
+- ✅ Own API endpoints (`/api/plugins/graph/*`)
 - ✅ Independent operation
 
 ### Automatic Persistence
@@ -71,13 +71,11 @@ npm start
 You should see:
 ```
 Server running on port 3003
-Starting graph plugin server...
 Graph plugin database initialized
-Graph database ready
-Graph plugin server running on http://localhost:3001
+Graph plugin available at /plugins/graph/index.html
 ```
 
-**That's it!** The plugin server is now running automatically.
+**That's it!** The plugin is now integrated into the main server.
 
 ### Step 2: Open the Plugin
 
@@ -89,7 +87,7 @@ Graph plugin server running on http://localhost:3001
 5. Click ✕ button or press ESC to close
 
 **Direct Access:**
-- Open `http://localhost:3001/index.html` in your browser
+- Open `http://localhost:3003/plugins/graph/index.html` in your browser
 
 ### Step 3: Create Your Graph
 
@@ -101,16 +99,12 @@ Graph plugin server running on http://localhost:3001
 ## 📊 Architecture Overview
 
 ```
-┌──────────────────────┐      ┌─────────────────────────┐
-│   Main App           │      │   Graph Plugin          │
-│   Port: 3000         │      │   Port: 3001            │
-│   Database:          │      │   Database:             │
-│   outliner.db        │      │   graph.db              │
-│                      │      │                         │
-│   [📊 Launch Button] │─────→│   Opens in new window   │
-│                      │      │                         │
-│   No data sharing ───┼──✘───┼── Completely separate   │
-└──────────────────────┘      └─────────────────────────┘
+Main App Server (Port 3003)
+├── API: /api/plugins/graph/*    → graph.db (separate database)
+├── Static: /plugins/graph/*     → Plugin UI files
+└── Main API: /api/nodes/*       → outliner.db (main database)
+
+Complete data isolation - separate databases, shared server!
 ```
 
 ## 📦 Database Schema

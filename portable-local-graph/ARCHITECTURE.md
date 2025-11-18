@@ -2,32 +2,37 @@
 
 ## Overview
 
-The portable-local-graph plugin is a **completely independent** application that runs alongside (but separate from) the main Luhmann Roam application. It has its own server, database, and data model.
+The portable-local-graph plugin is a **completely independent** plugin that uses the main Luhmann Roam server but maintains its own separate database. It has complete data isolation while sharing the server infrastructure.
 
 ## Independence Model
 
 ```
-┌─────────────────────────────┐    ┌──────────────────────────────┐
-│   Main Luhmann Roam App     │    │   Graph Plugin               │
-├─────────────────────────────┤    ├──────────────────────────────┤
-│ Port: 3000                  │    │ Port: 3001                   │
-│ Database: outliner.db       │    │ Database: graph.db           │
-│ Purpose: Note management    │    │ Purpose: Graph visualization │
-│                             │    │                              │
-│ ❌ NO DATA SHARING ─────────┼────┼──────────────────────────── │
-│                             │    │                              │
-│ Has: Launcher Button ───────┼───→│ Opens plugin in new window   │
-└─────────────────────────────┘    └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│              Main Luhmann Roam Server (Port 3003)          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  API Routes:                                                 │
+│  ├── /api/nodes/*          → outliner.db (main database)   │
+│  └── /api/plugins/graph/*  → graph.db (plugin database)    │
+│                                                              │
+│  Static Files:                                               │
+│  └── /plugins/graph/*      → Graph plugin UI                │
+│                                                              │
+│  ❌ NO DATA SHARING - Separate databases, shared server     │
+│                                                              │
+│  Launcher Button ────────────────────────────────────────→  │
+│  Opens plugin in modal dialog                                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Technology Stack
 
 ### Backend
-- **Framework**: Express.js
+- **Framework**: Express.js (shared with main app)
 - **Database**: SQLite3 (via sqlite + sqlite3 packages)
 - **API Style**: RESTful
-- **Port**: 3001
-- **CORS**: Enabled for local development
+- **API Path**: `/api/plugins/graph/*` (on main server)
+- **Static Files**: `/plugins/graph/*` (served by main server)
 
 ### Frontend
 - **Rendering**: HTML5 Canvas API
@@ -46,8 +51,7 @@ The portable-local-graph plugin is a **completely independent** application that
 ```
 portable-local-graph/
 │
-├── Backend Layer
-│   ├── graph-server.js          # Express app & API endpoints
+├── Database Layer
 │   ├── graph-database.js        # Database connection & initialization
 │   └── graph.db                 # SQLite database (created at runtime)
 │
@@ -60,6 +64,8 @@ portable-local-graph/
     ├── README.md                # Complete documentation
     ├── QUICK_START.md           # Getting started guide
     └── ARCHITECTURE.md          # This file
+
+Note: API routes are in main server.js at /api/plugins/graph/*
 ```
 
 ## Data Flow
@@ -265,17 +271,17 @@ This design:
 
 class GraphPluginLauncher {
   async openGraphModal() {
-    // 1. Check if plugin server is running
-    const response = await fetch('http://localhost:3001/api/graph');
+    // 1. Check if plugin API is available (main server)
+    const response = await fetch('/api/plugins/graph');
     
     if (!response.ok) {
-      // 2. Show instructions if not running
-      alert('Start plugin: node graph-server.js');
+      // 2. Show error if API not available
+      alert('Graph plugin API not available');
       return;
     }
     
-    // 3. Load plugin in iframe within modal
-    this.iframe.src = 'http://localhost:3001/index.html';
+    // 3. Load plugin in iframe within modal (from main server)
+    this.iframe.src = '/plugins/graph/index.html';
     
     // 4. Show modal
     this.modal.classList.add('visible');
@@ -290,8 +296,9 @@ class GraphPluginLauncher {
 **Key Points:**
 - Launcher is in main app
 - Plugin loads in iframe within modal
+- Uses main server for both API and static files
 - Modal features: fullscreen toggle, close button
-- Plugin runs independently
+- Plugin data independent (separate database)
 - No data synchronization
 - Health check before opening
 - Clear error messages

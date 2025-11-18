@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Graph Plugin Registration**: Graph plugin now registers itself in PluginRegistry on initialization
 - **Sidebar Button Behavior**: Graph plugin sidebar button respects enabled/disabled state
 - **Settings Structure**: Added plugins section to settings sidebar navigation
+- **Graph Plugin Architecture**: Refactored to use shared server instead of separate server
+  - Graph plugin API routes moved to main server at `/api/plugins/graph/*`
+  - Static files served from `/plugins/graph/*` on main server
+  - Removed separate server process (port 3001) - now uses main server only
+  - Maintains separate database (`graph.db`) for complete data isolation
+  - Simpler architecture: one server process, separate databases
 
 ### Technical Details
 - **PluginRegistry Module**: New `pluginRegistry.js` with complete plugin lifecycle management
@@ -28,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Plugin Launch System**: Unified launch mechanism through PluginRegistry
 - **Settings Integration**: Plugin management fully integrated into existing Settings dialog
 - **Plugin Card Rendering**: Dynamic plugin card creation with enable/disable toggles and launch buttons
+- **Server Integration**: Graph plugin routes integrated into `server.js` at `/api/plugins/graph/*`
+- **Database Isolation**: Separate `graph.db` database maintained for plugin data
+- **Static File Serving**: Plugin UI files served from `/plugins/graph/*` on main server
+- **Simplified Architecture**: Single server process instead of separate server (port 3001 removed)
 
 ### Benefits
 - **Centralized Management**: All plugins managed in one place (Settings > Plugins)

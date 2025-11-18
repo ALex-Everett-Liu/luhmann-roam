@@ -1,7 +1,8 @@
 let graph;
 let appMode = 'select';
 let contextMenu = null;
-const API_BASE = 'http://localhost:3001/api/graph';
+// Use relative path to main server API
+const API_BASE = '/api/plugins/graph';
 
 function init() {
     const canvas = document.getElementById('canvas');
