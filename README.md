@@ -22,7 +22,7 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Image Management**: Organize and optimize images with the DCIM Manager
 - **Blog Publishing**: Convert and publish notes as blog posts
 - **Code Analysis**: Visualize and analyze the codebase structure
-- **Graph Visualization Plugin**: Interactive graph view of your note hierarchy (optional plugin)
+- **Independent Graph Plugin**: Standalone graph visualization tool with own database (optional)
 - **Optimized Performance**: Smart DOM updates for improved responsiveness
 
 ## Screenshots
@@ -87,7 +87,13 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
    npm start
    ```
 
-5. Open your browser and navigate to:
+5. **(Optional)** Start the graph plugin in a separate terminal:
+   ```bash
+   cd portable-local-graph
+   node graph-server.js
+   ```
+
+6. Open your browser and navigate to:
    ```
    http://localhost:3003
    ```
@@ -152,13 +158,14 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Preview content before publishing
 - Access blog posts through dedicated routes
 
-### Using Graph Visualization (Optional Plugin)
-- Click the "📊 Graph View" button in the sidebar to open the graph viewer
-- Your note hierarchy is displayed as an interactive visual graph
-- Hover over nodes to see full note content
-- Drag nodes to rearrange the layout
-- Save custom layouts as JSON files
-- Works both integrated and as a standalone tool
+### Using Graph Plugin (Optional, Independent Tool)
+The graph plugin is a completely separate tool with its own database:
+- Start the plugin server: Navigate to `portable-local-graph` folder and run `node graph-server.js`
+- Click the "📊 Graph Plugin" button in the sidebar
+- Create and edit nodes and edges in the graph canvas
+- All data is saved to a separate `graph.db` file
+- Use for mind maps, concept diagrams, or any graph structures
+- Completely independent from your notes database
 
 ### Task Management
 - Create daily tasks in the sidebar
@@ -191,11 +198,14 @@ luhmann-roam/
 ├── database.js        # Database configuration and initialization
 ├── server.js          # Express server and API endpoints
 ├── markdown/          # Markdown content storage
-├── portable-local-graph/  # Graph visualization plugin
-│   ├── index.html     # Graph plugin UI
-│   ├── graph.js       # Graph rendering logic
-│   ├── app.js         # Plugin application logic
-│   └── README.md      # Plugin documentation
+├── portable-local-graph/  # Independent graph plugin (separate server & database)
+│   ├── graph-server.js    # Plugin's own Express server (port 3001)
+│   ├── graph-database.js  # Plugin's own database layer
+│   ├── graph.db           # Plugin's SQLite database (auto-created)
+│   ├── index.html         # Plugin UI
+│   ├── graph.js           # Canvas rendering logic
+│   ├── app.js             # Plugin application logic
+│   └── README.md          # Plugin documentation
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file
 │   ├── css/           # Stylesheets

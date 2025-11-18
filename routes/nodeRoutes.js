@@ -20,9 +20,6 @@ console.log("Node routes setup complete");
 // Get all top-level nodes
 router.get("/", nodeController.getAllRootNodes);
 
-// Graph data export for graph visualization plugin (MUST be before /:id route)
-router.get("/graph/data", nodeController.getGraphData);
-
 // Get a single node by ID
 router.get("/:id", nodeController.getNodeById);
 
