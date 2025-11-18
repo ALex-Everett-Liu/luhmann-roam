@@ -206,8 +206,13 @@ The main Luhmann Roam app includes a launcher button:
 
 1. Button appears in the sidebar: "📊 Graph Plugin"
 2. Clicking it checks if the plugin server is running
-3. If running, opens the plugin in a new window
+3. If running, opens the plugin in a modal dialog inside the app
 4. If not running, shows instructions to start it
+5. Modal features:
+   - ⛶ Fullscreen button - Expand to fullscreen or restore
+   - ✕ Close button - Close the plugin
+   - Click outside modal - Close the plugin
+   - ESC key - Exit fullscreen or close the plugin
 
 The button does NOT sync data between apps - they remain completely independent.
 

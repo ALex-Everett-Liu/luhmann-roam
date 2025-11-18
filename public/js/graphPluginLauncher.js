@@ -1,18 +1,27 @@
 /**
  * Graph Plugin Launcher
- * Opens the independent portable-local-graph plugin in a new window
+ * Opens the independent portable-local-graph plugin in a modal dialog
  */
 
 class GraphPluginLauncher {
   constructor() {
-    this.graphWindow = null;
     this.pluginPort = 3001;
+    this.modal = null;
+    this.iframe = null;
+    this.isFullscreen = false;
     this.init();
   }
 
   init() {
+    // Get modal elements
+    this.modal = document.getElementById('graph-plugin-modal');
+    this.iframe = document.getElementById('graph-plugin-iframe');
+    
     // Add button to sidebar
     this.addLauncherButton();
+    
+    // Setup modal controls
+    this.setupModalControls();
   }
 
   addLauncherButton() {
@@ -20,9 +29,9 @@ class GraphPluginLauncher {
     button.id = "graph-plugin-launcher";
     button.className = "feature-toggle";
     button.textContent = "📊 Graph Plugin";
-    button.title = "Open independent graph visualization tool";
+    button.title = "Open graph visualization tool";
     
-    button.addEventListener("click", () => this.openGraphWindow());
+    button.addEventListener("click", () => this.openGraphModal());
     
     // Add to sidebar via global function
     if (window.addButtonToSidebar) {
@@ -30,7 +39,35 @@ class GraphPluginLauncher {
     }
   }
 
-  async openGraphWindow() {
+  setupModalControls() {
+    // Close button
+    const closeBtn = document.getElementById('graph-plugin-close');
+    closeBtn.addEventListener('click', () => this.closeGraphModal());
+    
+    // Fullscreen button
+    const fullscreenBtn = document.getElementById('graph-plugin-fullscreen');
+    fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+    
+    // Close on background click
+    this.modal.addEventListener('click', (e) => {
+      if (e.target === this.modal) {
+        this.closeGraphModal();
+      }
+    });
+    
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.modal.classList.contains('visible')) {
+        if (this.isFullscreen) {
+          this.toggleFullscreen();
+        } else {
+          this.closeGraphModal();
+        }
+      }
+    });
+  }
+
+  async openGraphModal() {
     // Check if plugin server is running
     try {
       const response = await fetch(`http://localhost:${this.pluginPort}/api/graph`);
@@ -40,33 +77,48 @@ class GraphPluginLauncher {
         'Graph plugin server is not running.\n\n' +
         'To start the plugin:\n' +
         '1. Open a terminal\n' +
-        '2. Navigate to the portable-local-graph folder\n' +
-        '3. Run: node graph-server.js\n' +
-        '4. Then click this button again'
+        '2. Run: npm run graph-plugin\n' +
+        '   or\n' +
+        '   cd portable-local-graph && node graph-server.js\n' +
+        '3. Then click this button again'
       );
       return;
     }
 
-    // Check if window is already open
-    if (this.graphWindow && !this.graphWindow.closed) {
-      this.graphWindow.focus();
-      return;
+    // Load iframe if not already loaded
+    if (!this.iframe.src) {
+      this.iframe.src = `http://localhost:${this.pluginPort}/index.html`;
+      
+      // Mark as loaded when iframe loads
+      this.iframe.onload = () => {
+        this.iframe.classList.add('loaded');
+      };
     }
 
-    // Open new window with graph visualization
-    const width = 1200;
-    const height = 800;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-    
-    this.graphWindow = window.open(
-      `http://localhost:${this.pluginPort}/index.html`,
-      'GraphPlugin',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
+    // Show modal
+    this.modal.classList.add('visible');
+  }
 
-    if (!this.graphWindow) {
-      alert('Could not open graph window. Please check your popup blocker settings.');
+  closeGraphModal() {
+    // Add closing animation
+    this.modal.classList.add('closing');
+    
+    setTimeout(() => {
+      this.modal.classList.remove('visible', 'closing');
+      if (this.isFullscreen) {
+        this.isFullscreen = false;
+        this.modal.classList.remove('fullscreen');
+      }
+    }, 200);
+  }
+
+  toggleFullscreen() {
+    this.isFullscreen = !this.isFullscreen;
+    
+    if (this.isFullscreen) {
+      this.modal.classList.add('fullscreen');
+    } else {
+      this.modal.classList.remove('fullscreen');
     }
   }
 }

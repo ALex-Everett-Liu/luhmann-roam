@@ -264,7 +264,7 @@ This design:
 // public/js/graphPluginLauncher.js
 
 class GraphPluginLauncher {
-  async openGraphWindow() {
+  async openGraphModal() {
     // 1. Check if plugin server is running
     const response = await fetch('http://localhost:3001/api/graph');
     
@@ -274,18 +274,28 @@ class GraphPluginLauncher {
       return;
     }
     
-    // 3. Open plugin in new window
-    window.open('http://localhost:3001/index.html', ...);
+    // 3. Load plugin in iframe within modal
+    this.iframe.src = 'http://localhost:3001/index.html';
+    
+    // 4. Show modal
+    this.modal.classList.add('visible');
+  }
+  
+  toggleFullscreen() {
+    this.modal.classList.toggle('fullscreen');
   }
 }
 ```
 
 **Key Points:**
 - Launcher is in main app
+- Plugin loads in iframe within modal
+- Modal features: fullscreen toggle, close button
 - Plugin runs independently
 - No data synchronization
 - Health check before opening
 - Clear error messages
+- ESC key closes modal or exits fullscreen
 
 ## Deployment Considerations
 

@@ -161,7 +161,8 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 ### Using Graph Plugin (Optional, Independent Tool)
 The graph plugin is a completely separate tool with its own database:
 - Start the plugin server: Navigate to `portable-local-graph` folder and run `node graph-server.js`
-- Click the "📊 Graph Plugin" button in the sidebar
+- Click the "📊 Graph Plugin" button in the sidebar to open it in a modal
+- Use the ⛶ button to expand to fullscreen, ✕ to close
 - Create and edit nodes and edges in the graph canvas
 - All data is saved to a separate `graph.db` file
 - Use for mind maps, concept diagrams, or any graph structures

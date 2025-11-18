@@ -85,7 +85,9 @@ Graph plugin server running on http://localhost:3001
 **From Main App:**
 1. Start Luhmann Roam (if not running)
 2. Click "📊 Graph Plugin" button in sidebar
-3. Plugin opens in new window
+3. Plugin opens in a modal dialog
+4. Click ⛶ button to expand to fullscreen
+5. Click ✕ button or press ESC to close
 
 **Direct Access:**
 - Open `http://localhost:3001/index.html` in your browser

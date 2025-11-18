@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/index.css">
   <link rel="stylesheet" href="css/settings-manager.css">
   <link rel="stylesheet" href="css/basic-font-settings.css">
+  <link rel="stylesheet" href="css/graph-plugin-modal.css">
 </head>
 <body>
   <div class="app-container">
@@ -23,6 +24,20 @@
     </div>
     <div class="content">
       <div id="outliner-container"></div>
+    </div>
+  </div>
+
+  <!-- Graph Plugin Modal -->
+  <div id="graph-plugin-modal" class="graph-plugin-modal">
+    <div class="graph-plugin-header">
+      <h3>Graph Plugin</h3>
+      <div class="graph-plugin-controls">
+        <button id="graph-plugin-fullscreen" class="graph-plugin-btn" title="Toggle Fullscreen">⛶</button>
+        <button id="graph-plugin-close" class="graph-plugin-btn" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="graph-plugin-content">
+      <iframe id="graph-plugin-iframe" src="" frameborder="0"></iframe>
     </div>
   </div>
 
