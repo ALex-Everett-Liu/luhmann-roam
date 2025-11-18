@@ -195,12 +195,13 @@ luhmann-roam/
 ├── markdown/          # Markdown content storage
 ├── plugins/                # Plugin directory
 │   └── graph/             # Graph visualization plugin
-│       ├── graph-database.js  # Plugin's own database layer
-│       ├── graph.db           # Plugin's SQLite database (auto-created)
-│       ├── index.html         # Plugin UI
-│       ├── graph.js           # Canvas rendering logic
-│       ├── app.js             # Plugin application logic
-│       └── README.md          # Plugin documentation
+│       ├── graph-database.js      # Plugin's own database layer
+│       ├── graphPluginLauncher.js # Plugin launcher (registers with PluginRegistry)
+│       ├── graph.db               # Plugin's SQLite database (auto-created)
+│       ├── index.html             # Plugin UI
+│       ├── graph.js               # Canvas rendering logic
+│       ├── app.js                 # Plugin application logic
+│       └── README.md              # Plugin documentation
 │   Note: API routes in server.js at /api/plugins/graph/*
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file
@@ -222,7 +223,7 @@ luhmann-roam/
 │   │   ├── i18n.js                # Internationalization support
 │   │   ├── nodeExpansionManager.js # Node expansion functionality
 │   │   ├── nodeOperationsManager.js # Core node operations
-│   │   ├── graphPluginLauncher.js # Graph plugin integration
+│   │   ├── ... (other JS modules)
 │   │   └── dragDropManager.js     # Drag and drop functionality
 │   └── attachment/    # Uploaded images and attachments
 ├── routes/            # Express route handlers

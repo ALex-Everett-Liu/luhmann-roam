@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Affected Components
 - `public/js/pluginRegistry.js` - New plugin registry system
 - `public/js/settingsManager.js` - Added plugins section rendering
-- `public/js/graphPluginLauncher.js` - Integrated with PluginRegistry
+- `plugins/graph/graphPluginLauncher.js` - Integrated with PluginRegistry
 - `public/index.html` - Added pluginRegistry.js script import
 
 ### Plugin Registration Example
@@ -99,7 +99,7 @@ Plugin management system ready for future plugin development!
 
 ### Affected Components
 - `server.js` - Added automatic graph plugin server startup as child process
-- `public/js/graphPluginLauncher.js` - New launcher with modal integration
+- `plugins/graph/graphPluginLauncher.js` - New launcher with modal integration
 - `public/css/graph-plugin-modal.css` - New modal styling with fullscreen support
 - `public/index.html` - Added modal structure and launcher script
 - `plugins/graph/graph-database.js` - New database layer for plugin
