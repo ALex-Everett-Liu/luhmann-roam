@@ -67,22 +67,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentModalNodeId = null;
   let lastFocusedNodeId = null; // Add this variable to track the currently focused node
   let isInitialLoading = true; // Flag to indicate initial loading
-  
+
   // Manual save mode: Track unsaved changes
   let unsavedChanges = new Map(); // nodeId -> {content, originalContent}
-  
+
   // Get auto-save setting from localStorage (default: true for backward compatibility)
   function getAutoSaveEnabled() {
     const setting = localStorage.getItem("autoSaveEnabled");
     return setting !== "false"; // Default to true if not set
   }
-  
+
   // Update auto-save setting (called when setting changes)
   function updateAutoSaveSetting(enabled) {
     localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
     updateSaveButtonVisibility();
   }
-  
+
   // Make updateAutoSaveSetting available globally for settings manager
   window.updateAutoSaveSetting = updateAutoSaveSetting;
 
@@ -289,7 +289,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log(`Node ${node.id} focused, updating lastFocusedNodeId`);
     });
 
-    // ADD THE MISSING BLUR EVENT HANDLER HERE
     nodeText.addEventListener("blur", async function () {
       // Keep the lastFocusedNodeId even after blur so commands can still use it
       // Only clear it if we're focusing on a different node
@@ -310,7 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (currentContent !== normalizedOriginal) {
         const autoSaveEnabled = getAutoSaveEnabled();
-        
+
         if (autoSaveEnabled) {
           // Auto-save mode: save immediately
           console.log(`Content changed for node ${node.id}, auto-saving...`);
@@ -336,10 +335,12 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else {
           // Manual save mode: track as unsaved
-          console.log(`Content changed for node ${node.id}, tracking as unsaved`);
+          console.log(
+            `Content changed for node ${node.id}, tracking as unsaved`,
+          );
           unsavedChanges.set(node.id, {
             content: savedContent,
-            originalContent: originalContent
+            originalContent: originalContent,
           });
           // Add visual indicator
           nodeText.classList.add("unsaved");
@@ -394,93 +395,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // English only - no other language content
 
-    // Node actions
-    const nodeActions = document.createElement("div");
-    nodeActions.className = "node-actions";
-
-    // Position button
-    const positionButton = document.createElement("button");
-    positionButton.className = "position-button";
-    positionButton.innerHTML = "#";
-    positionButton.title = "Adjust position";
-    positionButton.addEventListener("click", () =>
-      PositionManager.openPositionAdjustModal(node.id),
-    );
-    nodeActions.appendChild(positionButton);
-
-    // Link button removed - pure node operations sufficient
-
-    // Move node button
-    const moveNodeButton = document.createElement("button");
-    moveNodeButton.className = "move-button";
-    moveNodeButton.innerHTML = "📍";
-    moveNodeButton.title = "Move node";
-    moveNodeButton.addEventListener("click", () =>
-      PositionManager.openMoveNodeModal(node.id),
-    );
-    nodeActions.appendChild(moveNodeButton);
-
-    // Add sibling before button
-    const addSiblingBeforeButton = document.createElement("button");
-    addSiblingBeforeButton.className = "sibling-button";
-    addSiblingBeforeButton.innerHTML = "↑+";
-    addSiblingBeforeButton.title = "Add sibling before";
-    addSiblingBeforeButton.addEventListener("click", () =>
-      addSiblingNode(node.id, "before"),
-    );
-    nodeActions.appendChild(addSiblingBeforeButton);
-
-    // Add sibling after button
-    const addSiblingAfterButton = document.createElement("button");
-    addSiblingAfterButton.className = "sibling-button";
-    addSiblingAfterButton.innerHTML = "↓+";
-    addSiblingAfterButton.title = "Add sibling after";
-    addSiblingAfterButton.addEventListener("click", () =>
-      addSiblingNode(node.id, "after"),
-    );
-    nodeActions.appendChild(addSiblingAfterButton);
-
-    const addButton = document.createElement("button");
-    addButton.innerHTML = "+";
-    addButton.title = "Add child node";
-    addButton.addEventListener("click", () => addChildNode(node.id));
-    nodeActions.appendChild(addButton);
-
-    const deleteButton = document.createElement("button");
-    deleteButton.innerHTML = "×";
-    deleteButton.title = "Delete node";
-    deleteButton.addEventListener("click", () => deleteNode(node.id));
-    nodeActions.appendChild(deleteButton);
-
-    // Add bookmark button to node actions
-    if (window.BookmarkManager) {
-      BookmarkManager.addBookmarkButtonToNode(nodeActions, node.id);
-    }
-
-    // Focus button (replaces double-click functionality)
-    const focusButton = document.createElement("button");
-    focusButton.className = "focus-button";
-    focusButton.innerHTML = "🎯";
-    focusButton.title = "Focus on this node (Alt+F when hovering)";
-    focusButton.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (window.BreadcrumbManager) {
-        window.BreadcrumbManager.focusOnNode(node.id);
-      }
-    });
-    nodeActions.appendChild(focusButton);
-
-    // Default focus button
-    const defaultFocusButton = document.createElement("button");
-    defaultFocusButton.className = "default-focus-button";
-    defaultFocusButton.innerHTML = "🔍";
-    defaultFocusButton.title = "Set as default focus node on startup";
-    defaultFocusButton.addEventListener("click", () =>
-      setDefaultFocusNode(node.id),
-    );
-    nodeActions.appendChild(defaultFocusButton);
-
-    // English only - no dual language functionality
+    // Node actions - created by NodeActionsManager
+    const nodeActions = window.NodeActionsManager
+      ? window.NodeActionsManager.createNodeActions(node.id)
+      : (() => {
+          // Fallback if manager not available
+          const fallbackActions = document.createElement("div");
+          fallbackActions.className = "node-actions";
+          return fallbackActions;
+        })();
 
     nodeContent.appendChild(nodeActions);
     nodeDiv.appendChild(nodeContent);
@@ -673,6 +596,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Make node operation functions available globally for NodeActionsManager
+  // (Must be done before createNodeElement is called)
+  window.addSiblingNode = addSiblingNode;
+  window.addChildNode = addChildNode;
+  window.deleteNode = deleteNode;
+  window.setDefaultFocusNode = setDefaultFocusNode;
+
   // ===================================================================
   // FEATURE: Move Node Modal
   // LOCATION: Inside DOMContentLoaded event listener
@@ -683,12 +613,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===================================================================
   // MANUAL SAVE MODE FUNCTIONS
   // ===================================================================
-  
+
   // Update the Save Changes button text with unsaved count
   function updateSaveButtonText() {
     const saveButton = document.getElementById("save-changes");
     if (!saveButton) return;
-    
+
     const unsavedCount = unsavedChanges.size;
     if (unsavedCount > 0) {
       saveButton.textContent = `Save Changes (${unsavedCount})`;
@@ -698,12 +628,12 @@ document.addEventListener("DOMContentLoaded", () => {
       saveButton.classList.remove("has-unsaved");
     }
   }
-  
+
   // Update save and discard button visibility based on auto-save setting
   function updateSaveButtonVisibility() {
     const saveButton = document.getElementById("save-changes");
     const discardButton = document.getElementById("discard-changes");
-    
+
     const autoSaveEnabled = getAutoSaveEnabled();
     if (autoSaveEnabled) {
       // Hide buttons in auto-save mode
@@ -721,12 +651,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
-  
+
   // Update the Discard Changes button text with unsaved count
   function updateDiscardButtonText() {
     const discardButton = document.getElementById("discard-changes");
     if (!discardButton) return;
-    
+
     const unsavedCount = unsavedChanges.size;
     if (unsavedCount > 0) {
       discardButton.textContent = `Discard Changes (${unsavedCount})`;
@@ -736,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
       discardButton.classList.remove("has-unsaved");
     }
   }
-  
+
   // Save all pending changes
   async function saveAllChanges() {
     if (unsavedChanges.size === 0) {
@@ -750,25 +680,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return;
     }
-    
+
     const saveButton = document.getElementById("save-changes");
     const originalText = saveButton ? saveButton.textContent : "Save Changes";
-    
+
     if (saveButton) {
       saveButton.textContent = "Saving...";
       saveButton.disabled = true;
     }
-    
+
     try {
       // Save all pending changes
       const promises = Array.from(unsavedChanges.entries()).map(
-        async ([nodeId, {content}]) => {
+        async ([nodeId, { content }]) => {
           const success = await updateNodeContent(nodeId, content, undefined);
           if (success) {
             // Update local node data
-            const nodeElement = document.querySelector(`.node[data-id="${nodeId}"] .node-text`);
+            const nodeElement = document.querySelector(
+              `.node[data-id="${nodeId}"] .node-text`,
+            );
             if (nodeElement) {
-              const node = nodes.find(n => n.id === nodeId);
+              const node = nodes.find((n) => n.id === nodeId);
               if (node) {
                 node.content = nodeElement.innerText;
               }
@@ -777,31 +709,31 @@ document.addEventListener("DOMContentLoaded", () => {
             return true;
           }
           return false;
-        }
+        },
       );
-      
+
       const results = await Promise.all(promises);
-      const successCount = results.filter(r => r).length;
+      const successCount = results.filter((r) => r).length;
       const failCount = results.length - successCount;
-      
+
       // Clear successfully saved changes
       Array.from(unsavedChanges.entries()).forEach(([nodeId, _], index) => {
         if (results[index]) {
           unsavedChanges.delete(nodeId);
         }
       });
-      
+
       // Update button text
       updateSaveButtonText();
       updateDiscardButtonText();
-      
+
       if (saveButton) {
         if (failCount > 0) {
           saveButton.textContent = `Saved ${successCount}, ${failCount} failed`;
         } else {
           saveButton.textContent = "Saved!";
         }
-        
+
         setTimeout(() => {
           saveButton.textContent = originalText;
           saveButton.disabled = false;
@@ -809,7 +741,7 @@ document.addEventListener("DOMContentLoaded", () => {
           updateDiscardButtonText();
         }, 2000);
       }
-      
+
       console.log(`Saved ${successCount} of ${results.length} changes`);
     } catch (error) {
       console.error("Error saving changes:", error);
@@ -822,10 +754,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
-  
+
   // Make saveAllChanges available globally
   window.saveAllChanges = saveAllChanges;
-  
+
   // Discard all pending changes and restore original content
   function discardAllChanges() {
     if (unsavedChanges.size === 0) {
@@ -839,50 +771,56 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return;
     }
-    
+
     const discardButton = document.getElementById("discard-changes");
-    const originalText = discardButton ? discardButton.textContent : "Discard Changes";
-    
+    const originalText = discardButton
+      ? discardButton.textContent
+      : "Discard Changes";
+
     if (discardButton) {
       discardButton.textContent = "Discarding...";
       discardButton.disabled = true;
     }
-    
+
     try {
       // Restore original content for all unsaved nodes
-      Array.from(unsavedChanges.entries()).forEach(([nodeId, {originalContent}]) => {
-        const nodeElement = document.querySelector(`.node[data-id="${nodeId}"] .node-text`);
-        if (nodeElement) {
-          // Restore the original content
-          nodeElement.innerText = originalContent;
-          
-          // Update local node data
-          const node = nodes.find(n => n.id === nodeId);
-          if (node) {
-            node.content = originalContent;
+      Array.from(unsavedChanges.entries()).forEach(
+        ([nodeId, { originalContent }]) => {
+          const nodeElement = document.querySelector(
+            `.node[data-id="${nodeId}"] .node-text`,
+          );
+          if (nodeElement) {
+            // Restore the original content
+            nodeElement.innerText = originalContent;
+
+            // Update local node data
+            const node = nodes.find((n) => n.id === nodeId);
+            if (node) {
+              node.content = originalContent;
+            }
+
+            // Remove visual indicator
+            nodeElement.classList.remove("unsaved");
           }
-          
-          // Remove visual indicator
-          nodeElement.classList.remove("unsaved");
-        }
-      });
-      
+        },
+      );
+
       // Clear all unsaved changes
       const discardedCount = unsavedChanges.size;
       unsavedChanges.clear();
-      
+
       // Update button text
       updateSaveButtonText();
-      
+
       if (discardButton) {
-        discardButton.textContent = `Discarded ${discardedCount} change${discardedCount !== 1 ? 's' : ''}!`;
-        
+        discardButton.textContent = `Discarded ${discardedCount} change${discardedCount !== 1 ? "s" : ""}!`;
+
         setTimeout(() => {
           discardButton.textContent = originalText;
           discardButton.disabled = false;
         }, 2000);
       }
-      
+
       console.log(`Discarded ${discardedCount} unsaved changes`);
     } catch (error) {
       console.error("Error discarding changes:", error);
@@ -895,7 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   }
-  
+
   // Make discardAllChanges available globally
   window.discardAllChanges = discardAllChanges;
 
@@ -929,7 +867,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (saveChangesButton) {
     saveChangesButton.addEventListener("click", saveAllChanges);
   }
-  
+
   // Add event listener for discard changes button
   const discardChangesButton = document.getElementById("discard-changes");
   if (discardChangesButton) {
@@ -1081,6 +1019,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateGlobalLastFocusedNodeId(nodeId) {
     lastFocusedNodeId = nodeId;
     window.lastFocusedNodeId = nodeId;
+  }
+
+  // Initialize the NodeActionsManager
+  if (window.NodeActionsManager) {
+    console.log("Setting up NodeActionsManager initialization from app.js");
+    NodeActionsManager.initialize();
   }
 
   // Initialize the SettingsManager (add this after other manager initializations)

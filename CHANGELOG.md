@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.7] - 2025-11-18
+
+### Changed
+- **Node Actions Refactoring**: Extracted all node action button creation logic into dedicated `NodeActionsManager` module
+- **Code Organization**: Moved ~90 lines of node action creation code from `app.js` to `nodeActionsManager.js`
+- **Separation of Concerns**: Node actions logic now isolated in its own module following manager pattern
+
+### Technical Details
+- **NodeActionsManager Module**: New `public/js/nodeActionsManager.js` with `createNodeActions(nodeId)` function
+- **Button Creation**: All node action buttons (position, move, add sibling, add child, delete, bookmark, focus, default focus) created by manager
+- **Global Function Exposure**: Node operation functions (`addSiblingNode`, `addChildNode`, `deleteNode`, `setDefaultFocusNode`) made globally available for manager access
+- **Module Initialization**: NodeActionsManager initialized in `app.js` initialization sequence
+- **Script Loading**: Added `nodeActionsManager.js` script import to `index.html` before `app.js`
+
+### Benefits
+- **Maintainability**: Node actions logic centralized in single module for easier modification
+- **Consistency**: Follows same manager pattern as other feature modules (NodeOperationsManager, NodeExpansionManager, etc.)
+- **Code Clarity**: `app.js` simplified by removing inline button creation code
+- **Extensibility**: Easy to add new node action buttons by modifying single module
+
+### Affected Components
+- `public/js/nodeActionsManager.js` - New module for node action button creation
+- `public/js/app.js` - Replaced inline node actions creation with NodeActionsManager call
+- `public/index.html` - Added nodeActionsManager.js script import
+
+Node actions now managed through dedicated module - cleaner architecture and easier maintenance!
+
 ## [0.33.6] - 2025-11-18
 
 ### Added
