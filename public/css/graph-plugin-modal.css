@@ -89,6 +89,7 @@
   height: 100%;
   border: none;
   display: block;
+  transition: opacity 0.3s ease-in;
 }
 
 /* Loading state */
@@ -104,8 +105,22 @@
   pointer-events: none;
 }
 
-#graph-plugin-iframe.loaded ~ .graph-plugin-content::before {
+#graph-plugin-iframe.loaded + * {
   display: none;
+}
+
+/* Hide loading when iframe is loaded */
+.graph-plugin-content:has(#graph-plugin-iframe.loaded)::before {
+  display: none;
+}
+
+/* Fallback for browsers without :has() support */
+#graph-plugin-iframe.loaded {
+  opacity: 1;
+}
+
+#graph-plugin-iframe:not(.loaded) {
+  opacity: 0;
 }
 
 /* Animation */

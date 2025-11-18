@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.5] - 2025-11-18
+
+### Added
+- **Independent Graph Plugin**: Standalone graph visualization tool with its own database and server
+- **Graph Plugin Modal**: Modal dialog integration within main app with fullscreen toggle capability
+- **Auto-Start Integration**: Graph plugin server automatically starts with main app (no separate command needed)
+- **Graph Database**: Separate SQLite database (`graph.db`) for plugin data, completely independent from main app
+- **Graph Plugin Launcher**: Sidebar button to open graph plugin in modal dialog
+- **Persistent Graph Storage**: All nodes and edges automatically saved to database on creation, update, or deletion
+- **Graph Plugin API**: Complete RESTful API for graph operations (CRUD for nodes and edges)
+- **File Import/Export**: Save and load graph layouts as JSON files
+- **Tooltips**: Hover over nodes to see full content in tooltips
+- **Interactive Canvas**: Drag nodes, create connections, edit properties with right-click context menu
+
+### Technical Details
+- **Separate Server**: Graph plugin runs on port 3001 (independent from main app on port 3003)
+- **Child Process**: Graph server spawned automatically when main server starts
+- **Modal Integration**: Plugin loads in iframe within modal dialog, can expand to fullscreen
+- **Database Schema**: `graph_nodes` and `graph_edges` tables with foreign key constraints
+- **Auto-Persistence**: Callback system ensures all operations save to database automatically
+- **CORS Configuration**: Proper CORS setup for iframe loading from main app
+
+### Benefits
+- **Complete Independence**: Plugin data completely separate from main notes database
+- **Seamless Integration**: One-click access from sidebar, no manual server startup needed
+- **Flexible Use Cases**: Create mind maps, concept diagrams, network structures, or any graph visualization
+- **Data Safety**: No risk of affecting main app data - completely isolated
+- **Professional UI**: Modal with fullscreen capability, smooth animations, proper loading states
+
+### Affected Components
+- `server.js` - Added automatic graph plugin server startup as child process
+- `public/js/graphPluginLauncher.js` - New launcher with modal integration
+- `public/css/graph-plugin-modal.css` - New modal styling with fullscreen support
+- `public/index.html` - Added modal structure and launcher script
+- `portable-local-graph/graph-server.js` - New Express server for plugin
+- `portable-local-graph/graph-database.js` - New database layer for plugin
+- `portable-local-graph/app.js` - Enhanced with database persistence callbacks
+- `portable-local-graph/graph.js` - Added callback system for auto-save
+- `portable-local-graph/index.html` - Updated with "Load from App" button (now informational)
+
+### Documentation
+- `portable-local-graph/README.md` - Complete plugin documentation
+- `portable-local-graph/QUICK_START.md` - Quick start guide
+- `portable-local-graph/ARCHITECTURE.md` - Technical architecture details
+- `portable-local-graph/SETUP_COMPLETE.md` - Setup summary
+- `README.md` - Updated main app documentation with plugin info
+
+Independent graph visualization plugin - create graphs completely separate from your notes!
+
 ## [0.33.3] - 2025-11-18
 
 ### Fixed
