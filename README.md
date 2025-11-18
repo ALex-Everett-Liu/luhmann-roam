@@ -22,6 +22,7 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Image Management**: Organize and optimize images with the DCIM Manager
 - **Blog Publishing**: Convert and publish notes as blog posts
 - **Code Analysis**: Visualize and analyze the codebase structure
+- **Graph Visualization Plugin**: Interactive graph view of your note hierarchy (optional plugin)
 - **Optimized Performance**: Smart DOM updates for improved responsiveness
 
 ## Screenshots
@@ -151,6 +152,14 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Preview content before publishing
 - Access blog posts through dedicated routes
 
+### Using Graph Visualization (Optional Plugin)
+- Click the "📊 Graph View" button in the sidebar to open the graph viewer
+- Your note hierarchy is displayed as an interactive visual graph
+- Hover over nodes to see full note content
+- Drag nodes to rearrange the layout
+- Save custom layouts as JSON files
+- Works both integrated and as a standalone tool
+
 ### Task Management
 - Create daily tasks in the sidebar
 - Track time spent on tasks
@@ -182,6 +191,11 @@ luhmann-roam/
 ├── database.js        # Database configuration and initialization
 ├── server.js          # Express server and API endpoints
 ├── markdown/          # Markdown content storage
+├── portable-local-graph/  # Graph visualization plugin
+│   ├── index.html     # Graph plugin UI
+│   ├── graph.js       # Graph rendering logic
+│   ├── app.js         # Plugin application logic
+│   └── README.md      # Plugin documentation
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file
 │   ├── css/           # Stylesheets
@@ -202,6 +216,7 @@ luhmann-roam/
 │   │   ├── i18n.js                # Internationalization support
 │   │   ├── nodeExpansionManager.js # Node expansion functionality
 │   │   ├── nodeOperationsManager.js # Core node operations
+│   │   ├── graphPluginLauncher.js # Graph plugin integration
 │   │   └── dragDropManager.js     # Drag and drop functionality
 │   └── attachment/    # Uploaded images and attachments
 ├── routes/            # Express route handlers

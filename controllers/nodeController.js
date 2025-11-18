@@ -435,5 +435,64 @@ exports.checkNodesExist = async (req, res) => {
   }
 };
 
+/**
+ * Get graph data for visualization plugin
+ * GET /api/nodes/graph/data
+ * Returns all nodes and edges (parent-child relationships) in graph format
+ */
+exports.getGraphData = async (req, res) => {
+  try {
+    const db = req.db;
+
+    // Get all nodes
+    const nodes = await db.all(`
+      SELECT id, content, parent_id, created_at, updated_at
+      FROM nodes
+      ORDER BY created_at
+    `);
+
+    // Transform nodes for graph visualization
+    const graphNodes = nodes.map((node, index) => {
+      // Calculate a consistent position based on node id hash
+      const hash = node.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const angle = (hash % 360) * (Math.PI / 180);
+      const radius = 150 + ((hash % 200));
+      
+      return {
+        id: node.id,
+        x: 400 + radius * Math.cos(angle),
+        y: 300 + radius * Math.sin(angle),
+        label: (node.content || 'Untitled').substring(0, 30) + (node.content && node.content.length > 30 ? '...' : ''),
+        color: '#3b82f6',
+        radius: 20,
+        fullContent: node.content
+      };
+    });
+
+    // Create edges from parent-child relationships
+    const graphEdges = nodes
+      .filter(node => node.parent_id) // Only nodes with parents
+      .map(node => ({
+        id: `${node.parent_id}-${node.id}`,
+        from: node.parent_id,
+        to: node.id,
+        weight: 1.0
+      }));
+
+    res.json({
+      nodes: graphNodes,
+      edges: graphEdges,
+      metadata: {
+        totalNodes: nodes.length,
+        totalEdges: graphEdges.length,
+        exportedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error generating graph data:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Add additional controller functions for other node operations...
 // (Remaining operations like indenting, outdenting, fixing positions, etc.)
