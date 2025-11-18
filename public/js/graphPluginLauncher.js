@@ -25,11 +25,56 @@ class GraphPluginLauncher {
       loadingIndicator: !!this.loadingIndicator
     });
     
+    // Register plugin in registry
+    this.registerPlugin();
+    
     // Add button to sidebar
     this.addLauncherButton();
     
     // Setup modal controls
     this.setupModalControls();
+  }
+
+  registerPlugin() {
+    // Wait for PluginRegistry to be available
+    if (!window.PluginRegistry) {
+      console.warn('[Graph Plugin] PluginRegistry not available, retrying...');
+      setTimeout(() => this.registerPlugin(), 100);
+      return;
+    }
+
+    // Initialize registry if needed
+    if (typeof window.PluginRegistry.initialize === 'function') {
+      window.PluginRegistry.initialize();
+    }
+
+    // Register the graph plugin
+    window.PluginRegistry.register('graph-plugin', {
+      name: 'Graph Visualization',
+      description: 'Interactive graph visualization tool for creating mind maps, concept diagrams, and network structures',
+      version: '1.0.0',
+      author: 'Luhmann Roam',
+      icon: '📊',
+      category: 'visualization',
+      enabled: window.PluginRegistry.loadPluginState('graph-plugin'),
+      launch: () => {
+        this.openGraphModal();
+      },
+      onEnable: () => {
+        console.log('[Graph Plugin] Plugin enabled');
+        this.updateButtonState();
+      },
+      onDisable: () => {
+        console.log('[Graph Plugin] Plugin disabled');
+        this.updateButtonState();
+        // Close modal if open
+        if (this.modal && this.modal.classList.contains('visible')) {
+          this.closeGraphModal();
+        }
+      }
+    });
+
+    console.log('[Graph Plugin] Registered in PluginRegistry');
   }
 
   addLauncherButton() {
@@ -39,11 +84,36 @@ class GraphPluginLauncher {
     button.textContent = "📊 Graph Plugin";
     button.title = "Open graph visualization tool";
     
-    button.addEventListener("click", () => this.openGraphModal());
+    button.addEventListener("click", () => {
+      // Check if plugin is enabled
+      const plugin = window.PluginRegistry?.get('graph-plugin');
+      if (plugin && !plugin.enabled) {
+        alert('Graph Plugin is disabled. Enable it in Settings > Plugins to use it.');
+        return;
+      }
+      this.openGraphModal();
+    });
+    
+    // Update button state based on plugin enabled status
+    this.updateButtonState();
     
     // Add to sidebar via global function
     if (window.addButtonToSidebar) {
       window.addButtonToSidebar(button);
+    }
+  }
+
+  updateButtonState() {
+    const button = document.getElementById('graph-plugin-launcher');
+    if (!button) return;
+    
+    const plugin = window.PluginRegistry?.get('graph-plugin');
+    if (plugin) {
+      button.disabled = !plugin.enabled;
+      button.style.opacity = plugin.enabled ? '1' : '0.5';
+      button.title = plugin.enabled 
+        ? 'Open graph visualization tool' 
+        : 'Graph Plugin is disabled (enable in Settings > Plugins)';
     }
   }
 
@@ -191,9 +261,22 @@ class GraphPluginLauncher {
 
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
-  // Wait a bit for the main app to initialize
-  setTimeout(() => {
-    new GraphPluginLauncher();
-  }, 1000);
+  // Wait for PluginRegistry to be available
+  function initLauncher() {
+    if (window.PluginRegistry) {
+      // Initialize plugin registry first
+      if (typeof window.PluginRegistry.initialize === 'function') {
+        window.PluginRegistry.initialize();
+      }
+      // Then create launcher
+      new GraphPluginLauncher();
+    } else {
+      // Retry if PluginRegistry not ready
+      setTimeout(initLauncher, 100);
+    }
+  }
+  
+  // Start initialization
+  setTimeout(initLauncher, 500);
 });
 

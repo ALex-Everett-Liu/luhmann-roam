@@ -39,6 +39,11 @@ const SettingsManager = (function () {
       icon: "♿",
       description: "Accessibility and usability options",
     },
+    plugins: {
+      title: "Plugins",
+      icon: "🔌",
+      description: "Manage and configure plugins",
+    },
   };
 
   /**
@@ -124,6 +129,15 @@ const SettingsManager = (function () {
         onSave: saveFontSettings,
       });
     }
+
+    // Register plugins section
+    registerSection("plugins", {
+      title: sectionConfig.plugins.title,
+      icon: sectionConfig.plugins.icon,
+      description: sectionConfig.plugins.description,
+      render: renderPluginsSection,
+      onSave: savePluginsSettings,
+    });
 
     console.log(
       "Built-in sections registered:",
@@ -730,6 +744,191 @@ const SettingsManager = (function () {
         applyButton.click();
       }
     }
+  }
+
+  /**
+   * Render plugins section content
+   */
+  function renderPluginsSection(container) {
+    if (!window.PluginRegistry) {
+      container.innerHTML =
+        '<div class="settings-error">Plugin registry not available</div>';
+      return;
+    }
+
+    const pluginsContent = document.createElement("div");
+    pluginsContent.className = "plugins-settings-content";
+
+    // Section header
+    const header = document.createElement("div");
+    header.className = "settings-subsection";
+    header.innerHTML = `
+      <h4 class="settings-subsection-title">🔌 Installed Plugins</h4>
+      <p class="settings-description" style="margin-bottom: 20px;">
+        Manage your plugins. Enable or disable plugins, and launch them directly from here.
+      </p>
+    `;
+    pluginsContent.appendChild(header);
+
+    // Get all plugins
+    const allPlugins = window.PluginRegistry.getAll();
+    
+    if (allPlugins.length === 0) {
+      const emptyState = document.createElement("div");
+      emptyState.className = "plugins-empty-state";
+      emptyState.style.cssText = "text-align: center; padding: 40px; color: #666;";
+      emptyState.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">🔌</div>
+        <p>No plugins installed</p>
+        <p style="font-size: 14px; margin-top: 8px;">Plugins will appear here once registered</p>
+      `;
+      pluginsContent.appendChild(emptyState);
+    } else {
+      // Group plugins by category
+      const pluginsByCategory = {};
+      allPlugins.forEach(plugin => {
+        const category = plugin.category || 'other';
+        if (!pluginsByCategory[category]) {
+          pluginsByCategory[category] = [];
+        }
+        pluginsByCategory[category].push(plugin);
+      });
+
+      // Render plugins by category
+      Object.keys(pluginsByCategory).sort().forEach(category => {
+        const categorySection = document.createElement("div");
+        categorySection.className = "plugins-category-section";
+        categorySection.style.cssText = "margin-bottom: 24px;";
+
+        const categoryTitle = document.createElement("h5");
+        categoryTitle.className = "settings-subsection-title";
+        categoryTitle.style.cssText = "font-size: 16px; margin-bottom: 12px; text-transform: capitalize;";
+        categoryTitle.textContent = category;
+        categorySection.appendChild(categoryTitle);
+
+        pluginsByCategory[category].forEach(plugin => {
+          const pluginCard = createPluginCard(plugin);
+          categorySection.appendChild(pluginCard);
+        });
+
+        pluginsContent.appendChild(categorySection);
+      });
+    }
+
+    container.appendChild(pluginsContent);
+  }
+
+  /**
+   * Create a plugin card element
+   */
+  function createPluginCard(plugin) {
+    const card = document.createElement("div");
+    card.className = "plugin-card";
+    card.style.cssText = `
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: white;
+      transition: box-shadow 0.2s;
+    `;
+    card.style.boxShadow = plugin.enabled ? '0 2px 4px rgba(0,0,0,0.1)' : 'none';
+    card.style.opacity = plugin.enabled ? '1' : '0.6';
+
+    const header = document.createElement("div");
+    header.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;";
+
+    const left = document.createElement("div");
+    left.style.cssText = "display: flex; align-items: center; gap: 12px; flex: 1;";
+
+    const icon = document.createElement("span");
+    icon.style.cssText = "font-size: 24px;";
+    icon.textContent = plugin.icon || "🔌";
+
+    const info = document.createElement("div");
+    info.style.cssText = "flex: 1;";
+
+    const name = document.createElement("div");
+    name.style.cssText = "font-weight: 600; font-size: 16px; margin-bottom: 4px;";
+    name.textContent = plugin.name;
+
+    const description = document.createElement("div");
+    description.style.cssText = "font-size: 14px; color: #666; margin-bottom: 4px;";
+    description.textContent = plugin.description || "No description";
+
+    const meta = document.createElement("div");
+    meta.style.cssText = "font-size: 12px; color: #999;";
+    meta.textContent = `v${plugin.version}${plugin.author ? ` by ${plugin.author}` : ''}`;
+
+    info.appendChild(name);
+    info.appendChild(description);
+    info.appendChild(meta);
+
+    left.appendChild(icon);
+    left.appendChild(info);
+
+    const controls = document.createElement("div");
+    controls.style.cssText = "display: flex; align-items: center; gap: 8px;";
+
+    // Enable/Disable toggle
+    const toggleLabel = document.createElement("label");
+    toggleLabel.style.cssText = "display: flex; align-items: center; cursor: pointer;";
+
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.checked = plugin.enabled;
+    toggle.dataset.pluginId = plugin.id;
+    toggle.style.cssText = "width: 40px; height: 20px; cursor: pointer; margin-right: 8px;";
+    toggle.addEventListener("change", (e) => {
+      const pluginId = e.target.dataset.pluginId;
+      if (e.target.checked) {
+        window.PluginRegistry.enable(pluginId);
+      } else {
+        window.PluginRegistry.disable(pluginId);
+      }
+      // Update card appearance
+      card.style.opacity = e.target.checked ? '1' : '0.6';
+      card.style.boxShadow = e.target.checked ? '0 2px 4px rgba(0,0,0,0.1)' : 'none';
+    });
+
+    toggleLabel.appendChild(toggle);
+    toggleLabel.appendChild(document.createTextNode(plugin.enabled ? "Enabled" : "Disabled"));
+
+    // Launch button
+    const launchButton = document.createElement("button");
+    launchButton.textContent = "Launch";
+    launchButton.style.cssText = `
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    launchButton.disabled = !plugin.enabled;
+    launchButton.addEventListener("click", () => {
+      window.PluginRegistry.launch(plugin.id);
+    });
+
+    controls.appendChild(toggleLabel);
+    controls.appendChild(launchButton);
+
+    header.appendChild(left);
+    header.appendChild(controls);
+
+    card.appendChild(header);
+
+    return card;
+  }
+
+  /**
+   * Save plugins settings
+   */
+  function savePluginsSettings() {
+    // Plugin states are saved automatically when toggled
+    // This function is here for consistency with other sections
+    console.log("Plugin settings saved");
   }
 
   // Public API

@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.6] - 2025-11-18
+
+### Added
+- **Plugin Management System**: Central plugin registry for managing all plugins
+- **Plugin Settings Section**: New "Plugins" section in Settings dialog for plugin management
+- **Plugin Registry API**: Complete plugin registration and management API (`PluginRegistry`)
+- **Plugin Enable/Disable**: Toggle plugins on/off with persistent state storage
+- **Plugin Launch from Settings**: Launch plugins directly from Settings > Plugins
+- **Plugin Cards UI**: Beautiful plugin cards showing icon, name, description, version, and controls
+- **Plugin Categories**: Plugins organized by category (visualization, tools, etc.)
+- **Graph Plugin Integration**: Graph plugin now registered in plugin system
+
+### Changed
+- **Graph Plugin Registration**: Graph plugin now registers itself in PluginRegistry on initialization
+- **Sidebar Button Behavior**: Graph plugin sidebar button respects enabled/disabled state
+- **Settings Structure**: Added plugins section to settings sidebar navigation
+
+### Technical Details
+- **PluginRegistry Module**: New `pluginRegistry.js` with complete plugin lifecycle management
+- **Plugin State Persistence**: Plugin enabled/disabled states saved to localStorage
+- **Plugin Launch System**: Unified launch mechanism through PluginRegistry
+- **Settings Integration**: Plugin management fully integrated into existing Settings dialog
+- **Plugin Card Rendering**: Dynamic plugin card creation with enable/disable toggles and launch buttons
+
+### Benefits
+- **Centralized Management**: All plugins managed in one place (Settings > Plugins)
+- **Easy Plugin Discovery**: See all installed plugins with descriptions and metadata
+- **Flexible Control**: Enable/disable plugins without code changes
+- **Extensible Architecture**: Easy to add new plugins - just register them
+- **User-Friendly**: Clear UI for managing plugins with visual feedback
+
+### Affected Components
+- `public/js/pluginRegistry.js` - New plugin registry system
+- `public/js/settingsManager.js` - Added plugins section rendering
+- `public/js/graphPluginLauncher.js` - Integrated with PluginRegistry
+- `public/index.html` - Added pluginRegistry.js script import
+
+### Plugin Registration Example
+```javascript
+window.PluginRegistry.register('plugin-id', {
+  name: 'Plugin Name',
+  description: 'Description',
+  version: '1.0.0',
+  icon: '🔌',
+  category: 'visualization',
+  launch: () => { /* launch function */ },
+  onEnable: () => { /* enable callback */ },
+  onDisable: () => { /* disable callback */ }
+});
+```
+
+Plugin management system ready for future plugin development!
+
 ## [0.33.5] - 2025-11-18
 
 ### Added
