@@ -193,13 +193,14 @@ luhmann-roam/
 ├── database.js        # Database configuration and initialization
 ├── server.js          # Express server and API endpoints
 ├── markdown/          # Markdown content storage
-├── portable-local-graph/  # Independent graph plugin (separate database)
-│   ├── graph-database.js  # Plugin's own database layer
-│   ├── graph.db           # Plugin's SQLite database (auto-created)
-│   ├── index.html         # Plugin UI
-│   ├── graph.js           # Canvas rendering logic
-│   ├── app.js             # Plugin application logic
-│   └── README.md          # Plugin documentation
+├── plugins/                # Plugin directory
+│   └── graph/             # Graph visualization plugin
+│       ├── graph-database.js  # Plugin's own database layer
+│       ├── graph.db           # Plugin's SQLite database (auto-created)
+│       ├── index.html         # Plugin UI
+│       ├── graph.js           # Canvas rendering logic
+│       ├── app.js             # Plugin application logic
+│       └── README.md          # Plugin documentation
 │   Note: API routes in server.js at /api/plugins/graph/*
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file

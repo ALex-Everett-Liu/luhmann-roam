@@ -1,6 +1,6 @@
 /**
  * Graph Plugin Launcher
- * Opens the independent portable-local-graph plugin in a modal dialog
+ * Opens the graph plugin in a modal dialog
  */
 
 class GraphPluginLauncher {

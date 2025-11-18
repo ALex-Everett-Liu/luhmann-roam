@@ -260,7 +260,7 @@ While focused on canvas:
 → Ensure `graph.db` file permissions are correct
 
 ### Database file location
-→ `portable-local-graph/graph.db` (created automatically on first run)
+→ `plugins/graph/graph.db` (created automatically on first run)
 
 ## Development
 
@@ -288,7 +288,7 @@ const API_BASE = '/api/plugins/graph';
 ## File Structure
 
 ```
-portable-local-graph/
+plugins/graph/
 ├── graph-server.js       # Express server
 ├── graph-database.js     # Database layer
 ├── index.html            # UI structure

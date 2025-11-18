@@ -10,7 +10,7 @@ const {
 const {
   getGraphDb,
   initializeGraphDatabase,
-} = require("./portable-local-graph/graph-database");
+} = require("./plugins/graph/graph-database");
 const fs = require("fs");
 const path = require("path");
 const nodeRoutes = require("./routes/nodeRoutes");
@@ -427,7 +427,7 @@ app.use("/css", express.static(path.join(__dirname, "public", "css")));
 app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 
 // Serve graph plugin static files
-app.use("/plugins/graph", express.static(path.join(__dirname, "portable-local-graph")));
+app.use("/plugins/graph", express.static(path.join(__dirname, "plugins", "graph")));
 
 app.post("/api/backup", async (req, res) => {
   try {

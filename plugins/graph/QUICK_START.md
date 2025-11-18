@@ -64,7 +64,7 @@ Graph plugin available at /plugins/graph/index.html
 ## 💾 Your Data
 
 - All changes save **automatically** to `graph.db`
-- Database is in the `portable-local-graph` folder
+- Database is in the `plugins/graph` folder
 - **Completely independent** from main app database
 - No connection to your Luhmann Roam notes
 

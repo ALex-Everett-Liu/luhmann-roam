@@ -1,6 +1,6 @@
 # ✅ Setup Complete - Independent Graph Plugin
 
-The portable-local-graph plugin has been successfully integrated as a **completely independent** tool!
+The graph plugin has been successfully integrated as a **completely independent** tool!
 
 ## 🎉 What Was Created
 
@@ -154,7 +154,7 @@ this.pluginPort = 3001;
 
 ### Database Location
 
-The database is created in `portable-local-graph/graph.db`
+The database is created in `plugins/graph/graph.db`
 
 To move it, edit `graph-database.js`:
 ```javascript

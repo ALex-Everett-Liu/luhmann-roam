@@ -49,7 +49,7 @@ The portable-local-graph plugin is a **completely independent** plugin that uses
 ## File Structure
 
 ```
-portable-local-graph/
+plugins/graph/
 │
 ├── Database Layer
 │   ├── graph-database.js        # Database connection & initialization
@@ -340,11 +340,11 @@ services:
       - ./outliner.db:/app/outliner.db
   
   graph-plugin:
-    build: ./portable-local-graph
+    build: ./plugins/graph
     ports:
       - "3001:3001"
     volumes:
-      - ./portable-local-graph/graph.db:/app/graph.db
+      - ./plugins/graph/graph.db:/app/graph.db
 ```
 
 ## Performance Characteristics

@@ -102,17 +102,16 @@ Plugin management system ready for future plugin development!
 - `public/js/graphPluginLauncher.js` - New launcher with modal integration
 - `public/css/graph-plugin-modal.css` - New modal styling with fullscreen support
 - `public/index.html` - Added modal structure and launcher script
-- `portable-local-graph/graph-server.js` - New Express server for plugin
-- `portable-local-graph/graph-database.js` - New database layer for plugin
-- `portable-local-graph/app.js` - Enhanced with database persistence callbacks
-- `portable-local-graph/graph.js` - Added callback system for auto-save
-- `portable-local-graph/index.html` - Updated with "Load from App" button (now informational)
+- `plugins/graph/graph-database.js` - New database layer for plugin
+- `plugins/graph/app.js` - Enhanced with database persistence callbacks
+- `plugins/graph/graph.js` - Added callback system for auto-save
+- `plugins/graph/index.html` - Updated with "Load from App" button (now informational)
 
 ### Documentation
-- `portable-local-graph/README.md` - Complete plugin documentation
-- `portable-local-graph/QUICK_START.md` - Quick start guide
-- `portable-local-graph/ARCHITECTURE.md` - Technical architecture details
-- `portable-local-graph/SETUP_COMPLETE.md` - Setup summary
+- `plugins/graph/README.md` - Complete plugin documentation
+- `plugins/graph/QUICK_START.md` - Quick start guide
+- `plugins/graph/ARCHITECTURE.md` - Technical architecture details
+- `plugins/graph/SETUP_COMPLETE.md` - Setup summary
 - `README.md` - Updated main app documentation with plugin info
 
 Independent graph visualization plugin - create graphs completely separate from your notes!
