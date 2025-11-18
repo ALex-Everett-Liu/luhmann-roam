@@ -816,7 +816,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Resizable sidebar functionality removed - will be replaced with a better solution later
+  // Resizable sidebar functionality handled by ResizableSidebar module
 
   // Event listeners
   addRootNodeButton.addEventListener("click", addRootNode);
@@ -835,7 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Call this function during initialization
   checkContainerSettings();
 
-  // Resizable sidebar removed - will be replaced with a better solution later
+  // Resizable sidebar functionality handled by ResizableSidebar module
 
   // Add clear default focus button (just once)
   const clearDefaultFocusButton = document.createElement("button");
@@ -979,5 +979,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.SettingsManager) {
     console.log("Setting up SettingsManager initialization from app.js");
     SettingsManager.initialize();
+  }
+
+  // Initialize the ResizableSidebar
+  if (window.ResizableSidebar) {
+    console.log("Setting up ResizableSidebar initialization from app.js");
+    ResizableSidebar.initialize();
   }
 });

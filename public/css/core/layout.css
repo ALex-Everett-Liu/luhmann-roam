@@ -14,6 +14,7 @@
   overflow-y: auto;
   flex-shrink: 0;
   z-index: 10;
+  position: relative; /* Required for absolute positioning of resize handle */
 }
 
 /* Make sidebar headings larger */
@@ -33,7 +34,45 @@
   height: calc(100vh - 60px);
 }
 
-/* Resizable sidebar removed - will be replaced with a better solution later */
+/* Resizable Sidebar Styles */
+
+/* Resize Handle */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 1000;
+  transition: background 0.2s;
+}
+
+.resize-handle:hover {
+  background: #007bff;
+}
+
+/* Active resize state */
+.resize-handle:active,
+.resizing .resize-handle {
+  background: #007bff;
+}
+
+/* Resizing state for body */
+.resizing {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+.resizing * {
+  cursor: col-resize !important;
+}
+
+/* Smooth transitions when not resizing */
+.sidebar:not(.resizing) {
+  transition: width 0.2s ease;
+}
 
 /* Global toggle button for other language content in the sidebar */
 #global-toggle-other-lang {
