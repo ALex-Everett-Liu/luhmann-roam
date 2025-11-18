@@ -1,5 +1,6 @@
 // graphRoutes.js - Routes for Graph Plugin API operations
 const express = require("express");
+const graphController = require("../controllers/graphController");
 const { getGraphDb } = require("../plugins/graph/graph-database");
 
 const router = express.Router();
@@ -16,238 +17,30 @@ router.use(async (req, res, next) => {
 });
 
 // Get all graph data
-router.get("/", async (req, res) => {
-  try {
-    const nodes = await req.graphDb.all("SELECT * FROM graph_nodes");
-    const edges = await req.graphDb.all("SELECT * FROM graph_edges");
-
-    res.json({
-      nodes,
-      edges,
-      metadata: {
-        totalNodes: nodes.length,
-        totalEdges: edges.length,
-        exportedAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching graph data:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get("/", graphController.getAllGraphData);
 
 // Create a new node
-router.post("/nodes", async (req, res) => {
-  try {
-    const { id, x, y, label, color, radius, full_content } = req.body;
-
-    await req.graphDb.run(
-      `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, x, y, label, color || "#3b82f6", radius || 20, full_content || label]
-    );
-
-    const node = await req.graphDb.get("SELECT * FROM graph_nodes WHERE id = ?", id);
-    res.json(node);
-  } catch (error) {
-    console.error("Error creating node:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post("/nodes", graphController.createNode);
 
 // Update a node
-router.put("/nodes/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { x, y, label, color, radius, full_content } = req.body;
-
-    const updates = [];
-    const values = [];
-
-    if (x !== undefined) {
-      updates.push("x = ?");
-      values.push(x);
-    }
-    if (y !== undefined) {
-      updates.push("y = ?");
-      values.push(y);
-    }
-    if (label !== undefined) {
-      updates.push("label = ?");
-      values.push(label);
-    }
-    if (color !== undefined) {
-      updates.push("color = ?");
-      values.push(color);
-    }
-    if (radius !== undefined) {
-      updates.push("radius = ?");
-      values.push(radius);
-    }
-    if (full_content !== undefined) {
-      updates.push("full_content = ?");
-      values.push(full_content);
-    }
-
-    updates.push("updated_at = strftime('%s', 'now')");
-    values.push(id);
-
-    await req.graphDb.run(
-      `UPDATE graph_nodes SET ${updates.join(", ")} WHERE id = ?`,
-      values
-    );
-
-    const node = await req.graphDb.get("SELECT * FROM graph_nodes WHERE id = ?", id);
-    res.json(node);
-  } catch (error) {
-    console.error("Error updating node:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.put("/nodes/:id", graphController.updateNode);
 
 // Delete a node
-router.delete("/nodes/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Delete associated edges first
-    await req.graphDb.run(
-      "DELETE FROM graph_edges WHERE from_node_id = ? OR to_node_id = ?",
-      [id, id]
-    );
-
-    // Delete the node
-    await req.graphDb.run("DELETE FROM graph_nodes WHERE id = ?", id);
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting node:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.delete("/nodes/:id", graphController.deleteNode);
 
 // Create a new edge
-router.post("/edges", async (req, res) => {
-  try {
-    const { id, from_node_id, to_node_id, weight } = req.body;
-
-    await req.graphDb.run(
-      `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight)
-       VALUES (?, ?, ?, ?)`,
-      [id, from_node_id, to_node_id, weight || 1.0]
-    );
-
-    const edge = await req.graphDb.get("SELECT * FROM graph_edges WHERE id = ?", id);
-    res.json(edge);
-  } catch (error) {
-    console.error("Error creating edge:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post("/edges", graphController.createEdge);
 
 // Update an edge
-router.put("/edges/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { weight } = req.body;
-
-    await req.graphDb.run(
-      "UPDATE graph_edges SET weight = ?, updated_at = strftime('%s', 'now') WHERE id = ?",
-      [weight, id]
-    );
-
-    const edge = await req.graphDb.get("SELECT * FROM graph_edges WHERE id = ?", id);
-    res.json(edge);
-  } catch (error) {
-    console.error("Error updating edge:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.put("/edges/:id", graphController.updateEdge);
 
 // Delete an edge
-router.delete("/edges/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await req.graphDb.run("DELETE FROM graph_edges WHERE id = ?", id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting edge:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.delete("/edges/:id", graphController.deleteEdge);
 
 // Clear all graph data
-router.delete("/clear", async (req, res) => {
-  try {
-    await req.graphDb.run("DELETE FROM graph_edges");
-    await req.graphDb.run("DELETE FROM graph_nodes");
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Error clearing graph data:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.delete("/clear", graphController.clearAllData);
 
 // Import graph data (bulk insert)
-router.post("/import", async (req, res) => {
-  try {
-    const { nodes, edges } = req.body;
-
-    // Clear existing data
-    await req.graphDb.run("DELETE FROM graph_edges");
-    await req.graphDb.run("DELETE FROM graph_nodes");
-
-    // Insert nodes
-    if (nodes && nodes.length > 0) {
-      const nodeStmt = await req.graphDb.prepare(
-        `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      );
-
-      for (const node of nodes) {
-        await nodeStmt.run(
-          node.id,
-          node.x,
-          node.y,
-          node.label,
-          node.color || "#3b82f6",
-          node.radius || 20,
-          node.fullContent || node.full_content || node.label
-        );
-      }
-      await nodeStmt.finalize();
-    }
-
-    // Insert edges
-    if (edges && edges.length > 0) {
-      const edgeStmt = await req.graphDb.prepare(
-        `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight)
-         VALUES (?, ?, ?, ?)`
-      );
-
-      for (const edge of edges) {
-        await edgeStmt.run(
-          edge.id,
-          edge.from || edge.from_node_id,
-          edge.to || edge.to_node_id,
-          edge.weight || 1.0
-        );
-      }
-      await edgeStmt.finalize();
-    }
-
-    res.json({
-      success: true,
-      imported: {
-        nodes: nodes?.length || 0,
-        edges: edges?.length || 0,
-      },
-    });
-  } catch (error) {
-    console.error("Error importing graph data:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post("/import", graphController.importGraphData);
 
 module.exports = router;
-
