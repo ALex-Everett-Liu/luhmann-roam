@@ -46,27 +46,28 @@ The plugin requires the same dependencies as the main app (already installed):
 
 ### Starting the Plugin
 
-1. **Open a terminal** in the `portable-local-graph` directory:
+**The graph plugin server starts automatically when you start the main app!**
+
+1. **Start the main app**:
    ```bash
-   cd portable-local-graph
+   npm start
    ```
 
-2. **Start the graph server**:
-   ```bash
-   node graph-server.js
+2. You'll see both servers starting:
    ```
-
-3. You'll see:
-   ```
+   Server running on port 3003
+   Starting graph plugin server...
    Graph plugin database initialized
    Graph database ready
    Graph plugin server running on http://localhost:3001
-   Open http://localhost:3001/index.html to use the graph plugin
    ```
 
-4. **Open the plugin** in your browser:
-   - Click the "📊 Graph Plugin" button in the main app's sidebar, OR
-   - Navigate to `http://localhost:3001/index.html` directly
+3. **Open the plugin**:
+   - Click the "📊 Graph Plugin" button in the main app's sidebar
+   - The plugin opens in a modal dialog inside the app
+   - Use the ⛶ button to toggle fullscreen
+
+**Note**: The plugin server runs as a child process of the main app, so stopping the main app (`Ctrl+C`) will also stop the plugin server.
 
 ### Basic Operations
 

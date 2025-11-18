@@ -16,6 +16,7 @@ const url = require("url");
 const sanitizeHtml = require("sanitize-html");
 const sharp = require("sharp");
 const upload = require("./middleware/upload");
+const { spawn } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -453,9 +454,63 @@ app.post("/api/backup", async (req, res) => {
   }
 });
 
+// Start the graph plugin server as a child process
+function startGraphPluginServer() {
+  const graphServerPath = path.join(__dirname, "portable-local-graph", "graph-server.js");
+  
+  // Check if graph server file exists
+  if (!fs.existsSync(graphServerPath)) {
+    console.log("Graph plugin server file not found, skipping...");
+    return null;
+  }
+
+  console.log("Starting graph plugin server...");
+  const graphServer = spawn("node", [graphServerPath], {
+    cwd: path.join(__dirname, "portable-local-graph"),
+    stdio: "inherit", // Share stdout/stderr with parent process
+    shell: true, // Use shell for Windows compatibility
+  });
+
+  graphServer.on("error", (err) => {
+    console.error("Failed to start graph plugin server:", err);
+  });
+
+  graphServer.on("exit", (code) => {
+    if (code !== null && code !== 0) {
+      console.log(`Graph plugin server exited with code ${code}`);
+    }
+  });
+
+  // Cleanup on main process exit
+  process.on("exit", () => {
+    if (graphServer && !graphServer.killed) {
+      graphServer.kill();
+    }
+  });
+
+  process.on("SIGINT", () => {
+    if (graphServer && !graphServer.killed) {
+      graphServer.kill();
+    }
+    process.exit();
+  });
+
+  process.on("SIGTERM", () => {
+    if (graphServer && !graphServer.killed) {
+      graphServer.kill();
+    }
+    process.exit();
+  });
+
+  return graphServer;
+}
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Start graph plugin server automatically
+  startGraphPluginServer();
 });
 
 module.exports = app;

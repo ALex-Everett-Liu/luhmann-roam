@@ -87,13 +87,7 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
    npm start
    ```
 
-5. **(Optional)** Start the graph plugin in a separate terminal:
-   ```bash
-   cd portable-local-graph
-   node graph-server.js
-   ```
-
-6. Open your browser and navigate to:
+5. Open your browser and navigate to:
    ```
    http://localhost:3003
    ```
@@ -160,7 +154,7 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 
 ### Using Graph Plugin (Optional, Independent Tool)
 The graph plugin is a completely separate tool with its own database:
-- Start the plugin server: Navigate to `portable-local-graph` folder and run `node graph-server.js`
+- **Starts automatically** when you run `npm start` (no separate command needed!)
 - Click the "📊 Graph Plugin" button in the sidebar to open it in a modal
 - Use the ⛶ button to expand to fullscreen, ✕ to close
 - Create and edit nodes and edges in the graph canvas

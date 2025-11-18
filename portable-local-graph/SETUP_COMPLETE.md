@@ -60,25 +60,24 @@ The portable-local-graph plugin has been successfully integrated as a **complete
 
 ## 🚀 How to Use
 
-### Step 1: Start the Plugin Server
+### Step 1: Start the Main App
 
-Open a terminal and run:
+The graph plugin server starts automatically! Just run:
 
 ```bash
-# Option A: From project root
-npm run graph-plugin
-
-# Option B: Navigate to folder
-cd portable-local-graph
-node graph-server.js
+npm start
 ```
 
 You should see:
 ```
+Server running on port 3003
+Starting graph plugin server...
 Graph plugin database initialized
 Graph database ready
 Graph plugin server running on http://localhost:3001
 ```
+
+**That's it!** The plugin server is now running automatically.
 
 ### Step 2: Open the Plugin
 

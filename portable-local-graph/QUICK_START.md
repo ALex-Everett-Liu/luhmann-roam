@@ -2,17 +2,18 @@
 
 ## 🚀 30-Second Setup
 
-### 1. Start the Plugin Server
+### 1. Start the Main App
 
-Open a terminal in the `portable-local-graph` folder:
+Just run the main app - the graph plugin starts automatically!
 
 ```bash
-cd portable-local-graph
-node graph-server.js
+npm start
 ```
 
 You should see:
 ```
+Server running on port 3003
+Starting graph plugin server...
 Graph plugin database initialized
 Graph database ready
 Graph plugin server running on http://localhost:3001
@@ -108,8 +109,10 @@ Done! Your graph is saved in the database.
 
 ## 🔧 Troubleshooting
 
-**Button says "server not running"?**
-→ Run `node graph-server.js` in the `portable-local-graph` folder
+**Button says "server not responding"?**
+→ The plugin server should start automatically with `npm start`
+→ Check the console output when starting the main app
+→ If you see errors, restart the main app
 
 **Nothing saves?**
 → Check the terminal for error messages

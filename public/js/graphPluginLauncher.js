@@ -68,19 +68,15 @@ class GraphPluginLauncher {
   }
 
   async openGraphModal() {
-    // Check if plugin server is running
+    // Check if plugin server is running (should be auto-started with main app)
     try {
       const response = await fetch(`http://localhost:${this.pluginPort}/api/graph`);
       if (!response.ok) throw new Error('Server not responding');
     } catch (error) {
       alert(
-        'Graph plugin server is not running.\n\n' +
-        'To start the plugin:\n' +
-        '1. Open a terminal\n' +
-        '2. Run: npm run graph-plugin\n' +
-        '   or\n' +
-        '   cd portable-local-graph && node graph-server.js\n' +
-        '3. Then click this button again'
+        'Graph plugin server is not responding.\n\n' +
+        'The plugin server should start automatically with the main app.\n' +
+        'Please restart the main app (npm start) or check the console for errors.'
       );
       return;
     }
