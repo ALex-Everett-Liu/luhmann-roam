@@ -148,6 +148,27 @@ button:hover {
   animation: pulse-unsaved 2s ease-in-out infinite;
 }
 
+/* Discard Changes button */
+.sidebar > #discard-changes {
+  background-color: #ea4335;
+  color: white;
+  margin-bottom: 5px;
+}
+
+.sidebar > #discard-changes:hover {
+  background-color: #d33b2c;
+}
+
+.sidebar > #discard-changes.has-unsaved {
+  background-color: #c62828;
+  animation: pulse-unsaved 2s ease-in-out infinite;
+}
+
+.sidebar > #discard-changes:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 @keyframes pulse-unsaved {
   0%, 100% {
     opacity: 1;

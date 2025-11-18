@@ -326,7 +326,10 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update the local node data
             node.content = currentContent;
             // Remove from unsaved changes if it was there
-            unsavedChanges.delete(node.id);
+            if (unsavedChanges.has(node.id)) {
+              unsavedChanges.delete(node.id);
+              updateDiscardButtonText();
+            }
             nodeText.classList.remove("unsaved");
           } else {
             console.error(`Failed to save content for node ${node.id}`);
@@ -340,8 +343,9 @@ document.addEventListener("DOMContentLoaded", () => {
           });
           // Add visual indicator
           nodeText.classList.add("unsaved");
-          // Update save button
+          // Update save and discard buttons
           updateSaveButtonText();
+          updateDiscardButtonText();
         }
       } else {
         console.log(`No content change detected for node ${node.id}`);
@@ -350,6 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
           unsavedChanges.delete(node.id);
           nodeText.classList.remove("unsaved");
           updateSaveButtonText();
+          updateDiscardButtonText();
         }
       }
     });
@@ -694,19 +699,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   
-  // Update save button visibility based on auto-save setting
+  // Update save and discard button visibility based on auto-save setting
   function updateSaveButtonVisibility() {
     const saveButton = document.getElementById("save-changes");
-    if (!saveButton) return;
+    const discardButton = document.getElementById("discard-changes");
     
     const autoSaveEnabled = getAutoSaveEnabled();
     if (autoSaveEnabled) {
-      // Hide button in auto-save mode
-      saveButton.style.display = "none";
+      // Hide buttons in auto-save mode
+      if (saveButton) saveButton.style.display = "none";
+      if (discardButton) discardButton.style.display = "none";
     } else {
-      // Show button in manual save mode
-      saveButton.style.display = "block";
-      updateSaveButtonText();
+      // Show buttons in manual save mode
+      if (saveButton) {
+        saveButton.style.display = "block";
+        updateSaveButtonText();
+      }
+      if (discardButton) {
+        discardButton.style.display = "block";
+        updateDiscardButtonText();
+      }
+    }
+  }
+  
+  // Update the Discard Changes button text with unsaved count
+  function updateDiscardButtonText() {
+    const discardButton = document.getElementById("discard-changes");
+    if (!discardButton) return;
+    
+    const unsavedCount = unsavedChanges.size;
+    if (unsavedCount > 0) {
+      discardButton.textContent = `Discard Changes (${unsavedCount})`;
+      discardButton.classList.add("has-unsaved");
+    } else {
+      discardButton.textContent = "Discard Changes";
+      discardButton.classList.remove("has-unsaved");
     }
   }
   
@@ -766,6 +793,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       // Update button text
       updateSaveButtonText();
+      updateDiscardButtonText();
       
       if (saveButton) {
         if (failCount > 0) {
@@ -778,6 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
           saveButton.textContent = originalText;
           saveButton.disabled = false;
           updateSaveButtonText();
+          updateDiscardButtonText();
         }, 2000);
       }
       
@@ -796,6 +825,79 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Make saveAllChanges available globally
   window.saveAllChanges = saveAllChanges;
+  
+  // Discard all pending changes and restore original content
+  function discardAllChanges() {
+    if (unsavedChanges.size === 0) {
+      const discardButton = document.getElementById("discard-changes");
+      if (discardButton) {
+        const originalText = discardButton.textContent;
+        discardButton.textContent = "No changes to discard";
+        setTimeout(() => {
+          discardButton.textContent = originalText;
+        }, 1500);
+      }
+      return;
+    }
+    
+    const discardButton = document.getElementById("discard-changes");
+    const originalText = discardButton ? discardButton.textContent : "Discard Changes";
+    
+    if (discardButton) {
+      discardButton.textContent = "Discarding...";
+      discardButton.disabled = true;
+    }
+    
+    try {
+      // Restore original content for all unsaved nodes
+      Array.from(unsavedChanges.entries()).forEach(([nodeId, {originalContent}]) => {
+        const nodeElement = document.querySelector(`.node[data-id="${nodeId}"] .node-text`);
+        if (nodeElement) {
+          // Restore the original content
+          nodeElement.innerText = originalContent;
+          
+          // Update local node data
+          const node = nodes.find(n => n.id === nodeId);
+          if (node) {
+            node.content = originalContent;
+          }
+          
+          // Remove visual indicator
+          nodeElement.classList.remove("unsaved");
+        }
+      });
+      
+      // Clear all unsaved changes
+      const discardedCount = unsavedChanges.size;
+      unsavedChanges.clear();
+      
+      // Update button text
+      updateSaveButtonText();
+      
+      if (discardButton) {
+        discardButton.textContent = `Discarded ${discardedCount} change${discardedCount !== 1 ? 's' : ''}!`;
+        
+        setTimeout(() => {
+          discardButton.textContent = originalText;
+          discardButton.disabled = false;
+        }, 2000);
+      }
+      
+      console.log(`Discarded ${discardedCount} unsaved changes`);
+    } catch (error) {
+      console.error("Error discarding changes:", error);
+      if (discardButton) {
+        discardButton.textContent = "Error!";
+        setTimeout(() => {
+          discardButton.textContent = originalText;
+          discardButton.disabled = false;
+        }, 2000);
+      }
+    }
+  }
+  
+  // Make discardAllChanges available globally
+  window.discardAllChanges = discardAllChanges;
 
   // Add this function to check container settings
   function checkContainerSettings() {
@@ -826,6 +928,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveChangesButton = document.getElementById("save-changes");
   if (saveChangesButton) {
     saveChangesButton.addEventListener("click", saveAllChanges);
+  }
+  
+  // Add event listener for discard changes button
+  const discardChangesButton = document.getElementById("discard-changes");
+  if (discardChangesButton) {
+    discardChangesButton.addEventListener("click", discardAllChanges);
   }
 
   // Initial setup - no language toggle needed

@@ -68,14 +68,16 @@ Simple, intuitive sidebar resizing with persistent state!
 ### Added
 - **Manual Save Mode**: Toggle between auto-save and manual save modes via Settings
 - **Save Changes Button**: Manual save button appears in sidebar when auto-save is disabled
+- **Discard Changes Button**: Manual discard button appears in sidebar when auto-save is disabled, allowing users to discard temporary draft text
 - **Unsaved Changes Tracking**: Visual indicators (red border + pink background) for nodes with unsaved edits
 - **Batch Save Functionality**: Save all pending changes with a single click
-- **Unsaved Count Display**: Save button shows count of unsaved changes (e.g., "Save Changes (3)")
+- **Batch Discard Functionality**: Discard all pending changes and restore original content with a single click
+- **Unsaved Count Display**: Save and discard buttons show count of unsaved changes (e.g., "Save Changes (3)", "Discard Changes (3)")
 - **Auto-save Toggle**: Settings panel includes toggle to switch between save modes
 
 ### Changed
 - **Blur Handler Behavior**: Node content blur handler now respects auto-save setting
-- **Save Button Visibility**: Save Changes button automatically shows/hides based on save mode
+- **Save/Discard Button Visibility**: Save Changes and Discard Changes buttons automatically show/hide based on save mode
 - **Settings Integration**: Auto-save setting persists across sessions and updates UI immediately
 
 ### Technical Details
@@ -91,10 +93,10 @@ Simple, intuitive sidebar resizing with persistent state!
 - **Backward Compatible**: Auto-save enabled by default maintains existing user experience
 
 ### Affected Components
-- `public/js/app.js` - Added unsaved changes tracking, manual save functions, and mode-aware blur handler
+- `public/js/app.js` - Added unsaved changes tracking, manual save/discard functions, and mode-aware blur handler
 - `public/js/settingsManager.js` - Added auto-save toggle event listeners and save mode switching logic
-- `public/index.html` - Re-added Save Changes button to sidebar
-- `public/css/components/buttons.css` - Added styling for save button with unsaved indicator
+- `public/index.html` - Added Save Changes and Discard Changes buttons to sidebar
+- `public/css/components/buttons.css` - Added styling for save and discard buttons with unsaved indicators
 - `public/css/components/outliner.css` - Added `.unsaved` class styling for visual feedback
 
 Hybrid save system: auto-save by default for seamless capture, manual mode for deliberate editing!
