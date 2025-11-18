@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.3] - 2025-11-18
+
+### Fixed
+- **Sequence ID Assignment**: Fixed sequence_id not being assigned to new nodes - all new nodes now automatically receive sequence IDs
+- **Sequence ID Population**: Fixed `populateSequenceIds()` function to properly assign sequence IDs to existing nodes with NULL values
+- **Sequence ID Conflicts**: Fixed potential conflicts by ensuring new sequence IDs start from max existing ID + 1
+
+### Technical Details
+- **createNode Enhancement**: Modified `createNode` in `nodeController.js` to query max sequence_id and assign next available ID
+- **populateSequenceIds Fix**: Updated function to filter NULL records and start assignment from max existing sequence_id + 1
+- **Database Consistency**: Sequence IDs now properly maintained for both existing and new nodes
+
+### Benefits
+- **Complete Sequence ID Coverage**: All nodes in database now have valid sequence IDs
+- **Automatic Assignment**: New nodes automatically receive sequence IDs without manual intervention
+- **Data Integrity**: Proper sequence ID management ensures consistent node identification
+
+### Affected Components
+- `controllers/nodeController.js` - Enhanced `createNode` to assign sequence_id on node creation
+- `database.js` - Fixed `populateSequenceIds` to properly handle existing NULL values and avoid conflicts
+
+Sequence ID feature now fully functional - existing nodes populated on server restart, new nodes auto-assigned!
+
 ## [0.33.2] - 2025-11-18
 
 ### Added

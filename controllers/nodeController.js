@@ -106,9 +106,15 @@ exports.createNode = async (req, res) => {
     const now = Date.now();
     const id = uuidv4();
 
+    // Get the next sequence_id by finding the maximum existing sequence_id
+    const maxSequenceResult = await db.get(
+      "SELECT MAX(sequence_id) as max_seq FROM nodes WHERE sequence_id IS NOT NULL"
+    );
+    const nextSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
+
     await db.run(
-      "INSERT INTO nodes (id, content, content_zh, parent_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [id, content, content_zh, parent_id, position, now, now],
+      "INSERT INTO nodes (id, content, content_zh, parent_id, position, sequence_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [id, content, content_zh, parent_id, position, nextSequenceId, now, now],
     );
 
     const node = await db.get("SELECT * FROM nodes WHERE id = ?", id);

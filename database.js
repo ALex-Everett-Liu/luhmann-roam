@@ -100,23 +100,29 @@ async function populateSequenceIds() {
           `Found ${unpopulatedCount.count} records in ${table} without sequence IDs. Populating...`,
         );
 
+        // Get the maximum existing sequence_id to avoid conflicts
+        const maxSequenceResult = await db.get(
+          `SELECT MAX(sequence_id) as max_seq FROM ${table} WHERE sequence_id IS NOT NULL`
+        );
+        const startSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
+
         // Get records ordered by created_at timestamp (or another appropriate column)
         // Adapt the ORDER BY column if some tables don't have created_at
         let orderByColumn = "created_at";
         const records = await db.all(
-          `SELECT id FROM ${table} ORDER BY ${orderByColumn} ASC`,
+          `SELECT id FROM ${table} WHERE sequence_id IS NULL ORDER BY ${orderByColumn} ASC`,
         );
 
-        // Assign sequence IDs sequentially
+        // Assign sequence IDs sequentially starting from the next available ID
         for (let i = 0; i < records.length; i++) {
           await db.run(`UPDATE ${table} SET sequence_id = ? WHERE id = ?`, [
-            i + 1,
+            startSequenceId + i,
             records[i].id,
           ]);
         }
 
         console.log(
-          `Successfully populated sequence IDs for ${records.length} records in ${table}`,
+          `Successfully populated sequence IDs for ${records.length} records in ${table} (starting from ${startSequenceId})`,
         );
       } else {
         console.log(`All records in ${table} already have sequence IDs`);
