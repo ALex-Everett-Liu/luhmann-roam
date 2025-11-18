@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.2] - 2025-11-18
+
+### Added
+- **Resizable Sidebar**: Drag-to-resize functionality for the left sidebar with persistent width
+- **Resize Handle**: Visual resize handle on the right edge of the sidebar with hover feedback
+- **Persistent Width**: Sidebar width saved to localStorage and restored on page load
+- **Window Resize Handling**: Sidebar automatically adjusts when window is resized to maintain constraints
+
+### Changed
+- **Sidebar Layout**: Added `position: relative` to sidebar for resize handle positioning
+- **Resize Handle Styling**: Added CSS for resize handle with hover states and cursor feedback
+
+### Fixed
+- **Drag Direction**: Fixed counter-intuitive resize behavior - dragging right now increases width, dragging left decreases width
+
+### Technical Details
+- **Simple Implementation**: Lightweight `resizableSidebar.js` (~75 lines) following simple function pattern
+- **Width Constraints**: Minimum width 200px, maximum 60% of window width
+- **Visual Feedback**: Resize handle shows blue highlight on hover, cursor changes to col-resize during drag
+- **Smooth Transitions**: CSS transitions provide smooth width changes when not actively resizing
+
+### Benefits
+- **Customizable Workspace**: Users can adjust sidebar width to their preference
+- **Persistent Preferences**: Width setting persists across browser sessions
+- **Intuitive Interaction**: Natural drag-to-resize behavior matching standard desktop application patterns
+- **Performance**: Lightweight implementation with minimal overhead
+
+### Affected Components
+- `public/js/resizableSidebar.js` - New simple resize functionality module
+- `public/css/core/layout.css` - Added resize handle styles and resizing state classes
+- `public/index.html` - Added resize handle element and script import
+- `public/js/app.js` - Added resizable sidebar initialization
+
+Simple, intuitive sidebar resizing with persistent state!
+
 ## [0.33.1] - 2025-11-18
 
 ### Added

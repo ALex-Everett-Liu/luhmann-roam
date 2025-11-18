@@ -36,7 +36,8 @@ function setupSidebarResize() {
   document.addEventListener("mousemove", (e) => {
     if (!isResizing) return;
 
-    const deltaX = startX - e.clientX;
+    // Calculate delta: dragging right (e.clientX > startX) should increase width
+    const deltaX = e.clientX - startX;
     const newWidth = Math.max(200, Math.min(window.innerWidth * 0.6, startWidth + deltaX));
 
     sidebar.style.width = newWidth + "px";
