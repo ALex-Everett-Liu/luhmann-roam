@@ -69,6 +69,7 @@ app.post("/api/graph/nodes", async (req, res) => {
     
     // Generate UUID v4 if not provided
     const nodeId = id || uuidv4();
+    const now = Date.now();
 
     // Get the next sequence_id by finding the maximum existing sequence_id
     const maxSequenceResult = await req.db.get(
@@ -77,9 +78,9 @@ app.post("/api/graph/nodes", async (req, res) => {
     const nextSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
 
     await req.db.run(
-      `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nodeId, x, y, label, color || "#3b82f6", radius || 20, full_content || label, nextSequenceId]
+      `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nodeId, x, y, label, color || "#3b82f6", radius || 20, full_content || label, nextSequenceId, now, now]
     );
 
     const node = await req.db.get("SELECT * FROM graph_nodes WHERE id = ?", nodeId);
@@ -95,6 +96,7 @@ app.put("/api/graph/nodes/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { x, y, label, color, radius, full_content } = req.body;
+    const now = Date.now();
 
     const updates = [];
     const values = [];
@@ -124,7 +126,8 @@ app.put("/api/graph/nodes/:id", async (req, res) => {
       values.push(full_content);
     }
 
-    updates.push("updated_at = strftime('%s', 'now')");
+    updates.push("updated_at = ?");
+    values.push(now);
     values.push(id);
 
     await req.db.run(
@@ -168,6 +171,7 @@ app.post("/api/graph/edges", async (req, res) => {
     
     // Generate UUID v4 if not provided
     const edgeId = id || uuidv4();
+    const now = Date.now();
 
     // Get the next sequence_id by finding the maximum existing sequence_id
     const maxSequenceResult = await req.db.get(
@@ -176,9 +180,9 @@ app.post("/api/graph/edges", async (req, res) => {
     const nextSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
 
     await req.db.run(
-      `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [edgeId, from_node_id, to_node_id, weight || 1.0, nextSequenceId]
+      `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [edgeId, from_node_id, to_node_id, weight || 1.0, nextSequenceId, now, now]
     );
 
     const edge = await req.db.get("SELECT * FROM graph_edges WHERE id = ?", edgeId);
@@ -194,10 +198,11 @@ app.put("/api/graph/edges/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { weight } = req.body;
+    const now = Date.now();
 
     await req.db.run(
-      "UPDATE graph_edges SET weight = ?, updated_at = strftime('%s', 'now') WHERE id = ?",
-      [weight, id]
+      "UPDATE graph_edges SET weight = ?, updated_at = ? WHERE id = ?",
+      [weight, now, id]
     );
 
     const edge = await req.db.get("SELECT * FROM graph_edges WHERE id = ?", id);
@@ -254,13 +259,17 @@ app.post("/api/graph/import", async (req, res) => {
     // Insert nodes
     if (nodes && nodes.length > 0) {
       const nodeStmt = await req.db.prepare(
-        `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
+      const now = Date.now();
       for (const node of nodes) {
         // Generate UUID v4 if not provided
         const nodeId = node.id || uuidv4();
+        // Use existing timestamps if provided, otherwise use current time
+        const createdAt = node.created_at || now;
+        const updatedAt = node.updated_at || now;
         await nodeStmt.run(
           nodeId,
           node.x,
@@ -269,7 +278,9 @@ app.post("/api/graph/import", async (req, res) => {
           node.color || "#3b82f6",
           node.radius || 20,
           node.fullContent || node.full_content || node.label,
-          nextNodeSequenceId++
+          nextNodeSequenceId++,
+          createdAt,
+          updatedAt
         );
       }
       await nodeStmt.finalize();
@@ -278,19 +289,25 @@ app.post("/api/graph/import", async (req, res) => {
     // Insert edges
     if (edges && edges.length > 0) {
       const edgeStmt = await req.db.prepare(
-        `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       );
 
+      const now = Date.now();
       for (const edge of edges) {
         // Generate UUID v4 if not provided
         const edgeId = edge.id || uuidv4();
+        // Use existing timestamps if provided, otherwise use current time
+        const createdAt = edge.created_at || now;
+        const updatedAt = edge.updated_at || now;
         await edgeStmt.run(
           edgeId,
           edge.from || edge.from_node_id,
           edge.to || edge.to_node_id,
           edge.weight || 1.0,
-          nextEdgeSequenceId++
+          nextEdgeSequenceId++,
+          createdAt,
+          updatedAt
         );
       }
       await edgeStmt.finalize();

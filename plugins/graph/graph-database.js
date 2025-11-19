@@ -26,8 +26,8 @@ async function initializeGraphDatabase() {
       color TEXT DEFAULT '#3b82f6',
       radius REAL DEFAULT 20,
       full_content TEXT,
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+      created_at INTEGER,
+      updated_at INTEGER
     )
   `);
 
@@ -38,8 +38,8 @@ async function initializeGraphDatabase() {
       from_node_id TEXT NOT NULL,
       to_node_id TEXT NOT NULL,
       weight REAL DEFAULT 1.0,
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+      created_at INTEGER,
+      updated_at INTEGER,
       FOREIGN KEY (from_node_id) REFERENCES graph_nodes (id) ON DELETE CASCADE,
       FOREIGN KEY (to_node_id) REFERENCES graph_nodes (id) ON DELETE CASCADE
     )
