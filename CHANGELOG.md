@@ -7,35 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.1] - 2025-01-19
-
-### Changed
-- **WebP Converter Architecture Refactoring**: Refactored WebP Converter plugin to follow N-Tier architecture pattern matching Graph Plugin structure
-- **Code Organization**: Separated business logic from HTTP logic and routes for better maintainability
-
-### Technical Details
-- **Service Layer**: Created `services/webpConverterService.js` for business logic (image conversion, file management, utilities)
-- **Controller Layer**: Created `controllers/webpConverterController.js` for HTTP request/response handling
-- **Routes Layer**: Simplified `routes/webpConverterRoutes.js` to URL mapping only (reduced from 391 to ~80 lines)
-- **Separation of Concerns**: Clear separation following Routes → Controllers → Services pattern
-  - Routes: URL mapping and middleware only
-  - Controllers: HTTP logic (req/res handling, validation, error responses)
-  - Services: Business logic (image processing, file operations, utilities)
-
-### Benefits
-- **Maintainability**: Business logic isolated in services, easier to modify and test
-- **Consistency**: Matches Graph Plugin architecture pattern for codebase uniformity
-- **Testability**: Services can be unit tested independently from HTTP layer
-- **Scalability**: Easy to add new features without bloating route files
-- **Code Clarity**: Each layer has clear responsibilities following single responsibility principle
-
-### Affected Components
-- `services/webpConverterService.js` - New service layer with business logic
-- `controllers/webpConverterController.js` - New controller layer with HTTP handlers
-- `routes/webpConverterRoutes.js` - Refactored to routes-only (reduced from 391 to ~80 lines)
-
-WebP Converter now follows established N-Tier architecture - cleaner, more maintainable, and consistent with codebase patterns!
-
 ## [0.34.0] - 2025-01-19
 
 ### Added
@@ -48,8 +19,16 @@ WebP Converter now follows established N-Tier architecture - cleaner, more maint
 - **Settings Persistence**: Conversion preferences (quality, format, output directory) saved automatically
 - **Plugin Integration**: WebP Converter registered in PluginRegistry with sidebar button and Settings integration
 
+### Changed
+- **WebP Converter Architecture Refactoring**: Refactored WebP Converter plugin to follow N-Tier architecture pattern matching Graph Plugin structure (minor improvement)
+- **Code Organization**: Separated business logic from HTTP logic and routes for better maintainability
+
 ### Technical Details
 - **Plugin Architecture**: Follows same pattern as Graph Plugin - modal-based with iframe loading
+- **N-Tier Architecture**: Clear separation following Routes → Controllers → Services pattern
+  - Routes: URL mapping and middleware only (`routes/webpConverterRoutes.js` - ~80 lines)
+  - Controllers: HTTP logic (`controllers/webpConverterController.js` - request/response handling, validation)
+  - Services: Business logic (`services/webpConverterService.js` - image conversion, file management, utilities)
 - **API Routes**: New `/api/plugins/webp-converter/*` endpoints for image conversion operations
   - `POST /api/plugins/webp-converter/convert` - Single image conversion
   - `POST /api/plugins/webp-converter/batch` - Batch image conversion
@@ -78,7 +57,9 @@ WebP Converter now follows established N-Tier architecture - cleaner, more maint
   - `styles.css` - Plugin styling
   - `webpConverterPluginLauncher.js` - Plugin registration and modal management
   - `README.md` - Plugin documentation
-- `routes/webpConverterRoutes.js` - New API routes module for image conversion
+- `services/webpConverterService.js` - Service layer with business logic (image conversion, file management)
+- `controllers/webpConverterController.js` - Controller layer with HTTP handlers
+- `routes/webpConverterRoutes.js` - Routes layer for URL mapping only (refactored to ~80 lines)
 - `server.js` - Added WebP converter routes and static file serving
 - `public/index.html` - Added WebP converter modal HTML and launcher script reference
 - `public/css/webp-converter-plugin-modal.css` - Modal styling for plugin
