@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.33.10] - 2025-11-18
+
+### Changed
+- **Graph Plugin Save System**: Switched from automatic database saving to manual save/discard pattern matching main app behavior
+- **Graph Plugin User Control**: Users now have full control over when changes are persisted to database
+
+### Removed
+- **Graph Plugin JSON Export/Import**: Removed JSON file save/load functionality - database-only persistence
+- **Automatic Graph Persistence**: Removed automatic saving on create/update/delete operations
+
+### Added
+- **Manual Save/Discard Controls**: Added "Save Changes" and "Discard Changes" buttons to graph plugin toolbar
+- **Change Tracking System**: Comprehensive tracking of unsaved changes (create, update, delete) for nodes and edges
+- **Original State Management**: Stores original database state for proper discard functionality
+- **Change Count Display**: Save/Discard buttons show count of unsaved changes (e.g., "Save Changes (3)")
+
+### Technical Details
+- **Change Tracking**: `unsavedChanges` Maps track all modifications before database persistence
+- **Original State Storage**: `originalState` Maps preserve database state for discard restoration
+- **Callback Refactoring**: Graph callbacks now track changes instead of immediately saving to database
+- **Data Format Conversion**: Handles conversion between database format (`from_node_id`/`to_node_id`) and graph format (`from`/`to`)
+- **Batch Operations**: `saveAllChanges()` processes all tracked changes in sequence
+- **State Restoration**: `discardAllChanges()` restores original state including deleted nodes/edges
+
+### Benefits
+- **User Control**: Users can experiment with graph changes without immediate persistence
+- **Consistency**: Graph plugin now matches main app's manual save/discard workflow
+- **Data Safety**: Changes can be discarded if unwanted, preventing accidental database modifications
+- **Workflow Flexibility**: Multiple changes can be made before committing to database
+
+### Affected Components
+- `plugins/graph/app.js` - Implemented manual save/discard system with change tracking
+- `plugins/graph/index.html` - Added Save Changes and Discard Changes buttons to toolbar
+- `plugins/graph/graph.js` - No changes (callbacks remain, but behavior changed)
+
+Graph plugin now follows same manual save pattern as main app - full user control over persistence!
+
 ## [0.33.9] - 2025-11-18
 
 ### Changed

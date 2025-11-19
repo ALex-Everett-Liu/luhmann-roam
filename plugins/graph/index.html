@@ -45,6 +45,15 @@
             background: #007acc;
         }
 
+        .toolbar button.has-unsaved {
+            background: #d32f2f;
+            font-weight: bold;
+        }
+
+        .toolbar button.has-unsaved:hover {
+            background: #b71c1c;
+        }
+
         .main-content {
             flex: 1;
             position: relative;
@@ -131,6 +140,8 @@
             <button id="node-mode" class="mode-btn">Add Node</button>
             <button id="edge-mode" class="mode-btn">Add Edge</button>
             <button id="clear-btn">Clear</button>
+            <button id="save-changes" style="display: none;">Save Changes</button>
+            <button id="discard-changes" style="display: none;">Discard Changes</button>
         </div>
 
         <div class="main-content">
