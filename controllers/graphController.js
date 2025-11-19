@@ -1,4 +1,5 @@
 // graphController.js - Business logic for Graph Plugin operations
+const { v4: uuidv4 } = require("uuid");
 
 /**
  * Get all graph data
@@ -31,14 +32,23 @@ exports.getAllGraphData = async (req, res) => {
 exports.createNode = async (req, res) => {
   try {
     const { id, x, y, label, color, radius, full_content } = req.body;
+    
+    // Generate UUID v4 if not provided
+    const nodeId = id || uuidv4();
+
+    // Get the next sequence_id by finding the maximum existing sequence_id
+    const maxSequenceResult = await req.graphDb.get(
+      "SELECT MAX(sequence_id) as max_seq FROM graph_nodes WHERE sequence_id IS NOT NULL"
+    );
+    const nextSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
 
     await req.graphDb.run(
-      `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, x, y, label, color || "#3b82f6", radius || 20, full_content || label]
+      `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nodeId, x, y, label, color || "#3b82f6", radius || 20, full_content || label, nextSequenceId]
     );
 
-    const node = await req.graphDb.get("SELECT * FROM graph_nodes WHERE id = ?", id);
+    const node = await req.graphDb.get("SELECT * FROM graph_nodes WHERE id = ?", nodeId);
     res.json(node);
   } catch (error) {
     console.error("Error creating node:", error);
@@ -130,14 +140,23 @@ exports.deleteNode = async (req, res) => {
 exports.createEdge = async (req, res) => {
   try {
     const { id, from_node_id, to_node_id, weight } = req.body;
+    
+    // Generate UUID v4 if not provided
+    const edgeId = id || uuidv4();
+
+    // Get the next sequence_id by finding the maximum existing sequence_id
+    const maxSequenceResult = await req.graphDb.get(
+      "SELECT MAX(sequence_id) as max_seq FROM graph_edges WHERE sequence_id IS NOT NULL"
+    );
+    const nextSequenceId = (maxSequenceResult?.max_seq || 0) + 1;
 
     await req.graphDb.run(
-      `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight)
-       VALUES (?, ?, ?, ?)`,
-      [id, from_node_id, to_node_id, weight || 1.0]
+      `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id)
+       VALUES (?, ?, ?, ?, ?)`,
+      [edgeId, from_node_id, to_node_id, weight || 1.0, nextSequenceId]
     );
 
-    const edge = await req.graphDb.get("SELECT * FROM graph_edges WHERE id = ?", id);
+    const edge = await req.graphDb.get("SELECT * FROM graph_edges WHERE id = ?", edgeId);
     res.json(edge);
   } catch (error) {
     console.error("Error creating edge:", error);
@@ -209,22 +228,35 @@ exports.importGraphData = async (req, res) => {
     await req.graphDb.run("DELETE FROM graph_edges");
     await req.graphDb.run("DELETE FROM graph_nodes");
 
+    // Get max sequence IDs for nodes and edges
+    const maxNodeSequenceResult = await req.graphDb.get(
+      "SELECT MAX(sequence_id) as max_seq FROM graph_nodes WHERE sequence_id IS NOT NULL"
+    );
+    const maxEdgeSequenceResult = await req.graphDb.get(
+      "SELECT MAX(sequence_id) as max_seq FROM graph_edges WHERE sequence_id IS NOT NULL"
+    );
+    let nextNodeSequenceId = (maxNodeSequenceResult?.max_seq || 0) + 1;
+    let nextEdgeSequenceId = (maxEdgeSequenceResult?.max_seq || 0) + 1;
+
     // Insert nodes
     if (nodes && nodes.length > 0) {
       const nodeStmt = await req.graphDb.prepare(
-        `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO graph_nodes (id, x, y, label, color, radius, full_content, sequence_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
       for (const node of nodes) {
+        // Generate UUID v4 if not provided
+        const nodeId = node.id || uuidv4();
         await nodeStmt.run(
-          node.id,
+          nodeId,
           node.x,
           node.y,
           node.label,
           node.color || "#3b82f6",
           node.radius || 20,
-          node.fullContent || node.full_content || node.label
+          node.fullContent || node.full_content || node.label,
+          nextNodeSequenceId++
         );
       }
       await nodeStmt.finalize();
@@ -233,16 +265,19 @@ exports.importGraphData = async (req, res) => {
     // Insert edges
     if (edges && edges.length > 0) {
       const edgeStmt = await req.graphDb.prepare(
-        `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight)
-         VALUES (?, ?, ?, ?)`
+        `INSERT INTO graph_edges (id, from_node_id, to_node_id, weight, sequence_id)
+         VALUES (?, ?, ?, ?, ?)`
       );
 
       for (const edge of edges) {
+        // Generate UUID v4 if not provided
+        const edgeId = edge.id || uuidv4();
         await edgeStmt.run(
-          edge.id,
+          edgeId,
           edge.from || edge.from_node_id,
           edge.to || edge.to_node_id,
-          edge.weight || 1.0
+          edge.weight || 1.0,
+          nextEdgeSequenceId++
         );
       }
       await edgeStmt.finalize();

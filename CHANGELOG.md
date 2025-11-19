@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.33.9] - 2025-11-18
+
+### Changed
+- **Graph Plugin ID Generation**: Switched from `Date.now() + Math.random()` to UUID v4 for all graph nodes and edges
+- **Graph Plugin Database Schema**: Added `sequence_id` INTEGER columns to `graph_nodes` and `graph_edges` tables for ordering/display
+
+### Added
+- **Graph Sequence ID Support**: Automatic `sequence_id` assignment for all new graph nodes and edges
+- **Graph Sequence ID Population**: `populateGraphSequenceIds()` function to assign sequence IDs to existing records
+- **Graph Database Indexes**: Performance indexes on `sequence_id` columns for both graph tables
+
+### Technical Details
+- **Client-Side ID Generation**: Updated `plugins/graph/graph.js` to use `crypto.randomUUID()` instead of timestamp-based IDs
+- **Server-Side ID Generation**: Updated `controllers/graphController.js` and `plugins/graph/graph-server.js` to generate UUID v4 using `uuid` package
+- **Database Schema Migration**: Added `sequence_id` columns with automatic migration for existing databases
+- **Sequence ID Assignment**: New nodes/edges automatically receive sequential IDs starting from max existing ID + 1
+- **Backward Compatibility**: UUID generation falls back to server-side if client doesn't provide ID
+- **Import Functionality**: Bulk import operations properly assign sequence IDs to imported nodes and edges
+
+### Benefits
+- **Collision Prevention**: UUID v4 eliminates risk of ID collisions from timestamp-based generation
+- **Standard Format**: Industry-standard UUID format improves compatibility and database integration
+- **Ordering Support**: Sequence IDs enable consistent ordering and display numbering for graph elements
+- **Consistency**: Graph plugin now uses same ID strategy as main application (UUID + sequence_id)
+- **Data Integrity**: Proper sequence ID management ensures consistent graph element identification
+
+### Affected Components
+- `plugins/graph/graph-database.js` - Added sequence_id columns, indexes, and populateGraphSequenceIds function
+- `plugins/graph/graph.js` - Changed ID generation from Date.now() + Math.random() to crypto.randomUUID()
+- `controllers/graphController.js` - Added UUID v4 generation and sequence_id assignment for nodes/edges
+- `plugins/graph/graph-server.js` - Added UUID v4 generation and sequence_id assignment for standalone server
+- `server.js` - Added populateGraphSequenceIds call after graph database initialization
+
+Graph plugin now uses robust UUID v4 IDs with sequence numbering - matching main app architecture!
+
 ## [0.33.8] - 2025-11-18
 
 ### Changed

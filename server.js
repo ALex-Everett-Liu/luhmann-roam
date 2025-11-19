@@ -10,6 +10,7 @@ const {
 const {
   getGraphDb,
   initializeGraphDatabase,
+  populateGraphSequenceIds,
 } = require("./plugins/graph/graph-database");
 const fs = require("fs");
 const path = require("path");
@@ -65,6 +66,10 @@ initializeDatabase()
 initializeGraphDatabase()
   .then(() => {
     console.log("Graph plugin database initialized");
+    return populateGraphSequenceIds();
+  })
+  .then((result) => {
+    console.log("Graph sequence IDs populated:", result);
   })
   .catch((err) => {
     console.error("Error initializing graph database:", err);

@@ -44,7 +44,7 @@ class Graph {
 
     addNode(x, y, label = 'Node', color = '#3b82f6') {
         const node = {
-            id: Date.now() + Math.random(),
+            id: crypto.randomUUID(),
             x: x,
             y: y,
             label: label,
@@ -65,7 +65,7 @@ class Graph {
 
     addEdge(fromNode, toNode, weight = 1) {
         const edge = {
-            id: Date.now() + Math.random(),
+            id: crypto.randomUUID(),
             from: fromNode.id,
             to: toNode.id,
             weight: weight
