@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.1] - 2025-01-19
+
+### Changed
+- **Graph Plugin Architecture Refactoring**: Refactored Graph Plugin to follow N-Tier architecture pattern matching WebP Converter structure
+- **Node Controller Architecture Refactoring**: Refactored Node Controller to follow N-Tier architecture pattern for consistency across codebase
+- **Code Organization**: Separated business logic from HTTP logic for Graph Plugin and Node operations
+
+### Technical Details
+- **Graph Plugin N-Tier Architecture**: Clear separation following Routes → Controllers → Services pattern
+  - Routes: URL mapping and middleware only (`routes/graphRoutes.js` - ~47 lines)
+  - Controllers: HTTP logic (`controllers/graphController.js` - request/response handling, validation)
+  - Services: Business logic (`services/graphService.js` - database operations, data processing, UUID generation, sequence ID management)
+- **Node Controller N-Tier Architecture**: Clear separation following Routes → Controllers → Services pattern
+  - Controllers: HTTP logic (`controllers/nodeController.js` - request/response handling, input validation, error handling)
+  - Services: Business logic (`services/nodeService.js` - database operations, data processing, transaction management, recursive deletion, line break processing)
+- **Consistent Architecture**: All major controllers now follow same N-Tier pattern for maintainability
+
+### Benefits
+- **Architectural Consistency**: Graph Plugin and Node Controller now match WebP Converter architecture pattern
+- **Maintainability**: Business logic centralized in service layer for easier modification
+- **Testability**: Service functions can be unit tested independently from HTTP layer
+- **Code Clarity**: Controllers simplified to HTTP concerns only, services handle business logic
+- **Extensibility**: Easy to add new operations by adding service methods
+
+### Affected Components
+- `services/graphService.js` - New service layer with all Graph Plugin business logic
+- `controllers/graphController.js` - Refactored to HTTP logic only, delegates to service layer
+- `services/nodeService.js` - New service layer with all Node operations business logic
+- `controllers/nodeController.js` - Refactored to HTTP logic only, delegates to service layer
+
+Graph Plugin and Node Controller now follow established N-Tier architecture - consistent codebase structure!
+
 ## [0.34.0] - 2025-01-19
 
 ### Added
