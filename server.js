@@ -16,6 +16,7 @@ const fs = require("fs");
 const path = require("path");
 const nodeRoutes = require("./routes/nodeRoutes");
 const graphRoutes = require("./routes/graphRoutes");
+const webpConverterRoutes = require("./routes/webpConverterRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
@@ -93,6 +94,9 @@ app.use("/api/nodes", nodeRoutes);
 
 // Use the graph plugin routes
 app.use("/api/plugins/graph", graphRoutes);
+
+// Use the WebP converter plugin routes
+app.use("/api/plugins/webp-converter", webpConverterRoutes);
 
 // Get node above
 app.get("/api/nodes/:id/above", async (req, res) => {
@@ -436,6 +440,9 @@ app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 // Serve graph plugin static files
 app.use("/plugins/graph", express.static(path.join(__dirname, "plugins", "graph")));
 
+// Serve WebP converter plugin static files
+app.use("/plugins/webp-converter", express.static(path.join(__dirname, "plugins", "webp-converter")));
+
 app.post("/api/backup", async (req, res) => {
   try {
     const fs = require("fs");
@@ -510,6 +517,7 @@ app.post("/api/backup", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Graph plugin available at /plugins/graph/index.html`);
+  console.log(`WebP Converter plugin available at /plugins/webp-converter/index.html`);
 });
 
 module.exports = app;

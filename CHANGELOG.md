@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.0] - 2025-01-19
+
+### Added
+- **WebP Converter Plugin**: New batch image converter plugin supporting multiple formats with quality control
+- **Image Conversion Support**: Convert images to WebP, JPEG, PNG, AVIF, and TIFF formats
+- **Batch Processing**: Convert multiple images simultaneously with progress tracking
+- **Quality Control**: Adjustable quality settings (1-100) for optimal file size vs quality balance
+- **Drag & Drop Upload**: Easy file upload via drag and drop or file picker
+- **File Size Comparison**: Display original vs converted file sizes with savings percentage
+- **Settings Persistence**: Conversion preferences (quality, format, output directory) saved automatically
+- **Plugin Integration**: WebP Converter registered in PluginRegistry with sidebar button and Settings integration
+
+### Technical Details
+- **Plugin Architecture**: Follows same pattern as Graph Plugin - modal-based with iframe loading
+- **API Routes**: New `/api/plugins/webp-converter/*` endpoints for image conversion operations
+  - `POST /api/plugins/webp-converter/convert` - Single image conversion
+  - `POST /api/plugins/webp-converter/batch` - Batch image conversion
+  - `GET /api/plugins/webp-converter/formats` - Get supported formats
+  - `GET /api/plugins/webp-converter/info` - Get plugin information
+  - `GET /api/plugins/webp-converter/health` - Health check endpoint
+  - `POST /api/plugins/webp-converter/cleanup` - Clean up old files
+- **Image Processing**: Uses Sharp library for high-performance native image processing
+- **File Management**: Temporary uploads in `plugins/webp-converter/uploads/`, outputs in `plugins/webp-converter/output/`
+- **Static File Serving**: Plugin UI files served from `/plugins/webp-converter/*` on main server
+- **Memory Management**: Streaming processing with unlimited memory support for large files (up to 500MB)
+- **Format-Specific Optimizations**: Different processing strategies for WebP, JPEG, PNG, AVIF, and TIFF
+
+### Benefits
+- **Professional Image Processing**: High-quality conversions with format-specific optimizations
+- **User-Friendly Interface**: Intuitive drag-and-drop workflow with real-time progress feedback
+- **Flexible Output**: Support for modern formats (WebP, AVIF) and traditional formats (JPEG, PNG, TIFF)
+- **Batch Efficiency**: Process multiple images at once with progress tracking
+- **Seamless Integration**: Works within main app modal system with fullscreen support
+- **Data Safety**: All processing happens locally - images never leave user's system
+
+### Affected Components
+- `plugins/webp-converter/` - New plugin directory with complete UI and logic
+  - `index.html` - Plugin UI interface
+  - `renderer.js` - Frontend logic (adapted from Electron to web context)
+  - `styles.css` - Plugin styling
+  - `webpConverterPluginLauncher.js` - Plugin registration and modal management
+  - `README.md` - Plugin documentation
+- `routes/webpConverterRoutes.js` - New API routes module for image conversion
+- `server.js` - Added WebP converter routes and static file serving
+- `public/index.html` - Added WebP converter modal HTML and launcher script reference
+- `public/css/webp-converter-plugin-modal.css` - Modal styling for plugin
+
+### Plugin Features
+- **Supported Input Formats**: JPEG, PNG, GIF, BMP, TIFF, WebP, SVG
+- **Supported Output Formats**: WebP, JPEG, PNG, AVIF, TIFF
+- **Keyboard Shortcuts**: 
+  - `Ctrl+O` - Open file picker
+  - `Ctrl+R` - Clear all selected images
+  - `Escape` - Cancel conversion (if in progress)
+- **Automatic Cleanup**: Files older than 24 hours automatically cleaned up
+- **Progress Tracking**: Real-time progress bar and status updates during conversion
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+WebP Converter plugin ready for use - professional batch image conversion integrated into Luhmann Roam!
+
 ## [0.33.11] - 2025-01-15
 
 ### Changed

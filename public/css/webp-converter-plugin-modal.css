@@ -1,0 +1,167 @@
+/* WebP Converter Plugin Modal Styles */
+
+.webp-converter-plugin-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.webp-converter-plugin-modal.visible {
+  display: flex;
+  flex-direction: column;
+}
+
+.webp-converter-plugin-modal.fullscreen {
+  padding: 0;
+}
+
+.webp-converter-plugin-header {
+  background: #6366f1;
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.webp-converter-plugin-modal.fullscreen .webp-converter-plugin-header {
+  border-radius: 0;
+}
+
+.webp-converter-plugin-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.webp-converter-plugin-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.webp-converter-plugin-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.webp-converter-plugin-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.webp-converter-plugin-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.webp-converter-plugin-content {
+  flex: 1;
+  background: white;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.webp-converter-plugin-modal.fullscreen .webp-converter-plugin-content {
+  border-radius: 0;
+}
+
+#webp-converter-plugin-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  transition: opacity 0.3s ease-in;
+}
+
+/* Loading state */
+.webp-converter-plugin-content::before {
+  content: 'Loading WebP Converter...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  color: #666;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#webp-converter-plugin-iframe.loaded + * {
+  display: none;
+}
+
+/* Hide loading when iframe is loaded */
+.webp-converter-plugin-content:has(#webp-converter-plugin-iframe.loaded)::before {
+  display: none;
+}
+
+/* Fallback for browsers without :has() support */
+#webp-converter-plugin-iframe.loaded {
+  opacity: 1;
+}
+
+#webp-converter-plugin-iframe:not(.loaded) {
+  opacity: 0;
+}
+
+/* Animation */
+.webp-converter-plugin-modal.visible {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.webp-converter-plugin-modal.closing {
+  animation: fadeOut 0.2s ease-out;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Responsive sizing */
+@media (max-width: 768px) {
+  .webp-converter-plugin-modal {
+    padding: 10px;
+  }
+  
+  .webp-converter-plugin-header {
+    padding: 10px 15px;
+  }
+  
+  .webp-converter-plugin-header h3 {
+    font-size: 16px;
+  }
+}
+

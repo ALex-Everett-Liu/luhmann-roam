@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/settings-manager.css">
   <link rel="stylesheet" href="css/basic-font-settings.css">
   <link rel="stylesheet" href="css/graph-plugin-modal.css">
+  <link rel="stylesheet" href="css/webp-converter-plugin-modal.css">
 </head>
 <body>
   <div class="app-container">
@@ -39,6 +40,21 @@
     <div class="graph-plugin-content">
       <div id="graph-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading Graph Plugin...</div>
       <iframe id="graph-plugin-iframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+
+  <!-- WebP Converter Plugin Modal -->
+  <div id="webp-converter-plugin-modal" class="webp-converter-plugin-modal">
+    <div class="webp-converter-plugin-header">
+      <h3>WebP Converter</h3>
+      <div class="webp-converter-plugin-controls">
+        <button id="webp-converter-plugin-fullscreen" class="webp-converter-plugin-btn" title="Toggle Fullscreen">⛶</button>
+        <button id="webp-converter-plugin-close" class="webp-converter-plugin-btn" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="webp-converter-plugin-content">
+      <div id="webp-converter-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading WebP Converter...</div>
+      <iframe id="webp-converter-plugin-iframe" src="" frameborder="0"></iframe>
     </div>
   </div>
 
@@ -76,5 +92,8 @@
   
   <!-- Graph Plugin Launcher -->
   <script src="/plugins/graph/graphPluginLauncher.js"></script>
+  
+  <!-- WebP Converter Plugin Launcher -->
+  <script src="/plugins/webp-converter/webpConverterPluginLauncher.js"></script>
 </body>
 </html>
