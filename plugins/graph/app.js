@@ -40,9 +40,6 @@ function setupEventListeners() {
         }
     });
 
-    document.getElementById('load-from-app-btn').addEventListener('click', loadFromApp);
-    document.getElementById('save-btn').addEventListener('click', saveGraph);
-    document.getElementById('load-btn').addEventListener('click', loadGraph);
 
     // Hide context menu when clicking elsewhere
     document.addEventListener('click', () => {
@@ -302,68 +299,6 @@ async function clearGraphInDb() {
     }
 }
 
-async function importGraphToDb(data) {
-    try {
-        const response = await fetch(`${API_BASE}/import`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        if (!response.ok) throw new Error('Failed to import graph');
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('Error importing graph to database:', error);
-        throw error;
-    }
-}
-
-// ========== File Operations ==========
-
-function saveGraph() {
-    const data = graph.exportData();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'graph.json';
-    a.click();
-
-    URL.revokeObjectURL(url);
-}
-
-async function loadGraph() {
-    const input = document.getElementById('file-input');
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                
-                // Import to database
-                await importGraphToDb(data);
-                
-                // Reload from database
-                await loadGraphFromDb();
-                
-                alert('Graph loaded successfully!');
-            } catch (error) {
-                alert('Error loading file: ' + error.message);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-async function loadFromApp() {
-    alert('This is now an independent graph plugin with its own database.\n\nUse "Load" to import a JSON file, or create your graph manually.');
-}
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', init);
