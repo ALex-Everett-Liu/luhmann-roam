@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.1] - 2025-01-19
+
+### Changed
+- **WebP Converter Architecture Refactoring**: Refactored WebP Converter plugin to follow N-Tier architecture pattern matching Graph Plugin structure
+- **Code Organization**: Separated business logic from HTTP logic and routes for better maintainability
+
+### Technical Details
+- **Service Layer**: Created `services/webpConverterService.js` for business logic (image conversion, file management, utilities)
+- **Controller Layer**: Created `controllers/webpConverterController.js` for HTTP request/response handling
+- **Routes Layer**: Simplified `routes/webpConverterRoutes.js` to URL mapping only (reduced from 391 to ~80 lines)
+- **Separation of Concerns**: Clear separation following Routes → Controllers → Services pattern
+  - Routes: URL mapping and middleware only
+  - Controllers: HTTP logic (req/res handling, validation, error responses)
+  - Services: Business logic (image processing, file operations, utilities)
+
+### Benefits
+- **Maintainability**: Business logic isolated in services, easier to modify and test
+- **Consistency**: Matches Graph Plugin architecture pattern for codebase uniformity
+- **Testability**: Services can be unit tested independently from HTTP layer
+- **Scalability**: Easy to add new features without bloating route files
+- **Code Clarity**: Each layer has clear responsibilities following single responsibility principle
+
+### Affected Components
+- `services/webpConverterService.js` - New service layer with business logic
+- `controllers/webpConverterController.js` - New controller layer with HTTP handlers
+- `routes/webpConverterRoutes.js` - Refactored to routes-only (reduced from 391 to ~80 lines)
+
+WebP Converter now follows established N-Tier architecture - cleaner, more maintainable, and consistent with codebase patterns!
+
 ## [0.34.0] - 2025-01-19
 
 ### Added
