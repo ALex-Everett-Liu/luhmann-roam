@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.33.11] - 2025-01-15
+
+### Changed
+- **Backup System Enhancement**: Backup functionality now backs up both main database (`outliner.db`) and graph plugin database (`graph.db`) in a single operation
+- **Backup Response Format**: Updated backup API response to return array of backups with type and filename information
+- **Backup Filenames**: Both databases backed up with same timestamp for easy pairing (e.g., `main-2025-01-15T10-30-45.db` and `graph-2025-01-15T10-30-45.db`)
+
+### Added
+- **Graph Database Backup**: Graph plugin database automatically included in backup operations
+- **Backup Logging**: Enhanced console logging to show which databases were backed up
+- **Graceful Handling**: Backup system handles missing databases gracefully (skips if not found)
+
+### Technical Details
+- **Backup Endpoint**: Updated `/api/backup` endpoint in `server.js` to backup both databases
+- **Backup Manager**: Updated `backupManager.js` to handle new response format with multiple backups
+- **Backward Compatibility**: Frontend maintains compatibility with legacy single-backup response format
+- **Database Paths**: Main DB at `outliner.db`, Graph DB at `plugins/graph/graph.db`
+
+### Benefits
+- **Complete Data Protection**: Both main notes and graph plugin data backed up together
+- **Consistent Timestamps**: Paired backups share same timestamp for easy identification
+- **One-Click Backup**: Single backup operation protects all application data
+- **Data Safety**: Graph plugin data now included in backup/restore workflow
+
+### Affected Components
+- `server.js` - Enhanced backup endpoint to backup both databases
+- `public/js/backupManager.js` - Updated to handle multiple backup responses
+
+Backup system now protects both main application and graph plugin data in one operation!
+
 ## [0.33.10] - 2025-11-18
 
 ### Changed

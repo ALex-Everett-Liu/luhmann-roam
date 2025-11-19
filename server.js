@@ -453,20 +453,47 @@ app.post("/api/backup", async (req, res) => {
       .replace(/:/g, "-") // Replace colons with hyphens for valid filename
       .replace(/\..+/, ""); // Remove milliseconds
 
-    // Define source path for main database
-    const dbPath = path.join(__dirname, "outliner.db");
-    const backupFilename = `main-${timestamp}.db`;
-    const backupPath = path.join(backupDir, backupFilename);
+    const backups = [];
 
-    // Copy the database file
-    fs.copyFileSync(dbPath, backupPath);
+    // Backup main database
+    const mainDbPath = path.join(__dirname, "outliner.db");
+    const mainBackupFilename = `main-${timestamp}.db`;
+    const mainBackupPath = path.join(backupDir, mainBackupFilename);
 
-    console.log(`Database backup created: ${backupFilename}`);
+    if (fs.existsSync(mainDbPath)) {
+      fs.copyFileSync(mainDbPath, mainBackupPath);
+      backups.push({
+        type: "main",
+        filename: mainBackupFilename,
+      });
+      console.log(`Main database backup created: ${mainBackupFilename}`);
+    } else {
+      console.warn("Main database file not found, skipping backup");
+    }
+
+    // Backup graph database
+    const graphDbPath = path.join(__dirname, "plugins", "graph", "graph.db");
+    const graphBackupFilename = `graph-${timestamp}.db`;
+    const graphBackupPath = path.join(backupDir, graphBackupFilename);
+
+    if (fs.existsSync(graphDbPath)) {
+      fs.copyFileSync(graphDbPath, graphBackupPath);
+      backups.push({
+        type: "graph",
+        filename: graphBackupFilename,
+      });
+      console.log(`Graph database backup created: ${graphBackupFilename}`);
+    } else {
+      console.warn("Graph database file not found, skipping backup");
+    }
+
+    if (backups.length === 0) {
+      throw new Error("No databases found to backup");
+    }
 
     res.status(200).json({
       success: true,
-      filename: backupFilename,
-      vault: "main",
+      backups: backups,
       timestamp: timestamp,
     });
   } catch (error) {

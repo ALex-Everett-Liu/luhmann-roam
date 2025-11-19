@@ -41,8 +41,20 @@ window.BackupManager = (function() {
         backupButton.textContent = 'Backup Successful!';
         backupButton.classList.add('success');
         
-        // Maybe show a notification with the backup filename
-        console.log(`Backup created:`, result.filename);
+        // Log backup information
+        if (result.backups && result.backups.length > 0) {
+          const backupNames = result.backups.map(b => b.filename).join(', ');
+          console.log(`Backups created:`, backupNames);
+          
+          // Show detailed success message if multiple backups
+          if (result.backups.length > 1) {
+            const backupTypes = result.backups.map(b => b.type).join(' & ');
+            console.log(`Backed up ${backupTypes} databases`);
+          }
+        } else if (result.filename) {
+          // Legacy format support
+          console.log(`Backup created:`, result.filename);
+        }
         
         // Reset button after delay
         setTimeout(() => {
