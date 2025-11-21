@@ -186,8 +186,7 @@ const PluginRegistry = (function () {
    * Register built-in plugins
    */
   function registerBuiltInPlugins() {
-    // Graph Plugin will be registered by graphPluginLauncher.js
-    // This is just a placeholder for future built-in plugins
+    // This is a placeholder for future built-in plugins
   }
 
   // Public API

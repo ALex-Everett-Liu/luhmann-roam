@@ -7,15 +7,9 @@ const {
   initializeDatabase,
   populateSequenceIds,
 } = require("./database");
-const {
-  getGraphDb,
-  initializeGraphDatabase,
-  populateGraphSequenceIds,
-} = require("./plugins/graph/graph-database");
 const fs = require("fs");
 const path = require("path");
 const nodeRoutes = require("./routes/nodeRoutes");
-const graphRoutes = require("./routes/graphRoutes");
 const webpConverterRoutes = require("./routes/webpConverterRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
@@ -63,19 +57,6 @@ initializeDatabase()
     console.error("Error during initialization:", err);
   });
 
-// Initialize graph plugin database
-initializeGraphDatabase()
-  .then(() => {
-    console.log("Graph plugin database initialized");
-    return populateGraphSequenceIds();
-  })
-  .then((result) => {
-    console.log("Graph sequence IDs populated:", result);
-  })
-  .catch((err) => {
-    console.error("Error initializing graph database:", err);
-  });
-
 // Add this middleware to create a fresh db connection for each request
 app.use(async (req, res, next) => {
   try {
@@ -91,9 +72,6 @@ app.use(async (req, res, next) => {
 
 // Use the node routes
 app.use("/api/nodes", nodeRoutes);
-
-// Use the graph plugin routes
-app.use("/api/plugins/graph", graphRoutes);
 
 // Use the WebP converter plugin routes
 app.use("/api/plugins/webp-converter", webpConverterRoutes);
@@ -437,9 +415,6 @@ app.get("/api/debug/node/:id", async (req, res) => {
 app.use("/css", express.static(path.join(__dirname, "public", "css")));
 app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 
-// Serve graph plugin static files
-app.use("/plugins/graph", express.static(path.join(__dirname, "plugins", "graph")));
-
 // Serve WebP converter plugin static files
 app.use("/plugins/webp-converter", express.static(path.join(__dirname, "plugins", "webp-converter")));
 
@@ -478,22 +453,6 @@ app.post("/api/backup", async (req, res) => {
       console.warn("Main database file not found, skipping backup");
     }
 
-    // Backup graph database
-    const graphDbPath = path.join(__dirname, "plugins", "graph", "graph.db");
-    const graphBackupFilename = `graph-${timestamp}.db`;
-    const graphBackupPath = path.join(backupDir, graphBackupFilename);
-
-    if (fs.existsSync(graphDbPath)) {
-      fs.copyFileSync(graphDbPath, graphBackupPath);
-      backups.push({
-        type: "graph",
-        filename: graphBackupFilename,
-      });
-      console.log(`Graph database backup created: ${graphBackupFilename}`);
-    } else {
-      console.warn("Graph database file not found, skipping backup");
-    }
-
     if (backups.length === 0) {
       throw new Error("No databases found to backup");
     }
@@ -516,7 +475,6 @@ app.post("/api/backup", async (req, res) => {
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Graph plugin available at /plugins/graph/index.html`);
   console.log(`WebP Converter plugin available at /plugins/webp-converter/index.html`);
 });
 
