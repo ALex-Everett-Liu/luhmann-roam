@@ -28,7 +28,7 @@ function setupSidebarResize() {
     startX = e.clientX;
     startWidth = sidebar.offsetWidth;
 
-    document.body.classList.add("resizing");
+    document.body.classList.add("local-graph-resizing");
     e.preventDefault();
   });
 
@@ -47,7 +47,7 @@ function setupSidebarResize() {
   document.addEventListener("mouseup", () => {
     if (isResizing) {
       isResizing = false;
-      document.body.classList.remove("resizing");
+      document.body.classList.remove("local-graph-resizing");
 
       // Save width to localStorage
       localStorage.setItem("sidebarWidth", sidebar.offsetWidth.toString());

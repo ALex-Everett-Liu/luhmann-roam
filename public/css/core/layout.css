@@ -8,13 +8,17 @@
 
 
 .sidebar {
-  width: 395px;
-  background-color: #E9F3F1;
-  padding: 20px;
+  width: 250px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px;
   overflow-y: auto;
+  position: relative;
+  min-width: 200px;
+  max-width: 60vw;
   flex-shrink: 0;
   z-index: 10;
-  position: relative; /* Required for absolute positioning of resize handle */
 }
 
 /* Make sidebar headings larger */
@@ -39,39 +43,31 @@
 /* Resize Handle */
 .resize-handle {
   position: absolute;
-  top: 0;
   right: 0;
-  width: 4px;
+  top: 0;
+  width: 5px;
   height: 100%;
   background: transparent;
   cursor: col-resize;
   z-index: 1000;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
 .resize-handle:hover {
-  background: #007bff;
+  background: rgba(0, 123, 255, 0.3);
 }
 
-/* Active resize state */
-.resize-handle:active,
-.resizing .resize-handle {
-  background: #007bff;
+.resize-handle:active {
+  background: rgba(0, 123, 255, 0.5);
 }
 
-/* Resizing state for body */
-.resizing {
+body.local-graph-resizing {
   cursor: col-resize !important;
   user-select: none;
 }
 
-.resizing * {
-  cursor: col-resize !important;
-}
-
-/* Smooth transitions when not resizing */
-.sidebar:not(.resizing) {
-  transition: width 0.2s ease;
+body.local-graph-resizing .resize-handle {
+  background: rgba(0, 123, 255, 0.5);
 }
 
 /* Global toggle button for other language content in the sidebar */
