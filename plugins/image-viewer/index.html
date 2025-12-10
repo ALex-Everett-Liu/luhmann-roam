@@ -59,8 +59,10 @@
                         <div class="filter-group">
                             <label for="sortBy">Sort By:</label>
                             <select id="sortBy">
-                                <option value="created_at">Date Added</option>
+                                <option value="">Default (Ranking, Rating)</option>
+                                <option value="ranking">Ranking</option>
                                 <option value="rating">Rating</option>
+                                <option value="created_at">Date Added</option>
                                 <option value="view_count">Views</option>
                                 <option value="filename">Filename</option>
                                 <option value="file_size">File Size</option>
@@ -128,13 +130,22 @@
                         <div class="detail-item">
                             <label>Rating:</label>
                             <div class="rating-control">
-                                <div class="star-rating" id="viewerRating">
-                                    <span class="star" data-rating="1"><i class="far fa-star"></i></span>
-                                    <span class="star" data-rating="2"><i class="far fa-star"></i></span>
-                                    <span class="star" data-rating="3"><i class="far fa-star"></i></span>
-                                    <span class="star" data-rating="4"><i class="far fa-star"></i></span>
-                                    <span class="star" data-rating="5"><i class="far fa-star"></i></span>
-                                </div>
+                                <input type="number" id="viewerRatingInput" step="0.1" min="0" placeholder="0.0" class="rating-input">
+                                <button id="viewerRatingSave" class="save-btn" title="Save Rating">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Ranking:</label>
+                            <div class="ranking-control">
+                                <input type="number" id="viewerRankingInput" step="0.1" min="0" placeholder="Not set" class="ranking-input">
+                                <button id="viewerRankingSave" class="save-btn" title="Save Ranking">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button id="viewerRankingClear" class="clear-btn" title="Clear Ranking">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="detail-item">

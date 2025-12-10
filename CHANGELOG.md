@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.5] - 2025-12-19
+
+### Added
+- **Image Ranking System**: Added `ranking` field to image viewer for advanced image organization
+- **Decimal Rating Support**: Rating field now supports decimal values (e.g., 8.5, 10.0) instead of integer-only 0-5
+- **Ranking Input Field**: New ranking input field in image viewer sidebar with save and clear buttons
+- **Review Endpoint**: New `/api/plugins/image-viewer/images/:id/review` endpoint to update both rating and ranking simultaneously
+- **Database Migration**: Automatic migration for old `image-viewer.db` files - adds `ranking` column if missing
+- **Default Sorting**: Images now sorted by ranking (ascending, NULLS LAST) then rating (descending) by default
+
+### Changed
+- **Rating Input**: Replaced star-based rating UI (1-5 stars) with decimal number input field
+- **Rating Validation**: Removed 0-5 constraint - rating now accepts any non-negative decimal value
+- **Database Schema**: Changed `rating` column from INTEGER to REAL to support decimal values
+- **Sort Options**: Added "Ranking" and "Default (Ranking, Rating)" options to sort dropdown
+- **Grid Display**: Image grid now shows decimal ratings as numeric values instead of stars for decimals or values > 5
+
+### Fixed
+- **Database Compatibility**: Old image-viewer.db files automatically migrated to support new ranking field
+- **Type Compatibility**: SQLite type affinity ensures INTEGER rating values continue working with REAL operations
+
+### Technical Details
+- **Database Migration**: Migration adds `ranking REAL DEFAULT NULL` column if it doesn't exist
+- **Index Creation**: Added index on `ranking` column for efficient sorting
+- **API Endpoints**: 
+  - `POST /api/plugins/image-viewer/images/:id/ranking` - Update ranking (supports null to clear)
+  - `POST /api/plugins/image-viewer/images/:id/review` - Update both rating and ranking
+- **Service Functions**: Added `updateImageRanking()` and `updateImageRatingAndRanking()` functions
+- **Frontend UI**: Replaced star rating with number inputs, added ranking input with save/clear buttons
+- **Enter Key Support**: Press Enter in rating/ranking inputs to save values
+- **Sorting Logic**: Default sort uses `ORDER BY CASE WHEN ranking IS NULL THEN 1 ELSE 0 END ASC, ranking ASC, rating DESC`
+
+### Benefits
+- **Flexible Organization**: Use ranking for priority ordering and rating for quality assessment
+- **Precise Ratings**: Decimal ratings allow fine-grained quality assessment (e.g., 8.5, 9.2)
+- **Advanced Sorting**: Combined ranking + rating sorting provides powerful image organization
+- **Backward Compatible**: Old databases automatically migrated without data loss
+- **User-Friendly**: Clear input fields with save buttons and Enter key support
+
+### Affected Components
+- `services/imageViewerService.js` - Added ranking field, decimal rating support, migration logic, new service functions
+- `controllers/imageViewerController.js` - Added ranking endpoints, updated rating validation, included ranking in responses
+- `routes/imageViewerRoutes.js` - Added ranking and review routes
+- `plugins/image-viewer/index.html` - Replaced star rating with number inputs, added ranking input field
+- `plugins/image-viewer/renderer.js` - Updated rating/ranking display and save functions, added Enter key support
+- `plugins/image-viewer/styles.css` - Added styles for rating/ranking inputs and save/clear buttons
+
+Image viewer now supports advanced organization with decimal ratings and ranking-based sorting!
+
 ## [0.34.4] - 2025-12-11
 
 ### Fixed

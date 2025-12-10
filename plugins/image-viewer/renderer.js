@@ -34,7 +34,11 @@ const elements = {
     viewerFullscreen: document.getElementById('viewerFullscreen'),
     viewerCopyLink: document.getElementById('viewerCopyLink'),
     viewerClose: document.getElementById('viewerClose'),
-    viewerRating: document.getElementById('viewerRating'),
+    viewerRatingInput: document.getElementById('viewerRatingInput'),
+    viewerRatingSave: document.getElementById('viewerRatingSave'),
+    viewerRankingInput: document.getElementById('viewerRankingInput'),
+    viewerRankingSave: document.getElementById('viewerRankingSave'),
+    viewerRankingClear: document.getElementById('viewerRankingClear'),
     viewerTagsInput: document.getElementById('viewerTagsInput'),
     viewerAddTags: document.getElementById('viewerAddTags'),
     viewerTagsList: document.getElementById('viewerTagsList'),
@@ -84,12 +88,17 @@ function setupEventListeners() {
     elements.viewerCopyLinkBtn.addEventListener('click', copyPublicLink);
     elements.viewerDeleteBtn.addEventListener('click', deleteCurrentImage);
     
-    // Rating stars
-    elements.viewerRating.querySelectorAll('.star').forEach(star => {
-        star.addEventListener('click', () => {
-            const rating = parseInt(star.dataset.rating);
-            updateImageRating(rating);
-        });
+    // Rating and Ranking inputs
+    elements.viewerRatingSave.addEventListener('click', saveRating);
+    elements.viewerRankingSave.addEventListener('click', saveRanking);
+    elements.viewerRankingClear.addEventListener('click', clearRanking);
+    
+    // Allow Enter key to save
+    elements.viewerRatingInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveRating();
+    });
+    elements.viewerRankingInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveRanking();
     });
     
     // Keyboard shortcuts
@@ -324,6 +333,15 @@ function renderImageGrid() {
 }
 
 function renderStars(rating) {
+    // Show numeric rating if it's a decimal or > 5, otherwise show stars
+    if (!rating || rating === 0) {
+        return '<span class="no-rating">-</span>';
+    }
+    if (rating > 5 || rating % 1 !== 0) {
+        // Decimal or > 5, show numeric value
+        return `<span class="numeric-rating">${rating.toFixed(1)}</span>`;
+    }
+    // Integer 1-5, show stars
     let stars = '';
     for (let i = 1; i <= 5; i++) {
         const filled = i <= rating ? 'fas' : 'far';
@@ -364,8 +382,9 @@ async function openViewer(imageId) {
     elements.viewerDimensions.textContent = `${currentImage.width} × ${currentImage.height}`;
     elements.viewerPublicLink.value = window.location.origin + currentImage.url;
     
-    // Update rating
+    // Update rating and ranking
     updateRatingDisplay(currentImage.rating);
+    updateRankingDisplay(currentImage.ranking);
     
     // Update tags
     renderTags(currentImage.tags);
@@ -639,38 +658,83 @@ function setupImagePanning() {
     });
 }
 
-// Rating
+// Rating and Ranking
 function updateRatingDisplay(rating) {
-    elements.viewerRating.querySelectorAll('.star').forEach((star, index) => {
-        const starRating = index + 1;
-        const icon = star.querySelector('i');
-        if (starRating <= rating) {
-            icon.className = 'fas fa-star';
-        } else {
-            icon.className = 'far fa-star';
-        }
-    });
+    if (elements.viewerRatingInput) {
+        elements.viewerRatingInput.value = rating !== null && rating !== undefined ? rating : '';
+    }
 }
 
-async function updateImageRating(rating) {
+function updateRankingDisplay(ranking) {
+    if (elements.viewerRankingInput) {
+        elements.viewerRankingInput.value = ranking !== null && ranking !== undefined ? ranking : '';
+    }
+}
+
+async function saveRating() {
     if (!currentImage) return;
+    
+    const ratingValue = parseFloat(elements.viewerRatingInput.value);
+    if (isNaN(ratingValue) || ratingValue < 0) {
+        showToast('Rating must be a non-negative number', 'error');
+        return;
+    }
     
     try {
         const response = await fetch(`/api/plugins/image-viewer/images/${currentImage.id}/rating`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rating })
+            body: JSON.stringify({ rating: ratingValue })
         });
         
         if (!response.ok) throw new Error('Failed to update rating');
         
-        currentImage.rating = rating;
-        updateRatingDisplay(rating);
+        const data = await response.json();
+        currentImage.rating = data.rating;
+        updateRatingDisplay(data.rating);
         loadImages(); // Refresh grid
         showToast('Rating updated', 'success');
     } catch (error) {
         showToast('Failed to update rating', 'error');
     }
+}
+
+async function saveRanking() {
+    if (!currentImage) return;
+    
+    const rankingValue = elements.viewerRankingInput.value.trim() === '' 
+        ? null 
+        : parseFloat(elements.viewerRankingInput.value);
+    
+    if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+        showToast('Ranking must be a non-negative number or empty', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/plugins/image-viewer/images/${currentImage.id}/ranking`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ranking: rankingValue })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update ranking');
+        
+        const data = await response.json();
+        currentImage.ranking = data.ranking;
+        updateRankingDisplay(data.ranking);
+        loadImages(); // Refresh grid
+        showToast('Ranking updated', 'success');
+    } catch (error) {
+        showToast('Failed to update ranking', 'error');
+    }
+}
+
+async function clearRanking() {
+    if (!currentImage) return;
+    
+    elements.viewerRankingInput.value = '';
+    await saveRanking();
 }
 
 // Tags

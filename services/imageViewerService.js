@@ -69,30 +69,38 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_image_tags_image_id ON image_tags(image_id);
     CREATE INDEX IF NOT EXISTS idx_image_tags_tag ON image_tags(tag);
     CREATE INDEX IF NOT EXISTS idx_images_rating ON images(rating);
-    CREATE INDEX IF NOT EXISTS idx_images_ranking ON images(ranking);
     CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at);
   `);
   
-  // Migrate existing database: add ranking column and convert rating to REAL if needed
+  // Migrate existing database: add ranking column if it doesn't exist
+  // This handles old image-viewer.db files that don't have the ranking column
+  // Note: SQLite uses type affinity, so INTEGER rating values will work with REAL operations
   try {
-    const tableInfo = await db.all("PRAGMA table_info(images)");
-    const hasRanking = tableInfo.some(col => col.name === 'ranking');
-    const ratingType = tableInfo.find(col => col.name === 'rating');
-    
-    if (!hasRanking) {
-      await db.run("ALTER TABLE images ADD COLUMN ranking REAL DEFAULT NULL");
-      await db.run("CREATE INDEX IF NOT EXISTS idx_images_ranking ON images(ranking)");
-    }
-    
-    // If rating is INTEGER, we need to migrate it to REAL
-    // SQLite doesn't support ALTER COLUMN, so we'll handle this in queries
-    // The column type will be automatically handled by SQLite's type affinity
+    await db.run("ALTER TABLE images ADD COLUMN ranking REAL DEFAULT NULL");
+    console.log("Migration: Added ranking column to images table");
   } catch (error) {
-    // Column might already exist, ignore error
-    if (!error.message.includes('duplicate column')) {
-      console.error("Database migration error:", error);
+    // Column already exists - this is expected for new databases or already-migrated databases
+    if (error.message.includes('duplicate column') || error.message.includes('already exists')) {
+      console.log("Migration: ranking column already exists in images table");
+    } else {
+      // Unexpected error - log it but don't fail
+      console.log("Migration: Error checking ranking column:", error.message);
     }
   }
+  
+  // Create ranking index after ensuring the column exists
+  // This is safe to run multiple times (IF NOT EXISTS)
+  try {
+    await db.run("CREATE INDEX IF NOT EXISTS idx_images_ranking ON images(ranking)");
+  } catch (error) {
+    // Index creation failed - log but don't fail (might already exist)
+    console.log("Migration: Index creation note:", error.message);
+  }
+  
+  // Note: For rating column, SQLite's type affinity means INTEGER values stored
+  // in an INTEGER column will automatically work with REAL operations.
+  // When we update rating values, they will be stored as REAL.
+  // No explicit migration needed for rating column type change.
 }
 
 /**

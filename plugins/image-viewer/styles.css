@@ -338,6 +338,20 @@ section {
 .image-rating {
     color: #fbbf24;
     font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.numeric-rating {
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.no-rating {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
 }
 
 .image-views {
@@ -620,10 +634,70 @@ section {
     margin-bottom: 0.5rem;
 }
 
-.rating-control {
+.rating-control,
+.ranking-control {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
     margin-top: 0.5rem;
 }
 
+.rating-input,
+.ranking-input {
+    flex: 1;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: white;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.rating-input:focus,
+.ranking-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.rating-input::placeholder,
+.ranking-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.save-btn,
+.clear-btn {
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(59, 130, 246, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    border-radius: var(--border-radius);
+    color: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.save-btn:hover {
+    background-color: rgba(59, 130, 246, 0.5);
+    border-color: rgba(59, 130, 246, 0.7);
+    transform: scale(1.05);
+}
+
+.clear-btn {
+    background-color: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.clear-btn:hover {
+    background-color: rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.7);
+}
+
+/* Legacy star rating styles (kept for backward compatibility if needed) */
 .star-rating {
     display: flex;
     gap: 0.25rem;
