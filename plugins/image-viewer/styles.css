@@ -505,6 +505,7 @@ section {
     -ms-user-select: none;
     transform-origin: center center;
     background-color: #000;
+    pointer-events: auto;
 }
 
 .viewer-image-container:active,
