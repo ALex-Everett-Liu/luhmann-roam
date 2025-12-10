@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.2] - 2025-01-19
+
+### Added
+- **Image Viewer Plugin**: New image viewer plugin with zoom, fullscreen, tags, ratings, and local server access
+- **Image Management System**: Upload, organize, and manage images with metadata storage
+- **Zoom and Pan Controls**: Zoom in/out with mouse wheel or buttons, pan when zoomed in
+- **Fullscreen Mode**: Immersive fullscreen viewing experience
+- **Tag Management**: Add and remove tags to organize images
+- **Rating System**: Rate images from 0-5 stars for easy organization
+- **Filtering and Sorting**: Filter images by tags and minimum rating, sort by date, rating, views, filename, or file size
+- **Public Image URLs**: Access images via public URLs that work in any browser (e.g., `http://localhost:3003/api/plugins/image-viewer/images/{id}/file`)
+- **View Count Tracking**: Automatic tracking of image views
+- **Image Metadata**: Stores image dimensions, file size, MIME type, and timestamps
+- **Plugin Integration**: Image Viewer registered in PluginRegistry with sidebar button and Settings integration
+
+### Changed
+- **Database Integration**: Uses same `sqlite`/`sqlite3` pattern as rest of codebase for consistency
+- **Server Routes**: Added `/api/plugins/image-viewer/*` endpoints for image operations
+
+### Technical Details
+- **Plugin Architecture**: Follows same pattern as WebP Converter and Graph plugins - modal-based with iframe loading
+- **N-Tier Architecture**: Clear separation following Routes → Controllers → Services pattern
+  - Routes: URL mapping and middleware only (`routes/imageViewerRoutes.js` - ~85 lines)
+  - Controllers: HTTP logic (`controllers/imageViewerController.js` - request/response handling, validation)
+  - Services: Business logic (`services/imageViewerService.js` - database operations, image metadata, tags, ratings)
+- **Database Schema**: SQLite database with `images` and `image_tags` tables
+  - `images` table: Stores image metadata (id, filename, file_path, dimensions, rating, view_count, timestamps)
+  - `image_tags` table: Many-to-many relationship for tags with cascade delete
+- **API Routes**: New `/api/plugins/image-viewer/*` endpoints for image operations
+  - `POST /api/plugins/image-viewer/upload` - Upload single image
+  - `GET /api/plugins/image-viewer/images` - Get all images with optional filters
+  - `GET /api/plugins/image-viewer/images/:id` - Get single image metadata
+  - `GET /api/plugins/image-viewer/images/:id/file` - Serve image file (increments view count)
+  - `POST /api/plugins/image-viewer/images/:id/tags` - Update image tags
+  - `POST /api/plugins/image-viewer/images/:id/rating` - Update image rating
+  - `DELETE /api/plugins/image-viewer/images/:id` - Delete image
+  - `GET /api/plugins/image-viewer/tags` - Get all unique tags
+  - `GET /api/plugins/image-viewer/info` - Get plugin information
+  - `GET /api/plugins/image-viewer/health` - Health check endpoint
+- **Image Processing**: Uses Sharp library for extracting image metadata (width, height, format)
+- **File Management**: Images stored in `plugins/image-viewer/images/`, uploads in `plugins/image-viewer/uploads/`
+- **Static File Serving**: Plugin UI files served from `/plugins/image-viewer/*` on main server
+- **Keyboard Shortcuts**: Zoom (+/-), Reset (0), Fullscreen (F), Navigate (Arrow keys), Close (Escape)
+
+### Benefits
+- **Professional Image Management**: Complete image organization system with tags and ratings
+- **Easy Sharing**: Public URLs allow sharing images via links in any browser
+- **Powerful Filtering**: Find images quickly using tags and ratings
+- **Flexible Sorting**: Sort by multiple criteria for different organizational needs
+- **Seamless Integration**: Works within main app modal system with fullscreen support
+- **Data Safety**: All images stored locally - never leave user's system
+
+### Affected Components
+- `plugins/image-viewer/` - New plugin directory with complete UI and logic
+  - `index.html` - Plugin UI interface with upload, manager, and viewer
+  - `renderer.js` - Frontend logic with zoom, fullscreen, and manager features
+  - `styles.css` - Plugin styling
+  - `imageViewerPluginLauncher.js` - Plugin registration and modal management
+- `services/imageViewerService.js` - Service layer with business logic (database operations, image metadata, tags, ratings)
+- `controllers/imageViewerController.js` - Controller layer with HTTP handlers
+- `routes/imageViewerRoutes.js` - Routes layer for URL mapping only
+- `server.js` - Added Image Viewer routes and static file serving
+- `public/index.html` - Added Image Viewer modal HTML and launcher script reference
+- `public/css/image-viewer-plugin-modal.css` - Modal styling for plugin
+
+### Plugin Features
+- **Supported Formats**: JPEG, PNG, GIF, BMP, TIFF, WebP, SVG
+- **Max File Size**: 500MB per image
+- **Image Viewer**: Zoom (0.1x to 5x), pan when zoomed, fullscreen mode
+- **Manager**: Grid view with thumbnails, filtering by tags/rating, sorting options
+- **Public Access**: Images accessible via URLs for sharing and embedding
+
+Image Viewer plugin provides comprehensive image management with professional viewing capabilities!
+
 ## [0.34.1] - 2025-01-19
 
 ### Changed

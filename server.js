@@ -11,6 +11,7 @@ const fs = require("fs");
 const path = require("path");
 const nodeRoutes = require("./routes/nodeRoutes");
 const webpConverterRoutes = require("./routes/webpConverterRoutes");
+const imageViewerRoutes = require("./routes/imageViewerRoutes");
 const crypto = require("crypto");
 const axios = require("axios");
 const url = require("url");
@@ -75,6 +76,9 @@ app.use("/api/nodes", nodeRoutes);
 
 // Use the WebP converter plugin routes
 app.use("/api/plugins/webp-converter", webpConverterRoutes);
+
+// Use the Image Viewer plugin routes
+app.use("/api/plugins/image-viewer", imageViewerRoutes);
 
 // Get node above
 app.get("/api/nodes/:id/above", async (req, res) => {
@@ -418,6 +422,9 @@ app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 // Serve WebP converter plugin static files
 app.use("/plugins/webp-converter", express.static(path.join(__dirname, "plugins", "webp-converter")));
 
+// Serve Image Viewer plugin static files
+app.use("/plugins/image-viewer", express.static(path.join(__dirname, "plugins", "image-viewer")));
+
 app.post("/api/backup", async (req, res) => {
   try {
     const fs = require("fs");
@@ -476,6 +483,7 @@ app.post("/api/backup", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`WebP Converter plugin available at /plugins/webp-converter/index.html`);
+  console.log(`Image Viewer plugin available at /plugins/image-viewer/index.html`);
 });
 
 module.exports = app;

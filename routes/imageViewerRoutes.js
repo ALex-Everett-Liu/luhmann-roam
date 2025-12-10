@@ -1,0 +1,85 @@
+// imageViewerRoutes.js - Routes for Image Viewer Plugin API operations
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { v4: uuidv4 } = require("uuid");
+const imageViewerController = require("../controllers/imageViewerController");
+const imageViewerService = require("../services/imageViewerService");
+
+const router = express.Router();
+
+// Directory paths
+const UPLOAD_DIR = path.join(__dirname, "..", "plugins", "image-viewer", "uploads");
+
+// Ensure directories exist
+[UPLOAD_DIR, imageViewerService.IMAGE_DIR].forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}_${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/bmp",
+      "image/tiff",
+      "image/webp",
+      "image/svg+xml",
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only images are allowed."));
+    }
+  },
+});
+
+// Routes
+router.get("/health", imageViewerController.health);
+router.post("/upload", upload.single("image"), imageViewerController.upload);
+router.get("/images", imageViewerController.getImages);
+router.get("/images/:id", imageViewerController.getImage);
+router.get("/images/:id/file", imageViewerController.serveImage);
+router.post("/images/:id/tags", imageViewerController.updateTags);
+router.post("/images/:id/rating", imageViewerController.updateRating);
+router.delete("/images/:id", imageViewerController.deleteImage);
+router.get("/tags", imageViewerController.getTags);
+router.get("/info", imageViewerController.getInfo);
+
+// Error handling middleware
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(400)
+        .json({ error: "File too large. Max size is 500MB." });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+
+  console.error("Image Viewer error:", error);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+module.exports = router;
+

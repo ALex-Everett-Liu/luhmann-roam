@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1><i class="fas fa-images"></i> Image Viewer</h1>
+            <p class="subtitle">View, organize, and manage your images</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <h3>Drop images here or click to upload</h3>
+                    <p>Supports: JPG, PNG, GIF, BMP, TIFF, WebP, SVG</p>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-plus"></i> Select Images
+                    </button>
+                </div>
+            </section>
+
+            <!-- Manager Section -->
+            <section class="manager-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-th"></i> Image Manager</h3>
+                    <div class="manager-controls">
+                        <div class="filter-group">
+                            <label for="tagFilter">Filter by Tags:</label>
+                            <select id="tagFilter" multiple>
+                                <option value="">All Tags</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="ratingFilter">Min Rating:</label>
+                            <select id="ratingFilter">
+                                <option value="">All</option>
+                                <option value="1">1+ Stars</option>
+                                <option value="2">2+ Stars</option>
+                                <option value="3">3+ Stars</option>
+                                <option value="4">4+ Stars</option>
+                                <option value="5">5 Stars</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortBy">Sort By:</label>
+                            <select id="sortBy">
+                                <option value="created_at">Date Added</option>
+                                <option value="rating">Rating</option>
+                                <option value="view_count">Views</option>
+                                <option value="filename">Filename</option>
+                                <option value="file_size">File Size</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortOrder">Order:</label>
+                            <select id="sortOrder">
+                                <option value="DESC">Descending</option>
+                                <option value="ASC">Ascending</option>
+                            </select>
+                        </div>
+                        <button id="refreshBtn" class="refresh-btn" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="imageGrid" class="image-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-image"></i>
+                        <p>No images uploaded yet</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Image Viewer Modal -->
+        <div id="imageViewerModal" class="image-viewer-modal">
+            <div class="viewer-header">
+                <div class="viewer-title">
+                    <span id="viewerImageName"></span>
+                    <span id="viewerImageInfo" class="viewer-info"></span>
+                </div>
+                <div class="viewer-controls">
+                    <button id="viewerZoomIn" class="viewer-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button id="viewerZoomOut" class="viewer-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button id="viewerResetZoom" class="viewer-btn" title="Reset Zoom">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                    <button id="viewerFullscreen" class="viewer-btn" title="Fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button id="viewerCopyLink" class="viewer-btn" title="Copy Link">
+                        <i class="fas fa-link"></i>
+                    </button>
+                    <button id="viewerClose" class="viewer-btn" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="viewer-content">
+                <div class="viewer-image-container" id="viewerImageContainer">
+                    <img id="viewerImage" src="" alt="">
+                </div>
+                <div class="viewer-sidebar">
+                    <div class="viewer-details">
+                        <h4>Image Details</h4>
+                        <div class="detail-item">
+                            <label>Rating:</label>
+                            <div class="rating-control">
+                                <div class="star-rating" id="viewerRating">
+                                    <span class="star" data-rating="1"><i class="far fa-star"></i></span>
+                                    <span class="star" data-rating="2"><i class="far fa-star"></i></span>
+                                    <span class="star" data-rating="3"><i class="far fa-star"></i></span>
+                                    <span class="star" data-rating="4"><i class="far fa-star"></i></span>
+                                    <span class="star" data-rating="5"><i class="far fa-star"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tags:</label>
+                            <div class="tags-input-container">
+                                <input type="text" id="viewerTagsInput" placeholder="Add tags (comma-separated)">
+                                <button id="viewerAddTags" class="add-tags-btn">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div id="viewerTagsList" class="tags-list"></div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Views:</label>
+                            <span id="viewerViewCount">0</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>File Size:</label>
+                            <span id="viewerFileSize">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Dimensions:</label>
+                            <span id="viewerDimensions">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Public Link:</label>
+                            <div class="link-container">
+                                <input type="text" id="viewerPublicLink" readonly>
+                                <button id="viewerCopyLinkBtn" class="copy-link-btn">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <button id="viewerDeleteBtn" class="delete-btn">
+                                <i class="fas fa-trash"></i> Delete Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Processing...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
+

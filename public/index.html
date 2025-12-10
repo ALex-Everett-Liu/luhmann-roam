@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/settings-manager.css">
   <link rel="stylesheet" href="css/basic-font-settings.css">
   <link rel="stylesheet" href="css/webp-converter-plugin-modal.css">
+  <link rel="stylesheet" href="css/image-viewer-plugin-modal.css">
 </head>
 <body>
   <div class="app-container">
@@ -39,6 +40,21 @@
     <div class="webp-converter-plugin-content">
       <div id="webp-converter-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading WebP Converter...</div>
       <iframe id="webp-converter-plugin-iframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+
+  <!-- Image Viewer Plugin Modal -->
+  <div id="image-viewer-plugin-modal" class="image-viewer-plugin-modal">
+    <div class="image-viewer-plugin-header">
+      <h3>Image Viewer</h3>
+      <div class="image-viewer-plugin-controls">
+        <button id="image-viewer-plugin-fullscreen" class="image-viewer-plugin-btn" title="Toggle Fullscreen">⛶</button>
+        <button id="image-viewer-plugin-close" class="image-viewer-plugin-btn" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="image-viewer-plugin-content">
+      <div id="image-viewer-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading Image Viewer...</div>
+      <iframe id="image-viewer-plugin-iframe" src="" frameborder="0"></iframe>
     </div>
   </div>
 
@@ -76,5 +92,8 @@
   
   <!-- WebP Converter Plugin Launcher -->
   <script src="/plugins/webp-converter/webpConverterPluginLauncher.js"></script>
+  
+  <!-- Image Viewer Plugin Launcher -->
+  <script src="/plugins/image-viewer/imageViewerPluginLauncher.js"></script>
 </body>
 </html>

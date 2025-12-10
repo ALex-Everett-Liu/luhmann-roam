@@ -12,3 +12,5 @@ public/attachment
 public/blog
 public/fonts
 public/css/fonts
+plugins/image-viewer/images/
+plugins/image-viewer/uploads/
