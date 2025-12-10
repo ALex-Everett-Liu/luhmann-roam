@@ -25,6 +25,7 @@ const elements = {
     imageViewerModal: document.getElementById('imageViewerModal'),
     viewerImage: document.getElementById('viewerImage'),
     viewerImageContainer: document.getElementById('viewerImageContainer'),
+    viewerExitFullscreen: document.getElementById('viewerExitFullscreen'),
     viewerImageName: document.getElementById('viewerImageName'),
     viewerImageInfo: document.getElementById('viewerImageInfo'),
     viewerZoomIn: document.getElementById('viewerZoomIn'),
@@ -107,6 +108,9 @@ function setupEventListeners() {
     
     // Image panning
     setupImagePanning();
+    
+    // Fullscreen listeners
+    setupFullscreenListeners();
 }
 
 // Drag and Drop
@@ -426,28 +430,79 @@ function applyTransform() {
 
 // Fullscreen
 function toggleFullscreen() {
+    const container = elements.viewerImageContainer;
+    
     if (!isFullscreen) {
-        const modal = elements.imageViewerModal;
-        if (modal.requestFullscreen) {
-            modal.requestFullscreen();
-        } else if (modal.webkitRequestFullscreen) {
-            modal.webkitRequestFullscreen();
-        } else if (modal.msRequestFullscreen) {
-            modal.msRequestFullscreen();
+        // Enter fullscreen - only show the image container
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
+        } else if (container.webkitEnterFullscreen) {
+            container.webkitEnterFullscreen();
         }
+        
+        // Hide UI elements
+        elements.imageViewerModal.querySelector('.viewer-header').style.display = 'none';
+        elements.imageViewerModal.querySelector('.viewer-sidebar').style.display = 'none';
+        elements.viewerExitFullscreen.style.display = 'block';
+        
         isFullscreen = true;
         elements.viewerFullscreen.innerHTML = '<i class="fas fa-compress"></i>';
     } else {
+        // Exit fullscreen
         if (document.exitFullscreen) {
             document.exitFullscreen();
         } else if (document.webkitExitFullscreen) {
             document.webkitExitFullscreen();
         } else if (document.msExitFullscreen) {
             document.msExitFullscreen();
+        } else if (document.webkitCancelFullScreen) {
+            document.webkitCancelFullScreen();
         }
+        
+        // Show UI elements
+        elements.imageViewerModal.querySelector('.viewer-header').style.display = 'flex';
+        elements.imageViewerModal.querySelector('.viewer-sidebar').style.display = 'block';
+        elements.viewerExitFullscreen.style.display = 'none';
+        
         isFullscreen = false;
         elements.viewerFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
     }
+}
+
+// Listen for fullscreen changes
+function setupFullscreenListeners() {
+    const container = elements.viewerImageContainer;
+    
+    // Handle fullscreen change events
+    const fullscreenChange = () => {
+        const isCurrentlyFullscreen = !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.msFullscreenElement ||
+            document.mozFullScreenElement
+        );
+        
+        if (!isCurrentlyFullscreen && isFullscreen) {
+            // User exited fullscreen via ESC or other method
+            isFullscreen = false;
+            elements.imageViewerModal.querySelector('.viewer-header').style.display = 'flex';
+            elements.imageViewerModal.querySelector('.viewer-sidebar').style.display = 'block';
+            elements.viewerExitFullscreen.style.display = 'none';
+            elements.viewerFullscreen.innerHTML = '<i class="fas fa-expand"></i>';
+        }
+    };
+    
+    document.addEventListener('fullscreenchange', fullscreenChange);
+    document.addEventListener('webkitfullscreenchange', fullscreenChange);
+    document.addEventListener('msfullscreenchange', fullscreenChange);
+    document.addEventListener('mozfullscreenchange', fullscreenChange);
+    
+    // Exit fullscreen button
+    elements.viewerExitFullscreen.addEventListener('click', toggleFullscreen);
 }
 
 // Image Panning and Zoom
@@ -484,6 +539,10 @@ function setupImagePanning() {
     
     // Mouse drag/pan
     container.addEventListener('mousedown', (e) => {
+        // Don't start panning if clicking on buttons or other UI elements
+        if (e.target.closest('button') || e.target.closest('.exit-fullscreen-btn')) {
+            return;
+        }
         // Only start panning if clicking on the image container or image
         if (e.target === container || e.target === elements.viewerImage) {
             isPanning = true;

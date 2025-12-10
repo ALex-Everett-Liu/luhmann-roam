@@ -15,10 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Automatic Import**: Detects new images and imports them into the database with UUID generation while preserving original filenames
 - **Smart Detection**: Skips images already in database to prevent duplicates
 - **Scan Statistics**: Shows imported, skipped, and error counts after scanning
+- **Mouse Wheel Zoom**: Added mouse wheel zoom functionality - scroll to zoom in/out with zoom towards cursor position
+- **Improved Drag/Pan**: Enhanced drag/pan functionality - works at any zoom level, smooth panning with proper coordinate calculations
+- **Image-Only Fullscreen**: Fullscreen mode now shows only the image - header, sidebar, and UI elements hidden for immersive viewing
 
 ### Changed
 - **Upload Section**: Upload section now serves as fallback method - primary workflow is copying images to directory and scanning
 - **Image Import Workflow**: Users can now copy images directly to `plugins/image-viewer/images/` or subdirectories (e.g., `images/001/`) and scan to import
+- **Fullscreen Behavior**: Fullscreen button now fullscreens only the image container instead of entire modal - cleaner viewing experience
+- **Zoom Controls**: Zoom now works via mouse wheel in addition to zoom buttons - more intuitive interaction
+- **Pan Interaction**: Pan now works at any zoom level (not just when zoomed) - improved usability
 
 ### Technical Details
 - **Scan API Endpoint**: `POST /api/plugins/image-viewer/scan` - scans filesystem and imports new images
@@ -37,15 +43,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Original Filenames**: Preserves original filenames for easy identification
 - **No Duplicates**: Automatically skips images already imported
 
+### Fixed
+- **Image Link Copy**: Restored copy link functionality - users can copy image URLs to clipboard
+- **Drag/Pan Interaction**: Fixed panning to work smoothly at any zoom level with proper coordinate calculations
+- **Mouse Wheel Support**: Added mouse wheel zoom with zoom-towards-cursor behavior for intuitive interaction
+
 ### Affected Components
 - `services/imageViewerService.js` - Added `scanAndImportImages()` function
 - `controllers/imageViewerController.js` - Added `scanImages` endpoint handler
 - `routes/imageViewerRoutes.js` - Added scan route
-- `plugins/image-viewer/index.html` - Added scan section with button and hint
-- `plugins/image-viewer/renderer.js` - Added `scanImages()` function and event handler
-- `plugins/image-viewer/styles.css` - Added scan section styling
+- `plugins/image-viewer/index.html` - Added scan section with button and hint, exit fullscreen button
+- `plugins/image-viewer/renderer.js` - Added `scanImages()` function, mouse wheel zoom, improved pan/drag, fullscreen improvements, copy link functions
+- `plugins/image-viewer/styles.css` - Added scan section styling, fullscreen styles, exit fullscreen button styling
 
-Image scanning feature enables efficient batch import of manually copied images!
+### Technical Details (Image Viewer Improvements)
+- **Mouse Wheel Zoom**: Zoom range 0.1x to 5x, zooms towards mouse cursor position for natural interaction
+- **Pan System**: Pan coordinates calculated relative to container center, works seamlessly with zoom transforms
+- **Fullscreen Implementation**: Fullscreen targets image container only, hides UI elements, shows exit button overlay
+- **Transform System**: Zoom applied to image element, pan applied to container element - proper separation for smooth interaction
+- **Copy Link**: Restored public link display and copy functionality for sharing images
+
+Image scanning feature enables efficient batch import of manually copied images! Enhanced viewer with mouse wheel zoom, improved panning, and immersive fullscreen mode!
 
 ## [0.34.2] - 2025-12-11
 
