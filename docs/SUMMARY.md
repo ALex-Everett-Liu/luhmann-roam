@@ -31,6 +31,7 @@
 * [Extending Node Operations](development/extending-nodes.md)
 * [Creating New Modules](development/custom-modules.md)
 * [Testing Guidelines](development/testing.md)
+* [Toast Notifications Guide](TOAST_NOTIFICATIONS_GUIDE.md)
 
 ## Test Documentation
 * [Testing Overview](testing/README.md)
