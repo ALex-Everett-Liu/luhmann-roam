@@ -133,7 +133,7 @@ exports.getImage = async (req, res) => {
 };
 
 /**
- * Serve image file
+ * Serve image file (increments view count)
  * GET /api/plugins/image-viewer/images/:id/file
  */
 exports.serveImage = async (req, res) => {
@@ -145,8 +145,13 @@ exports.serveImage = async (req, res) => {
       return res.status(404).json({ error: "Image not found" });
     }
 
-    // Increment view count
-    await imageViewerService.incrementViewCount(id);
+    // Check if this is a thumbnail request (don't increment for thumbnails)
+    const isThumbnail = req.query.thumbnail === 'true';
+    
+    // Only increment view count for full image views, not thumbnails
+    if (!isThumbnail) {
+      await imageViewerService.incrementViewCount(id);
+    }
 
     // Serve the file
     if (!fs.existsSync(image.file_path)) {

@@ -312,7 +312,7 @@ function renderImageGrid() {
     grid.innerHTML = images.map(image => `
         <div class="image-item" data-id="${image.id}">
             <div class="image-thumbnail" onclick="openViewer('${image.id}')">
-                <img src="${image.url}" alt="${image.filename}" loading="lazy">
+                <img src="${image.url}?thumbnail=true" alt="${image.filename}" loading="lazy">
                 <div class="image-overlay">
                     <div class="image-rating">
                         ${renderStars(image.rating)}
@@ -373,11 +373,8 @@ async function openViewer(imageId) {
     }
     
     // Update viewer
-    elements.viewerImage.src = currentImage.url;
     elements.viewerImageName.textContent = currentImage.filename;
     elements.viewerImageInfo.textContent = `${currentImage.width} × ${currentImage.height}`;
-    // View count will be incremented when image loads, show current + 1
-    elements.viewerViewCount.textContent = (currentImage.viewCount || 0) + 1;
     elements.viewerFileSize.textContent = currentImage.fileSizeFormatted;
     elements.viewerDimensions.textContent = `${currentImage.width} × ${currentImage.height}`;
     elements.viewerPublicLink.value = window.location.origin + currentImage.url;
@@ -388,6 +385,48 @@ async function openViewer(imageId) {
     
     // Update tags
     renderTags(currentImage.tags);
+    
+    // Set initial view count
+    elements.viewerViewCount.textContent = currentImage.viewCount || 0;
+    
+    // Set up image load handler to update view count after image loads
+    // Use a one-time handler to prevent multiple increments
+    const updateViewCountAfterLoad = async () => {
+        // Remove listener immediately to prevent multiple calls
+        elements.viewerImage.removeEventListener('load', updateViewCountAfterLoad);
+        
+        try {
+            // Small delay to ensure server has processed the increment
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Fetch updated image data to get the incremented view count
+            const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
+            if (response.ok) {
+                const data = await response.json();
+                const updatedViewCount = data.image.viewCount || 0;
+                elements.viewerViewCount.textContent = updatedViewCount;
+                
+                // Update currentImage and images array with new view count
+                currentImage.viewCount = updatedViewCount;
+                const imageIndex = images.findIndex(img => img.id === imageId);
+                if (imageIndex !== -1) {
+                    images[imageIndex].viewCount = updatedViewCount;
+                    // Re-render grid to show updated view count
+                    renderImageGrid();
+                }
+            }
+        } catch (error) {
+            console.error('Error updating view count:', error);
+        }
+    };
+    
+    // Add load event listener before setting src
+    elements.viewerImage.addEventListener('load', updateViewCountAfterLoad, { once: true });
+    
+    // Add cache-busting parameter to ensure server request happens
+    // This ensures view count increments even if browser has cached the image
+    const cacheBuster = `?t=${Date.now()}`;
+    elements.viewerImage.src = currentImage.url + cacheBuster;
     
     // Reset zoom and pan
     resetZoom();
