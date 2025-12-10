@@ -10,13 +10,27 @@ let panY = 0;
 let isPanning = false;
 let panStartX = 0;
 let panStartY = 0;
+let allTags = [];
+let selectedTags = [];
+let tagFilterSearchQuery = '';
 
 // DOM Elements
 const elements = {
     fileInput: document.getElementById('fileInput'),
     uploadArea: document.getElementById('uploadArea'),
     imageGrid: document.getElementById('imageGrid'),
-    tagFilter: document.getElementById('tagFilter'),
+    tagFilterBtn: document.getElementById('tagFilterBtn'),
+    tagFilterText: document.getElementById('tagFilterText'),
+    selectedTagsDisplay: document.getElementById('selectedTagsDisplay'),
+    tagFilterDialog: document.getElementById('tagFilterDialog'),
+    tagFilterDialogClose: document.getElementById('tagFilterDialogClose'),
+    tagSearchInput: document.getElementById('tagSearchInput'),
+    tagFilterList: document.getElementById('tagFilterList'),
+    tagFilterStats: document.getElementById('tagFilterStats'),
+    tagFilterClear: document.getElementById('tagFilterClear'),
+    tagFilterSelectAll: document.getElementById('tagFilterSelectAll'),
+    tagFilterCancel: document.getElementById('tagFilterCancel'),
+    tagFilterApply: document.getElementById('tagFilterApply'),
     ratingFilter: document.getElementById('ratingFilter'),
     sortBy: document.getElementById('sortBy'),
     sortOrder: document.getElementById('sortOrder'),
@@ -72,8 +86,30 @@ function setupEventListeners() {
         loadTags();
     });
     elements.scanBtn.addEventListener('click', scanImages);
-    elements.tagFilter.addEventListener('change', applyFilters);
+    elements.tagFilterBtn.addEventListener('click', openTagFilterDialog);
     elements.ratingFilter.addEventListener('change', applyFilters);
+    
+    // Tag filter dialog events
+    elements.tagFilterDialogClose.addEventListener('click', closeTagFilterDialog);
+    elements.tagFilterCancel.addEventListener('click', closeTagFilterDialog);
+    elements.tagFilterApply.addEventListener('click', applyTagFilter);
+    elements.tagFilterClear.addEventListener('click', clearTagFilter);
+    elements.tagFilterSelectAll.addEventListener('click', selectAllTags);
+    elements.tagSearchInput.addEventListener('input', filterTagList);
+    
+    // Close dialog on backdrop click
+    elements.tagFilterDialog.addEventListener('click', (e) => {
+        if (e.target === elements.tagFilterDialog) {
+            closeTagFilterDialog();
+        }
+    });
+    
+    // Close dialog on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.tagFilterDialog.classList.contains('visible')) {
+            closeTagFilterDialog();
+        }
+    });
     elements.sortBy.addEventListener('change', applyFilters);
     elements.sortOrder.addEventListener('change', applyFilters);
     
@@ -194,15 +230,12 @@ async function uploadImage(file) {
 // Load Images
 async function loadImages() {
     try {
-        const tags = Array.from(elements.tagFilter.selectedOptions)
-            .map(opt => opt.value)
-            .filter(v => v);
         const rating = elements.ratingFilter.value || undefined;
         const sortBy = elements.sortBy.value;
         const sortOrder = elements.sortOrder.value;
         
         const params = new URLSearchParams();
-        if (tags.length > 0) params.append('tags', tags.join(','));
+        if (selectedTags.length > 0) params.append('tags', selectedTags.join(','));
         if (rating) params.append('rating', rating);
         params.append('sortBy', sortBy);
         params.append('sortOrder', sortOrder);
@@ -225,29 +258,130 @@ async function loadTags() {
         if (!response.ok) throw new Error('Failed to load tags');
         
         const data = await response.json();
-        const tags = data.tags || [];
+        allTags = data.tags || [];
         
-        // Update tag filter
-        const currentSelection = Array.from(elements.tagFilter.selectedOptions)
-            .map(opt => opt.value);
-        
-        elements.tagFilter.innerHTML = '<option value="">All Tags</option>';
-        tags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag;
-            option.textContent = tag;
-            if (currentSelection.includes(tag)) {
-                option.selected = true;
-            }
-            elements.tagFilter.appendChild(option);
-        });
+        // Update tag filter button text and selected tags display
+        updateTagFilterDisplay();
     } catch (error) {
         console.error('Error loading tags:', error);
     }
 }
 
+function updateTagFilterDisplay() {
+    if (selectedTags.length === 0) {
+        elements.tagFilterText.textContent = 'All Tags';
+        elements.selectedTagsDisplay.innerHTML = '';
+    } else {
+        elements.tagFilterText.textContent = `${selectedTags.length} tag${selectedTags.length !== 1 ? 's' : ''} selected`;
+        elements.selectedTagsDisplay.innerHTML = selectedTags.map(tag => 
+            `<span class="selected-tag">${tag} <i class="fas fa-times" data-tag="${tag}"></i></span>`
+        ).join('');
+        
+        // Add click handlers to remove tags
+        elements.selectedTagsDisplay.querySelectorAll('.selected-tag i').forEach(icon => {
+            icon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const tag = icon.dataset.tag;
+                removeSelectedTag(tag);
+            });
+        });
+    }
+}
+
+function removeSelectedTag(tag) {
+    selectedTags = selectedTags.filter(t => t !== tag);
+    updateTagFilterDisplay();
+    renderTagFilterList();
+    applyFilters();
+}
+
 function applyFilters() {
     loadImages();
+}
+
+// Tag Filter Dialog Functions
+function openTagFilterDialog() {
+    elements.tagFilterDialog.classList.add('visible');
+    elements.tagSearchInput.value = '';
+    tagFilterSearchQuery = '';
+    renderTagFilterList();
+    updateTagFilterStats();
+    elements.tagSearchInput.focus();
+}
+
+function closeTagFilterDialog() {
+    elements.tagFilterDialog.classList.remove('visible');
+}
+
+function renderTagFilterList() {
+    const filteredTags = allTags.filter(tag => 
+        tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
+    );
+    
+    elements.tagFilterList.innerHTML = filteredTags.length === 0 
+        ? '<div class="no-tags-message">No tags found</div>'
+        : filteredTags.map(tag => {
+            const isSelected = selectedTags.includes(tag);
+            return `
+                <label class="tag-filter-item ${isSelected ? 'selected' : ''}">
+                    <input type="checkbox" value="${tag}" ${isSelected ? 'checked' : ''}>
+                    <span class="tag-name">${tag}</span>
+                </label>
+            `;
+        }).join('');
+    
+    // Add change listeners to checkboxes
+    elements.tagFilterList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const tag = e.target.value;
+            if (e.target.checked) {
+                if (!selectedTags.includes(tag)) {
+                    selectedTags.push(tag);
+                }
+            } else {
+                selectedTags = selectedTags.filter(t => t !== tag);
+            }
+            updateTagFilterStats();
+            // Update checkbox visual state
+            const label = e.target.closest('label');
+            if (e.target.checked) {
+                label.classList.add('selected');
+            } else {
+                label.classList.remove('selected');
+            }
+        });
+    });
+}
+
+function filterTagList() {
+    tagFilterSearchQuery = elements.tagSearchInput.value;
+    renderTagFilterList();
+}
+
+function updateTagFilterStats() {
+    const count = selectedTags.length;
+    elements.tagFilterStats.textContent = `${count} tag${count !== 1 ? 's' : ''} selected`;
+}
+
+function applyTagFilter() {
+    updateTagFilterDisplay();
+    applyFilters();
+    closeTagFilterDialog();
+}
+
+function clearTagFilter() {
+    selectedTags = [];
+    renderTagFilterList();
+    updateTagFilterStats();
+}
+
+function selectAllTags() {
+    const filteredTags = allTags.filter(tag => 
+        tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
+    );
+    selectedTags = [...new Set([...selectedTags, ...filteredTags])];
+    renderTagFilterList();
+    updateTagFilterStats();
 }
 
 // Scan Images

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.6] - 2025-12-19
+
+### Fixed
+- **View Count Tracking**: Fixed view count being incremented for thumbnails in grid view - now only increments when viewing full image in viewer
+- **View Count Display**: Fixed view count not updating after image loads - now fetches and displays actual incremented count from database
+- **View Count Refresh**: View count now updates in both viewer sidebar and grid display after image loads
+
+### Added
+- **Tag Filter Dialog**: New dedicated dialog for managing tag filters with search functionality
+- **Tag Search**: Real-time search to filter through thousands of tags efficiently
+- **Selected Tags Display**: Visual display of selected tags as removable chips below filter button
+- **Tag Filter Controls**: Select All, Clear All, Apply, and Cancel buttons for easy tag management
+- **Thumbnail Parameter**: Added `?thumbnail=true` query parameter to prevent view count increment for grid thumbnails
+
+### Changed
+- **Tag Filter UI**: Replaced `<select multiple>` dropdown with button + dialog system for better scalability
+- **Tag Filter Button**: Shows count of selected tags (e.g., "3 tags selected") instead of dropdown
+- **Image Loading**: Thumbnails use `?thumbnail=true` parameter, full viewer uses cache-busting timestamp parameter
+
+### Technical Details
+- **View Count Logic**: Server checks for `thumbnail=true` query parameter and skips increment for thumbnails
+- **View Count Update**: Image load event listener fetches updated image data to display actual view count
+- **Tag Filter State**: Uses global `selectedTags` array instead of DOM select element for state management
+- **Tag Filter Dialog**: Modal dialog with search input, scrollable checkbox list (max-height: 400px), and action buttons
+- **Tag Filter Search**: Case-insensitive search filters tag list in real-time as user types
+
+### Benefits
+- **Accurate View Counts**: View count now accurately tracks per-image views without thumbnail interference
+- **Scalable Tag Filtering**: Can handle thousands of tags with efficient search and filtering
+- **Better UX**: Visual tag selection with search makes it easy to find and select tags
+- **Performance**: Thumbnails no longer trigger unnecessary view count increments
+
+### Affected Components
+- `controllers/imageViewerController.js` - Added thumbnail parameter check in serveImage endpoint
+- `plugins/image-viewer/renderer.js` - Fixed view count tracking, added tag filter dialog functions
+- `plugins/image-viewer/index.html` - Replaced select dropdown with button and added tag filter dialog
+- `plugins/image-viewer/styles.css` - Added styles for tag filter dialog, button, and selected tags display
+
+View count tracking now works correctly, and tag filtering scales to thousands of tags!
+
 ## [0.34.5] - 2025-12-19
 
 ### Added
