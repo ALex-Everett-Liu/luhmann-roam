@@ -275,6 +275,38 @@ exports.getTags = async (req, res) => {
 };
 
 /**
+ * Scan and import images from filesystem
+ * POST /api/plugins/image-viewer/scan
+ */
+exports.scanImages = async (req, res) => {
+  try {
+    const result = await imageViewerService.scanAndImportImages();
+    
+    res.json({
+      success: true,
+      imported: result.imported,
+      skipped: result.skipped,
+      errors: result.errors,
+      importedFiles: result.importedFiles.map(file => ({
+        id: file.id,
+        filename: file.filename,
+        fileSize: file.fileSize,
+        fileSizeFormatted: imageViewerService.formatFileSize(file.fileSize),
+        width: file.width,
+        height: file.height,
+      })),
+      errorFiles: result.errorFiles,
+    });
+  } catch (error) {
+    console.error("Scan images error:", error);
+    res.status(500).json({
+      error: "Failed to scan images",
+      details: error.message,
+    });
+  }
+};
+
+/**
  * Get system info
  * GET /api/plugins/image-viewer/info
  */

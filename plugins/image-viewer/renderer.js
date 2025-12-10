@@ -18,6 +18,7 @@ const elements = {
     sortBy: document.getElementById('sortBy'),
     sortOrder: document.getElementById('sortOrder'),
     refreshBtn: document.getElementById('refreshBtn'),
+    scanBtn: document.getElementById('scanBtn'),
     imageViewerModal: document.getElementById('imageViewerModal'),
     viewerImage: document.getElementById('viewerImage'),
     viewerImageContainer: document.getElementById('viewerImageContainer'),
@@ -27,7 +28,6 @@ const elements = {
     viewerZoomOut: document.getElementById('viewerZoomOut'),
     viewerResetZoom: document.getElementById('viewerResetZoom'),
     viewerFullscreen: document.getElementById('viewerFullscreen'),
-    viewerCopyLink: document.getElementById('viewerCopyLink'),
     viewerClose: document.getElementById('viewerClose'),
     viewerRating: document.getElementById('viewerRating'),
     viewerTagsInput: document.getElementById('viewerTagsInput'),
@@ -36,8 +36,6 @@ const elements = {
     viewerViewCount: document.getElementById('viewerViewCount'),
     viewerFileSize: document.getElementById('viewerFileSize'),
     viewerDimensions: document.getElementById('viewerDimensions'),
-    viewerPublicLink: document.getElementById('viewerPublicLink'),
-    viewerCopyLinkBtn: document.getElementById('viewerCopyLinkBtn'),
     viewerDeleteBtn: document.getElementById('viewerDeleteBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toastContainer: document.getElementById('toastContainer')
@@ -62,6 +60,7 @@ function setupEventListeners() {
         loadImages();
         loadTags();
     });
+    elements.scanBtn.addEventListener('click', scanImages);
     elements.tagFilter.addEventListener('change', applyFilters);
     elements.ratingFilter.addEventListener('change', applyFilters);
     elements.sortBy.addEventListener('change', applyFilters);
@@ -72,10 +71,8 @@ function setupEventListeners() {
     elements.viewerZoomOut.addEventListener('click', () => zoomImage(0.8));
     elements.viewerResetZoom.addEventListener('click', resetZoom);
     elements.viewerFullscreen.addEventListener('click', toggleFullscreen);
-    elements.viewerCopyLink.addEventListener('click', copyImageLink);
     elements.viewerClose.addEventListener('click', closeViewer);
     elements.viewerAddTags.addEventListener('click', addTagsToCurrentImage);
-    elements.viewerCopyLinkBtn.addEventListener('click', copyPublicLink);
     elements.viewerDeleteBtn.addEventListener('click', deleteCurrentImage);
     
     // Rating stars
@@ -232,6 +229,51 @@ function applyFilters() {
     loadImages();
 }
 
+// Scan Images
+async function scanImages() {
+    if (!confirm('Scan for images in the images directory? This will import any new images found.')) {
+        return;
+    }
+    
+    showLoading(true);
+    elements.scanBtn.disabled = true;
+    elements.scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    
+    try {
+        const response = await fetch('/api/plugins/image-viewer/scan', {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.details || errorData.error || 'Scan failed');
+        }
+        
+        const data = await response.json();
+        
+        let message = `Scan complete: ${data.imported} imported`;
+        if (data.skipped > 0) {
+            message += `, ${data.skipped} skipped`;
+        }
+        if (data.errors > 0) {
+            message += `, ${data.errors} errors`;
+        }
+        
+        showToast(message, data.imported > 0 ? 'success' : 'info');
+        
+        // Reload images and tags
+        loadImages();
+        loadTags();
+    } catch (error) {
+        console.error('Error scanning images:', error);
+        showToast(`Scan failed: ${error.message}`, 'error');
+    } finally {
+        showLoading(false);
+        elements.scanBtn.disabled = false;
+        elements.scanBtn.innerHTML = '<i class="fas fa-search"></i> Scan Images';
+    }
+}
+
 // Render Image Grid
 function renderImageGrid() {
     const grid = elements.imageGrid;
@@ -308,7 +350,6 @@ async function openViewer(imageId) {
     elements.viewerViewCount.textContent = (currentImage.viewCount || 0) + 1;
     elements.viewerFileSize.textContent = currentImage.fileSizeFormatted;
     elements.viewerDimensions.textContent = `${currentImage.width} × ${currentImage.height}`;
-    elements.viewerPublicLink.value = window.location.origin + currentImage.url;
     
     // Update rating
     updateRatingDisplay(currentImage.rating);
@@ -522,25 +563,6 @@ async function removeTag(tag) {
         showToast('Tag removed', 'success');
     } catch (error) {
         showToast('Failed to remove tag', 'error');
-    }
-}
-
-// Copy Link
-function copyImageLink() {
-    if (!currentImage) return;
-    copyPublicLink();
-}
-
-async function copyPublicLink() {
-    const link = elements.viewerPublicLink.value;
-    try {
-        await navigator.clipboard.writeText(link);
-        showToast('Link copied to clipboard', 'success');
-    } catch (error) {
-        // Fallback for older browsers
-        elements.viewerPublicLink.select();
-        document.execCommand('copy');
-        showToast('Link copied to clipboard', 'success');
     }
 }
 

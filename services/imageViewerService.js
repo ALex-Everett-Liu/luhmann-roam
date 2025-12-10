@@ -330,6 +330,138 @@ async function getAllTags() {
 }
 
 /**
+ * Scan images directory and import new files
+ */
+async function scanAndImportImages() {
+  const db = await getDb();
+  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg'];
+  const importedFiles = [];
+  const skippedFiles = [];
+  const errorFiles = [];
+  
+  // Get all existing file paths from database
+  const existingImages = await db.all("SELECT file_path FROM images");
+  const existingPaths = new Set(existingImages.map(img => path.resolve(img.file_path)));
+  
+  // Recursively scan directory
+  function scanDirectory(dir) {
+    const files = [];
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          // Recursively scan subdirectories
+          files.push(...scanDirectory(fullPath));
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (supportedExtensions.includes(ext)) {
+            files.push(fullPath);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error scanning directory ${dir}:`, error);
+    }
+    return files;
+  }
+  
+  const allFiles = scanDirectory(IMAGE_DIR);
+  
+  // Process each file
+  for (const filePath of allFiles) {
+    const resolvedPath = path.resolve(filePath);
+    
+    // Skip if already in database
+    if (existingPaths.has(resolvedPath)) {
+      skippedFiles.push(filePath);
+      continue;
+    }
+    
+    try {
+      // Check if file exists and is readable
+      if (!fs.existsSync(filePath)) {
+        errorFiles.push({ path: filePath, error: 'File not found' });
+        continue;
+      }
+      
+      const stats = fs.statSync(filePath);
+      if (!stats.isFile()) {
+        continue;
+      }
+      
+      // Get original filename (keep as-is)
+      const originalFilename = path.basename(filePath);
+      
+      // Generate UUID for database entry
+      const imageId = uuidv4();
+      
+      // Get image metadata
+      const metadata = await getImageMetadata(filePath);
+      
+      // Determine MIME type from extension
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeTypes = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.bmp': 'image/bmp',
+        '.tiff': 'image/tiff',
+        '.webp': 'image/webp',
+        '.svg': 'image/svg+xml'
+      };
+      const mimeType = mimeTypes[ext] || 'image/jpeg';
+      
+      // Use file modification time as created_at if available, otherwise use now
+      const createdAt = stats.mtime ? stats.mtime.getTime() : Date.now();
+      const now = Date.now();
+      
+      // Insert into database
+      await db.run(`
+        INSERT INTO images (
+          id, filename, original_filename, file_path, file_size, mime_type,
+          width, height, created_at, updated_at, rating, view_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        imageId,
+        originalFilename, // Keep original filename
+        originalFilename, // original_filename same as filename
+        resolvedPath, // Use resolved absolute path
+        stats.size,
+        mimeType,
+        metadata.width,
+        metadata.height,
+        createdAt,
+        now,
+        0,
+        0
+      ]);
+      
+      importedFiles.push({
+        id: imageId,
+        filename: originalFilename,
+        filePath: resolvedPath,
+        ...metadata,
+        fileSize: stats.size,
+      });
+    } catch (error) {
+      console.error(`Error importing file ${filePath}:`, error);
+      errorFiles.push({ path: filePath, error: error.message });
+    }
+  }
+  
+  return {
+    imported: importedFiles.length,
+    skipped: skippedFiles.length,
+    errors: errorFiles.length,
+    importedFiles,
+    skippedFiles,
+    errorFiles,
+  };
+}
+
+/**
  * Generate public URL for image
  */
 function generateImageUrl(imageId) {
@@ -347,6 +479,7 @@ module.exports = {
   incrementViewCount,
   deleteImage,
   getAllTags,
+  scanAndImportImages,
   generateImageUrl,
   formatFileSize,
   IMAGE_DIR,

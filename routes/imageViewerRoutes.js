@@ -63,6 +63,7 @@ router.get("/images/:id/file", imageViewerController.serveImage);
 router.post("/images/:id/tags", imageViewerController.updateTags);
 router.post("/images/:id/rating", imageViewerController.updateRating);
 router.delete("/images/:id", imageViewerController.deleteImage);
+router.post("/scan", imageViewerController.scanImages);
 router.get("/tags", imageViewerController.getTags);
 router.get("/info", imageViewerController.getInfo);
 

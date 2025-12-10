@@ -7,7 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.2] - 2025-01-19
+## [0.34.3] - 2025-12-11
+
+### Added
+- **Image Scanning Feature**: Added "Scan Images" button to detect and import images manually copied to the images directory
+- **Directory Scanning**: Recursively scans `plugins/image-viewer/images/` and subdirectories for image files
+- **Automatic Import**: Detects new images and imports them into the database with UUID generation while preserving original filenames
+- **Smart Detection**: Skips images already in database to prevent duplicates
+- **Scan Statistics**: Shows imported, skipped, and error counts after scanning
+
+### Changed
+- **Upload Section**: Upload section now serves as fallback method - primary workflow is copying images to directory and scanning
+- **Image Import Workflow**: Users can now copy images directly to `plugins/image-viewer/images/` or subdirectories (e.g., `images/001/`) and scan to import
+
+### Technical Details
+- **Scan API Endpoint**: `POST /api/plugins/image-viewer/scan` - scans filesystem and imports new images
+- **Recursive Directory Scanning**: Scans all subdirectories within images folder
+- **File Path Matching**: Uses resolved absolute paths to detect duplicates
+- **Original Filename Preservation**: Images keep their original filenames in database (filename and original_filename fields)
+- **Metadata Extraction**: Automatically extracts image dimensions, file size, and MIME type during import
+- **File Modification Time**: Uses file modification time as created_at timestamp if available
+- **Supported Formats**: Scans for jpg, jpeg, png, gif, bmp, tiff, webp, svg files
+- **Error Handling**: Continues scanning even if individual files fail, reports errors in results
+
+### Benefits
+- **Flexible Workflow**: Copy multiple images at once via file manager instead of uploading one by one
+- **Organized Storage**: Supports subdirectories for organizing images (e.g., `images/001/`, `images/002/`)
+- **Efficient Import**: Batch import of images without manual upload process
+- **Original Filenames**: Preserves original filenames for easy identification
+- **No Duplicates**: Automatically skips images already imported
+
+### Affected Components
+- `services/imageViewerService.js` - Added `scanAndImportImages()` function
+- `controllers/imageViewerController.js` - Added `scanImages` endpoint handler
+- `routes/imageViewerRoutes.js` - Added scan route
+- `plugins/image-viewer/index.html` - Added scan section with button and hint
+- `plugins/image-viewer/renderer.js` - Added `scanImages()` function and event handler
+- `plugins/image-viewer/styles.css` - Added scan section styling
+
+Image scanning feature enables efficient batch import of manually copied images!
+
+## [0.34.2] - 2025-12-11
 
 ### Added
 - **Image Viewer Plugin**: New image viewer plugin with zoom, fullscreen, tags, ratings, and local server access
@@ -81,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Image Viewer plugin provides comprehensive image management with professional viewing capabilities!
 
-## [0.34.1] - 2025-01-19
+## [0.34.1] - 2025-11-19
 
 ### Changed
 - **Graph Plugin Architecture Refactoring**: Refactored Graph Plugin to follow N-Tier architecture pattern matching WebP Converter structure
@@ -113,7 +153,7 @@ Image Viewer plugin provides comprehensive image management with professional vi
 
 Graph Plugin and Node Controller now follow established N-Tier architecture - consistent codebase structure!
 
-## [0.34.0] - 2025-01-19
+## [0.34.0] - 2025-11-19
 
 ### Added
 - **WebP Converter Plugin**: New batch image converter plugin supporting multiple formats with quality control
@@ -183,7 +223,7 @@ Graph Plugin and Node Controller now follow established N-Tier architecture - co
 
 WebP Converter plugin ready for use - professional batch image conversion integrated into Luhmann Roam!
 
-## [0.33.11] - 2025-01-15
+## [0.33.11] - 2025-11-19
 
 ### Changed
 - **Backup System Enhancement**: Backup functionality now backs up both main database (`outliner.db`) and graph plugin database (`graph.db`) in a single operation
