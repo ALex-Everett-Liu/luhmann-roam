@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.4] - 2025-12-11
+
+### Fixed
+- **Fullscreen Drag Issue**: Fixed image not moving visually during drag in fullscreen mode - transform now applied correctly
+- **Transform Application**: Changed from applying pan transform to container to applying combined zoom+pan transform directly to image element
+- **Flexbox Interference**: Resolved conflict between flexbox centering and transform in fullscreen mode
+
+### Changed
+- **Transform Strategy**: Pan and zoom transforms now combined into single transform on image element instead of separate transforms on container and image
+- **Container Transform**: Container transform reset to `none` to allow flexbox to handle centering without interference
+
+### Technical Details
+- **Root Cause**: Fullscreen container's `display: flex` with `align-items: center` and `justify-content: center` was interfering with container transform
+- **Solution**: Apply `scale(${zoomLevel}) translate(${panX}px, ${panY}px)` directly to image element, reset container transform to `none`
+- **Debugging**: Added comprehensive console logging to track transform application and detect mismatches
+- **Transform Combination**: Single transform on image element avoids flexbox centering conflicts in fullscreen mode
+
+### Affected Components
+- `plugins/image-viewer/renderer.js` - Updated `applyTransform()` function to apply combined transform to image element
+
+Fullscreen drag now works correctly - image moves in real-time during drag operations!
+
 ## [0.34.3] - 2025-12-11
 
 ### Added
