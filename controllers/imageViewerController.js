@@ -70,6 +70,7 @@ exports.getImages = async (req, res) => {
       fileSize: image.file_size,
       fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
       rating: image.rating,
+      ranking: image.ranking,
       viewCount: image.view_count,
       tags: image.tags,
       createdAt: image.created_at,
@@ -114,6 +115,7 @@ exports.getImage = async (req, res) => {
         fileSize: image.file_size,
         fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
         rating: image.rating,
+        ranking: image.ranking,
         viewCount: image.view_count,
         tags: image.tags,
         createdAt: image.created_at,
@@ -200,7 +202,7 @@ exports.updateTags = async (req, res) => {
 };
 
 /**
- * Update image rating
+ * Update image rating (supports decimals)
  * POST /api/plugins/image-viewer/images/:id/rating
  */
 exports.updateRating = async (req, res) => {
@@ -212,9 +214,9 @@ exports.updateRating = async (req, res) => {
       return res.status(400).json({ error: "Rating is required" });
     }
 
-    const ratingValue = parseInt(rating);
-    if (isNaN(ratingValue) || ratingValue < 0 || ratingValue > 5) {
-      return res.status(400).json({ error: "Rating must be between 0 and 5" });
+    const ratingValue = parseFloat(rating);
+    if (isNaN(ratingValue) || ratingValue < 0) {
+      return res.status(400).json({ error: "Rating must be a non-negative number" });
     }
 
     await imageViewerService.updateImageRating(id, ratingValue);
@@ -227,6 +229,79 @@ exports.updateRating = async (req, res) => {
     console.error("Update rating error:", error);
     res.status(500).json({
       error: "Failed to update rating",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image ranking (supports decimals)
+ * POST /api/plugins/image-viewer/images/:id/ranking
+ */
+exports.updateRanking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ranking } = req.body;
+
+    // Ranking can be null to clear it
+    if (ranking === undefined) {
+      return res.status(400).json({ error: "Ranking is required (can be null)" });
+    }
+
+    const rankingValue = ranking === null ? null : parseFloat(ranking);
+    if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+      return res.status(400).json({ error: "Ranking must be a non-negative number or null" });
+    }
+
+    await imageViewerService.updateImageRanking(id, rankingValue);
+
+    res.json({
+      success: true,
+      ranking: rankingValue,
+    });
+  } catch (error) {
+    console.error("Update ranking error:", error);
+    res.status(500).json({
+      error: "Failed to update ranking",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update both image rating and ranking
+ * POST /api/plugins/image-viewer/images/:id/review
+ */
+exports.updateReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, ranking } = req.body;
+
+    if (rating === undefined || rating === null) {
+      return res.status(400).json({ error: "Rating is required" });
+    }
+
+    const ratingValue = parseFloat(rating);
+    if (isNaN(ratingValue) || ratingValue < 0) {
+      return res.status(400).json({ error: "Rating must be a non-negative number" });
+    }
+
+    const rankingValue = ranking === undefined || ranking === null ? null : parseFloat(ranking);
+    if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+      return res.status(400).json({ error: "Ranking must be a non-negative number or null" });
+    }
+
+    await imageViewerService.updateImageRatingAndRanking(id, ratingValue, rankingValue);
+
+    res.json({
+      success: true,
+      rating: ratingValue,
+      ranking: rankingValue,
+    });
+  } catch (error) {
+    console.error("Update review error:", error);
+    res.status(500).json({
+      error: "Failed to update review",
       details: error.message,
     });
   }

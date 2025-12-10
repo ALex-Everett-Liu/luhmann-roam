@@ -421,31 +421,21 @@ function applyZoom() {
 }
 
 function applyTransform() {
-    console.log('[applyTransform] Called', { zoomLevel, panX, panY, isFullscreen });
     // Combine zoom and pan into single transform on image element
     // This avoids flexbox centering interference in fullscreen mode
     const imageTransform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
-    console.log('[applyTransform] Image transform value:', imageTransform);
     elements.viewerImage.style.setProperty('transform', imageTransform, 'important');
     
     // Reset container transform (flexbox handles centering)
     elements.viewerImageContainer.style.setProperty('transform', 'none', 'important');
     
-    const actualImageTransform = elements.viewerImage.style.transform;
-    const actualContainerTransform = elements.viewerImageContainer.style.transform;
-    console.log('[applyTransform] Actual image transform:', actualImageTransform);
-    console.log('[applyTransform] Actual container transform:', actualContainerTransform);
-    
     // Force reflow to ensure transform is applied in fullscreen
     if (isFullscreen) {
         void elements.viewerImage.offsetHeight; // Force reflow on image
-        console.log('[applyTransform] Fullscreen mode - forced reflow');
         // Double-check transform is applied
         requestAnimationFrame(() => {
             const currentImageTransform = elements.viewerImage.style.transform;
-            console.log('[applyTransform] RAF check - current image transform:', currentImageTransform);
             if (currentImageTransform !== imageTransform) {
-                console.log('[applyTransform] Transform mismatch, reapplying image transform');
                 elements.viewerImage.style.setProperty('transform', imageTransform, 'important');
             }
         });
@@ -476,11 +466,8 @@ function toggleFullscreen() {
         isFullscreen = true;
         elements.viewerFullscreen.innerHTML = '<i class="fas fa-compress"></i>';
         
-        console.log('[toggleFullscreen] Entered fullscreen', { panX, panY, zoomLevel });
-        
         // Reapply transform after entering fullscreen to ensure it's visible
         setTimeout(() => {
-            console.log('[toggleFullscreen] Reapplying transform after timeout');
             applyTransform();
         }, 100);
     } else {
@@ -520,12 +507,10 @@ function setupFullscreenListeners() {
         
         if (isCurrentlyFullscreen && !isFullscreen) {
             // Just entered fullscreen - reapply transform
-            console.log('[fullscreenChange] Just entered fullscreen');
             isFullscreen = true;
             applyTransform();
         } else if (!isCurrentlyFullscreen && isFullscreen) {
             // User exited fullscreen via ESC or other method
-            console.log('[fullscreenChange] Just exited fullscreen', { panX, panY, zoomLevel });
             isFullscreen = false;
             elements.imageViewerModal.querySelector('.viewer-header').style.display = 'flex';
             elements.imageViewerModal.querySelector('.viewer-sidebar').style.display = 'block';
@@ -579,15 +564,8 @@ function setupImagePanning() {
     
     // Mouse drag/pan
     container.addEventListener('mousedown', (e) => {
-        console.log('[mousedown] Event', { 
-            target: e.target, 
-            isFullscreen, 
-            isButton: !!e.target.closest('button'),
-            isExitBtn: !!e.target.closest('.exit-fullscreen-btn')
-        });
         // Don't start panning if clicking on buttons or other UI elements
         if (e.target.closest('button') || e.target.closest('.exit-fullscreen-btn')) {
-            console.log('[mousedown] Ignored - button click');
             return;
         }
         // Allow panning when clicking anywhere in the container (including background)
@@ -597,8 +575,6 @@ function setupImagePanning() {
                                    e.target === elements.viewerImage || 
                                    container.contains(e.target);
         
-        console.log('[mousedown] isContainerOrChild:', isContainerOrChild);
-        
         if (isContainerOrChild) {
             isPanning = true;
             const rect = container.getBoundingClientRect();
@@ -607,17 +583,6 @@ function setupImagePanning() {
             // Store initial mouse position relative to container center
             panStartX = e.clientX - centerX - panX;
             panStartY = e.clientY - centerY - panY;
-            console.log('[mousedown] Starting pan', { 
-                rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-                centerX, 
-                centerY,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                panX,
-                panY,
-                panStartX,
-                panStartY
-            });
             container.style.cursor = 'grabbing';
             e.preventDefault();
             e.stopPropagation();
@@ -630,23 +595,8 @@ function setupImagePanning() {
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
             // Calculate pan relative to container center
-            const newPanX = e.clientX - centerX - panStartX;
-            const newPanY = e.clientY - centerY - panStartY;
-            console.log('[mousemove] Panning', {
-                rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-                centerX,
-                centerY,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                panStartX,
-                panStartY,
-                oldPanX: panX,
-                oldPanY: panY,
-                newPanX,
-                newPanY
-            });
-            panX = newPanX;
-            panY = newPanY;
+            panX = e.clientX - centerX - panStartX;
+            panY = e.clientY - centerY - panStartY;
             applyTransform();
             e.preventDefault();
         }
@@ -654,7 +604,6 @@ function setupImagePanning() {
     
     document.addEventListener('mouseup', () => {
         if (isPanning) {
-            console.log('[mouseup] Ending pan', { panX, panY });
             isPanning = false;
             container.style.cursor = 'grab';
         }

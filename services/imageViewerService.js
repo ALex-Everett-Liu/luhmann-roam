@@ -51,7 +51,8 @@ async function initializeDatabase() {
       height INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      rating INTEGER DEFAULT 0,
+      rating REAL DEFAULT 0,
+      ranking REAL DEFAULT NULL,
       view_count INTEGER DEFAULT 0,
       last_viewed_at INTEGER
     );
@@ -68,8 +69,30 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_image_tags_image_id ON image_tags(image_id);
     CREATE INDEX IF NOT EXISTS idx_image_tags_tag ON image_tags(tag);
     CREATE INDEX IF NOT EXISTS idx_images_rating ON images(rating);
+    CREATE INDEX IF NOT EXISTS idx_images_ranking ON images(ranking);
     CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at);
   `);
+  
+  // Migrate existing database: add ranking column and convert rating to REAL if needed
+  try {
+    const tableInfo = await db.all("PRAGMA table_info(images)");
+    const hasRanking = tableInfo.some(col => col.name === 'ranking');
+    const ratingType = tableInfo.find(col => col.name === 'rating');
+    
+    if (!hasRanking) {
+      await db.run("ALTER TABLE images ADD COLUMN ranking REAL DEFAULT NULL");
+      await db.run("CREATE INDEX IF NOT EXISTS idx_images_ranking ON images(ranking)");
+    }
+    
+    // If rating is INTEGER, we need to migrate it to REAL
+    // SQLite doesn't support ALTER COLUMN, so we'll handle this in queries
+    // The column type will be automatically handled by SQLite's type affinity
+  } catch (error) {
+    // Column might already exist, ignore error
+    if (!error.message.includes('duplicate column')) {
+      console.error("Database migration error:", error);
+    }
+  }
 }
 
 /**
@@ -132,8 +155,8 @@ async function saveImage(file, customPath = null) {
   await db.run(`
     INSERT INTO images (
       id, filename, original_filename, file_path, file_size, mime_type,
-      width, height, created_at, updated_at, rating, view_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      width, height, created_at, updated_at, rating, ranking, view_count
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     imageId,
     filename,
@@ -146,6 +169,7 @@ async function saveImage(file, customPath = null) {
     now,
     now,
     0,
+    null,
     0
   ]);
   
@@ -192,14 +216,32 @@ async function getImages(filters = {}) {
     query += " AND " + conditions.join(" AND ");
   }
   
-  // Sorting
-  const sortBy = filters.sortBy || "created_at";
-  const sortOrder = filters.sortOrder || "DESC";
-  const validSortFields = ["created_at", "rating", "view_count", "filename", "file_size"];
-  const validSortOrder = ["ASC", "DESC"];
+  // Sorting - default to ranking ASC, rating DESC
+  const sortBy = filters.sortBy || null;
+  const sortOrder = filters.sortOrder || null;
   
-  if (validSortFields.includes(sortBy) && validSortOrder.includes(sortOrder.toUpperCase())) {
-    query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()}`;
+  if (sortBy && sortBy !== "default") {
+    const validSortFields = ["created_at", "rating", "ranking", "view_count", "filename", "file_size"];
+    const validSortOrder = ["ASC", "DESC"];
+    const order = sortOrder && validSortOrder.includes(sortOrder.toUpperCase()) 
+      ? sortOrder.toUpperCase() 
+      : "ASC";
+    
+    if (validSortFields.includes(sortBy)) {
+      query += ` ORDER BY ${sortBy} ${order}`;
+    } else {
+      // Invalid sortBy, use default sorting
+      query += ` ORDER BY 
+        CASE WHEN ranking IS NULL THEN 1 ELSE 0 END ASC,
+        ranking ASC,
+        rating DESC`;
+    }
+  } else {
+    // Default sorting: ranking ASC (NULLS LAST), then rating DESC
+    query += ` ORDER BY 
+      CASE WHEN ranking IS NULL THEN 1 ELSE 0 END ASC,
+      ranking ASC,
+      rating DESC`;
   }
   
   // Limit
@@ -276,16 +318,60 @@ async function removeTagFromImage(imageId, tag) {
 }
 
 /**
- * Update image rating
+ * Update image rating (supports decimals)
  */
 async function updateImageRating(imageId, rating) {
   const db = await getDb();
   const now = Date.now();
+  const ratingValue = parseFloat(rating);
+  if (isNaN(ratingValue) || ratingValue < 0) {
+    throw new Error("Rating must be a non-negative number");
+  }
   await db.run(`
     UPDATE images 
     SET rating = ?, updated_at = ?
     WHERE id = ?
-  `, [Math.max(0, Math.min(5, rating)), now, imageId]);
+  `, [ratingValue, now, imageId]);
+}
+
+/**
+ * Update image ranking (supports decimals)
+ */
+async function updateImageRanking(imageId, ranking) {
+  const db = await getDb();
+  const now = Date.now();
+  const rankingValue = ranking === null || ranking === undefined ? null : parseFloat(ranking);
+  if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+    throw new Error("Ranking must be a non-negative number or null");
+  }
+  await db.run(`
+    UPDATE images 
+    SET ranking = ?, updated_at = ?
+    WHERE id = ?
+  `, [rankingValue, now, imageId]);
+}
+
+/**
+ * Update both image rating and ranking
+ */
+async function updateImageRatingAndRanking(imageId, rating, ranking) {
+  const db = await getDb();
+  const now = Date.now();
+  const ratingValue = parseFloat(rating);
+  const rankingValue = ranking === null || ranking === undefined ? null : parseFloat(ranking);
+  
+  if (isNaN(ratingValue) || ratingValue < 0) {
+    throw new Error("Rating must be a non-negative number");
+  }
+  if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+    throw new Error("Ranking must be a non-negative number or null");
+  }
+  
+  await db.run(`
+    UPDATE images 
+    SET rating = ?, ranking = ?, updated_at = ?
+    WHERE id = ?
+  `, [ratingValue, rankingValue, now, imageId]);
 }
 
 /**
@@ -421,8 +507,8 @@ async function scanAndImportImages() {
       await db.run(`
         INSERT INTO images (
           id, filename, original_filename, file_path, file_size, mime_type,
-          width, height, created_at, updated_at, rating, view_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          width, height, created_at, updated_at, rating, ranking, view_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         imageId,
         originalFilename, // Keep original filename
@@ -435,6 +521,7 @@ async function scanAndImportImages() {
         createdAt,
         now,
         0,
+        null,
         0
       ]);
       
@@ -476,6 +563,8 @@ module.exports = {
   addTagsToImage,
   removeTagFromImage,
   updateImageRating,
+  updateImageRanking,
+  updateImageRatingAndRanking,
   incrementViewCount,
   deleteImage,
   getAllTags,
