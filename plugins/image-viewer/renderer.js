@@ -5,8 +5,11 @@ let images = [];
 let currentImage = null;
 let zoomLevel = 1;
 let isFullscreen = false;
-let panStart = { x: 0, y: 0 };
+let panX = 0;
+let panY = 0;
 let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
 
 // DOM Elements
 const elements = {
@@ -28,6 +31,7 @@ const elements = {
     viewerZoomOut: document.getElementById('viewerZoomOut'),
     viewerResetZoom: document.getElementById('viewerResetZoom'),
     viewerFullscreen: document.getElementById('viewerFullscreen'),
+    viewerCopyLink: document.getElementById('viewerCopyLink'),
     viewerClose: document.getElementById('viewerClose'),
     viewerRating: document.getElementById('viewerRating'),
     viewerTagsInput: document.getElementById('viewerTagsInput'),
@@ -36,6 +40,8 @@ const elements = {
     viewerViewCount: document.getElementById('viewerViewCount'),
     viewerFileSize: document.getElementById('viewerFileSize'),
     viewerDimensions: document.getElementById('viewerDimensions'),
+    viewerPublicLink: document.getElementById('viewerPublicLink'),
+    viewerCopyLinkBtn: document.getElementById('viewerCopyLinkBtn'),
     viewerDeleteBtn: document.getElementById('viewerDeleteBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toastContainer: document.getElementById('toastContainer')
@@ -71,8 +77,10 @@ function setupEventListeners() {
     elements.viewerZoomOut.addEventListener('click', () => zoomImage(0.8));
     elements.viewerResetZoom.addEventListener('click', resetZoom);
     elements.viewerFullscreen.addEventListener('click', toggleFullscreen);
+    elements.viewerCopyLink.addEventListener('click', copyImageLink);
     elements.viewerClose.addEventListener('click', closeViewer);
     elements.viewerAddTags.addEventListener('click', addTagsToCurrentImage);
+    elements.viewerCopyLinkBtn.addEventListener('click', copyPublicLink);
     elements.viewerDeleteBtn.addEventListener('click', deleteCurrentImage);
     
     // Rating stars
@@ -350,6 +358,7 @@ async function openViewer(imageId) {
     elements.viewerViewCount.textContent = (currentImage.viewCount || 0) + 1;
     elements.viewerFileSize.textContent = currentImage.fileSizeFormatted;
     elements.viewerDimensions.textContent = `${currentImage.width} × ${currentImage.height}`;
+    elements.viewerPublicLink.value = window.location.origin + currentImage.url;
     
     // Update rating
     updateRatingDisplay(currentImage.rating);
@@ -357,7 +366,7 @@ async function openViewer(imageId) {
     // Update tags
     renderTags(currentImage.tags);
     
-    // Reset zoom
+    // Reset zoom and pan
     resetZoom();
     
     // Show modal
@@ -374,20 +383,45 @@ function closeViewer() {
 
 // Zoom Functions
 function zoomImage(factor) {
+    const rect = elements.viewerImageContainer.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const oldZoom = zoomLevel;
     zoomLevel *= factor;
     zoomLevel = Math.max(0.1, Math.min(5, zoomLevel));
-    applyZoom();
+    
+    // Adjust pan to zoom towards center
+    if (oldZoom !== zoomLevel) {
+        const zoomChange = zoomLevel / oldZoom;
+        // Calculate offset from container center
+        const offsetX = centerX - panX;
+        const offsetY = centerY - panY;
+        // Adjust pan based on zoom change
+        panX = centerX - offsetX * zoomChange;
+        panY = centerY - offsetY * zoomChange;
+        applyTransform();
+    }
 }
 
 function resetZoom() {
     zoomLevel = 1;
-    applyZoom();
-    // Reset pan position
+    panX = 0;
+    panY = 0;
+    applyTransform();
+    // Reset container transform
     elements.viewerImageContainer.style.transform = 'translate(0, 0)';
 }
 
 function applyZoom() {
+    applyTransform();
+}
+
+function applyTransform() {
+    // Apply zoom to image
     elements.viewerImage.style.transform = `scale(${zoomLevel})`;
+    // Apply pan to container (pan values are already in screen coordinates)
+    elements.viewerImageContainer.style.transform = `translate(${panX}px, ${panY}px)`;
 }
 
 // Fullscreen
@@ -416,50 +450,100 @@ function toggleFullscreen() {
     }
 }
 
-// Image Panning
+// Image Panning and Zoom
 function setupImagePanning() {
-    let startX, startY, currentX = 0, currentY = 0;
+    const container = elements.viewerImageContainer;
     
-    elements.viewerImageContainer.addEventListener('mousedown', (e) => {
-        if (zoomLevel > 1) {
+    // Mouse wheel zoom
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Zoom towards mouse position
+        const oldZoom = zoomLevel;
+        zoomLevel *= delta;
+        zoomLevel = Math.max(0.1, Math.min(5, zoomLevel));
+        
+        // Adjust pan to zoom towards mouse position
+        if (oldZoom !== zoomLevel) {
+            const zoomChange = zoomLevel / oldZoom;
+            // Calculate offset from container center
+            const offsetX = mouseX - centerX - panX;
+            const offsetY = mouseY - centerY - panY;
+            // Adjust pan to keep mouse position fixed
+            panX = mouseX - centerX - offsetX * zoomChange;
+            panY = mouseY - centerY - offsetY * zoomChange;
+            applyTransform();
+        }
+    }, { passive: false });
+    
+    // Mouse drag/pan
+    container.addEventListener('mousedown', (e) => {
+        // Only start panning if clicking on the image container or image
+        if (e.target === container || e.target === elements.viewerImage) {
             isPanning = true;
-            startX = e.clientX - currentX;
-            startY = e.clientY - currentY;
+            const rect = container.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            // Store initial mouse position relative to container center
+            panStartX = e.clientX - centerX - panX;
+            panStartY = e.clientY - centerY - panY;
+            container.style.cursor = 'grabbing';
+            e.preventDefault();
         }
     });
     
     document.addEventListener('mousemove', (e) => {
-        if (isPanning && zoomLevel > 1) {
+        if (isPanning) {
+            const rect = elements.viewerImageContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            // Calculate pan relative to container center
+            panX = e.clientX - centerX - panStartX;
+            panY = e.clientY - centerY - panStartY;
+            applyTransform();
             e.preventDefault();
-            currentX = e.clientX - startX;
-            currentY = e.clientY - startY;
-            elements.viewerImageContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
         }
     });
     
     document.addEventListener('mouseup', () => {
-        isPanning = false;
+        if (isPanning) {
+            isPanning = false;
+            container.style.cursor = 'grab';
+        }
     });
     
     // Touch support
-    elements.viewerImageContainer.addEventListener('touchstart', (e) => {
-        if (zoomLevel > 1 && e.touches.length === 1) {
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
             isPanning = true;
-            startX = e.touches[0].clientX - currentX;
-            startY = e.touches[0].clientY - currentY;
-        }
-    });
-    
-    elements.viewerImageContainer.addEventListener('touchmove', (e) => {
-        if (isPanning && zoomLevel > 1 && e.touches.length === 1) {
+            const rect = container.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            panStartX = e.touches[0].clientX - centerX - panX;
+            panStartY = e.touches[0].clientY - centerY - panY;
             e.preventDefault();
-            currentX = e.touches[0].clientX - startX;
-            currentY = e.touches[0].clientY - startY;
-            elements.viewerImageContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
         }
     });
     
-    elements.viewerImageContainer.addEventListener('touchend', () => {
+    container.addEventListener('touchmove', (e) => {
+        if (isPanning && e.touches.length === 1) {
+            const rect = elements.viewerImageContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            panX = e.touches[0].clientX - centerX - panStartX;
+            panY = e.touches[0].clientY - centerY - panStartY;
+            applyTransform();
+            e.preventDefault();
+        }
+    });
+    
+    container.addEventListener('touchend', () => {
         isPanning = false;
     });
 }
@@ -563,6 +647,25 @@ async function removeTag(tag) {
         showToast('Tag removed', 'success');
     } catch (error) {
         showToast('Failed to remove tag', 'error');
+    }
+}
+
+// Copy Link
+function copyImageLink() {
+    if (!currentImage) return;
+    copyPublicLink();
+}
+
+async function copyPublicLink() {
+    const link = elements.viewerPublicLink.value;
+    try {
+        await navigator.clipboard.writeText(link);
+        showToast('Link copied to clipboard', 'success');
+    } catch (error) {
+        // Fallback for older browsers
+        elements.viewerPublicLink.select();
+        document.execCommand('copy');
+        showToast('Link copied to clipboard', 'success');
     }
 }
 
