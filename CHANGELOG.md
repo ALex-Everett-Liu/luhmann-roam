@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Database Initialization**: Fixed circular dependency in database initialization that prevented migration from running
 - **Empty SortBy Handling**: Fixed controller to properly handle empty `sortBy` query parameters
+- **Default Sorting Option**: Fixed default sorting option to use explicit "default" value instead of empty string for reliable ranking ASC + rating DESC sorting
 - **Tag Query Performance**: Improved tag queries by using proper JOINs with normalized schema
 
 ### Technical Details
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Affected Components
 - `services/imageViewerService.js` - Complete tag schema normalization with migration system
 - `controllers/imageViewerController.js` - Fixed empty sortBy parameter handling
+- `plugins/image-viewer/index.html` - Changed default sort option value from empty string to "default" for explicit sorting behavior
 
 Database migration runs automatically on first access - existing tag data preserved and converted seamlessly!
 
