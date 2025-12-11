@@ -87,6 +87,24 @@
                         <p>No images uploaded yet</p>
                     </div>
                 </div>
+                <div class="image-pagination" id="imagePagination" style="display: none;">
+                    <button id="imagePrevPage" class="pagination-btn" title="Previous page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="pagination-info">
+                        <span id="imagePageInfo">Page 1 of 1</span>
+                        <div class="pagination-jump">
+                            <label for="imagePageJump">Go to:</label>
+                            <input type="number" id="imagePageJump" min="1" value="1" class="page-jump-input">
+                            <button id="imagePageJumpBtn" class="page-jump-btn" title="Jump to page">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="imageNextPage" class="pagination-btn" title="Next page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </section>
         </main>
 

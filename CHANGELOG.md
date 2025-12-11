@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.8] - 2025-12-19
+
+### Added
+- **Tag Filter Pagination**: Pagination system for tag filter dialog with 20 tags per page
+- **Tag Filter Page Navigation**: Previous/Next buttons and page jump input for navigating tag pages
+- **Tag Filter Total Count**: Display showing total number of tags (e.g., "Total: 1,234 tags")
+- **Image Grid Pagination**: Pagination system for image grid with 24 images per page
+- **Image Grid Page Navigation**: Previous/Next buttons and page jump input for navigating image pages
+- **Image Grid Total Display**: Page info shows current page, total pages, and total image count (e.g., "Page 1 of 5 (120 total)")
+- **Page Jump Functionality**: Input field with "Go to" button to jump directly to any page number
+- **Enter Key Support**: Press Enter in page jump input to navigate to specified page
+
+### Changed
+- **Tag Filter Dialog**: Tag list now paginated - only shows 20 tags per page instead of all tags at once
+- **Image Grid Rendering**: Image grid now paginated - only renders 24 images per page instead of all images at once
+- **Pagination Visibility**: Pagination controls automatically hide when not needed (single page)
+
+### Fixed
+- **Large Tag Lists**: Tag filter dialog now handles thousands of tags efficiently without performance issues
+- **Large Image Collections**: Image grid now handles thousands of images efficiently without rendering lag
+- **Pagination Reset**: Pagination automatically resets to page 1 when filters change or images are uploaded/scanned
+- **Page Boundary Handling**: Pagination properly adjusts when images are deleted (stays on valid page or moves to last page)
+
+### Technical Details
+- **Tag Pagination**: 
+  - `TAGS_PER_PAGE = 20` constant for consistent page size
+  - Pagination resets to page 1 when search query changes
+  - Total count updates based on filtered tags (respects search)
+- **Image Pagination**:
+  - `IMAGES_PER_PAGE = 24` constant optimized for grid layout
+  - Pagination resets to page 1 when filters change (tags, rating, sort)
+  - Pagination resets to page 1 after uploading or scanning images
+  - Pagination adjusts intelligently when images are deleted
+- **Pagination Controls**:
+  - Previous/Next buttons disabled at first/last page boundaries
+  - Page jump input validates page number and max page limit
+  - Page info displays current page, total pages, and total count
+  - Smooth scroll to top of content when changing pages
+- **Performance Benefits**:
+  - Reduced DOM elements: Only renders visible page items instead of all items
+  - Faster initial load: Paginated content loads much faster for large collections
+  - Better memory usage: Browser doesn't need to manage thousands of DOM nodes
+  - Improved scrolling: Smaller DOM tree provides smoother scrolling experience
+
+### Benefits
+- **Scalability**: Can handle thousands of tags and images without performance degradation
+- **User Experience**: Easy navigation through large collections with intuitive pagination controls
+- **Performance**: Faster rendering and smoother interactions with paginated content
+- **Flexibility**: Page jump feature allows quick navigation to any page in large collections
+
+### Affected Components
+- `plugins/image-viewer/index.html` - Added pagination HTML elements for both tag filter and image grid
+- `plugins/image-viewer/renderer.js` - Added pagination state, functions, and rendering logic
+- `plugins/image-viewer/styles.css` - Added pagination control styles (reuses tag filter pagination styles)
+
+Tag filter and image grid now scale efficiently to thousands of items with intuitive pagination!
+
 ## [0.34.7] - 2025-12-19
 
 ### Changed

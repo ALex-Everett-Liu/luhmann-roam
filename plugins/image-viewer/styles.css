@@ -553,6 +553,16 @@ section {
     background-color: var(--primary-hover);
 }
 
+.image-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    gap: 1rem;
+}
+
 .tag-filter-dialog-footer {
     display: flex;
     justify-content: flex-end;

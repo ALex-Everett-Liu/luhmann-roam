@@ -15,6 +15,8 @@ let selectedTags = [];
 let tagFilterSearchQuery = '';
 let currentTagPage = 1;
 const TAGS_PER_PAGE = 20;
+let currentImagePage = 1;
+const IMAGES_PER_PAGE = 24;
 
 // DOM Elements
 const elements = {
@@ -71,7 +73,13 @@ const elements = {
     viewerCopyLinkBtn: document.getElementById('viewerCopyLinkBtn'),
     viewerDeleteBtn: document.getElementById('viewerDeleteBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+    imagePagination: document.getElementById('imagePagination'),
+    imagePrevPage: document.getElementById('imagePrevPage'),
+    imageNextPage: document.getElementById('imageNextPage'),
+    imagePageInfo: document.getElementById('imagePageInfo'),
+    imagePageJump: document.getElementById('imagePageJump'),
+    imagePageJumpBtn: document.getElementById('imagePageJumpBtn')
 };
 
 // Initialize app
@@ -126,6 +134,14 @@ function setupEventListeners() {
     });
     elements.sortBy.addEventListener('change', applyFilters);
     elements.sortOrder.addEventListener('change', applyFilters);
+    
+    // Image pagination
+    elements.imagePrevPage.addEventListener('click', () => goToImagePage(currentImagePage - 1));
+    elements.imageNextPage.addEventListener('click', () => goToImagePage(currentImagePage + 1));
+    elements.imagePageJumpBtn.addEventListener('click', jumpToImagePage);
+    elements.imagePageJump.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') jumpToImagePage();
+    });
     
     // Viewer controls
     elements.viewerZoomIn.addEventListener('click', () => zoomImage(1.2));
@@ -215,6 +231,7 @@ async function handleFiles(files) {
             await uploadImage(file);
         }
         showToast(`${imageFiles.length} image(s) uploaded successfully`, 'success');
+        currentImagePage = 1; // Reset to first page after upload
         loadImages();
         loadTags();
     } catch (error) {
@@ -310,6 +327,7 @@ function removeSelectedTag(tag) {
 }
 
 function applyFilters() {
+    currentImagePage = 1; // Reset to first page when filters change
     loadImages();
 }
 
@@ -491,6 +509,7 @@ async function scanImages() {
         showToast(message, data.imported > 0 ? 'success' : 'info');
         
         // Reload images and tags
+        currentImagePage = 1; // Reset to first page after scan
         loadImages();
         loadTags();
     } catch (error) {
@@ -514,10 +533,20 @@ function renderImageGrid() {
                 <p>No images found</p>
             </div>
         `;
+        elements.imagePagination.style.display = 'none';
         return;
     }
     
-    grid.innerHTML = images.map(image => `
+    // Calculate pagination
+    const totalPages = Math.max(1, Math.ceil(images.length / IMAGES_PER_PAGE));
+    currentImagePage = Math.min(currentImagePage, totalPages);
+    currentImagePage = Math.max(1, currentImagePage);
+    
+    const startIndex = (currentImagePage - 1) * IMAGES_PER_PAGE;
+    const endIndex = startIndex + IMAGES_PER_PAGE;
+    const paginatedImages = images.slice(startIndex, endIndex);
+    
+    grid.innerHTML = paginatedImages.map(image => `
         <div class="image-item" data-id="${image.id}">
             <div class="image-thumbnail" onclick="openViewer('${image.id}')">
                 <img src="${image.url}?thumbnail=true" alt="${image.filename}" loading="lazy">
@@ -538,6 +567,9 @@ function renderImageGrid() {
             </div>
         </div>
     `).join('');
+    
+    // Update pagination controls
+    updateImagePagination();
 }
 
 function renderStars(rating) {
@@ -560,6 +592,46 @@ function renderStars(rating) {
 
 function truncate(str, maxLength) {
     return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}
+
+// Image Pagination Functions
+function goToImagePage(page) {
+    const totalPages = Math.max(1, Math.ceil(images.length / IMAGES_PER_PAGE));
+    
+    if (page >= 1 && page <= totalPages) {
+        currentImagePage = page;
+        renderImageGrid();
+        // Scroll to top of image grid
+        elements.imageGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function jumpToImagePage() {
+    const page = parseInt(elements.imagePageJump.value);
+    if (!isNaN(page) && page > 0) {
+        goToImagePage(page);
+    }
+}
+
+function updateImagePagination() {
+    const totalPages = Math.max(1, Math.ceil(images.length / IMAGES_PER_PAGE));
+    
+    // Show/hide pagination based on whether we need it
+    if (totalPages > 1) {
+        elements.imagePagination.style.display = 'flex';
+    } else {
+        elements.imagePagination.style.display = 'none';
+        return;
+    }
+    
+    // Update page info
+    elements.imagePageInfo.textContent = `Page ${currentImagePage} of ${totalPages} (${images.length} total)`;
+    elements.imagePageJump.value = currentImagePage;
+    elements.imagePageJump.max = totalPages;
+    
+    // Enable/disable navigation buttons
+    elements.imagePrevPage.disabled = currentImagePage <= 1;
+    elements.imageNextPage.disabled = currentImagePage >= totalPages;
 }
 
 // Image Viewer
@@ -1088,6 +1160,11 @@ async function deleteCurrentImage() {
         
         showToast('Image deleted', 'success');
         closeViewer();
+        // Reset pagination if needed (renderImageGrid will handle adjusting if page doesn't exist)
+        const totalPages = Math.ceil(images.length / IMAGES_PER_PAGE);
+        if (currentImagePage > totalPages && currentImagePage > 1) {
+            currentImagePage = Math.max(1, totalPages);
+        }
         loadImages();
         loadTags();
     } catch (error) {
