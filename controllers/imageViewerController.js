@@ -54,8 +54,8 @@ exports.getImages = async (req, res) => {
     const filters = {
       tags: req.query.tags ? req.query.tags.split(",").map(t => t.trim()) : undefined,
       rating: req.query.rating ? parseInt(req.query.rating) : undefined,
-      sortBy: req.query.sortBy || "created_at",
-      sortOrder: req.query.sortOrder || "DESC",
+      sortBy: req.query.sortBy && req.query.sortBy.trim() !== "" ? req.query.sortBy.trim() : null,
+      sortOrder: req.query.sortOrder && req.query.sortOrder.trim() !== "" ? req.query.sortOrder.trim() : null,
       limit: req.query.limit ? parseInt(req.query.limit) : undefined,
     };
 

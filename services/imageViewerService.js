@@ -17,8 +17,8 @@ if (!fs.existsSync(IMAGE_DIR)) {
 // Database connection cache
 let dbInstance = null;
 
-// Get database connection
-async function getDb() {
+// Get database connection (without initialization)
+async function getDbRaw() {
   if (dbInstance) {
     return dbInstance;
   }
@@ -28,15 +28,123 @@ async function getDb() {
     driver: sqlite3.Database,
   });
   
+  return dbInstance;
+}
+
+// Get database connection
+async function getDb() {
+  if (dbInstance) {
+    return dbInstance;
+  }
+  
+  await getDbRaw();
+  
   // Initialize database schema
   await initializeDatabase();
   
   return dbInstance;
 }
 
+/**
+ * Migrate tags from old denormalized schema to normalized schema
+ */
+async function migrateTagsToNormalizedSchema(db) {
+  // Check if image_tags table exists
+  const tableExists = await db.get(`
+    SELECT name FROM sqlite_master 
+    WHERE type='table' AND name='image_tags'
+  `);
+  
+  if (!tableExists) {
+    // Table doesn't exist yet, will be created by initializeDatabase
+    return;
+  }
+  
+  // Check if old schema exists (has 'tag' column in image_tags)
+  const tableInfo = await db.all("PRAGMA table_info(image_tags)");
+  const hasOldSchema = tableInfo.some(col => col.name === 'tag');
+  
+  if (!hasOldSchema) {
+    // Already migrated or new database with normalized schema
+    return;
+  }
+  
+  console.log("Migration: Converting tags to normalized schema...");
+  console.log("Migration: Found old schema with 'tag' column, starting migration...");
+  
+  await db.run("BEGIN TRANSACTION");
+  try {
+    // Step 1: Create tags table
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id TEXT PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    `);
+    
+    // Step 2: Extract unique tags from old image_tags table and insert into tags table
+    const oldTagRows = await db.all("SELECT DISTINCT tag, MIN(created_at) as created_at FROM image_tags GROUP BY tag");
+    const tagMap = new Map(); // Maps tag name to tag_id
+    
+    for (const row of oldTagRows) {
+      const tagId = uuidv4();
+      await db.run(`
+        INSERT OR IGNORE INTO tags (id, name, created_at)
+        VALUES (?, ?, ?)
+      `, [tagId, row.tag, row.created_at]);
+      tagMap.set(row.tag, tagId);
+    }
+    
+    // Step 3: Create new image_tags table with tag_id references
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS image_tags_new (
+        image_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (image_id, tag_id),
+        FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      );
+    `);
+    
+    // Step 4: Migrate data from old image_tags to new image_tags_new
+    const oldImageTags = await db.all("SELECT image_id, tag, created_at FROM image_tags");
+    for (const row of oldImageTags) {
+      const tagId = tagMap.get(row.tag);
+      if (tagId) {
+        await db.run(`
+          INSERT OR IGNORE INTO image_tags_new (image_id, tag_id, created_at)
+          VALUES (?, ?, ?)
+        `, [row.image_id, tagId, row.created_at]);
+      }
+    }
+    
+    // Step 5: Drop old image_tags table
+    await db.run("DROP TABLE IF EXISTS image_tags");
+    
+    // Step 6: Rename new table to image_tags
+    await db.run("ALTER TABLE image_tags_new RENAME TO image_tags");
+    
+    // Step 7: Create indexes
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_image_tags_image_id ON image_tags(image_id);
+      CREATE INDEX IF NOT EXISTS idx_image_tags_tag_id ON image_tags(tag_id);
+      CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+    `);
+    
+    await db.run("COMMIT");
+    console.log(`Migration: Successfully migrated ${oldTagRows.length} unique tags and ${oldImageTags.length} tag assignments`);
+  } catch (error) {
+    await db.run("ROLLBACK");
+    console.error("Migration: Error migrating tags:", error);
+    throw error;
+  }
+}
+
 // Initialize database
 async function initializeDatabase() {
-  const db = await getDb();
+  const db = await getDbRaw();
   
   // Create images table
   await db.exec(`
@@ -56,20 +164,6 @@ async function initializeDatabase() {
       view_count INTEGER DEFAULT 0,
       last_viewed_at INTEGER
     );
-    
-    CREATE TABLE IF NOT EXISTS image_tags (
-      id TEXT PRIMARY KEY,
-      image_id TEXT NOT NULL,
-      tag TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
-      UNIQUE(image_id, tag)
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_image_tags_image_id ON image_tags(image_id);
-    CREATE INDEX IF NOT EXISTS idx_image_tags_tag ON image_tags(tag);
-    CREATE INDEX IF NOT EXISTS idx_images_rating ON images(rating);
-    CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at);
   `);
   
   // Migrate existing database: add ranking column if it doesn't exist
@@ -96,6 +190,43 @@ async function initializeDatabase() {
     // Index creation failed - log but don't fail (might already exist)
     console.log("Migration: Index creation note:", error.message);
   }
+  
+  // IMPORTANT: Migrate tags to normalized schema BEFORE creating new tables
+  // This ensures we detect and migrate old schema if it exists
+  try {
+    await migrateTagsToNormalizedSchema(db);
+  } catch (error) {
+    console.error("Migration: Failed to migrate tags schema:", error);
+    // Don't throw - allow the app to continue, but log the error
+    // The migration will be retried on next initialization
+  }
+  
+  // Create normalized tags tables (will be created if migration hasn't run yet, or after migration)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id TEXT PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    
+    CREATE TABLE IF NOT EXISTS image_tags (
+      image_id TEXT NOT NULL,
+      tag_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (image_id, tag_id),
+      FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
+      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
+  `);
+  
+  // Create indexes
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_image_tags_image_id ON image_tags(image_id);
+    CREATE INDEX IF NOT EXISTS idx_image_tags_tag_id ON image_tags(tag_id);
+    CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+    CREATE INDEX IF NOT EXISTS idx_images_rating ON images(rating);
+    CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at);
+  `);
   
   // Note: For rating column, SQLite's type affinity means INTEGER values stored
   // in an INTEGER column will automatically work with REAL operations.
@@ -205,7 +336,8 @@ async function getImages(filters = {}) {
     query = `
       SELECT DISTINCT i.* FROM images i
       INNER JOIN image_tags it ON i.id = it.image_id
-      WHERE it.tag IN (${filters.tags.map(() => "?").join(",")})
+      INNER JOIN tags t ON it.tag_id = t.id
+      WHERE t.name IN (${filters.tags.map(() => "?").join(",")})
     `;
     params.push(...filters.tags);
     
@@ -286,12 +418,42 @@ async function getImageById(imageId) {
 }
 
 /**
+ * Get or create a tag by name, returns tag_id
+ */
+async function getOrCreateTag(tagName) {
+  const db = await getDb();
+  const trimmedName = tagName.trim();
+  
+  // Try to get existing tag
+  const existingTag = await db.get("SELECT id FROM tags WHERE name = ?", trimmedName);
+  if (existingTag) {
+    return existingTag.id;
+  }
+  
+  // Create new tag
+  const tagId = uuidv4();
+  const now = Date.now();
+  await db.run(`
+    INSERT INTO tags (id, name, created_at)
+    VALUES (?, ?, ?)
+  `, [tagId, trimmedName, now]);
+  
+  return tagId;
+}
+
+/**
  * Get tags for an image
  */
 async function getImageTags(imageId) {
   const db = await getDb();
-  const rows = await db.all("SELECT tag FROM image_tags WHERE image_id = ?", imageId);
-  return rows.map(row => row.tag);
+  const rows = await db.all(`
+    SELECT t.name 
+    FROM image_tags it
+    INNER JOIN tags t ON it.tag_id = t.id
+    WHERE it.image_id = ?
+    ORDER BY t.name
+  `, imageId);
+  return rows.map(row => row.name);
 }
 
 /**
@@ -303,12 +465,15 @@ async function addTagsToImage(imageId, tags) {
   
   await db.run("BEGIN TRANSACTION");
   try {
-    for (const tag of tags) {
-      const tagId = uuidv4();
+    for (const tagName of tags) {
+      // Get or create tag
+      const tagId = await getOrCreateTag(tagName);
+      
+      // Link tag to image
       await db.run(`
-        INSERT OR IGNORE INTO image_tags (id, image_id, tag, created_at)
-        VALUES (?, ?, ?, ?)
-      `, [tagId, imageId, tag.trim(), now]);
+        INSERT OR IGNORE INTO image_tags (image_id, tag_id, created_at)
+        VALUES (?, ?, ?)
+      `, [imageId, tagId, now]);
     }
     await db.run("COMMIT");
   } catch (error) {
@@ -320,9 +485,20 @@ async function addTagsToImage(imageId, tags) {
 /**
  * Remove tag from an image
  */
-async function removeTagFromImage(imageId, tag) {
+async function removeTagFromImage(imageId, tagName) {
   const db = await getDb();
-  await db.run("DELETE FROM image_tags WHERE image_id = ? AND tag = ?", imageId, tag);
+  // Find tag_id by tag name
+  const tag = await db.get("SELECT id FROM tags WHERE name = ?", tagName.trim());
+  if (!tag) {
+    // Tag doesn't exist, nothing to remove
+    return;
+  }
+  
+  // Remove the link between image and tag
+  await db.run("DELETE FROM image_tags WHERE image_id = ? AND tag_id = ?", imageId, tag.id);
+  
+  // Note: We don't delete the tag itself from tags table, as it might be used by other images
+  // Tags will be cleaned up automatically if needed (orphaned tags can be removed separately if desired)
 }
 
 /**
@@ -419,8 +595,8 @@ async function deleteImage(imageId) {
  */
 async function getAllTags() {
   const db = await getDb();
-  const rows = await db.all("SELECT DISTINCT tag FROM image_tags ORDER BY tag");
-  return rows.map(row => row.tag);
+  const rows = await db.all("SELECT name FROM tags ORDER BY name");
+  return rows.map(row => row.name);
 }
 
 /**

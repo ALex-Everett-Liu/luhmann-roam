@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.7] - 2025-12-19
+
+### Changed
+- **Tag Schema Normalization**: Migrated from denormalized tag storage to normalized database schema
+- **Tag Storage**: Tags now stored in separate `tags` table with unique tag names instead of duplicating tag text in `image_tags`
+- **Tag Relationships**: `image_tags` table now uses `tag_id` foreign key references instead of storing tag text directly
+
+### Added
+- **Tag Migration System**: Automatic migration function that converts existing databases from old schema to normalized schema
+- **Tag Helper Function**: `getOrCreateTag()` function ensures tags exist before linking to images
+- **Migration Detection**: Migration automatically detects old schema and migrates data preserving all tag assignments and timestamps
+
+### Fixed
+- **Database Initialization**: Fixed circular dependency in database initialization that prevented migration from running
+- **Empty SortBy Handling**: Fixed controller to properly handle empty `sortBy` query parameters
+- **Tag Query Performance**: Improved tag queries by using proper JOINs with normalized schema
+
+### Technical Details
+- **Migration Process**: Migration extracts unique tags, creates `tags` table, migrates tag assignments, and preserves all timestamps
+- **Backward Compatibility**: Migration is idempotent - safely runs multiple times and only migrates if old schema detected
+- **Schema Changes**: 
+  - New `tags` table: `id` (TEXT PRIMARY KEY), `name` (TEXT UNIQUE NOT NULL), `created_at` (INTEGER)
+  - Updated `image_tags` table: `image_id` + `tag_id` composite primary key (removed unnecessary UUID)
+- **Benefits**: 
+  - Storage efficiency: Tag text stored once per unique tag instead of once per image
+  - Easier tag management: Rename/delete tags in single location
+  - Future-ready: Can add tag metadata (description, color, category) without duplication
+  - Better performance: Proper indexes on normalized schema
+
+### Affected Components
+- `services/imageViewerService.js` - Complete tag schema normalization with migration system
+- `controllers/imageViewerController.js` - Fixed empty sortBy parameter handling
+
+Database migration runs automatically on first access - existing tag data preserved and converted seamlessly!
+
 ## [0.34.6] - 2025-12-19
 
 ### Fixed
