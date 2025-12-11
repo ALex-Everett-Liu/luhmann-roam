@@ -217,9 +217,28 @@
                     </div>
                     <div class="tag-filter-stats">
                         <span id="tagFilterStats">0 tags selected</span>
+                        <span id="tagFilterTotal" class="tag-filter-total">Total: 0 tags</span>
                     </div>
                     <div id="tagFilterList" class="tag-filter-list">
                         <!-- Tags will be populated here -->
+                    </div>
+                    <div class="tag-filter-pagination">
+                        <button id="tagFilterPrevPage" class="pagination-btn" title="Previous page">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="pagination-info">
+                            <span id="tagFilterPageInfo">Page 1 of 1</span>
+                            <div class="pagination-jump">
+                                <label for="tagFilterPageJump">Go to:</label>
+                                <input type="number" id="tagFilterPageJump" min="1" value="1" class="page-jump-input">
+                                <button id="tagFilterPageJumpBtn" class="page-jump-btn" title="Jump to page">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="tagFilterNextPage" class="pagination-btn" title="Next page">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="tag-filter-dialog-footer">

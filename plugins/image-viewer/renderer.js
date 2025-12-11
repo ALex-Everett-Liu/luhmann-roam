@@ -13,6 +13,8 @@ let panStartY = 0;
 let allTags = [];
 let selectedTags = [];
 let tagFilterSearchQuery = '';
+let currentTagPage = 1;
+const TAGS_PER_PAGE = 20;
 
 // DOM Elements
 const elements = {
@@ -27,10 +29,16 @@ const elements = {
     tagSearchInput: document.getElementById('tagSearchInput'),
     tagFilterList: document.getElementById('tagFilterList'),
     tagFilterStats: document.getElementById('tagFilterStats'),
+    tagFilterTotal: document.getElementById('tagFilterTotal'),
     tagFilterClear: document.getElementById('tagFilterClear'),
     tagFilterSelectAll: document.getElementById('tagFilterSelectAll'),
     tagFilterCancel: document.getElementById('tagFilterCancel'),
     tagFilterApply: document.getElementById('tagFilterApply'),
+    tagFilterPrevPage: document.getElementById('tagFilterPrevPage'),
+    tagFilterNextPage: document.getElementById('tagFilterNextPage'),
+    tagFilterPageInfo: document.getElementById('tagFilterPageInfo'),
+    tagFilterPageJump: document.getElementById('tagFilterPageJump'),
+    tagFilterPageJumpBtn: document.getElementById('tagFilterPageJumpBtn'),
     ratingFilter: document.getElementById('ratingFilter'),
     sortBy: document.getElementById('sortBy'),
     sortOrder: document.getElementById('sortOrder'),
@@ -96,6 +104,12 @@ function setupEventListeners() {
     elements.tagFilterClear.addEventListener('click', clearTagFilter);
     elements.tagFilterSelectAll.addEventListener('click', selectAllTags);
     elements.tagSearchInput.addEventListener('input', filterTagList);
+    elements.tagFilterPrevPage.addEventListener('click', () => goToTagPage(currentTagPage - 1));
+    elements.tagFilterNextPage.addEventListener('click', () => goToTagPage(currentTagPage + 1));
+    elements.tagFilterPageJumpBtn.addEventListener('click', jumpToTagPage);
+    elements.tagFilterPageJump.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') jumpToTagPage();
+    });
     
     // Close dialog on backdrop click
     elements.tagFilterDialog.addEventListener('click', (e) => {
@@ -304,8 +318,10 @@ function openTagFilterDialog() {
     elements.tagFilterDialog.classList.add('visible');
     elements.tagSearchInput.value = '';
     tagFilterSearchQuery = '';
+    currentTagPage = 1;
     renderTagFilterList();
     updateTagFilterStats();
+    updateTagFilterPagination();
     elements.tagSearchInput.focus();
 }
 
@@ -318,9 +334,18 @@ function renderTagFilterList() {
         tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
     );
     
-    elements.tagFilterList.innerHTML = filteredTags.length === 0 
+    // Calculate pagination
+    const totalPages = Math.max(1, Math.ceil(filteredTags.length / TAGS_PER_PAGE));
+    currentTagPage = Math.min(currentTagPage, totalPages);
+    currentTagPage = Math.max(1, currentTagPage);
+    
+    const startIndex = (currentTagPage - 1) * TAGS_PER_PAGE;
+    const endIndex = startIndex + TAGS_PER_PAGE;
+    const paginatedTags = filteredTags.slice(startIndex, endIndex);
+    
+    elements.tagFilterList.innerHTML = paginatedTags.length === 0 
         ? '<div class="no-tags-message">No tags found</div>'
-        : filteredTags.map(tag => {
+        : paginatedTags.map(tag => {
             const isSelected = selectedTags.includes(tag);
             return `
                 <label class="tag-filter-item ${isSelected ? 'selected' : ''}">
@@ -351,16 +376,63 @@ function renderTagFilterList() {
             }
         });
     });
+    
+    // Update pagination controls
+    updateTagFilterPagination();
 }
 
 function filterTagList() {
     tagFilterSearchQuery = elements.tagSearchInput.value;
+    currentTagPage = 1; // Reset to first page when filtering
     renderTagFilterList();
+}
+
+function goToTagPage(page) {
+    const filteredTags = allTags.filter(tag => 
+        tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
+    );
+    const totalPages = Math.max(1, Math.ceil(filteredTags.length / TAGS_PER_PAGE));
+    
+    if (page >= 1 && page <= totalPages) {
+        currentTagPage = page;
+        renderTagFilterList();
+        // Scroll to top of tag list
+        elements.tagFilterList.scrollTop = 0;
+    }
+}
+
+function jumpToTagPage() {
+    const page = parseInt(elements.tagFilterPageJump.value);
+    if (!isNaN(page) && page > 0) {
+        goToTagPage(page);
+    }
+}
+
+function updateTagFilterPagination() {
+    const filteredTags = allTags.filter(tag => 
+        tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
+    );
+    const totalPages = Math.max(1, Math.ceil(filteredTags.length / TAGS_PER_PAGE));
+    
+    // Update page info
+    elements.tagFilterPageInfo.textContent = `Page ${currentTagPage} of ${totalPages}`;
+    elements.tagFilterPageJump.value = currentTagPage;
+    elements.tagFilterPageJump.max = totalPages;
+    
+    // Enable/disable navigation buttons
+    elements.tagFilterPrevPage.disabled = currentTagPage <= 1;
+    elements.tagFilterNextPage.disabled = currentTagPage >= totalPages;
 }
 
 function updateTagFilterStats() {
     const count = selectedTags.length;
     elements.tagFilterStats.textContent = `${count} tag${count !== 1 ? 's' : ''} selected`;
+    
+    // Update total tag count
+    const filteredTags = allTags.filter(tag => 
+        tag.toLowerCase().includes(tagFilterSearchQuery.toLowerCase())
+    );
+    elements.tagFilterTotal.textContent = `Total: ${filteredTags.length} tag${filteredTags.length !== 1 ? 's' : ''}`;
 }
 
 function applyTagFilter() {
@@ -373,6 +445,7 @@ function clearTagFilter() {
     selectedTags = [];
     renderTagFilterList();
     updateTagFilterStats();
+    updateTagFilterPagination();
 }
 
 function selectAllTags() {
@@ -382,6 +455,7 @@ function selectAllTags() {
     selectedTags = [...new Set([...selectedTags, ...filteredTags])];
     renderTagFilterList();
     updateTagFilterStats();
+    updateTagFilterPagination();
 }
 
 // Scan Images
