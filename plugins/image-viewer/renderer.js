@@ -104,18 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeApp() {
-    // Verify critical elements exist
-    console.log('Initializing app...');
-    console.log('Scan button:', elements.scanBtn);
-    console.log('Scan dialog:', elements.scanDialog);
-    
-    if (!elements.scanBtn) {
-        console.error('CRITICAL: Scan button not found in DOM!');
-    }
-    if (!elements.scanDialog) {
-        console.error('CRITICAL: Scan dialog not found in DOM!');
-    }
-    
     setupEventListeners();
     setupDragAndDrop();
     loadImages();
@@ -134,7 +122,6 @@ function setupEventListeners() {
     if (elements.scanBtn) {
         elements.scanBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log('Scan button clicked');
             try {
                 openScanDialog();
             } catch (error) {
@@ -142,27 +129,19 @@ function setupEventListeners() {
                 showToast('Failed to open scan dialog: ' + error.message, 'error');
             }
         });
-    } else {
-        console.error('Scan button element not found!');
     }
     
     // Scan dialog events - check if elements exist first
     if (elements.scanDialogClose) {
         elements.scanDialogClose.addEventListener('click', closeScanDialog);
-    } else {
-        console.error('scanDialogClose element not found!');
     }
     if (elements.scanDialogCancel) {
         elements.scanDialogCancel.addEventListener('click', closeScanDialog);
-    } else {
-        console.error('scanDialogCancel element not found!');
     }
     if (elements.scanDialogStart) {
-        console.log('Setting up scanDialogStart click listener');
         elements.scanDialogStart.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Start scan button clicked');
             try {
                 startScan();
             } catch (error) {
@@ -170,8 +149,6 @@ function setupEventListeners() {
                 showToast('Failed to start scan: ' + error.message, 'error');
             }
         });
-    } else {
-        console.error('scanDialogStart element not found!');
     }
     if (elements.scanRefreshFolders) {
         elements.scanRefreshFolders.addEventListener('click', loadScanFolders);
@@ -585,23 +562,17 @@ function selectAllTags() {
 let scanFolders = [];
 
 async function openScanDialog() {
-    console.log('openScanDialog called');
-    console.log('scanDialog element:', elements.scanDialog);
-    
     if (!elements.scanDialog) {
-        console.error('Scan dialog element not found!');
         showToast('Scan dialog not found. Please refresh the page.', 'error');
         return;
     }
     
     if (!elements.scanFolderSelect) {
-        console.error('Scan folder select element not found!');
         showToast('Scan folder select not found. Please refresh the page.', 'error');
         return;
     }
     
     if (!elements.scanFolderPath) {
-        console.error('Scan folder path element not found!');
         showToast('Scan folder path element not found. Please refresh the page.', 'error');
         return;
     }
@@ -613,7 +584,6 @@ async function openScanDialog() {
         elements.scanFolderSelect.value = '';
         updateScanFolderPath();
         await loadScanFolders();
-        console.log('Scan dialog opened successfully');
     } catch (error) {
         console.error('Error in openScanDialog:', error);
         showToast('Failed to open scan dialog: ' + error.message, 'error');
@@ -674,24 +644,18 @@ function updateScanFolderPath() {
 }
 
 async function startScan() {
-    console.log('startScan called');
     try {
         if (!elements.scanFolderSelect) {
-            console.error('scanFolderSelect element not found');
             showToast('Scan folder select not found', 'error');
             return;
         }
         
         const selectedFolder = elements.scanFolderSelect.value || null;
-        console.log('Selected folder:', selectedFolder);
-        
         closeScanDialog();
         
         const folderName = selectedFolder ? selectedFolder.split(/[/\\]/).pop() : 'all folders';
-        console.log('Folder name:', folderName);
         
         if (typeof showConfirmDialog !== 'function') {
-            console.error('showConfirmDialog is not a function!');
             showToast('Confirmation dialog function not found', 'error');
             return;
         }
@@ -700,14 +664,11 @@ async function startScan() {
             `Scan for images in ${selectedFolder ? `"${folderName}" folder` : 'all folders'}? This will import any new images found.`,
             'Scan Images'
         );
-        console.log('User confirmed:', confirmed);
         
         if (!confirmed) {
-            console.log('User cancelled scan');
             return;
         }
         
-        console.log('Starting scan with folder:', selectedFolder);
         await scanImages(selectedFolder);
     } catch (error) {
         console.error('Error in startScan:', error);
@@ -1502,17 +1463,14 @@ function getToastIcon(type) {
  * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
  */
 function showConfirmDialog(message, title = 'Confirm') {
-    console.log('showConfirmDialog called with:', { message, title });
     return new Promise((resolve) => {
         if (!elements.confirmDialog) {
-            console.error('confirmDialog element not found!');
             // Fallback: resolve with true to continue
             resolve(true);
             return;
         }
         
         if (!elements.confirmDialogTitle || !elements.confirmDialogMessage) {
-            console.error('Confirm dialog elements not found!');
             resolve(true);
             return;
         }
@@ -1524,7 +1482,6 @@ function showConfirmDialog(message, title = 'Confirm') {
         // Remove inline display style and show dialog
         elements.confirmDialog.style.display = '';
         elements.confirmDialog.classList.add('visible');
-        console.log('Confirm dialog shown');
         
         // Cleanup function
         const cleanup = () => {
