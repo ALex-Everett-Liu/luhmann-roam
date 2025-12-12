@@ -251,6 +251,37 @@
             </div>
         </div>
 
+        <!-- Scan Dialog -->
+        <div id="scanDialog" class="scan-dialog" style="display: none;">
+            <div class="scan-dialog-content">
+                <div class="scan-dialog-header">
+                    <h3><i class="fas fa-search"></i> Scan Images</h3>
+                    <button id="scanDialogClose" class="dialog-close-btn" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="scan-dialog-body">
+                    <p class="scan-dialog-description">Select a folder to scan for images. Leave empty to scan all folders.</p>
+                    <div class="folder-selection">
+                        <label for="scanFolderSelect">Folder:</label>
+                        <select id="scanFolderSelect" class="folder-select">
+                            <option value="">All Folders (Root)</option>
+                        </select>
+                        <button id="scanRefreshFolders" class="refresh-folders-btn" title="Refresh folder list">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="scanFolderPath" class="folder-path-display"></div>
+                </div>
+                <div class="scan-dialog-footer">
+                    <button id="scanDialogCancel" class="btn-secondary">Cancel</button>
+                    <button id="scanDialogStart" class="btn-primary">
+                        <i class="fas fa-search"></i> Start Scan
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Tag Filter Dialog -->
         <div id="tagFilterDialog" class="tag-filter-dialog">
             <div class="tag-filter-dialog-content">

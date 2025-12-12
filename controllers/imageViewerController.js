@@ -359,12 +359,39 @@ exports.getTags = async (req, res) => {
 };
 
 /**
+ * Get list of subfolders in images directory
+ * GET /api/plugins/image-viewer/subfolders
+ */
+exports.getSubfolders = async (req, res) => {
+  try {
+    const basePath = req.query.path || '';
+    const folders = imageViewerService.getSubfolders(basePath);
+    
+    res.json({
+      success: true,
+      folders: folders.map(folder => ({
+        name: folder.name,
+        relativePath: folder.relativePath
+      })),
+    });
+  } catch (error) {
+    console.error("Get subfolders error:", error);
+    res.status(500).json({
+      error: "Failed to get subfolders",
+      details: error.message,
+    });
+  }
+};
+
+/**
  * Scan and import images from filesystem
  * POST /api/plugins/image-viewer/scan
+ * Body: { subfolder: string (optional) } - relative path to subfolder to scan
  */
 exports.scanImages = async (req, res) => {
   try {
-    const result = await imageViewerService.scanAndImportImages();
+    const subfolder = req.body.subfolder || null;
+    const result = await imageViewerService.scanAndImportImages(subfolder);
     
     res.json({
       success: true,

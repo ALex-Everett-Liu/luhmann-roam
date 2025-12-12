@@ -83,6 +83,13 @@ const elements = {
     confirmDialogMessage: document.getElementById('confirmDialogMessage'),
     confirmDialogCancel: document.getElementById('confirmDialogCancel'),
     confirmDialogConfirm: document.getElementById('confirmDialogConfirm'),
+    scanDialog: document.getElementById('scanDialog'),
+    scanDialogClose: document.getElementById('scanDialogClose'),
+    scanFolderSelect: document.getElementById('scanFolderSelect'),
+    scanRefreshFolders: document.getElementById('scanRefreshFolders'),
+    scanFolderPath: document.getElementById('scanFolderPath'),
+    scanDialogCancel: document.getElementById('scanDialogCancel'),
+    scanDialogStart: document.getElementById('scanDialogStart'),
     imagePagination: document.getElementById('imagePagination'),
     imagePrevPage: document.getElementById('imagePrevPage'),
     imageNextPage: document.getElementById('imageNextPage'),
@@ -110,7 +117,28 @@ function setupEventListeners() {
         loadImages();
         loadTags();
     });
-    elements.scanBtn.addEventListener('click', scanImages);
+    elements.scanBtn.addEventListener('click', openScanDialog);
+    
+    // Scan dialog events
+    elements.scanDialogClose.addEventListener('click', closeScanDialog);
+    elements.scanDialogCancel.addEventListener('click', closeScanDialog);
+    elements.scanDialogStart.addEventListener('click', startScan);
+    elements.scanRefreshFolders.addEventListener('click', loadScanFolders);
+    elements.scanFolderSelect.addEventListener('change', updateScanFolderPath);
+    
+    // Close scan dialog on backdrop click
+    elements.scanDialog.addEventListener('click', (e) => {
+        if (e.target === elements.scanDialog) {
+            closeScanDialog();
+        }
+    });
+    
+    // Close scan dialog on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.scanDialog.classList.contains('visible')) {
+            closeScanDialog();
+        }
+    });
     elements.tagFilterBtn.addEventListener('click', openTagFilterDialog);
     elements.ratingFilter.addEventListener('change', applyFilters);
     elements.ratingMin.addEventListener('input', applyFilters);
@@ -497,23 +525,92 @@ function selectAllTags() {
     updateTagFilterPagination();
 }
 
-// Scan Images
-async function scanImages() {
+// Scan Dialog Functions
+let scanFolders = [];
+
+async function openScanDialog() {
+    elements.scanDialog.classList.add('visible');
+    elements.scanFolderSelect.value = '';
+    updateScanFolderPath();
+    await loadScanFolders();
+}
+
+function closeScanDialog() {
+    elements.scanDialog.classList.remove('visible');
+}
+
+async function loadScanFolders() {
+    try {
+        elements.scanRefreshFolders.disabled = true;
+        const icon = elements.scanRefreshFolders.querySelector('i');
+        if (icon) icon.classList.add('fa-spin');
+        
+        const response = await fetch('/api/plugins/image-viewer/subfolders');
+        if (!response.ok) {
+            throw new Error('Failed to load folders');
+        }
+        
+        const data = await response.json();
+        scanFolders = data.folders || [];
+        
+        // Update select dropdown
+        elements.scanFolderSelect.innerHTML = '<option value="">All Folders (Root)</option>';
+        scanFolders.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder.relativePath;
+            option.textContent = folder.name;
+            elements.scanFolderSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading folders:', error);
+        showToast('Failed to load folders', 'error');
+    } finally {
+        elements.scanRefreshFolders.disabled = false;
+        const icon = elements.scanRefreshFolders.querySelector('i');
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
+function updateScanFolderPath() {
+    const selectedPath = elements.scanFolderSelect.value;
+    if (selectedPath) {
+        elements.scanFolderPath.textContent = `plugins/image-viewer/images/${selectedPath}`;
+    } else {
+        elements.scanFolderPath.textContent = 'plugins/image-viewer/images/';
+    }
+}
+
+async function startScan() {
+    const selectedFolder = elements.scanFolderSelect.value || null;
+    closeScanDialog();
+    
+    const folderName = selectedFolder ? selectedFolder.split(/[/\\]/).pop() : 'all folders';
     const confirmed = await showConfirmDialog(
-        'Scan for images in the images directory? This will import any new images found.',
+        `Scan for images in ${selectedFolder ? `"${folderName}" folder` : 'all folders'}? This will import any new images found.`,
         'Scan Images'
     );
     if (!confirmed) {
         return;
     }
     
+    await scanImages(selectedFolder);
+}
+
+// Scan Images
+async function scanImages(subfolder = null) {
     showLoading(true);
     elements.scanBtn.disabled = true;
     elements.scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
     
     try {
         const response = await fetch('/api/plugins/image-viewer/scan', {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                subfolder: subfolder
+            })
         });
         
         if (!response.ok) {

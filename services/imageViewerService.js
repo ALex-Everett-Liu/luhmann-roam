@@ -704,14 +704,65 @@ async function getAllTags() {
 }
 
 /**
- * Scan images directory and import new files
+ * Get list of subfolders in the images directory
+ * @param {string} basePath - Base path to scan (relative to IMAGE_DIR or absolute)
+ * @returns {Array<{name: string, path: string, relativePath: string}>} Array of folder info
  */
-async function scanAndImportImages() {
+function getSubfolders(basePath = '') {
+  const baseDir = basePath ? toAbsolutePath(path.join('plugins', 'image-viewer', 'images', basePath)) : IMAGE_DIR;
+  
+  if (!fs.existsSync(baseDir) || !fs.statSync(baseDir).isDirectory()) {
+    return [];
+  }
+  
+  const folders = [];
+  try {
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const fullPath = path.join(baseDir, entry.name);
+        const relativePath = basePath ? path.join(basePath, entry.name) : entry.name;
+        folders.push({
+          name: entry.name,
+          path: fullPath,
+          relativePath: relativePath
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${baseDir}:`, error);
+  }
+  
+  return folders.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Scan images directory and import new files
+ * @param {string} subfolder - Optional subfolder path (relative to IMAGE_DIR) to scan. If not provided, scans entire IMAGE_DIR
+ */
+async function scanAndImportImages(subfolder = null) {
   const db = await getDb();
   const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg'];
   const importedFiles = [];
   const skippedFiles = [];
   const errorFiles = [];
+  
+  // Determine scan directory
+  const scanDir = subfolder 
+    ? toAbsolutePath(path.join('plugins', 'image-viewer', 'images', subfolder))
+    : IMAGE_DIR;
+  
+  // Validate scan directory exists and is within IMAGE_DIR
+  if (!fs.existsSync(scanDir)) {
+    throw new Error(`Scan directory does not exist: ${subfolder || 'images'}`);
+  }
+  
+  const scanDirResolved = path.resolve(scanDir);
+  const imageDirResolved = path.resolve(IMAGE_DIR);
+  
+  if (!scanDirResolved.startsWith(imageDirResolved)) {
+    throw new Error('Scan directory must be within images directory');
+  }
   
   // Get all existing file paths from database
   const existingImages = await db.all("SELECT file_path FROM images");
@@ -744,7 +795,7 @@ async function scanAndImportImages() {
     return files;
   }
   
-  const allFiles = scanDirectory(IMAGE_DIR);
+  const allFiles = scanDirectory(scanDir);
   
   // Process each file
   for (const filePath of allFiles) {
@@ -862,6 +913,7 @@ module.exports = {
   deleteImage,
   getAllTags,
   scanAndImportImages,
+  getSubfolders,
   generateImageUrl,
   formatFileSize,
   IMAGE_DIR,

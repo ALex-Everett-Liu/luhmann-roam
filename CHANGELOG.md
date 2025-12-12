@@ -12,15 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Image Viewer Database Portability**: Changed `file_path` field in image viewer database to store relative paths instead of absolute paths
 - **Cross-Platform Compatibility**: Image database now works across different machines with different absolute paths (e.g., `C:\Coding\luhmann-roam` vs `Q:\Coding-2025\luhmann-roam`)
+- **Scan Images Dialog**: Replaced `confirm()` with custom confirmation dialog to avoid Electron Windows focus bugs
+- **Scan Performance**: Scan dialog now allows selecting specific subfolders instead of scanning entire images directory
 
 ### Added
 - **Path Conversion Helpers**: Added `toRelativePath()` and `toAbsolutePath()` helper functions in `imageViewerService.js` for converting between absolute and relative paths
 - **Migration Script**: Created `scripts/migrate-image-paths-to-relative.js` to convert existing absolute paths in database to relative paths
 - **Cross-Drive Path Support**: Migration script handles Windows cross-drive paths (different drive letters) by extracting relative portion from path pattern
+- **Confirmation Dialog System**: Added `showConfirmDialog()` function to replace blocking `confirm()` calls with non-blocking Promise-based modal dialog
+- **Scan Dialog UI**: Added scan dialog with folder selection dropdown, folder path display, and refresh functionality
+- **Subfolder Selection API**: Added `GET /api/plugins/image-viewer/subfolders` endpoint to retrieve list of subfolders in images directory
+- **Selective Folder Scanning**: `scanAndImportImages()` now accepts optional `subfolder` parameter to scan only specific folders
 
 ### Fixed
 - **Database Portability**: Fixed issue where image database couldn't be shared between machines with different absolute paths
 - **Path Conversion**: Fixed `path.relative()` limitation on Windows when paths are on different drives by implementing custom relative path extraction
+- **Electron Focus Bug**: Replaced `confirm()` in scan function with custom dialog to prevent Windows focus loss issues
 
 ### Technical Details
 - **Relative Path Storage**: All `file_path` values now stored relative to project root (e.g., `plugins\image-viewer\images\001\image.jpg`)
@@ -28,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Migration Process**: Migration script uses transactions for safety and provides detailed logging of converted paths
 - **Backward Compatibility**: Existing absolute paths automatically converted to relative paths when migration script is run
 - **Path Pattern Detection**: Migration script detects `plugins/image-viewer/images` pattern in paths to extract relative portion even across different drives
+- **Confirmation Dialog**: Promise-based async confirmation dialog with keyboard support (Enter/Escape) and backdrop click handling
+- **Folder Selection**: Scan dialog loads folders on open, supports refresh, and displays selected folder path
+- **Selective Scanning**: When subfolder is specified, scan validates path is within images directory and scans only that folder recursively
 
 ## [0.34.8] - 2025-12-11
 
