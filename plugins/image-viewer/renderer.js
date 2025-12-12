@@ -1378,6 +1378,19 @@ async function deleteCurrentImage() {
 function handleKeyboard(e) {
     if (!elements.imageViewerModal.classList.contains('visible')) return;
     
+    // Don't trigger shortcuts when user is typing in input fields
+    const activeElement = document.activeElement;
+    const isInputField = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable
+    );
+    
+    // Ignore all shortcuts when typing in input fields
+    if (isInputField) {
+        return;
+    }
+    
     switch(e.key) {
         case '+':
         case '=':
