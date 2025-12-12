@@ -253,6 +253,40 @@ section {
     min-height: 80px;
 }
 
+.range-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.range-input-group input[type="number"] {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background-color: var(--surface);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.range-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.range-input-group input[type="number"]:hover {
+    border-color: var(--primary-color);
+}
+
+.range-separator {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    min-width: 1rem;
+    text-align: center;
+}
+
 .tag-filter-btn {
     padding: 0.5rem 1rem;
     border: 1px solid var(--border);

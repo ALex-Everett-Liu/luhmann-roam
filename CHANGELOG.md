@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.8] - 2025-12-19
+## [0.34.8] - 2025-12-11
 
 ### Added
 - **Tag Filter Pagination**: Pagination system for tag filter dialog with 20 tags per page
@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Image Grid Total Display**: Page info shows current page, total pages, and total image count (e.g., "Page 1 of 5 (120 total)")
 - **Page Jump Functionality**: Input field with "Go to" button to jump directly to any page number
 - **Enter Key Support**: Press Enter in page jump input to navigate to specified page
+- **Ranking Range Filter**: Filter images by ranking value range (e.g., 0-20) with min/max inputs
+- **Rating Range Filter**: Filter images by rating value range (e.g., 5.0-10.0) with min/max inputs
+- **Range Filter Real-time Updates**: Range filters apply automatically as values are entered
 
 ### Changed
 - **Tag Filter Dialog**: Tag list now paginated - only shows 20 tags per page instead of all tags at once
@@ -50,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Faster initial load: Paginated content loads much faster for large collections
   - Better memory usage: Browser doesn't need to manage thousands of DOM nodes
   - Improved scrolling: Smaller DOM tree provides smoother scrolling experience
+- **Range Filters**:
+  - Ranking range: Filter by `ranking >= min` AND `ranking <= max` (NULLs excluded when range specified)
+  - Rating range: Filter by `rating >= min` AND `rating <= max` (supports decimal values)
+  - Range filters work together with existing tag and rating filters
+  - Real-time filtering: Filters apply automatically as values are entered
+  - Inclusive ranges: Both min and max values are included (e.g., 0-20 includes 0 and 20)
 
 ### Benefits
 - **Scalability**: Can handle thousands of tags and images without performance degradation
@@ -58,13 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Flexibility**: Page jump feature allows quick navigation to any page in large collections
 
 ### Affected Components
-- `plugins/image-viewer/index.html` - Added pagination HTML elements for both tag filter and image grid
-- `plugins/image-viewer/renderer.js` - Added pagination state, functions, and rendering logic
-- `plugins/image-viewer/styles.css` - Added pagination control styles (reuses tag filter pagination styles)
+- `plugins/image-viewer/index.html` - Added pagination HTML elements for both tag filter and image grid, added ranking/rating range filter inputs
+- `plugins/image-viewer/renderer.js` - Added pagination state, functions, and rendering logic; added range filter collection and event listeners
+- `plugins/image-viewer/styles.css` - Added pagination control styles (reuses tag filter pagination styles), added range input group styles
+- `controllers/imageViewerController.js` - Added parsing for ratingMin, ratingMax, rankingMin, rankingMax query parameters
+- `services/imageViewerService.js` - Added SQL conditions for ranking and rating range filters with NULL handling
 
-Tag filter and image grid now scale efficiently to thousands of items with intuitive pagination!
+Tag filter and image grid now scale efficiently to thousands of items with intuitive pagination! Range filters enable precise filtering by ranking and rating values.
 
-## [0.34.7] - 2025-12-19
+## [0.34.7] - 2025-12-11
 
 ### Changed
 - **Tag Schema Normalization**: Migrated from denormalized tag storage to normalized database schema
@@ -101,7 +112,7 @@ Tag filter and image grid now scale efficiently to thousands of items with intui
 
 Database migration runs automatically on first access - existing tag data preserved and converted seamlessly!
 
-## [0.34.6] - 2025-12-19
+## [0.34.6] - 2025-12-11
 
 ### Fixed
 - **View Count Tracking**: Fixed view count being incremented for thumbnails in grid view - now only increments when viewing full image in viewer
@@ -141,7 +152,7 @@ Database migration runs automatically on first access - existing tag data preser
 
 View count tracking now works correctly, and tag filtering scales to thousands of tags!
 
-## [0.34.5] - 2025-12-19
+## [0.34.5] - 2025-12-11
 
 ### Added
 - **Image Ranking System**: Added `ranking` field to image viewer for advanced image organization

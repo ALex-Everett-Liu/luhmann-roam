@@ -332,7 +332,10 @@ async function getImages(filters = {}) {
   const params = [];
   
   // Filter by tags
-  if (filters.tags && filters.tags.length > 0) {
+  const hasTagFilter = filters.tags && filters.tags.length > 0;
+  const prefix = hasTagFilter ? "i." : "";
+  
+  if (hasTagFilter) {
     query = `
       SELECT DISTINCT i.* FROM images i
       INNER JOIN image_tags it ON i.id = it.image_id
@@ -340,17 +343,40 @@ async function getImages(filters = {}) {
       WHERE t.name IN (${filters.tags.map(() => "?").join(",")})
     `;
     params.push(...filters.tags);
-    
-    if (filters.rating !== undefined) {
-      conditions.push("i.rating >= ?");
-      params.push(filters.rating);
-    }
-  } else if (filters.rating !== undefined) {
-    conditions.push("rating >= ?");
+  }
+  
+  // Rating filters (minimum rating - legacy filter)
+  if (filters.rating !== undefined) {
+    conditions.push(`${prefix}rating >= ?`);
     params.push(filters.rating);
   }
   
-  if (conditions.length > 0 && !filters.tags) {
+  // Rating range filters
+  if (filters.ratingMin !== undefined) {
+    conditions.push(`${prefix}rating >= ?`);
+    params.push(filters.ratingMin);
+  }
+  if (filters.ratingMax !== undefined) {
+    conditions.push(`${prefix}rating <= ?`);
+    params.push(filters.ratingMax);
+  }
+  
+  // Ranking range filters (exclude NULLs when range is specified)
+  const hasRankingFilter = filters.rankingMin !== undefined || filters.rankingMax !== undefined;
+  if (hasRankingFilter) {
+    conditions.push(`${prefix}ranking IS NOT NULL`);
+    if (filters.rankingMin !== undefined) {
+      conditions.push(`${prefix}ranking >= ?`);
+      params.push(filters.rankingMin);
+    }
+    if (filters.rankingMax !== undefined) {
+      conditions.push(`${prefix}ranking <= ?`);
+      params.push(filters.rankingMax);
+    }
+  }
+  
+  // Apply conditions
+  if (conditions.length > 0 && !hasTagFilter) {
     query += " WHERE " + conditions.join(" AND ");
   } else if (conditions.length > 0) {
     query += " AND " + conditions.join(" AND ");

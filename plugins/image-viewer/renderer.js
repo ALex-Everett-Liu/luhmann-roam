@@ -42,6 +42,10 @@ const elements = {
     tagFilterPageJump: document.getElementById('tagFilterPageJump'),
     tagFilterPageJumpBtn: document.getElementById('tagFilterPageJumpBtn'),
     ratingFilter: document.getElementById('ratingFilter'),
+    ratingMin: document.getElementById('ratingMin'),
+    ratingMax: document.getElementById('ratingMax'),
+    rankingMin: document.getElementById('rankingMin'),
+    rankingMax: document.getElementById('rankingMax'),
     sortBy: document.getElementById('sortBy'),
     sortOrder: document.getElementById('sortOrder'),
     refreshBtn: document.getElementById('refreshBtn'),
@@ -104,6 +108,10 @@ function setupEventListeners() {
     elements.scanBtn.addEventListener('click', scanImages);
     elements.tagFilterBtn.addEventListener('click', openTagFilterDialog);
     elements.ratingFilter.addEventListener('change', applyFilters);
+    elements.ratingMin.addEventListener('input', applyFilters);
+    elements.ratingMax.addEventListener('input', applyFilters);
+    elements.rankingMin.addEventListener('input', applyFilters);
+    elements.rankingMax.addEventListener('input', applyFilters);
     
     // Tag filter dialog events
     elements.tagFilterDialogClose.addEventListener('click', closeTagFilterDialog);
@@ -262,12 +270,20 @@ async function uploadImage(file) {
 async function loadImages() {
     try {
         const rating = elements.ratingFilter.value || undefined;
+        const ratingMin = elements.ratingMin.value.trim() || undefined;
+        const ratingMax = elements.ratingMax.value.trim() || undefined;
+        const rankingMin = elements.rankingMin.value.trim() || undefined;
+        const rankingMax = elements.rankingMax.value.trim() || undefined;
         const sortBy = elements.sortBy.value;
         const sortOrder = elements.sortOrder.value;
         
         const params = new URLSearchParams();
         if (selectedTags.length > 0) params.append('tags', selectedTags.join(','));
         if (rating) params.append('rating', rating);
+        if (ratingMin) params.append('ratingMin', ratingMin);
+        if (ratingMax) params.append('ratingMax', ratingMax);
+        if (rankingMin) params.append('rankingMin', rankingMin);
+        if (rankingMax) params.append('rankingMax', rankingMax);
         params.append('sortBy', sortBy);
         params.append('sortOrder', sortOrder);
         

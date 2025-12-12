@@ -58,6 +58,22 @@
                             </select>
                         </div>
                         <div class="filter-group">
+                            <label>Rating Range:</label>
+                            <div class="range-input-group">
+                                <input type="number" id="ratingMin" placeholder="Min" step="0.1" min="0">
+                                <span class="range-separator">-</span>
+                                <input type="number" id="ratingMax" placeholder="Max" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label>Ranking Range:</label>
+                            <div class="range-input-group">
+                                <input type="number" id="rankingMin" placeholder="Min" step="0.1" min="0">
+                                <span class="range-separator">-</span>
+                                <input type="number" id="rankingMax" placeholder="Max" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <div class="filter-group">
                             <label for="sortBy">Sort By:</label>
                             <select id="sortBy">
                                 <option value="default">Default (Ranking, Rating)</option>
