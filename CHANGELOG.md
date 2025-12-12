@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Database Portability**: Fixed issue where image database couldn't be shared between machines with different absolute paths
 - **Path Conversion**: Fixed `path.relative()` limitation on Windows when paths are on different drives by implementing custom relative path extraction
 - **Electron Focus Bug**: Replaced `confirm()` in scan function with custom dialog to prevent Windows focus loss issues
+- **Dialog Visibility**: Fixed scan dialog and confirmation dialog not appearing due to inline `style="display: none;"` overriding CSS visibility rules
+- **Button Event Handling**: Fixed "Start Scan" button not working by adding proper event handlers and `type="button"` attributes
 
 ### Technical Details
 - **Relative Path Storage**: All `file_path` values now stored relative to project root (e.g., `plugins\image-viewer\images\001\image.jpg`)

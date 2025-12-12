@@ -236,7 +236,7 @@
         <div id="toastContainer" class="toast-container"></div>
 
         <!-- Confirmation Dialog -->
-        <div id="confirmDialog" class="confirm-dialog" style="display: none;">
+        <div id="confirmDialog" class="confirm-dialog">
             <div class="confirm-dialog-content">
                 <div class="confirm-dialog-header">
                     <h3 id="confirmDialogTitle"><i class="fas fa-question-circle"></i> Confirm</h3>
@@ -245,14 +245,14 @@
                     <p id="confirmDialogMessage"></p>
                 </div>
                 <div class="confirm-dialog-footer">
-                    <button id="confirmDialogCancel" class="btn-secondary">Cancel</button>
-                    <button id="confirmDialogConfirm" class="btn-primary">Confirm</button>
+                    <button id="confirmDialogCancel" type="button" class="btn-secondary">Cancel</button>
+                    <button id="confirmDialogConfirm" type="button" class="btn-primary">Confirm</button>
                 </div>
             </div>
         </div>
 
         <!-- Scan Dialog -->
-        <div id="scanDialog" class="scan-dialog" style="display: none;">
+        <div id="scanDialog" class="scan-dialog">
             <div class="scan-dialog-content">
                 <div class="scan-dialog-header">
                     <h3><i class="fas fa-search"></i> Scan Images</h3>
@@ -275,7 +275,7 @@
                 </div>
                 <div class="scan-dialog-footer">
                     <button id="scanDialogCancel" class="btn-secondary">Cancel</button>
-                    <button id="scanDialogStart" class="btn-primary">
+                    <button id="scanDialogStart" type="button" class="btn-primary">
                         <i class="fas fa-search"></i> Start Scan
                     </button>
                 </div>

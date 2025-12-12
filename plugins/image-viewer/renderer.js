@@ -104,6 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeApp() {
+    // Verify critical elements exist
+    console.log('Initializing app...');
+    console.log('Scan button:', elements.scanBtn);
+    console.log('Scan dialog:', elements.scanDialog);
+    
+    if (!elements.scanBtn) {
+        console.error('CRITICAL: Scan button not found in DOM!');
+    }
+    if (!elements.scanDialog) {
+        console.error('CRITICAL: Scan dialog not found in DOM!');
+    }
+    
     setupEventListeners();
     setupDragAndDrop();
     loadImages();
@@ -117,25 +129,69 @@ function setupEventListeners() {
         loadImages();
         loadTags();
     });
-    elements.scanBtn.addEventListener('click', openScanDialog);
     
-    // Scan dialog events
-    elements.scanDialogClose.addEventListener('click', closeScanDialog);
-    elements.scanDialogCancel.addEventListener('click', closeScanDialog);
-    elements.scanDialogStart.addEventListener('click', startScan);
-    elements.scanRefreshFolders.addEventListener('click', loadScanFolders);
-    elements.scanFolderSelect.addEventListener('change', updateScanFolderPath);
+    // Check if scan button exists before adding listener
+    if (elements.scanBtn) {
+        elements.scanBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Scan button clicked');
+            try {
+                openScanDialog();
+            } catch (error) {
+                console.error('Error opening scan dialog:', error);
+                showToast('Failed to open scan dialog: ' + error.message, 'error');
+            }
+        });
+    } else {
+        console.error('Scan button element not found!');
+    }
+    
+    // Scan dialog events - check if elements exist first
+    if (elements.scanDialogClose) {
+        elements.scanDialogClose.addEventListener('click', closeScanDialog);
+    } else {
+        console.error('scanDialogClose element not found!');
+    }
+    if (elements.scanDialogCancel) {
+        elements.scanDialogCancel.addEventListener('click', closeScanDialog);
+    } else {
+        console.error('scanDialogCancel element not found!');
+    }
+    if (elements.scanDialogStart) {
+        console.log('Setting up scanDialogStart click listener');
+        elements.scanDialogStart.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Start scan button clicked');
+            try {
+                startScan();
+            } catch (error) {
+                console.error('Error in startScan click handler:', error);
+                showToast('Failed to start scan: ' + error.message, 'error');
+            }
+        });
+    } else {
+        console.error('scanDialogStart element not found!');
+    }
+    if (elements.scanRefreshFolders) {
+        elements.scanRefreshFolders.addEventListener('click', loadScanFolders);
+    }
+    if (elements.scanFolderSelect) {
+        elements.scanFolderSelect.addEventListener('change', updateScanFolderPath);
+    }
     
     // Close scan dialog on backdrop click
-    elements.scanDialog.addEventListener('click', (e) => {
-        if (e.target === elements.scanDialog) {
-            closeScanDialog();
-        }
-    });
+    if (elements.scanDialog) {
+        elements.scanDialog.addEventListener('click', (e) => {
+            if (e.target === elements.scanDialog) {
+                closeScanDialog();
+            }
+        });
+    }
     
     // Close scan dialog on Escape key
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elements.scanDialog.classList.contains('visible')) {
+        if (e.key === 'Escape' && elements.scanDialog && elements.scanDialog.classList.contains('visible')) {
             closeScanDialog();
         }
     });
@@ -529,14 +585,47 @@ function selectAllTags() {
 let scanFolders = [];
 
 async function openScanDialog() {
-    elements.scanDialog.classList.add('visible');
-    elements.scanFolderSelect.value = '';
-    updateScanFolderPath();
-    await loadScanFolders();
+    console.log('openScanDialog called');
+    console.log('scanDialog element:', elements.scanDialog);
+    
+    if (!elements.scanDialog) {
+        console.error('Scan dialog element not found!');
+        showToast('Scan dialog not found. Please refresh the page.', 'error');
+        return;
+    }
+    
+    if (!elements.scanFolderSelect) {
+        console.error('Scan folder select element not found!');
+        showToast('Scan folder select not found. Please refresh the page.', 'error');
+        return;
+    }
+    
+    if (!elements.scanFolderPath) {
+        console.error('Scan folder path element not found!');
+        showToast('Scan folder path element not found. Please refresh the page.', 'error');
+        return;
+    }
+    
+    try {
+        // Remove inline display:none style to allow CSS to control visibility
+        elements.scanDialog.style.display = '';
+        elements.scanDialog.classList.add('visible');
+        elements.scanFolderSelect.value = '';
+        updateScanFolderPath();
+        await loadScanFolders();
+        console.log('Scan dialog opened successfully');
+    } catch (error) {
+        console.error('Error in openScanDialog:', error);
+        showToast('Failed to open scan dialog: ' + error.message, 'error');
+    }
 }
 
 function closeScanDialog() {
-    elements.scanDialog.classList.remove('visible');
+    if (elements.scanDialog) {
+        elements.scanDialog.classList.remove('visible');
+        // Set inline style to hide when closed
+        elements.scanDialog.style.display = 'none';
+    }
 }
 
 async function loadScanFolders() {
@@ -572,6 +661,10 @@ async function loadScanFolders() {
 }
 
 function updateScanFolderPath() {
+    if (!elements.scanFolderSelect || !elements.scanFolderPath) {
+        console.warn('updateScanFolderPath: elements not found');
+        return;
+    }
     const selectedPath = elements.scanFolderSelect.value;
     if (selectedPath) {
         elements.scanFolderPath.textContent = `plugins/image-viewer/images/${selectedPath}`;
@@ -581,19 +674,45 @@ function updateScanFolderPath() {
 }
 
 async function startScan() {
-    const selectedFolder = elements.scanFolderSelect.value || null;
-    closeScanDialog();
-    
-    const folderName = selectedFolder ? selectedFolder.split(/[/\\]/).pop() : 'all folders';
-    const confirmed = await showConfirmDialog(
-        `Scan for images in ${selectedFolder ? `"${folderName}" folder` : 'all folders'}? This will import any new images found.`,
-        'Scan Images'
-    );
-    if (!confirmed) {
-        return;
+    console.log('startScan called');
+    try {
+        if (!elements.scanFolderSelect) {
+            console.error('scanFolderSelect element not found');
+            showToast('Scan folder select not found', 'error');
+            return;
+        }
+        
+        const selectedFolder = elements.scanFolderSelect.value || null;
+        console.log('Selected folder:', selectedFolder);
+        
+        closeScanDialog();
+        
+        const folderName = selectedFolder ? selectedFolder.split(/[/\\]/).pop() : 'all folders';
+        console.log('Folder name:', folderName);
+        
+        if (typeof showConfirmDialog !== 'function') {
+            console.error('showConfirmDialog is not a function!');
+            showToast('Confirmation dialog function not found', 'error');
+            return;
+        }
+        
+        const confirmed = await showConfirmDialog(
+            `Scan for images in ${selectedFolder ? `"${folderName}" folder` : 'all folders'}? This will import any new images found.`,
+            'Scan Images'
+        );
+        console.log('User confirmed:', confirmed);
+        
+        if (!confirmed) {
+            console.log('User cancelled scan');
+            return;
+        }
+        
+        console.log('Starting scan with folder:', selectedFolder);
+        await scanImages(selectedFolder);
+    } catch (error) {
+        console.error('Error in startScan:', error);
+        showToast('Failed to start scan: ' + error.message, 'error');
     }
-    
-    await scanImages(selectedFolder);
 }
 
 // Scan Images
@@ -1383,20 +1502,39 @@ function getToastIcon(type) {
  * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
  */
 function showConfirmDialog(message, title = 'Confirm') {
+    console.log('showConfirmDialog called with:', { message, title });
     return new Promise((resolve) => {
+        if (!elements.confirmDialog) {
+            console.error('confirmDialog element not found!');
+            // Fallback: resolve with true to continue
+            resolve(true);
+            return;
+        }
+        
+        if (!elements.confirmDialogTitle || !elements.confirmDialogMessage) {
+            console.error('Confirm dialog elements not found!');
+            resolve(true);
+            return;
+        }
+        
         // Set dialog content
         elements.confirmDialogTitle.innerHTML = `<i class="fas fa-question-circle"></i> ${title}`;
         elements.confirmDialogMessage.textContent = message;
         
-        // Show dialog
+        // Remove inline display style and show dialog
+        elements.confirmDialog.style.display = '';
         elements.confirmDialog.classList.add('visible');
+        console.log('Confirm dialog shown');
         
         // Cleanup function
         const cleanup = () => {
-            elements.confirmDialog.classList.remove('visible');
-            elements.confirmDialogCancel.onclick = null;
-            elements.confirmDialogConfirm.onclick = null;
-            elements.confirmDialog.onclick = null;
+            if (elements.confirmDialog) {
+                elements.confirmDialog.classList.remove('visible');
+                elements.confirmDialog.style.display = 'none';
+            }
+            if (elements.confirmDialogCancel) elements.confirmDialogCancel.onclick = null;
+            if (elements.confirmDialogConfirm) elements.confirmDialogConfirm.onclick = null;
+            if (elements.confirmDialog) elements.confirmDialog.onclick = null;
             document.removeEventListener('keydown', handleKeyDown);
         };
         
