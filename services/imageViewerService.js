@@ -6,12 +6,83 @@ const sqlite3 = require("sqlite3").verbose();
 const { open } = require("sqlite");
 
 // Directory paths
+const PROJECT_ROOT = path.join(__dirname, "..");
 const IMAGE_DIR = path.join(__dirname, "..", "plugins", "image-viewer", "images");
 const DB_PATH = path.join(__dirname, "..", "plugins", "image-viewer", "image-viewer.db");
 
 // Ensure directories exist
 if (!fs.existsSync(IMAGE_DIR)) {
   fs.mkdirSync(IMAGE_DIR, { recursive: true });
+}
+
+/**
+ * Convert absolute path to relative path (relative to project root)
+ * @param {string} absolutePath - Absolute file path
+ * @returns {string} Relative path from project root
+ */
+function toRelativePath(absolutePath) {
+  if (!absolutePath) return absolutePath;
+  
+  // If already relative, return as-is
+  if (!path.isAbsolute(absolutePath)) {
+    return absolutePath;
+  }
+  
+  const resolvedAbsolute = path.resolve(absolutePath);
+  const resolvedRoot = path.resolve(PROJECT_ROOT);
+  
+  // Try normal path.relative first (works when paths are on same drive)
+  if (resolvedAbsolute.startsWith(resolvedRoot)) {
+    return path.relative(resolvedRoot, resolvedAbsolute);
+  }
+  
+  // Handle cross-drive paths (Windows: different drive letters)
+  // Extract the relative portion by finding the common pattern
+  // Paths should be: {any_drive}:\{any_path}\plugins\image-viewer\images\...
+  // We want: plugins\image-viewer\images\...
+  
+  // Normalize path separators
+  const normalizedPath = resolvedAbsolute.replace(/\\/g, '/');
+  
+  // Find the plugins/image-viewer/images pattern
+  const pluginsPattern = 'plugins/image-viewer/images';
+  const pluginsIndex = normalizedPath.toLowerCase().indexOf(pluginsPattern.toLowerCase());
+  
+  if (pluginsIndex !== -1) {
+    // Extract everything from plugins/image-viewer/images onwards
+    const relativePart = normalizedPath.substring(pluginsIndex);
+    // Convert back to platform-specific separators
+    return relativePart.replace(/\//g, path.sep);
+  }
+  
+  // Fallback: if we can't find the pattern, try to extract relative to a common base
+  // Look for "plugins" directory
+  const pluginsDirIndex = normalizedPath.toLowerCase().indexOf('/plugins/');
+  if (pluginsDirIndex !== -1) {
+    const relativePart = normalizedPath.substring(pluginsDirIndex + 1); // +1 to skip leading /
+    return relativePart.replace(/\//g, path.sep);
+  }
+  
+  // Last resort: return the path as-is (shouldn't happen with valid paths)
+  console.warn(`Warning: Could not convert path to relative: ${absolutePath}`);
+  return absolutePath;
+}
+
+/**
+ * Convert relative path to absolute path (relative to project root)
+ * @param {string} relativePath - Relative file path from project root
+ * @returns {string} Absolute file path
+ */
+function toAbsolutePath(relativePath) {
+  if (!relativePath) return relativePath;
+  
+  // If already absolute, return as-is
+  if (path.isAbsolute(relativePath)) {
+    return path.resolve(relativePath);
+  }
+  
+  // Convert relative path to absolute
+  return path.resolve(PROJECT_ROOT, relativePath);
 }
 
 // Database connection cache
@@ -289,8 +360,9 @@ async function saveImage(file, customPath = null) {
   const metadata = await getImageMetadata(filePath);
   const stats = fs.statSync(filePath);
   
-  // Insert into database
+  // Insert into database (store relative path)
   const now = Date.now();
+  const relativeFilePath = toRelativePath(filePath);
   await db.run(`
     INSERT INTO images (
       id, filename, original_filename, file_path, file_size, mime_type,
@@ -300,7 +372,7 @@ async function saveImage(file, customPath = null) {
     imageId,
     filename,
     file.originalname,
-    filePath,
+    relativeFilePath,
     stats.size,
     file.mimetype,
     metadata.width,
@@ -315,7 +387,7 @@ async function saveImage(file, customPath = null) {
   return {
     id: imageId,
     filename: file.originalname,
-    filePath: filePath,
+    filePath: toRelativePath(filePath),
     ...metadata,
     fileSize: stats.size,
     fileSizeFormatted: formatFileSize(stats.size),
@@ -417,10 +489,11 @@ async function getImages(filters = {}) {
   
   const images = await db.all(query, params);
   
-  // Get tags for each image
+  // Get tags for each image and convert relative paths to absolute
   const imagesWithTags = await Promise.all(
     images.map(async (image) => ({
       ...image,
+      file_path: toAbsolutePath(image.file_path),
       tags: await getImageTags(image.id),
     }))
   );
@@ -435,10 +508,12 @@ async function getImageById(imageId) {
   const db = await getDb();
   const image = await db.get("SELECT * FROM images WHERE id = ?", imageId);
   if (!image) return null;
-  
+
   const tags = await getImageTags(imageId);
+  // Convert relative file_path to absolute for use in controllers
   return {
     ...image,
+    file_path: toAbsolutePath(image.file_path),
     tags: tags,
   };
 }
@@ -607,9 +682,12 @@ async function deleteImage(imageId) {
     throw new Error("Image not found");
   }
   
+  // Convert relative path to absolute for file operations
+  const absolutePath = toAbsolutePath(image.file_path);
+  
   // Delete file
-  if (fs.existsSync(image.file_path)) {
-    fs.unlinkSync(image.file_path);
+  if (fs.existsSync(absolutePath)) {
+    fs.unlinkSync(absolutePath);
   }
   
   // Delete from database (tags will be deleted via CASCADE)
@@ -637,7 +715,11 @@ async function scanAndImportImages() {
   
   // Get all existing file paths from database
   const existingImages = await db.all("SELECT file_path FROM images");
-  const existingPaths = new Set(existingImages.map(img => path.resolve(img.file_path)));
+  // Convert relative paths to absolute for comparison
+  const existingPaths = new Set(existingImages.map(img => {
+    const absPath = toAbsolutePath(img.file_path);
+    return path.resolve(absPath);
+  }));
   
   // Recursively scan directory
   function scanDirectory(dir) {
@@ -713,7 +795,8 @@ async function scanAndImportImages() {
       const createdAt = stats.mtime ? stats.mtime.getTime() : Date.now();
       const now = Date.now();
       
-      // Insert into database
+      // Insert into database (store relative path)
+      const relativeFilePath = toRelativePath(resolvedPath);
       await db.run(`
         INSERT INTO images (
           id, filename, original_filename, file_path, file_size, mime_type,
@@ -723,7 +806,7 @@ async function scanAndImportImages() {
         imageId,
         originalFilename, // Keep original filename
         originalFilename, // original_filename same as filename
-        resolvedPath, // Use resolved absolute path
+        relativeFilePath, // Store relative path
         stats.size,
         mimeType,
         metadata.width,
@@ -738,7 +821,7 @@ async function scanAndImportImages() {
       importedFiles.push({
         id: imageId,
         filename: originalFilename,
-        filePath: resolvedPath,
+        filePath: relativeFilePath,
         ...metadata,
         fileSize: stats.size,
       });

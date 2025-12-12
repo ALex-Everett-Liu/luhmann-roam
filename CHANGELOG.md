@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.9] - 2025-01-XX
+
+### Changed
+- **Image Viewer Database Portability**: Changed `file_path` field in image viewer database to store relative paths instead of absolute paths
+- **Cross-Platform Compatibility**: Image database now works across different machines with different absolute paths (e.g., `C:\Coding\luhmann-roam` vs `Q:\Coding-2025\luhmann-roam`)
+
+### Added
+- **Path Conversion Helpers**: Added `toRelativePath()` and `toAbsolutePath()` helper functions in `imageViewerService.js` for converting between absolute and relative paths
+- **Migration Script**: Created `scripts/migrate-image-paths-to-relative.js` to convert existing absolute paths in database to relative paths
+- **Cross-Drive Path Support**: Migration script handles Windows cross-drive paths (different drive letters) by extracting relative portion from path pattern
+
+### Fixed
+- **Database Portability**: Fixed issue where image database couldn't be shared between machines with different absolute paths
+- **Path Conversion**: Fixed `path.relative()` limitation on Windows when paths are on different drives by implementing custom relative path extraction
+
+### Technical Details
+- **Relative Path Storage**: All `file_path` values now stored relative to project root (e.g., `plugins\image-viewer\images\001\image.jpg`)
+- **Automatic Conversion**: Service functions automatically convert relative paths to absolute when needed for file operations
+- **Migration Process**: Migration script uses transactions for safety and provides detailed logging of converted paths
+- **Backward Compatibility**: Existing absolute paths automatically converted to relative paths when migration script is run
+- **Path Pattern Detection**: Migration script detects `plugins/image-viewer/images` pattern in paths to extract relative portion even across different drives
+
 ## [0.34.8] - 2025-12-11
 
 ### Added
