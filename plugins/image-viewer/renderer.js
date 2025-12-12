@@ -78,6 +78,11 @@ const elements = {
     viewerDeleteBtn: document.getElementById('viewerDeleteBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toastContainer: document.getElementById('toastContainer'),
+    confirmDialog: document.getElementById('confirmDialog'),
+    confirmDialogTitle: document.getElementById('confirmDialogTitle'),
+    confirmDialogMessage: document.getElementById('confirmDialogMessage'),
+    confirmDialogCancel: document.getElementById('confirmDialogCancel'),
+    confirmDialogConfirm: document.getElementById('confirmDialogConfirm'),
     imagePagination: document.getElementById('imagePagination'),
     imagePrevPage: document.getElementById('imagePrevPage'),
     imageNextPage: document.getElementById('imageNextPage'),
@@ -494,7 +499,11 @@ function selectAllTags() {
 
 // Scan Images
 async function scanImages() {
-    if (!confirm('Scan for images in the images directory? This will import any new images found.')) {
+    const confirmed = await showConfirmDialog(
+        'Scan for images in the images directory? This will import any new images found.',
+        'Scan Images'
+    );
+    if (!confirmed) {
         return;
     }
     
@@ -1268,6 +1277,70 @@ function getToastIcon(type) {
         info: 'fa-info-circle'
     };
     return icons[type] || icons.info;
+}
+
+/**
+ * Show a confirmation dialog (replaces confirm() to avoid Electron Windows focus bugs)
+ * @param {string} message - The confirmation message to display
+ * @param {string} title - Optional title for the dialog (default: "Confirm")
+ * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled
+ */
+function showConfirmDialog(message, title = 'Confirm') {
+    return new Promise((resolve) => {
+        // Set dialog content
+        elements.confirmDialogTitle.innerHTML = `<i class="fas fa-question-circle"></i> ${title}`;
+        elements.confirmDialogMessage.textContent = message;
+        
+        // Show dialog
+        elements.confirmDialog.classList.add('visible');
+        
+        // Cleanup function
+        const cleanup = () => {
+            elements.confirmDialog.classList.remove('visible');
+            elements.confirmDialogCancel.onclick = null;
+            elements.confirmDialogConfirm.onclick = null;
+            elements.confirmDialog.onclick = null;
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+        
+        // Handle keydown events
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cleanup();
+                resolve(false);
+            } else if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                e.preventDefault();
+                cleanup();
+                resolve(true);
+            }
+        };
+        
+        // Set up event listeners
+        elements.confirmDialogConfirm.onclick = () => {
+            cleanup();
+            resolve(true);
+        };
+        
+        elements.confirmDialogCancel.onclick = () => {
+            cleanup();
+            resolve(false);
+        };
+        
+        // Close on backdrop click (but not on content click)
+        elements.confirmDialog.onclick = (e) => {
+            if (e.target === elements.confirmDialog) {
+                cleanup();
+                resolve(false);
+            }
+        };
+        
+        // Add keyboard listener
+        document.addEventListener('keydown', handleKeyDown);
+        
+        // Focus the confirm button for better keyboard navigation
+        elements.confirmDialogConfirm.focus();
+    });
 }
 
 // Make functions available globally

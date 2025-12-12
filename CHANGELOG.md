@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.9] - 2025-01-XX
+## [0.34.9] - 2025-12-12
 
 ### Changed
 - **Image Viewer Database Portability**: Changed `file_path` field in image viewer database to store relative paths instead of absolute paths
