@@ -70,6 +70,8 @@ const elements = {
     viewerTagsInput: document.getElementById('viewerTagsInput'),
     viewerAddTags: document.getElementById('viewerAddTags'),
     viewerTagsList: document.getElementById('viewerTagsList'),
+    viewerDescriptionInput: document.getElementById('viewerDescriptionInput'),
+    viewerDescriptionSave: document.getElementById('viewerDescriptionSave'),
     viewerViewCount: document.getElementById('viewerViewCount'),
     viewerFileSize: document.getElementById('viewerFileSize'),
     viewerDimensions: document.getElementById('viewerDimensions'),
@@ -232,6 +234,7 @@ function setupEventListeners() {
     elements.viewerRatingSave.addEventListener('click', saveRating);
     elements.viewerRankingSave.addEventListener('click', saveRanking);
     elements.viewerRankingClear.addEventListener('click', clearRanking);
+    elements.viewerDescriptionSave.addEventListener('click', saveDescription);
     
     // Allow Enter key to save
     elements.viewerRatingInput.addEventListener('keypress', (e) => {
@@ -239,6 +242,13 @@ function setupEventListeners() {
     });
     elements.viewerRankingInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') saveRanking();
+    });
+    // Allow Ctrl+Enter to save description (Enter alone creates new line)
+    elements.viewerDescriptionInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            saveDescription();
+        }
     });
     
     // Keyboard shortcuts
@@ -865,6 +875,9 @@ async function openViewer(imageId) {
     updateRatingDisplay(currentImage.rating);
     updateRankingDisplay(currentImage.ranking);
     
+    // Update description
+    updateDescriptionDisplay(currentImage.description);
+    
     // Update tags
     renderTags(currentImage.tags);
     
@@ -1256,6 +1269,37 @@ async function clearRanking() {
     
     elements.viewerRankingInput.value = '';
     await saveRanking();
+}
+
+// Description
+function updateDescriptionDisplay(description) {
+    if (elements.viewerDescriptionInput) {
+        elements.viewerDescriptionInput.value = description !== null && description !== undefined ? description : '';
+    }
+}
+
+async function saveDescription() {
+    if (!currentImage) return;
+    
+    const descriptionValue = elements.viewerDescriptionInput.value.trim();
+    const finalDescription = descriptionValue === '' ? null : descriptionValue;
+    
+    try {
+        const response = await fetch(`/api/plugins/image-viewer/images/${currentImage.id}/description`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: finalDescription })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update description');
+        
+        const data = await response.json();
+        currentImage.description = data.description;
+        updateDescriptionDisplay(data.description);
+        showToast('Description updated', 'success');
+    } catch (error) {
+        showToast('Failed to update description', 'error');
+    }
 }
 
 // Tags

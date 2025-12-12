@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.10] - 2025-12-12
+
+### Added
+- **Image Description Field**: Added description field for images - supports long-form text descriptions that can't fit in filename or tags
+- **Description Database Column**: Added `description` column (TEXT, nullable) to images table with automatic migration for existing databases
+- **Description UI**: Added description textarea and save button in Image Details section of image viewer modal
+- **Description API Endpoint**: Added `POST /api/plugins/image-viewer/images/:id/description` endpoint for updating image descriptions
+- **Keyboard Shortcut Support**: Added Ctrl+Enter (Cmd+Enter on Mac) keyboard shortcut to save description while typing
+- **Description Display**: Description automatically displayed in Image Details section when viewing an image
+
+### Changed
+- **Keyboard Shortcuts**: Fixed keyboard shortcuts (f, 0, -, etc.) interfering with input fields - shortcuts now ignored when typing in input boxes
+- **Image API Responses**: Updated `getImages()` and `getImage()` endpoints to include description field in responses
+
+### Fixed
+- **Input Field Interference**: Fixed issue where pressing keys like `f`, `0`, `-` in input boxes would trigger image viewer shortcuts instead of typing characters
+- **Keyboard Event Handling**: Keyboard shortcuts now properly detect when user is typing in input fields and skip shortcut processing
+
+### Technical Details
+- **Database Migration**: Description column added via `ALTER TABLE` migration - handles existing databases gracefully
+- **Service Function**: `updateImageDescription()` function in `imageViewerService.js` handles description updates with proper null/empty string handling
+- **Frontend Integration**: Description field integrated into existing image viewer UI following same patterns as rating and ranking fields
+- **Input Detection**: Keyboard shortcut handler checks for active input/textarea/contenteditable elements before processing shortcuts
+- **Description Storage**: Descriptions stored as TEXT in database, can be null or empty string (empty strings converted to null for consistency)
+- **UI Styling**: Description textarea styled to match existing dark theme with proper focus states and placeholder text
+- **Event Handling**: Description save button and Ctrl+Enter shortcut properly integrated with existing event listener system
+
 ## [0.34.9] - 2025-12-12
 
 ### Changed

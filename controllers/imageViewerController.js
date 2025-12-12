@@ -77,6 +77,7 @@ exports.getImages = async (req, res) => {
       ranking: image.ranking,
       viewCount: image.view_count,
       tags: image.tags,
+      description: image.description,
       createdAt: image.created_at,
       lastViewedAt: image.last_viewed_at,
       url: imageViewerService.generateImageUrl(image.id),
@@ -122,6 +123,7 @@ exports.getImage = async (req, res) => {
         ranking: image.ranking,
         viewCount: image.view_count,
         tags: image.tags,
+        description: image.description,
         createdAt: image.created_at,
         lastViewedAt: image.last_viewed_at,
         url: imageViewerService.generateImageUrl(image.id),
@@ -272,6 +274,35 @@ exports.updateRanking = async (req, res) => {
     console.error("Update ranking error:", error);
     res.status(500).json({
       error: "Failed to update ranking",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image description
+ * POST /api/plugins/image-viewer/images/:id/description
+ */
+exports.updateDescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    // Description can be null or empty string to clear it
+    if (description === undefined) {
+      return res.status(400).json({ error: "Description is required (can be null or empty string)" });
+    }
+
+    await imageViewerService.updateImageDescription(id, description);
+
+    res.json({
+      success: true,
+      description: description === null || description === '' ? null : description,
+    });
+  } catch (error) {
+    console.error("Update description error:", error);
+    res.status(500).json({
+      error: "Failed to update description",
       details: error.message,
     });
   }

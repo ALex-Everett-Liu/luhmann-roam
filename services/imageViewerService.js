@@ -262,6 +262,20 @@ async function initializeDatabase() {
     console.log("Migration: Index creation note:", error.message);
   }
   
+  // Migrate existing database: add description column if it doesn't exist
+  try {
+    await db.run("ALTER TABLE images ADD COLUMN description TEXT DEFAULT NULL");
+    console.log("Migration: Added description column to images table");
+  } catch (error) {
+    // Column already exists - this is expected for new databases or already-migrated databases
+    if (error.message.includes('duplicate column') || error.message.includes('already exists')) {
+      console.log("Migration: description column already exists in images table");
+    } else {
+      // Unexpected error - log it but don't fail
+      console.log("Migration: Error checking description column:", error.message);
+    }
+  }
+  
   // IMPORTANT: Migrate tags to normalized schema BEFORE creating new tables
   // This ensures we detect and migrate old schema if it exists
   try {
@@ -637,6 +651,22 @@ async function updateImageRanking(imageId, ranking) {
 }
 
 /**
+ * Update image description
+ */
+async function updateImageDescription(imageId, description) {
+  const db = await getDb();
+  const now = Date.now();
+  const descriptionValue = description === null || description === undefined ? null : String(description).trim();
+  // Allow empty string to clear description
+  const finalDescription = descriptionValue === '' ? null : descriptionValue;
+  await db.run(`
+    UPDATE images 
+    SET description = ?, updated_at = ?
+    WHERE id = ?
+  `, [finalDescription, now, imageId]);
+}
+
+/**
  * Update both image rating and ranking
  */
 async function updateImageRatingAndRanking(imageId, rating, ranking) {
@@ -908,6 +938,7 @@ module.exports = {
   removeTagFromImage,
   updateImageRating,
   updateImageRanking,
+  updateImageDescription,
   updateImageRatingAndRanking,
   incrementViewCount,
   deleteImage,

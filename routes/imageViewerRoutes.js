@@ -63,6 +63,7 @@ router.get("/images/:id/file", imageViewerController.serveImage);
 router.post("/images/:id/tags", imageViewerController.updateTags);
 router.post("/images/:id/rating", imageViewerController.updateRating);
 router.post("/images/:id/ranking", imageViewerController.updateRanking);
+router.post("/images/:id/description", imageViewerController.updateDescription);
 router.post("/images/:id/review", imageViewerController.updateReview);
 router.delete("/images/:id", imageViewerController.deleteImage);
 router.get("/subfolders", imageViewerController.getSubfolders);
