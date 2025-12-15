@@ -1,0 +1,134 @@
+// Image Viewer Modal Functions for Image Viewer Plugin
+
+async function openViewer(imageId) {
+    const image = images.find(img => img.id === imageId);
+    if (!image) {
+        // Reload image if not in cache
+        try {
+            const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
+            if (!response.ok) throw new Error('Image not found');
+            const data = await response.json();
+            currentImage = data.image;
+        } catch (error) {
+            showToast('Image not found', 'error');
+            return;
+        }
+    } else {
+        currentImage = image;
+    }
+    
+    // Update viewer
+    elements.viewerImageName.textContent = currentImage.filename;
+    elements.viewerImageInfo.textContent = `${currentImage.width} × ${currentImage.height}`;
+    elements.viewerFileSize.textContent = currentImage.fileSizeFormatted;
+    elements.viewerDimensions.textContent = `${currentImage.width} × ${currentImage.height}`;
+    elements.viewerPublicLink.value = window.location.origin + currentImage.url;
+    
+    // Update rating and ranking
+    updateRatingDisplay(currentImage.rating);
+    updateRankingDisplay(currentImage.ranking);
+    
+    // Update description
+    updateDescriptionDisplay(currentImage.description);
+    
+    // Update tags
+    renderTags(currentImage.tags);
+    
+    // Set initial view count
+    elements.viewerViewCount.textContent = currentImage.viewCount || 0;
+    
+    // Set up image load handler to update view count after image loads
+    // Use a one-time handler to prevent multiple increments
+    const updateViewCountAfterLoad = async () => {
+        // Remove listener immediately to prevent multiple calls
+        elements.viewerImage.removeEventListener('load', updateViewCountAfterLoad);
+        
+        try {
+            // Small delay to ensure server has processed the increment
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Fetch updated image data to get the incremented view count
+            const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
+            if (response.ok) {
+                const data = await response.json();
+                const updatedViewCount = data.image.viewCount || 0;
+                elements.viewerViewCount.textContent = updatedViewCount;
+                
+                // Update currentImage and images array with new view count
+                currentImage.viewCount = updatedViewCount;
+                const imageIndex = images.findIndex(img => img.id === imageId);
+                if (imageIndex !== -1) {
+                    images[imageIndex].viewCount = updatedViewCount;
+                    // Re-render grid to show updated view count
+                    renderImageGrid();
+                }
+            }
+        } catch (error) {
+            console.error('Error updating view count:', error);
+        }
+    };
+    
+    // Add load event listener before setting src
+    elements.viewerImage.addEventListener('load', updateViewCountAfterLoad, { once: true });
+    
+    // Add cache-busting parameter to ensure server request happens
+    // This ensures view count increments even if browser has cached the image
+    const cacheBuster = `?t=${Date.now()}`;
+    elements.viewerImage.src = currentImage.url + cacheBuster;
+    
+    // Reset zoom and pan
+    resetZoom();
+    
+    // Show modal
+    elements.imageViewerModal.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeViewer() {
+    elements.imageViewerModal.classList.remove('visible');
+    document.body.style.overflow = '';
+    currentImage = null;
+    resetZoom();
+}
+
+async function deleteCurrentImage() {
+    if (!currentImage) return;
+    
+    if (!confirm(`Are you sure you want to delete "${currentImage.filename}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/plugins/image-viewer/images/${currentImage.id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to delete image');
+        
+        showToast('Image deleted', 'success');
+        closeViewer();
+        // Reset pagination if needed (renderImageGrid will handle adjusting if page doesn't exist)
+        const totalPages = Math.ceil(images.length / IMAGES_PER_PAGE);
+        if (currentImagePage > totalPages && currentImagePage > 1) {
+            currentImagePage = Math.max(1, totalPages);
+        }
+        loadImages();
+        loadTags();
+    } catch (error) {
+        showToast('Failed to delete image', 'error');
+    }
+}
+
+function navigateImage(direction) {
+    if (!currentImage || images.length === 0) return;
+    
+    const currentIndex = images.findIndex(img => img.id === currentImage.id);
+    if (currentIndex === -1) return;
+    
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = images.length - 1;
+    if (newIndex >= images.length) newIndex = 0;
+    
+    openViewer(images[newIndex].id);
+}
+

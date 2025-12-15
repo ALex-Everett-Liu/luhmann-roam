@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.10] - 2025-12-12
+## [0.34.11] - 2025-12-19
+
+### Changed
+- **Image Viewer Code Refactoring**: Split monolithic `renderer.js` (1,599 lines) into 13 modular JavaScript files for better maintainability and organization
+- **Modular Architecture**: Image viewer plugin now uses modular file structure with clear separation of concerns
+
+### Added
+- **State Management Module** (`js/state.js`) - Global state variables (images, currentImage, zoom, pan, tags, pagination)
+- **DOM Elements Module** (`js/elements.js`) - Centralized DOM element references
+- **Utilities Module** (`js/utils.js`) - Utility functions (toast notifications, loading overlay, confirm dialog, truncate, renderStars)
+- **File Handling Module** (`js/fileHandling.js`) - File upload and drag & drop functionality
+- **Image Loader Module** (`js/imageLoader.js`) - Loading images and tags, filtering logic
+- **Tag Filter Module** (`js/tagFilter.js`) - Tag filter dialog functionality
+- **Scan Dialog Module** (`js/scanDialog.js`) - Scan dialog functionality
+- **Image Grid Module** (`js/imageGrid.js`) - Image grid rendering and pagination
+- **Image Metadata Module** (`js/imageMetadata.js`) - Rating, ranking, description, and tags management
+- **Viewer Module** (`js/viewer.js`) - Image viewer modal (open/close, navigation, delete)
+- **Zoom/Pan Module** (`js/zoomPan.js`) - Zoom, pan, and fullscreen functionality
+- **Keyboard Module** (`js/keyboard.js`) - Keyboard shortcuts handling
+- **Events Module** (`js/events.js`) - Event listeners setup
+- **Main Renderer** (`renderer.js`) - Minimal initialization file (~20 lines) that orchestrates all modules
+
+### Technical Details
+- **Code Organization**: Reduced main `renderer.js` from 1,599 lines to ~20 lines (98.7% reduction)
+- **Module Structure**: Created `plugins/image-viewer/js/` directory with 13 focused modules
+- **Dependency Management**: Scripts loaded in correct dependency order in `index.html`
+- **Backward Compatibility**: 100% backward compatible - all functionality preserved, only internal structure changed
+- **Maintainability**: Each module has single responsibility - easier to find, modify, and test specific features
+- **File Sizes**: Largest module is `zoomPan.js` (~200 lines), most modules under 150 lines for better readability
+- **Global Functions**: Functions like `openViewer()` and `removeTag()` still exposed globally for HTML onclick handlers
+- **No Breaking Changes**: All existing functionality works exactly as before, improved only in code organization
+
+## [0.34.10] - 2025-12-13
 
 ### Added
 - **Image Description Field**: Added description field for images - supports long-form text descriptions that can't fit in filename or tags
