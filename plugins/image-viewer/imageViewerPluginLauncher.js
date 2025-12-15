@@ -1,5 +1,18 @@
 /**
  * Image Viewer Plugin Launcher
+ * 
+ * This file handles the integration between the Image Viewer plugin and the main Luhmann Roam app.
+ * 
+ * Integration Points:
+ * 1. PluginRegistry: Registers plugin with main app's plugin system
+ * 2. Sidebar Button: Adds launcher button to main app sidebar
+ * 3. Modal HTML: Uses modal defined in public/index.html (lines 46-59)
+ * 4. Modal CSS: Uses styles from public/css/image-viewer-plugin-modal.css
+ * 5. Plugin UI: Loads plugin from /plugins/image-viewer/index.html in iframe
+ * 6. API: Communicates with backend via /api/plugins/image-viewer/* endpoints
+ * 
+ * For developers creating new plugins, see: docs/development/PLUGIN_TEMPLATE.md
+ * 
  * Opens the Image Viewer plugin in a modal dialog
  */
 

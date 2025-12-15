@@ -1,4 +1,11 @@
-/* Image Viewer Plugin Modal Styles */
+/* Image Viewer Plugin Modal Styles
+ * 
+ * Styles for the modal wrapper that contains the Image Viewer plugin iframe.
+ * The modal HTML is defined in public/index.html (lines 46-59).
+ * The modal is controlled by plugins/image-viewer/imageViewerPluginLauncher.js
+ * 
+ * For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+ */
 
 .image-viewer-plugin-modal {
   display: none;

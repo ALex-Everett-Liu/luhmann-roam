@@ -78,6 +78,8 @@ app.use("/api/nodes", nodeRoutes);
 app.use("/api/plugins/webp-converter", webpConverterRoutes);
 
 // Use the Image Viewer plugin routes
+// Plugin API endpoints: /api/plugins/image-viewer/*
+// See: routes/imageViewerRoutes.js, controllers/imageViewerController.js, services/imageViewerService.js
 app.use("/api/plugins/image-viewer", imageViewerRoutes);
 
 // Get node above
@@ -423,6 +425,9 @@ app.use("/fonts", express.static(path.join(__dirname, "public", "fonts")));
 app.use("/plugins/webp-converter", express.static(path.join(__dirname, "plugins", "webp-converter")));
 
 // Serve Image Viewer plugin static files
+// Plugin UI files: /plugins/image-viewer/*
+// Serves: index.html, styles.css, renderer.js, js/*, css/*, etc.
+// See: plugins/image-viewer/ for plugin frontend files
 app.use("/plugins/image-viewer", express.static(path.join(__dirname, "plugins", "image-viewer")));
 
 app.post("/api/backup", async (req, res) => {

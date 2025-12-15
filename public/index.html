@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="css/settings-manager.css">
   <link rel="stylesheet" href="css/basic-font-settings.css">
   <link rel="stylesheet" href="css/webp-converter-plugin-modal.css">
+  <!-- Image Viewer Plugin Modal CSS -->
+  <!-- Styles for the modal wrapper that contains the plugin iframe -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for modal integration -->
   <link rel="stylesheet" href="css/image-viewer-plugin-modal.css">
 </head>
 <body>
@@ -44,6 +47,10 @@
   </div>
 
   <!-- Image Viewer Plugin Modal -->
+  <!-- Modal wrapper HTML for the Image Viewer plugin -->
+  <!-- The plugin itself loads in the iframe below -->
+  <!-- Modal controls (close, fullscreen) are handled by imageViewerPluginLauncher.js -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for integration details -->
   <div id="image-viewer-plugin-modal" class="image-viewer-plugin-modal">
     <div class="image-viewer-plugin-header">
       <h3>Image Viewer</h3>
@@ -94,6 +101,9 @@
   <script src="/plugins/webp-converter/webpConverterPluginLauncher.js"></script>
   
   <!-- Image Viewer Plugin Launcher -->
+  <!-- Loads the plugin launcher which registers the plugin and adds sidebar button -->
+  <!-- The launcher handles modal opening/closing and PluginRegistry integration -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for implementation -->
   <script src="/plugins/image-viewer/imageViewerPluginLauncher.js"></script>
 </body>
 </html>

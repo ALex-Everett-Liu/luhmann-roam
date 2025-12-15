@@ -7,37 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.11] - 2025-12-19
+## [0.34.11] - 2025-12-15
 
 ### Changed
 - **Image Viewer Code Refactoring**: Split monolithic `renderer.js` (1,599 lines) into 13 modular JavaScript files for better maintainability and organization
-- **Modular Architecture**: Image viewer plugin now uses modular file structure with clear separation of concerns
+- **Image Viewer CSS Refactoring**: Split monolithic `styles.css` (1,571 lines) into 15 modular CSS files organized by component/feature
+- **Modular Architecture**: Image viewer plugin now uses modular file structure with clear separation of concerns for both JavaScript and CSS
 
 ### Added
-- **State Management Module** (`js/state.js`) - Global state variables (images, currentImage, zoom, pan, tags, pagination)
-- **DOM Elements Module** (`js/elements.js`) - Centralized DOM element references
-- **Utilities Module** (`js/utils.js`) - Utility functions (toast notifications, loading overlay, confirm dialog, truncate, renderStars)
-- **File Handling Module** (`js/fileHandling.js`) - File upload and drag & drop functionality
-- **Image Loader Module** (`js/imageLoader.js`) - Loading images and tags, filtering logic
-- **Tag Filter Module** (`js/tagFilter.js`) - Tag filter dialog functionality
-- **Scan Dialog Module** (`js/scanDialog.js`) - Scan dialog functionality
-- **Image Grid Module** (`js/imageGrid.js`) - Image grid rendering and pagination
-- **Image Metadata Module** (`js/imageMetadata.js`) - Rating, ranking, description, and tags management
-- **Viewer Module** (`js/viewer.js`) - Image viewer modal (open/close, navigation, delete)
-- **Zoom/Pan Module** (`js/zoomPan.js`) - Zoom, pan, and fullscreen functionality
-- **Keyboard Module** (`js/keyboard.js`) - Keyboard shortcuts handling
-- **Events Module** (`js/events.js`) - Event listeners setup
-- **Main Renderer** (`renderer.js`) - Minimal initialization file (~20 lines) that orchestrates all modules
+- **JavaScript Modules** (`js/` directory):
+  - **State Management Module** (`js/state.js`) - Global state variables (images, currentImage, zoom, pan, tags, pagination)
+  - **DOM Elements Module** (`js/elements.js`) - Centralized DOM element references
+  - **Utilities Module** (`js/utils.js`) - Utility functions (toast notifications, loading overlay, confirm dialog, truncate, renderStars)
+  - **File Handling Module** (`js/fileHandling.js`) - File upload and drag & drop functionality
+  - **Image Loader Module** (`js/imageLoader.js`) - Loading images and tags, filtering logic
+  - **Tag Filter Module** (`js/tagFilter.js`) - Tag filter dialog functionality
+  - **Scan Dialog Module** (`js/scanDialog.js`) - Scan dialog functionality
+  - **Image Grid Module** (`js/imageGrid.js`) - Image grid rendering and pagination
+  - **Image Metadata Module** (`js/imageMetadata.js`) - Rating, ranking, description, and tags management
+  - **Viewer Module** (`js/viewer.js`) - Image viewer modal (open/close, navigation, delete)
+  - **Zoom/Pan Module** (`js/zoomPan.js`) - Zoom, pan, and fullscreen functionality
+  - **Keyboard Module** (`js/keyboard.js`) - Keyboard shortcuts handling
+  - **Events Module** (`js/events.js`) - Event listeners setup
+  - **Main Renderer** (`renderer.js`) - Minimal initialization file (~20 lines) that orchestrates all modules
+- **CSS Modules** (`css/` directory):
+  - **Variables Module** (`css/variables.css`) - CSS custom properties (colors, shadows, border-radii)
+  - **Base Module** (`css/base.css`) - Universal reset styles and base typography
+  - **Layout Module** (`css/layout.css`) - General layout components (app container, section headers)
+  - **Header Module** (`css/header.css`) - Application header styles
+  - **Upload Module** (`css/upload.css`) - Image upload section styles
+  - **Scan Module** (`css/scan.css`) - Image scan section styles
+  - **Manager Module** (`css/manager.css`) - Image manager section, filters, and tag display
+  - **Pagination Module** (`css/pagination.css`) - Pagination controls for tags and images
+  - **Dialogs Module** (`css/dialogs.css`) - All dialog styles (tag filter, confirm, scan)
+  - **Image Grid Module** (`css/image-grid.css`) - Image grid display, items, and overlays
+  - **Viewer Module** (`css/viewer.css`) - Main image viewer modal, header, controls, image container, fullscreen
+  - **Viewer Sidebar Module** (`css/viewer-sidebar.css`) - Viewer sidebar, details, inputs, tag management
+  - **Toast Module** (`css/toast.css`) - Toast notification system styles
+  - **Loading Module** (`css/loading.css`) - Loading overlay and spinner styles
+  - **Responsive Module** (`css/responsive.css`) - Responsive design adjustments for smaller screens
+- **Documentation**:
+  - **README.md** (`plugins/image-viewer/README.md`) - Comprehensive user documentation with features, usage, API endpoints, keyboard shortcuts, troubleshooting
+  - **ARCHITECTURE.md** (`plugins/image-viewer/ARCHITECTURE.md`) - Detailed technical architecture documentation covering module dependencies, data flow, state management, API architecture, database schema, integration patterns
+  - **INTEGRATION.md** (`plugins/image-viewer/INTEGRATION.md`) - Quick reference guide for integration points between plugin and main app, including file locations, integration flow, common patterns
+  - **PLUGIN_TEMPLATE.md** (`docs/development/PLUGIN_TEMPLATE.md`) - Step-by-step guide for creating new plugins with code templates, best practices, and troubleshooting
+- **Integration Comments**: Added helpful comments to integration points in `server.js`, `public/index.html`, backend files, and launcher to guide developers
 
 ### Technical Details
-- **Code Organization**: Reduced main `renderer.js` from 1,599 lines to ~20 lines (98.7% reduction)
-- **Module Structure**: Created `plugins/image-viewer/js/` directory with 13 focused modules
-- **Dependency Management**: Scripts loaded in correct dependency order in `index.html`
+- **JavaScript Code Organization**: Reduced main `renderer.js` from 1,599 lines to ~20 lines (98.7% reduction)
+- **CSS Code Organization**: Reduced main `styles.css` from 1,571 lines to ~19 lines (98.8% reduction) - now acts as entry point using `@import` rules
+- **Module Structure**: Created `plugins/image-viewer/js/` directory with 13 focused JavaScript modules and `plugins/image-viewer/css/` directory with 15 focused CSS modules
+- **Dependency Management**: Scripts loaded in correct dependency order in `index.html`, CSS modules imported in logical cascade order in `styles.css`
+- **CSS Import Order**: Variables → Base → Layout → Components → Feature-specific → Responsive (ensures proper cascade)
 - **Backward Compatibility**: 100% backward compatible - all functionality preserved, only internal structure changed
 - **Maintainability**: Each module has single responsibility - easier to find, modify, and test specific features
-- **File Sizes**: Largest module is `zoomPan.js` (~200 lines), most modules under 150 lines for better readability
+- **File Sizes**: 
+  - JavaScript: Largest module is `zoomPan.js` (~200 lines), most modules under 150 lines
+  - CSS: Largest module is `dialogs.css` (~350 lines), most modules under 200 lines
 - **Global Functions**: Functions like `openViewer()` and `removeTag()` still exposed globally for HTML onclick handlers
 - **No Breaking Changes**: All existing functionality works exactly as before, improved only in code organization
+- **Documentation Coverage**: Complete documentation covering user guide, technical architecture, integration reference, and plugin development template
 
 ## [0.34.10] - 2025-12-13
 

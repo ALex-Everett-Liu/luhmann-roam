@@ -1,4 +1,12 @@
 // imageViewerService.js - Business logic for Image Viewer operations
+//
+// This service handles all business logic and database operations for the Image Viewer plugin.
+// Called by controllers/imageViewerController.js
+// Database: plugins/image-viewer/image-viewer.db (SQLite)
+// Image storage: plugins/image-viewer/images/ directory
+//
+// For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+//
 const path = require("path");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");

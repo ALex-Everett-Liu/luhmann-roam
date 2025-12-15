@@ -1,4 +1,12 @@
 // imageViewerController.js - HTTP logic for Image Viewer Plugin operations
+// 
+// This controller handles HTTP requests for the Image Viewer plugin API.
+// API routes are registered in server.js at /api/plugins/image-viewer/*
+// Route definitions are in routes/imageViewerRoutes.js
+// Business logic is in services/imageViewerService.js
+//
+// For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+//
 const path = require("path");
 const fs = require("fs");
 const imageViewerService = require("../services/imageViewerService");

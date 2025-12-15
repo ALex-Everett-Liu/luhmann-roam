@@ -1,4 +1,12 @@
 // imageViewerRoutes.js - Routes for Image Viewer Plugin API operations
+//
+// This file defines all API routes for the Image Viewer plugin.
+// Routes are registered in server.js: app.use("/api/plugins/image-viewer", imageViewerRoutes)
+// Request handlers are in controllers/imageViewerController.js
+// Business logic is in services/imageViewerService.js
+//
+// For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+//
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
