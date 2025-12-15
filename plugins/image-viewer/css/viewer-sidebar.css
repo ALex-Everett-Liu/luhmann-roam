@@ -160,7 +160,8 @@
     color: rgba(255, 255, 255, 0.5);
 }
 
-.add-tags-btn {
+.add-tags-btn,
+.copy-tags-btn {
     background-color: var(--primary-color);
     color: white;
     border: none;
@@ -169,9 +170,13 @@
     cursor: pointer;
     font-size: 0.875rem;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
-.add-tags-btn:hover {
+.add-tags-btn:hover,
+.copy-tags-btn:hover {
     background-color: var(--primary-hover);
 }
 

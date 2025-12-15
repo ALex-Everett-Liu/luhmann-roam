@@ -178,6 +178,41 @@ async function removeTag(tag) {
     }
 }
 
+async function copyTags() {
+    if (!currentImage) return;
+    
+    const tags = currentImage.tags || [];
+    if (tags.length === 0) {
+        showToast('No tags to copy', 'info');
+        return;
+    }
+    
+    // Format tags as comma-separated string: "tag1, tag2, tag3"
+    const tagsText = tags.join(', ');
+    
+    try {
+        await navigator.clipboard.writeText(tagsText);
+        showToast(`Copied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to clipboard`, 'success');
+    } catch (error) {
+        // Fallback for older browsers
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = tagsText;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast(`Copied ${tags.length} tag${tags.length !== 1 ? 's' : ''} to clipboard`, 'success');
+        } catch (fallbackError) {
+            showToast('Failed to copy tags', 'error');
+        }
+    }
+}
+
 // Copy Link
 function copyImageLink() {
     if (!currentImage) return;

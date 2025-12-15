@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Video MIME Types**: Updated file upload filter to accept video MIME types (video/webm, video/mp4, video/quicktime, video/x-msvideo, video/x-matroska)
 - **Video Scanning**: Updated scan functionality to include video file extensions when scanning directories
 - **WebP Thumbnail Format**: All thumbnails stored as WebP format for optimal file size (25-35% smaller than JPG)
+- **Copy Tags Feature**: Added "Copy Tags" button in Image Details section to copy all tags of an image to clipboard in comma-separated format (`tag1, tag2, tag3`)
 
 ### Changed
 - **Supported Formats**: Updated `getInfo()` endpoint to include video formats in supported formats list
@@ -48,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **View Count**: View count increments properly for videos (using `loadeddata` event instead of `load` event)
 - **MIME Type Detection**: Frontend detects videos by MIME type or file extension for proper display
 - **WebP Benefits**: WebP format provides 25-35% better compression than JPG while maintaining visual quality
+- **Copy Tags**: Uses modern `navigator.clipboard` API with fallback to `document.execCommand('copy')` for older browsers, formats tags as comma-separated string with spaces
 - **Thumbnail Size**: All thumbnails standardized to 320x240 pixels (maintains aspect ratio with `fit: 'inside'`)
 
 ## [0.34.11] - 2025-12-15

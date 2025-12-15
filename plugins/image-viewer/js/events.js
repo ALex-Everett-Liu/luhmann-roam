@@ -114,6 +114,7 @@ function setupEventListeners() {
     elements.viewerCopyLink.addEventListener('click', copyImageLink);
     elements.viewerClose.addEventListener('click', closeViewer);
     elements.viewerAddTags.addEventListener('click', addTagsToCurrentImage);
+    elements.viewerCopyTags.addEventListener('click', copyTags);
     elements.viewerCopyLinkBtn.addEventListener('click', copyPublicLink);
     elements.viewerDeleteBtn.addEventListener('click', deleteCurrentImage);
     

@@ -51,6 +51,7 @@ const elements = {
     viewerRankingClear: document.getElementById('viewerRankingClear'),
     viewerTagsInput: document.getElementById('viewerTagsInput'),
     viewerAddTags: document.getElementById('viewerAddTags'),
+    viewerCopyTags: document.getElementById('viewerCopyTags'),
     viewerTagsList: document.getElementById('viewerTagsList'),
     viewerDescriptionInput: document.getElementById('viewerDescriptionInput'),
     viewerDescriptionSave: document.getElementById('viewerDescriptionSave'),
