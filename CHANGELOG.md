@@ -7,37 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.34.12] - 2025-12-19
+## [0.34.12] - 2025-12-15
 
 ### Added
 - **Video Format Support**: Added support for video formats (WebM, MP4, MOV, AVI, MKV) and GIF files in Image Viewer plugin
 - **Video Metadata Extraction**: Video metadata extraction using `fluent-ffmpeg` to get video dimensions and duration
-- **Video Thumbnail Generation**: Automatic thumbnail generation for videos by extracting first frame (320x240 JPG) using ffmpeg
-- **Video Thumbnail Storage**: Added `thumbnail_path` column to images table for storing video thumbnail paths
+- **Video Thumbnail Generation**: Automatic thumbnail generation for videos by extracting first frame (320x240 WebP) using ffmpeg
+- **Image Thumbnail Generation**: Automatic thumbnail generation for images (320x240 WebP) using Sharp library for optimized grid loading
+- **Thumbnail Storage**: Added `thumbnail_path` column to images table for storing thumbnail paths (images and videos)
 - **Video Detection**: `isVideoFile()` function to detect video formats by file extension
-- **Video Thumbnail API**: Thumbnail generation on upload/scan and on-demand thumbnail serving for videos
+- **Thumbnail API**: Thumbnail generation on upload/scan and on-demand thumbnail serving for both images and videos
 - **Video Viewer Support**: Added `<video>` element to image viewer modal for playing videos with standard controls
 - **Video MIME Types**: Updated file upload filter to accept video MIME types (video/webm, video/mp4, video/quicktime, video/x-msvideo, video/x-matroska)
 - **Video Scanning**: Updated scan functionality to include video file extensions when scanning directories
+- **WebP Thumbnail Format**: All thumbnails stored as WebP format for optimal file size (25-35% smaller than JPG)
 
 ### Changed
 - **Supported Formats**: Updated `getInfo()` endpoint to include video formats in supported formats list
 - **Image Metadata Function**: Enhanced `getImageMetadata()` to handle both images and videos (uses Sharp for images/GIFs, ffmpeg for videos)
-- **File Serving**: Updated `serveImage()` endpoint to serve video thumbnails when `?thumbnail=true` parameter is present
+- **File Serving**: Updated `serveImage()` endpoint to serve thumbnails (WebP) for both images and videos when `?thumbnail=true` parameter is present
 - **Upload UI**: Updated upload section text to mention video support and updated file input to accept `video/*` files
 - **Viewer Display**: Updated viewer to detect video files and display `<video>` element instead of `<img>` for videos
 - **API Responses**: Updated API responses to include `mimeType` field for frontend video detection
+- **Thumbnail Generation**: Now generates thumbnails for all images (not just videos) for faster grid loading and reduced bandwidth usage
+- **Thumbnail Format**: Changed from JPG to WebP format for all thumbnails (better compression, smaller file sizes)
+
+### Fixed
+- **Thumbnail Cleanup**: Updated `deleteImage()` to also delete thumbnail files when images are deleted
 
 ### Technical Details
 - **Thumbnail Generation**: Thumbnails generated automatically on upload/scan and cached in `plugins/image-viewer/images/thumbnails/` directory
 - **Database Schema**: Added `thumbnail_path` column migration for existing databases
 - **Video Processing**: Uses `fluent-ffmpeg` (already in dependencies) for video metadata and thumbnail extraction
-- **GIF Support**: GIF files handled by Sharp library (no special processing needed)
+- **Image Processing**: Uses Sharp library for image thumbnail generation (resize to 320x240, convert to WebP with quality 80)
+- **GIF Support**: GIF files handled by Sharp library for thumbnail generation
+- **SVG Handling**: SVG files skip thumbnail generation (already scalable vector format)
 - **Thumbnail Caching**: Thumbnails are generated once and reused for performance
-- **On-Demand Generation**: Thumbnails can be generated on-demand if missing when requested
+- **On-Demand Generation**: Thumbnails can be generated on-demand if missing when requested (updates database after generation)
 - **Video Playback**: Videos play in viewer with standard HTML5 video controls
 - **View Count**: View count increments properly for videos (using `loadeddata` event instead of `load` event)
 - **MIME Type Detection**: Frontend detects videos by MIME type or file extension for proper display
+- **WebP Benefits**: WebP format provides 25-35% better compression than JPG while maintaining visual quality
+- **Thumbnail Size**: All thumbnails standardized to 320x240 pixels (maintains aspect ratio with `fit: 'inside'`)
 
 ## [0.34.11] - 2025-12-15
 

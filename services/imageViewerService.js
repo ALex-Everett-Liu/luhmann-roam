@@ -401,21 +401,78 @@ async function getVideoMetadata(filePath) {
 }
 
 /**
- * Generate thumbnail from video (extract first frame)
+ * Generate thumbnail from image using Sharp (resize and convert to WebP)
+ */
+async function generateImageThumbnail(imagePath, thumbnailPath) {
+  try {
+    const sharp = require("sharp");
+    
+    await sharp(imagePath)
+      .resize(320, 240, {
+        fit: 'inside', // Maintain aspect ratio, fit within 320x240
+        withoutEnlargement: true // Don't enlarge small images
+      })
+      .webp({
+        quality: 80, // Good balance between quality and file size
+        effort: 4 // Faster encoding (0-6, 4 is good balance)
+      })
+      .toFile(thumbnailPath);
+    
+    return thumbnailPath;
+  } catch (error) {
+    console.error("Error generating image thumbnail:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate thumbnail from video (extract first frame and convert to WebP)
  */
 async function generateVideoThumbnail(videoPath, thumbnailPath) {
   return new Promise((resolve, reject) => {
     const ffmpeg = require("fluent-ffmpeg");
     
+    // First, extract frame as temporary PNG
+    const tempPngPath = thumbnailPath.replace('.webp', '.png');
+    
     ffmpeg(videoPath)
       .screenshots({
         timestamps: ['00:00:00.000'],
-        filename: path.basename(thumbnailPath),
-        folder: path.dirname(thumbnailPath),
+        filename: path.basename(tempPngPath),
+        folder: path.dirname(tempPngPath),
         size: '320x240' // Thumbnail size
       })
-      .on('end', () => {
-        resolve(thumbnailPath);
+      .on('end', async () => {
+        try {
+          // Convert PNG to WebP using Sharp for better compression
+          const sharp = require("sharp");
+          await sharp(tempPngPath)
+            .webp({
+              quality: 80,
+              effort: 4
+            })
+            .toFile(thumbnailPath);
+          
+          // Clean up temporary PNG file
+          if (fs.existsSync(tempPngPath)) {
+            fs.unlinkSync(tempPngPath);
+          }
+          
+          resolve(thumbnailPath);
+        } catch (error) {
+          console.error("Error converting video thumbnail to WebP:", error);
+          // Fallback: if WebP conversion fails, rename PNG to WebP (browser will handle it)
+          if (fs.existsSync(tempPngPath)) {
+            try {
+              fs.renameSync(tempPngPath, thumbnailPath);
+              resolve(thumbnailPath);
+            } catch (renameError) {
+              reject(renameError);
+            }
+          } else {
+            reject(error);
+          }
+        }
       })
       .on('error', (err) => {
         console.error("Error generating video thumbnail:", err);
@@ -453,11 +510,19 @@ async function getImageMetadata(filePath) {
 }
 
 /**
- * Get or generate thumbnail for a video file
+ * Check if file is SVG (skip thumbnail generation for SVG as it's already scalable)
+ */
+function isSvgFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === '.svg';
+}
+
+/**
+ * Get or generate thumbnail for an image or video file
  */
 async function getOrGenerateThumbnail(filePath, imageId) {
-  // Only generate thumbnails for video files
-  if (!isVideoFile(filePath)) {
+  // Skip thumbnail generation for SVG files (they're already scalable)
+  if (isSvgFile(filePath)) {
     return null;
   }
   
@@ -467,16 +532,21 @@ async function getOrGenerateThumbnail(filePath, imageId) {
     fs.mkdirSync(thumbnailDir, { recursive: true });
   }
   
-  const thumbnailPath = path.join(thumbnailDir, `${imageId}.jpg`);
+  const thumbnailPath = path.join(thumbnailDir, `${imageId}.webp`);
   
   // If thumbnail already exists, return it
   if (fs.existsSync(thumbnailPath)) {
     return toRelativePath(thumbnailPath);
   }
   
-  // Generate thumbnail
+  // Generate thumbnail based on file type
   try {
-    await generateVideoThumbnail(filePath, thumbnailPath);
+    if (isVideoFile(filePath)) {
+      await generateVideoThumbnail(filePath, thumbnailPath);
+    } else {
+      // Generate thumbnail for images (including GIF, but excluding SVG)
+      await generateImageThumbnail(filePath, thumbnailPath);
+    }
     return toRelativePath(thumbnailPath);
   } catch (error) {
     console.error("Failed to generate thumbnail:", error);
@@ -506,11 +576,8 @@ async function saveImage(file, customPath = null) {
   const metadata = await getImageMetadata(filePath);
   const stats = fs.statSync(filePath);
   
-  // Generate thumbnail for videos
-  let thumbnailPath = null;
-  if (isVideoFile(filePath)) {
-    thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
-  }
+  // Generate thumbnail for both images and videos
+  const thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
   
   // Insert into database (store relative path)
   const now = Date.now();
@@ -847,7 +914,7 @@ async function incrementViewCount(imageId) {
  */
 async function deleteImage(imageId) {
   const db = await getDb();
-  const image = await db.get("SELECT file_path FROM images WHERE id = ?", imageId);
+  const image = await db.get("SELECT file_path, thumbnail_path FROM images WHERE id = ?", imageId);
   if (!image) {
     throw new Error("Image not found");
   }
@@ -855,9 +922,17 @@ async function deleteImage(imageId) {
   // Convert relative path to absolute for file operations
   const absolutePath = toAbsolutePath(image.file_path);
   
-  // Delete file
+  // Delete original file
   if (fs.existsSync(absolutePath)) {
     fs.unlinkSync(absolutePath);
+  }
+  
+  // Delete thumbnail file if it exists
+  if (image.thumbnail_path) {
+    const absoluteThumbnailPath = toAbsolutePath(image.thumbnail_path);
+    if (fs.existsSync(absoluteThumbnailPath)) {
+      fs.unlinkSync(absoluteThumbnailPath);
+    }
   }
   
   // Delete from database (tags will be deleted via CASCADE)
@@ -1017,11 +1092,8 @@ async function scanAndImportImages(subfolder = null) {
       };
       const mimeType = mimeTypes[ext] || 'image/jpeg';
       
-      // Generate thumbnail for videos
-      let thumbnailPath = null;
-      if (isVideoFile(filePath)) {
-        thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
-      }
+      // Generate thumbnail for both images and videos
+      const thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
       
       // Use file modification time as created_at if available, otherwise use now
       const createdAt = stats.mtime ? stats.mtime.getTime() : Date.now();
@@ -1075,6 +1147,19 @@ async function scanAndImportImages(subfolder = null) {
 }
 
 /**
+ * Update thumbnail path for an image
+ */
+async function updateThumbnailPath(imageId, thumbnailPath) {
+  const db = await getDb();
+  const now = Date.now();
+  await db.run(`
+    UPDATE images 
+    SET thumbnail_path = ?, updated_at = ?
+    WHERE id = ?
+  `, [thumbnailPath, now, imageId]);
+}
+
+/**
  * Generate public URL for image
  */
 function generateImageUrl(imageId) {
@@ -1102,6 +1187,7 @@ module.exports = {
   toAbsolutePath,
   isVideoFile,
   getOrGenerateThumbnail,
+  updateThumbnailPath,
   IMAGE_DIR,
   DB_PATH,
 };

@@ -169,28 +169,32 @@ exports.serveImage = async (req, res) => {
       await imageViewerService.incrementViewCount(id);
     }
 
-    // For thumbnail requests on videos, serve the thumbnail if it exists
+    // For thumbnail requests, serve the thumbnail if it exists
     if (isThumbnail && image.thumbnail_path) {
       const thumbnailPath = imageViewerService.toAbsolutePath(image.thumbnail_path);
       if (fs.existsSync(thumbnailPath)) {
         return res.sendFile(path.resolve(thumbnailPath));
       }
-      // If thumbnail doesn't exist but should (for videos), try to generate it
-      if (imageViewerService.isVideoFile(image.file_path)) {
-        try {
-          const generatedThumbnail = await imageViewerService.getOrGenerateThumbnail(
-            image.file_path,
-            id
-          );
-          if (generatedThumbnail) {
-            const absThumbnailPath = imageViewerService.toAbsolutePath(generatedThumbnail);
-            if (fs.existsSync(absThumbnailPath)) {
-              return res.sendFile(path.resolve(absThumbnailPath));
-            }
+    }
+    
+    // If thumbnail doesn't exist but should, try to generate it on-demand
+    if (isThumbnail && !image.thumbnail_path) {
+      try {
+        const generatedThumbnail = await imageViewerService.getOrGenerateThumbnail(
+          image.file_path,
+          id
+        );
+        if (generatedThumbnail) {
+          const absThumbnailPath = imageViewerService.toAbsolutePath(generatedThumbnail);
+          if (fs.existsSync(absThumbnailPath)) {
+            // Update database with thumbnail path for future requests
+            await imageViewerService.updateThumbnailPath(id, generatedThumbnail);
+            return res.sendFile(path.resolve(absThumbnailPath));
           }
-        } catch (error) {
-          console.error("Error generating thumbnail on-demand:", error);
         }
+      } catch (error) {
+        console.error("Error generating thumbnail on-demand:", error);
+        // Fall through to serve original file if thumbnail generation fails
       }
     }
 
