@@ -33,6 +33,7 @@ const elements = {
     scanBtn: document.getElementById('scanBtn'),
     imageViewerModal: document.getElementById('imageViewerModal'),
     viewerImage: document.getElementById('viewerImage'),
+    viewerVideo: document.getElementById('viewerVideo'),
     viewerImageContainer: document.getElementById('viewerImageContainer'),
     viewerExitFullscreen: document.getElementById('viewerExitFullscreen'),
     viewerImageName: document.getElementById('viewerImageName'),

@@ -52,12 +52,17 @@ const upload = multer({
       "image/tiff",
       "image/webp",
       "image/svg+xml",
+      "video/webm",
+      "video/mp4",
+      "video/quicktime", // mov
+      "video/x-msvideo", // avi
+      "video/x-matroska", // mkv
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Invalid file type. Only images are allowed."));
+      cb(new Error("Invalid file type. Only images and videos are allowed."));
     }
   },
 });

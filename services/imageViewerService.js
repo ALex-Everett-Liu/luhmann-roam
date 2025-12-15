@@ -284,6 +284,20 @@ async function initializeDatabase() {
     }
   }
   
+  // Migrate existing database: add thumbnail_path column if it doesn't exist
+  try {
+    await db.run("ALTER TABLE images ADD COLUMN thumbnail_path TEXT DEFAULT NULL");
+    console.log("Migration: Added thumbnail_path column to images table");
+  } catch (error) {
+    // Column already exists - this is expected for new databases or already-migrated databases
+    if (error.message.includes('duplicate column') || error.message.includes('already exists')) {
+      console.log("Migration: thumbnail_path column already exists in images table");
+    } else {
+      // Unexpected error - log it but don't fail
+      console.log("Migration: Error checking thumbnail_path column:", error.message);
+    }
+  }
+  
   // IMPORTANT: Migrate tags to normalized schema BEFORE creating new tables
   // This ensures we detect and migrate old schema if it exists
   try {
@@ -339,9 +353,87 @@ function formatFileSize(bytes) {
 }
 
 /**
- * Get image metadata using sharp
+ * Check if file is a video format
+ */
+function isVideoFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const videoExtensions = ['.webm', '.mp4', '.mov', '.avi', '.mkv'];
+  return videoExtensions.includes(ext);
+}
+
+/**
+ * Get video metadata using ffmpeg
+ */
+async function getVideoMetadata(filePath) {
+  return new Promise((resolve, reject) => {
+    const ffmpeg = require("fluent-ffmpeg");
+    
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        console.error("Error getting video metadata:", err);
+        resolve({
+          width: null,
+          height: null,
+          format: null,
+          duration: null,
+        });
+        return;
+      }
+      
+      const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
+      if (videoStream) {
+        resolve({
+          width: videoStream.width || null,
+          height: videoStream.height || null,
+          format: path.extname(filePath).toLowerCase().substring(1), // Remove the dot
+          duration: metadata.format.duration ? parseFloat(metadata.format.duration) : null,
+        });
+      } else {
+        resolve({
+          width: null,
+          height: null,
+          format: null,
+          duration: null,
+        });
+      }
+    });
+  });
+}
+
+/**
+ * Generate thumbnail from video (extract first frame)
+ */
+async function generateVideoThumbnail(videoPath, thumbnailPath) {
+  return new Promise((resolve, reject) => {
+    const ffmpeg = require("fluent-ffmpeg");
+    
+    ffmpeg(videoPath)
+      .screenshots({
+        timestamps: ['00:00:00.000'],
+        filename: path.basename(thumbnailPath),
+        folder: path.dirname(thumbnailPath),
+        size: '320x240' // Thumbnail size
+      })
+      .on('end', () => {
+        resolve(thumbnailPath);
+      })
+      .on('error', (err) => {
+        console.error("Error generating video thumbnail:", err);
+        reject(err);
+      });
+  });
+}
+
+/**
+ * Get image or video metadata
  */
 async function getImageMetadata(filePath) {
+  // Check if it's a video file
+  if (isVideoFile(filePath)) {
+    return await getVideoMetadata(filePath);
+  }
+  
+  // Handle GIF files with sharp (sharp can handle GIFs)
   try {
     const sharp = require("sharp");
     const metadata = await sharp(filePath).metadata();
@@ -361,7 +453,39 @@ async function getImageMetadata(filePath) {
 }
 
 /**
- * Save uploaded image and create database entry
+ * Get or generate thumbnail for a video file
+ */
+async function getOrGenerateThumbnail(filePath, imageId) {
+  // Only generate thumbnails for video files
+  if (!isVideoFile(filePath)) {
+    return null;
+  }
+  
+  // Thumbnail directory
+  const thumbnailDir = path.join(IMAGE_DIR, 'thumbnails');
+  if (!fs.existsSync(thumbnailDir)) {
+    fs.mkdirSync(thumbnailDir, { recursive: true });
+  }
+  
+  const thumbnailPath = path.join(thumbnailDir, `${imageId}.jpg`);
+  
+  // If thumbnail already exists, return it
+  if (fs.existsSync(thumbnailPath)) {
+    return toRelativePath(thumbnailPath);
+  }
+  
+  // Generate thumbnail
+  try {
+    await generateVideoThumbnail(filePath, thumbnailPath);
+    return toRelativePath(thumbnailPath);
+  } catch (error) {
+    console.error("Failed to generate thumbnail:", error);
+    return null;
+  }
+}
+
+/**
+ * Save uploaded image or video and create database entry
  */
 async function saveImage(file, customPath = null) {
   const db = await getDb();
@@ -378,9 +502,15 @@ async function saveImage(file, customPath = null) {
   // Move uploaded file
   fs.renameSync(file.path, filePath);
   
-  // Get image metadata
+  // Get image/video metadata
   const metadata = await getImageMetadata(filePath);
   const stats = fs.statSync(filePath);
+  
+  // Generate thumbnail for videos
+  let thumbnailPath = null;
+  if (isVideoFile(filePath)) {
+    thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
+  }
   
   // Insert into database (store relative path)
   const now = Date.now();
@@ -388,8 +518,8 @@ async function saveImage(file, customPath = null) {
   await db.run(`
     INSERT INTO images (
       id, filename, original_filename, file_path, file_size, mime_type,
-      width, height, created_at, updated_at, rating, ranking, view_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      width, height, thumbnail_path, created_at, updated_at, rating, ranking, view_count
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     imageId,
     filename,
@@ -399,6 +529,7 @@ async function saveImage(file, customPath = null) {
     file.mimetype,
     metadata.width,
     metadata.height,
+    thumbnailPath,
     now,
     now,
     0,
@@ -410,6 +541,7 @@ async function saveImage(file, customPath = null) {
     id: imageId,
     filename: file.originalname,
     filePath: toRelativePath(filePath),
+    thumbnailPath: thumbnailPath,
     ...metadata,
     fileSize: stats.size,
     fileSizeFormatted: formatFileSize(stats.size),
@@ -780,7 +912,7 @@ function getSubfolders(basePath = '') {
  */
 async function scanAndImportImages(subfolder = null) {
   const db = await getDb();
-  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg'];
+  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.svg', '.webm', '.mp4', '.mov', '.avi', '.mkv'];
   const importedFiles = [];
   const skippedFiles = [];
   const errorFiles = [];
@@ -863,7 +995,7 @@ async function scanAndImportImages(subfolder = null) {
       // Generate UUID for database entry
       const imageId = uuidv4();
       
-      // Get image metadata
+      // Get image/video metadata
       const metadata = await getImageMetadata(filePath);
       
       // Determine MIME type from extension
@@ -876,9 +1008,20 @@ async function scanAndImportImages(subfolder = null) {
         '.bmp': 'image/bmp',
         '.tiff': 'image/tiff',
         '.webp': 'image/webp',
-        '.svg': 'image/svg+xml'
+        '.svg': 'image/svg+xml',
+        '.webm': 'video/webm',
+        '.mp4': 'video/mp4',
+        '.mov': 'video/quicktime',
+        '.avi': 'video/x-msvideo',
+        '.mkv': 'video/x-matroska'
       };
       const mimeType = mimeTypes[ext] || 'image/jpeg';
+      
+      // Generate thumbnail for videos
+      let thumbnailPath = null;
+      if (isVideoFile(filePath)) {
+        thumbnailPath = await getOrGenerateThumbnail(filePath, imageId);
+      }
       
       // Use file modification time as created_at if available, otherwise use now
       const createdAt = stats.mtime ? stats.mtime.getTime() : Date.now();
@@ -889,8 +1032,8 @@ async function scanAndImportImages(subfolder = null) {
       await db.run(`
         INSERT INTO images (
           id, filename, original_filename, file_path, file_size, mime_type,
-          width, height, created_at, updated_at, rating, ranking, view_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          width, height, thumbnail_path, created_at, updated_at, rating, ranking, view_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         imageId,
         originalFilename, // Keep original filename
@@ -900,6 +1043,7 @@ async function scanAndImportImages(subfolder = null) {
         mimeType,
         metadata.width,
         metadata.height,
+        thumbnailPath,
         createdAt,
         now,
         0,
@@ -955,6 +1099,9 @@ module.exports = {
   getSubfolders,
   generateImageUrl,
   formatFileSize,
+  toAbsolutePath,
+  isVideoFile,
+  getOrGenerateThumbnail,
   IMAGE_DIR,
   DB_PATH,
 };

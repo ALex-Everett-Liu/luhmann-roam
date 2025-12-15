@@ -17,6 +17,10 @@ async function openViewer(imageId) {
         currentImage = image;
     }
     
+    // Check if this is a video file
+    const isVideo = currentImage.mimeType && currentImage.mimeType.startsWith('video/') ||
+                    /\.(webm|mp4|mov|avi|mkv)$/i.test(currentImage.filename);
+    
     // Update viewer
     elements.viewerImageName.textContent = currentImage.filename;
     elements.viewerImageInfo.textContent = `${currentImage.width} × ${currentImage.height}`;
@@ -37,47 +41,79 @@ async function openViewer(imageId) {
     // Set initial view count
     elements.viewerViewCount.textContent = currentImage.viewCount || 0;
     
-    // Set up image load handler to update view count after image loads
-    // Use a one-time handler to prevent multiple increments
-    const updateViewCountAfterLoad = async () => {
-        // Remove listener immediately to prevent multiple calls
-        elements.viewerImage.removeEventListener('load', updateViewCountAfterLoad);
+    // Show/hide image or video element based on file type
+    if (isVideo) {
+        elements.viewerImage.style.display = 'none';
+        elements.viewerVideo.style.display = 'block';
         
-        try {
-            // Small delay to ensure server has processed the increment
-            await new Promise(resolve => setTimeout(resolve, 100));
+        // Set up video load handler to update view count
+        const updateViewCountAfterLoad = async () => {
+            elements.viewerVideo.removeEventListener('loadeddata', updateViewCountAfterLoad);
             
-            // Fetch updated image data to get the incremented view count
-            const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
-            if (response.ok) {
-                const data = await response.json();
-                const updatedViewCount = data.image.viewCount || 0;
-                elements.viewerViewCount.textContent = updatedViewCount;
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Update currentImage and images array with new view count
-                currentImage.viewCount = updatedViewCount;
-                const imageIndex = images.findIndex(img => img.id === imageId);
-                if (imageIndex !== -1) {
-                    images[imageIndex].viewCount = updatedViewCount;
-                    // Re-render grid to show updated view count
-                    renderImageGrid();
+                const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const updatedViewCount = data.image.viewCount || 0;
+                    elements.viewerViewCount.textContent = updatedViewCount;
+                    
+                    currentImage.viewCount = updatedViewCount;
+                    const imageIndex = images.findIndex(img => img.id === imageId);
+                    if (imageIndex !== -1) {
+                        images[imageIndex].viewCount = updatedViewCount;
+                        renderImageGrid();
+                    }
                 }
+            } catch (error) {
+                console.error('Error updating view count:', error);
             }
-        } catch (error) {
-            console.error('Error updating view count:', error);
-        }
-    };
+        };
+        
+        elements.viewerVideo.addEventListener('loadeddata', updateViewCountAfterLoad, { once: true });
+        
+        const cacheBuster = `?t=${Date.now()}`;
+        elements.viewerVideo.src = currentImage.url + cacheBuster;
+    } else {
+        elements.viewerVideo.style.display = 'none';
+        elements.viewerImage.style.display = 'block';
+        
+        // Set up image load handler to update view count after image loads
+        const updateViewCountAfterLoad = async () => {
+            elements.viewerImage.removeEventListener('load', updateViewCountAfterLoad);
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const response = await fetch(`/api/plugins/image-viewer/images/${imageId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const updatedViewCount = data.image.viewCount || 0;
+                    elements.viewerViewCount.textContent = updatedViewCount;
+                    
+                    currentImage.viewCount = updatedViewCount;
+                    const imageIndex = images.findIndex(img => img.id === imageId);
+                    if (imageIndex !== -1) {
+                        images[imageIndex].viewCount = updatedViewCount;
+                        renderImageGrid();
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating view count:', error);
+            }
+        };
+        
+        elements.viewerImage.addEventListener('load', updateViewCountAfterLoad, { once: true });
+        
+        const cacheBuster = `?t=${Date.now()}`;
+        elements.viewerImage.src = currentImage.url + cacheBuster;
+    }
     
-    // Add load event listener before setting src
-    elements.viewerImage.addEventListener('load', updateViewCountAfterLoad, { once: true });
-    
-    // Add cache-busting parameter to ensure server request happens
-    // This ensures view count increments even if browser has cached the image
-    const cacheBuster = `?t=${Date.now()}`;
-    elements.viewerImage.src = currentImage.url + cacheBuster;
-    
-    // Reset zoom and pan
-    resetZoom();
+    // Reset zoom and pan (only for images)
+    if (!isVideo) {
+        resetZoom();
+    }
     
     // Show modal
     elements.imageViewerModal.classList.add('visible');

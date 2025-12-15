@@ -19,9 +19,9 @@
             <section class="upload-section">
                 <div class="upload-area" id="uploadArea">
                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                    <h3>Drop images here or click to upload</h3>
-                    <p>Supports: JPG, PNG, GIF, BMP, TIFF, WebP, SVG</p>
-                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                    <h3>Drop images or videos here or click to upload</h3>
+                    <p>Supports: JPG, PNG, GIF, BMP, TIFF, WebP, SVG, WebM, MP4, MOV, AVI, MKV</p>
+                    <input type="file" id="fileInput" multiple accept="image/*,video/*" style="display: none;">
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
                         <i class="fas fa-plus"></i> Select Images
                     </button>
@@ -154,7 +154,8 @@
             </div>
             <div class="viewer-content">
                 <div class="viewer-image-container" id="viewerImageContainer">
-                    <img id="viewerImage" src="" alt="">
+                    <img id="viewerImage" src="" alt="" style="display: none;">
+                    <video id="viewerVideo" src="" controls style="display: none;"></video>
                     <button id="viewerExitFullscreen" class="exit-fullscreen-btn" title="Exit Fullscreen" style="display: none;">
                         <i class="fas fa-compress"></i>
                     </button>

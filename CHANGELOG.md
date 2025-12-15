@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.34.12] - 2025-12-19
+
+### Added
+- **Video Format Support**: Added support for video formats (WebM, MP4, MOV, AVI, MKV) and GIF files in Image Viewer plugin
+- **Video Metadata Extraction**: Video metadata extraction using `fluent-ffmpeg` to get video dimensions and duration
+- **Video Thumbnail Generation**: Automatic thumbnail generation for videos by extracting first frame (320x240 JPG) using ffmpeg
+- **Video Thumbnail Storage**: Added `thumbnail_path` column to images table for storing video thumbnail paths
+- **Video Detection**: `isVideoFile()` function to detect video formats by file extension
+- **Video Thumbnail API**: Thumbnail generation on upload/scan and on-demand thumbnail serving for videos
+- **Video Viewer Support**: Added `<video>` element to image viewer modal for playing videos with standard controls
+- **Video MIME Types**: Updated file upload filter to accept video MIME types (video/webm, video/mp4, video/quicktime, video/x-msvideo, video/x-matroska)
+- **Video Scanning**: Updated scan functionality to include video file extensions when scanning directories
+
+### Changed
+- **Supported Formats**: Updated `getInfo()` endpoint to include video formats in supported formats list
+- **Image Metadata Function**: Enhanced `getImageMetadata()` to handle both images and videos (uses Sharp for images/GIFs, ffmpeg for videos)
+- **File Serving**: Updated `serveImage()` endpoint to serve video thumbnails when `?thumbnail=true` parameter is present
+- **Upload UI**: Updated upload section text to mention video support and updated file input to accept `video/*` files
+- **Viewer Display**: Updated viewer to detect video files and display `<video>` element instead of `<img>` for videos
+- **API Responses**: Updated API responses to include `mimeType` field for frontend video detection
+
+### Technical Details
+- **Thumbnail Generation**: Thumbnails generated automatically on upload/scan and cached in `plugins/image-viewer/images/thumbnails/` directory
+- **Database Schema**: Added `thumbnail_path` column migration for existing databases
+- **Video Processing**: Uses `fluent-ffmpeg` (already in dependencies) for video metadata and thumbnail extraction
+- **GIF Support**: GIF files handled by Sharp library (no special processing needed)
+- **Thumbnail Caching**: Thumbnails are generated once and reused for performance
+- **On-Demand Generation**: Thumbnails can be generated on-demand if missing when requested
+- **Video Playback**: Videos play in viewer with standard HTML5 video controls
+- **View Count**: View count increments properly for videos (using `loadeddata` event instead of `load` event)
+- **MIME Type Detection**: Frontend detects videos by MIME type or file extension for proper display
+
 ## [0.34.11] - 2025-12-15
 
 ### Changed

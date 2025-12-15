@@ -81,6 +81,7 @@ exports.getImages = async (req, res) => {
       height: image.height,
       fileSize: image.file_size,
       fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
+      mimeType: image.mime_type,
       rating: image.rating,
       ranking: image.ranking,
       viewCount: image.view_count,
@@ -127,6 +128,7 @@ exports.getImage = async (req, res) => {
         height: image.height,
         fileSize: image.file_size,
         fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
+        mimeType: image.mime_type,
         rating: image.rating,
         ranking: image.ranking,
         viewCount: image.view_count,
@@ -147,7 +149,7 @@ exports.getImage = async (req, res) => {
 };
 
 /**
- * Serve image file (increments view count)
+ * Serve image or video file (increments view count)
  * GET /api/plugins/image-viewer/images/:id/file
  */
 exports.serveImage = async (req, res) => {
@@ -162,21 +164,46 @@ exports.serveImage = async (req, res) => {
     // Check if this is a thumbnail request (don't increment for thumbnails)
     const isThumbnail = req.query.thumbnail === 'true';
     
-    // Only increment view count for full image views, not thumbnails
+    // Only increment view count for full image/video views, not thumbnails
     if (!isThumbnail) {
       await imageViewerService.incrementViewCount(id);
     }
 
-    // Serve the file
+    // For thumbnail requests on videos, serve the thumbnail if it exists
+    if (isThumbnail && image.thumbnail_path) {
+      const thumbnailPath = imageViewerService.toAbsolutePath(image.thumbnail_path);
+      if (fs.existsSync(thumbnailPath)) {
+        return res.sendFile(path.resolve(thumbnailPath));
+      }
+      // If thumbnail doesn't exist but should (for videos), try to generate it
+      if (imageViewerService.isVideoFile(image.file_path)) {
+        try {
+          const generatedThumbnail = await imageViewerService.getOrGenerateThumbnail(
+            image.file_path,
+            id
+          );
+          if (generatedThumbnail) {
+            const absThumbnailPath = imageViewerService.toAbsolutePath(generatedThumbnail);
+            if (fs.existsSync(absThumbnailPath)) {
+              return res.sendFile(path.resolve(absThumbnailPath));
+            }
+          }
+        } catch (error) {
+          console.error("Error generating thumbnail on-demand:", error);
+        }
+      }
+    }
+
+    // Serve the original file (image or video)
     if (!fs.existsSync(image.file_path)) {
-      return res.status(404).json({ error: "Image file not found" });
+      return res.status(404).json({ error: "File not found" });
     }
 
     res.sendFile(path.resolve(image.file_path));
   } catch (error) {
     console.error("Serve image error:", error);
     res.status(500).json({
-      error: "Failed to serve image",
+      error: "Failed to serve file",
       details: error.message,
     });
   }
@@ -463,7 +490,7 @@ exports.scanImages = async (req, res) => {
 exports.getInfo = (req, res) => {
   res.json({
     version: "1.0.0",
-    supportedFormats: ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg"],
+    supportedFormats: ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg", "webm", "mp4", "mov", "avi", "mkv"],
     maxFileSize: "500MB",
     imageDir: imageViewerService.IMAGE_DIR,
   });
