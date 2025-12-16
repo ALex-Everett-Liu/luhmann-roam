@@ -320,7 +320,7 @@ npm run graph-plugin
 For production deployment:
 
 1. **Main App**: Deploy normally (ports 3000/3003)
-2. **Graph Plugin**: Deploy as separate service on port 3001
+2. **Graph Plugin**: Deploy as separate service on port 8036
 3. **Update URLs**: Change `API_BASE` in `app.js` to production URL
 4. **CORS**: Configure CORS for production domains
 5. **SSL**: Both services should use HTTPS
@@ -475,4 +475,3 @@ When contributing:
 ## License
 
 Part of Luhmann Roam project (MIT License)
-
