@@ -1,5 +1,5 @@
 // nodeService.js - Business logic for Node operations
-const { v4: uuidv4 } = require("uuid");
+const { v7: uuidv7 } = require("uuid");
 
 /**
  * Process line breaks in node content for display
@@ -85,7 +85,7 @@ async function getChildNodes(db, parentId) {
 async function createNode(db, nodeData) {
   const { content, content_zh, parent_id, position } = nodeData;
   const now = Date.now();
-  const id = uuidv4();
+  const id = uuidv7();
 
   // Get the next sequence_id by finding the maximum existing sequence_id
   const maxSequenceResult = await db.get(

@@ -11,7 +11,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { v4: uuidv4 } = require("uuid");
+const { v7: uuidv7 } = require("uuid");
 const imageViewerController = require("../controllers/imageViewerController");
 const imageViewerService = require("../services/imageViewerService");
 
@@ -33,7 +33,7 @@ const storage = multer.diskStorage({
     cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}_${file.originalname}`;
+    const uniqueName = `${uuidv7()}_${file.originalname}`;
     cb(null, uniqueName);
   },
 });

@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Copy Tags Feature**: Added "Copy Tags" button in Image Details section to copy all tags of an image to clipboard in comma-separated format (`tag1, tag2, tag3`)
 
 ### Changed
+- **UUID Generation**: Migrated from UUIDv4 to UUIDv7 for better database index locality and performance (main outliner app and Image Viewer plugin)
 - **Supported Formats**: Updated `getInfo()` endpoint to include video formats in supported formats list
 - **Image Metadata Function**: Enhanced `getImageMetadata()` to handle both images and videos (uses Sharp for images/GIFs, ffmpeg for videos)
 - **File Serving**: Updated `serveImage()` endpoint to serve thumbnails (WebP) for both images and videos when `?thumbnail=true` parameter is present
@@ -37,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Thumbnail Cleanup**: Updated `deleteImage()` to also delete thumbnail files when images are deleted
 
 ### Technical Details
+- **UUIDv7 Migration**: Updated `services/nodeService.js`, `services/imageViewerService.js`, and `routes/imageViewerRoutes.js` to use UUIDv7 instead of UUIDv4
+- **UUIDv7 Benefits**: UUIDv7 includes timestamp in first 48 bits, providing better index locality for SQLite B-tree indexes, reducing fragmentation and improving insert performance
+- **Backward Compatibility**: Existing UUIDv4 IDs remain valid - UUID versions are encoded in the UUID itself, allowing both v4 and v7 to coexist in the same database
 - **Thumbnail Generation**: Thumbnails generated automatically on upload/scan and cached in `plugins/image-viewer/images/thumbnails/` directory
 - **Database Schema**: Added `thumbnail_path` column migration for existing databases
 - **Video Processing**: Uses `fluent-ffmpeg` (already in dependencies) for video metadata and thumbnail extraction

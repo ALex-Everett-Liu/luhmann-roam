@@ -9,7 +9,7 @@
 //
 const path = require("path");
 const fs = require("fs");
-const { v4: uuidv4 } = require("uuid");
+const { v7: uuidv7 } = require("uuid");
 const sqlite3 = require("sqlite3").verbose();
 const { open } = require("sqlite");
 
@@ -167,7 +167,7 @@ async function migrateTagsToNormalizedSchema(db) {
     const tagMap = new Map(); // Maps tag name to tag_id
     
     for (const row of oldTagRows) {
-      const tagId = uuidv4();
+      const tagId = uuidv7();
       await db.run(`
         INSERT OR IGNORE INTO tags (id, name, created_at)
         VALUES (?, ?, ?)
@@ -559,7 +559,7 @@ async function getOrGenerateThumbnail(filePath, imageId) {
  */
 async function saveImage(file, customPath = null) {
   const db = await getDb();
-  const imageId = uuidv4();
+  const imageId = uuidv7();
   const filename = `${imageId}_${file.originalname}`;
   const filePath = customPath || path.join(IMAGE_DIR, filename);
   
@@ -753,7 +753,7 @@ async function getOrCreateTag(tagName) {
   }
   
   // Create new tag
-  const tagId = uuidv4();
+  const tagId = uuidv7();
   const now = Date.now();
   await db.run(`
     INSERT INTO tags (id, name, created_at)
@@ -1068,7 +1068,7 @@ async function scanAndImportImages(subfolder = null) {
       const originalFilename = path.basename(filePath);
       
       // Generate UUID for database entry
-      const imageId = uuidv4();
+      const imageId = uuidv7();
       
       // Get image/video metadata
       const metadata = await getImageMetadata(filePath);

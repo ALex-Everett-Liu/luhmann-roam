@@ -1,7 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { v4: uuidv4 } = require("uuid");
 const {
   getDb,
   initializeDatabase,
