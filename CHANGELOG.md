@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical Details
 - **UUIDv7 Migration**: Updated `services/nodeService.js`, `services/imageViewerService.js`, and `routes/imageViewerRoutes.js` to use UUIDv7 instead of UUIDv4
+- **UUIDv7 Package**: Added `uuidv7` package (v1.1.0) dependency - the standard `uuid` package doesn't support v7 yet, so using dedicated `uuidv7` package
 - **UUIDv7 Benefits**: UUIDv7 includes timestamp in first 48 bits, providing better index locality for SQLite B-tree indexes, reducing fragmentation and improving insert performance
 - **Backward Compatibility**: Existing UUIDv4 IDs remain valid - UUID versions are encoded in the UUID itself, allowing both v4 and v7 to coexist in the same database
 - **Thumbnail Generation**: Thumbnails generated automatically on upload/scan and cached in `plugins/image-viewer/images/thumbnails/` directory

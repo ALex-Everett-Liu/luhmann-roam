@@ -11,7 +11,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { v7: uuidv7 } = require("uuid");
+const { uuidv7 } = require("uuidv7");
 const imageViewerController = require("../controllers/imageViewerController");
 const imageViewerService = require("../services/imageViewerService");
 

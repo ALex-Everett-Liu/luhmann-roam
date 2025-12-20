@@ -9,7 +9,7 @@
 //
 const path = require("path");
 const fs = require("fs");
-const { v7: uuidv7 } = require("uuid");
+const { uuidv7 } = require("uuidv7");
 const sqlite3 = require("sqlite3").verbose();
 const { open } = require("sqlite");
 

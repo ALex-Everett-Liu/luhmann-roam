@@ -1,5 +1,5 @@
 // nodeService.js - Business logic for Node operations
-const { v7: uuidv7 } = require("uuid");
+const { uuidv7 } = require("uuidv7");
 
 /**
  * Process line breaks in node content for display
