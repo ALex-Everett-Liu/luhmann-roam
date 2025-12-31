@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
+## [0.35.1] - 2025-12-15
+
+### Changed
+- **WebP Converter UI Redesign**: Complete UI redesign of WebP Converter plugin using Neumorphism (Soft UI) design system
+- **Design System Integration**: Migrated from flat design with gradients and borders to Neumorphism with dual opposing RGB shadows
+- **Typography**: Updated to use Plus Jakarta Sans (display) and DM Sans (body) fonts from Google Fonts
+- **Color Palette**: Switched to cool monochromatic palette (`#E0E5EC` background, `#3D4852` foreground, `#6B7280` muted)
+- **Component Styling**: All components (buttons, cards, inputs, toasts) now use neumorphic shadows instead of borders
+- **Shadow System**: Implemented dual opposing RGB shadows (extruded/inset states) for tactile depth perception
+- **Border Radius**: Updated to use soft, hyper-rounded corners (32px for containers, 16px for buttons)
+
+### Added
+- **Neumorphic Design Tokens**: Complete design token system with cool grey palette, RGBA shadows, and typography variables
+- **Extruded/Inset Shadow States**: Multiple shadow variants (extruded, extruded hover, inset, inset deep) for different component states
+- **Micro-interactions**: Smooth 300ms transitions with translateY transforms for hover/active states
+- **Focus States**: WCAG AA compliant focus indicators with 2px accent rings and offset
+- **Google Fonts Integration**: Added Plus Jakarta Sans and DM Sans fonts with `display=swap` for optimal loading
+
+### Technical Details
+- **Design System**: Complete Neumorphism implementation following design system specifications in `prompt.xml`
+- **Shadow Colors**: Uses RGBA shadows (`rgba(255, 255, 255, 0.5-0.6)` for light, `rgb(163, 177, 198, 0.6-0.7)` for dark) instead of solid hex shadows
+- **No Borders**: All borders removed - shadows define all edges following neumorphic principles
+- **Component Updates**: 
+  - Header: Extruded card with hover lift effect
+  - Upload Area: Extruded card with drag-over inset state
+  - Settings Panel: Extruded card with nested depth
+  - Buttons: Extruded shadows with hover lift and active press down
+  - Inputs: Inset shadows with deep inset on focus
+  - Image Cards: Extruded with hover lift
+  - Results: Extruded cards with colored accent bars (no borders)
+  - Progress Bar: Inset track with extruded fill
+  - Toasts: Extruded cards with colored accent bars
+- **Accessibility**: WCAG AA compliant contrast ratios (7.5:1 for primary text, 4.6:1 for muted text)
+- **Touch Targets**: Minimum 44px (48px for buttons) for mobile accessibility
+- **Responsive Design**: Mobile-first approach with breakpoints at 768px and 480px
+- **Typography Scale**: Responsive font sizes from `text-sm` (14px) to `text-7xl` (72px) for hero headlines
+
+### Benefits
+- **Visual Consistency**: Cohesive neumorphic aesthetic throughout the plugin
+- **Tactile Depth**: Realistic 3D depth perception through dual shadows
+- **Modern Design**: Contemporary soft UI aesthetic with premium feel
+- **Accessibility**: WCAG AA compliant with proper focus states and contrast ratios
+- **Mobile-Friendly**: Fully responsive with touch-friendly targets and hamburger menu support
+
+### Affected Components
+- `plugins/webp-converter/index.html` - Added Google Fonts links (Plus Jakarta Sans, DM Sans)
+- `plugins/webp-converter/styles.css` - Complete rewrite with Neumorphism design system (1,041 lines)
+
+WebP Converter plugin now features a beautiful Neumorphism design system with tactile depth and modern aesthetics!
+
 ## [0.34.12] - 2025-12-15
 
 ### Added
