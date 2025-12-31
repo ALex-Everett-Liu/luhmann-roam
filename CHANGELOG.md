@@ -7,7 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: For historical versions prior to 0.32.0, see [CHANGELOG-ARCHIVED.md](CHANGELOG-ARCHIVED.md)
 
-## [0.35.1] - 2025-12-15
+## [0.35.2] - 2025-12-31
+
+### Changed
+- **Image Viewer UI Redesign**: Complete UI redesign of Image Viewer plugin using Neumorphism (Soft UI) design system
+- **Accent Color Update**: Updated accent colors from blue-purple (`#6C63FF`, `#6366F1`) to light blue (`#7FC9FF`, `#9DD5FF`) across both WebP Converter and Image Viewer plugins
+- **Modal Header Consistency**: Updated plugin modal headers to use light blue accent color for visual consistency
+
+### Added
+- **Plugin Design System Guide**: Comprehensive design system guide (`docs/development/PLUGIN_DESIGN_SYSTEM_GUIDE.md`) for future plugin developers
+- **Design System Documentation**: Complete documentation covering design tokens, typography, shadows, component patterns, code examples, and accessibility guidelines
+- **Implementation Examples**: Ready-to-use code examples for cards, buttons, inputs, modals, forms, and common UI patterns
+- **Anti-Patterns Section**: Clear guidance on what NOT to do with wrong vs. correct examples
+
+### Technical Details
+- **Image Viewer Redesign**: 
+  - Updated all 15 CSS modules with Neumorphism styling
+  - Added Google Fonts (Plus Jakarta Sans, DM Sans) integration
+  - Converted all components to use extruded/inset shadows
+  - Updated color palette to match WebP Converter plugin
+- **Modal Headers**: Updated both `webp-converter-plugin-modal.css` and `image-viewer-plugin-modal.css` header backgrounds to `#7FC9FF`
+- **Design System Guide**:
+  - Complete CSS variable definitions
+  - Typography guidelines with font weights and usage
+  - Shadow system documentation (extruded, inset, hover states)
+  - Component patterns for cards, buttons, inputs, modals
+  - Code examples for common UI patterns
+  - Accessibility checklist (WCAG AA compliance)
+  - Quick reference checklist for implementation
+- **Consistency**: Both WebP Converter and Image Viewer plugins now share identical design system implementation
+
+### Benefits
+- **Visual Consistency**: All plugins now use the same Neumorphism design system with light blue accents
+- **Developer Experience**: Comprehensive guide enables consistent plugin development
+- **Maintainability**: Centralized design tokens and patterns reduce code duplication
+- **Accessibility**: WCAG AA compliant design ensures accessible user experience
+- **Future-Proof**: Design system guide ensures new plugins maintain visual consistency
+
+### Affected Components
+- `plugins/image-viewer/index.html` - Added Google Fonts links
+- `plugins/image-viewer/css/variables.css` - Complete rewrite with Neumorphism design tokens
+- `plugins/image-viewer/css/base.css` - Updated typography and body styles
+- `plugins/image-viewer/css/header.css` - Extruded card header with hover effects
+- `plugins/image-viewer/css/layout.css` - Updated section headers
+- `plugins/image-viewer/css/upload.css` - Neumorphic upload area
+- `plugins/image-viewer/css/scan.css` - Neumorphic scan button
+- `plugins/image-viewer/css/manager.css` - Extruded manager section with inset inputs
+- `plugins/image-viewer/css/image-grid.css` - Extruded image cards
+- `plugins/image-viewer/css/pagination.css` - Neumorphic pagination buttons
+- `plugins/image-viewer/css/dialogs.css` - Extruded dialog cards
+- `plugins/image-viewer/css/toast.css` - Neumorphic toast notifications
+- `plugins/image-viewer/css/loading.css` - Neumorphic loading spinner
+- `plugins/webp-converter/styles.css` - Updated accent colors to light blue
+- `public/css/webp-converter-plugin-modal.css` - Updated header color to light blue
+- `public/css/image-viewer-plugin-modal.css` - Updated header color to light blue
+- `docs/development/PLUGIN_DESIGN_SYSTEM_GUIDE.md` - New comprehensive design system guide
+
+Image Viewer plugin now matches WebP Converter's Neumorphism design system! Complete design system guide available for future plugin development.
+
+## [0.35.1] - 2025-12-31
 
 ### Changed
 - **WebP Converter UI Redesign**: Complete UI redesign of WebP Converter plugin using Neumorphism (Soft UI) design system

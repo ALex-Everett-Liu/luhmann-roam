@@ -1,22 +1,48 @@
-/* CSS Custom Properties (Variables) */
+/* Neumorphism Design System - Image Viewer */
 
 :root {
-    --primary-color: #6366f1;
-    --primary-hover: #4f46e5;
-    --secondary-color: #8b5cf6;
+    /* Colors - Cool Monochromatic Palette */
+    --background: #E0E5EC;
+    --foreground: #3D4852;
+    --muted: #6B7280;
+    --accent: #7FC9FF;
+    --accent-light: #9DD5FF;
+    --accent-secondary: #38B2AC;
     --success-color: #10b981;
     --error-color: #ef4444;
     --warning-color: #f59e0b;
-    --background: #f8fafc;
-    --surface: #ffffff;
-    --border: #e2e8f0;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --border-radius: 0.5rem;
-    --border-radius-lg: 0.75rem;
+    
+    /* Shadow Colors - RGBA for Smoothness */
+    --shadow-light: rgba(255, 255, 255, 0.5);
+    --shadow-light-hover: rgba(255, 255, 255, 0.6);
+    --shadow-dark: rgb(163, 177, 198, 0.6);
+    --shadow-dark-hover: rgb(163, 177, 198, 0.7);
+    
+    /* Typography */
+    --font-display: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    
+    /* Radius */
+    --radius-container: 32px;
+    --radius-button: 16px;
+    --radius-inner: 12px;
+    
+    /* Transitions */
+    --transition-fast: 300ms ease-out;
+    --transition-slow: 500ms ease-out;
+    
+    /* Legacy compatibility (mapped to new system) */
+    --primary-color: var(--accent);
+    --primary-hover: var(--accent-light);
+    --secondary-color: var(--accent-light);
+    --surface: var(--background);
+    --border: transparent;
+    --text-primary: var(--foreground);
+    --text-secondary: var(--muted);
+    --text-muted: var(--muted);
+    --shadow-sm: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+    --shadow-md: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
+    --shadow-lg: 12px 12px 20px var(--shadow-dark-hover), -12px -12px 20px var(--shadow-light-hover);
+    --border-radius: var(--radius-button);
+    --border-radius-lg: var(--radius-container);
 }
-

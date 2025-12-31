@@ -1,4 +1,4 @@
-/* Dialogs - Tag Filter, Confirmation, Scan */
+/* Dialogs - Tag Filter, Confirmation, Scan - Neumorphic Extruded Cards */
 
 /* Tag Filter Dialog */
 .tag-filter-dialog {
@@ -8,7 +8,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(224, 229, 236, 0.85);
     z-index: 10000;
     align-items: center;
     justify-content: center;
@@ -20,9 +20,9 @@
 }
 
 .tag-filter-dialog-content {
-    background-color: var(--surface);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-lg);
+    background-color: var(--background);
+    border-radius: var(--radius-container);
+    box-shadow: 12px 12px 24px var(--shadow-dark-hover), -12px -12px 24px var(--shadow-light-hover);
     width: 90%;
     max-width: 600px;
     max-height: 85vh;
@@ -36,7 +36,6 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
 }
 
 .tag-filter-dialog-header h3 {
@@ -44,21 +43,43 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-primary);
+    color: var(--foreground);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.25rem;
 }
 
 .dialog-close-btn {
     background: none;
     border: none;
     font-size: 1.25rem;
-    color: var(--text-secondary);
+    color: var(--muted);
     cursor: pointer;
-    padding: 0.25rem;
-    transition: color 0.2s ease;
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    min-width: 44px;
+    min-height: 44px;
 }
 
 .dialog-close-btn:hover {
-    color: var(--text-primary);
+    color: var(--foreground);
+    box-shadow: 5px 5px 10px var(--shadow-dark-hover), -5px -5px 10px var(--shadow-light-hover);
+}
+
+.dialog-close-btn:active {
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+}
+
+.dialog-close-btn:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .tag-filter-dialog-body {
@@ -74,16 +95,20 @@
 
 .tag-search-input {
     width: 100%;
-    padding: 0.75rem 2.5rem 0.75rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
+    padding: 0.875rem 2.5rem 0.875rem 1rem;
+    border: none;
+    border-radius: var(--radius-button);
     font-size: 0.875rem;
-    transition: border-color 0.2s ease;
+    font-family: var(--font-body);
+    background-color: var(--background);
+    color: var(--foreground);
+    box-shadow: inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light);
+    transition: all var(--transition-fast);
 }
 
 .tag-search-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    box-shadow: inset 10px 10px 20px var(--shadow-dark-hover), inset -10px -10px 20px var(--shadow-light-hover), 0 0 0 2px var(--accent);
 }
 
 .search-icon {
@@ -91,51 +116,55 @@
     right: 1rem;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--text-secondary);
+    color: var(--muted);
     pointer-events: none;
 }
 
 .tag-filter-stats {
     margin-bottom: 1rem;
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--muted);
     font-weight: 500;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
+    font-family: var(--font-body);
 }
 
 .tag-filter-total {
-    color: var(--text-primary);
+    color: var(--foreground);
     font-weight: 600;
 }
 
 .tag-filter-list {
     max-height: 400px;
     overflow-y: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-button);
     padding: 0.5rem;
+    background-color: var(--background);
+    box-shadow: inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light);
 }
 
 .tag-filter-item {
     display: flex;
     align-items: center;
     padding: 0.75rem;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-inner);
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all var(--transition-fast);
     user-select: none;
 }
 
 .tag-filter-item:hover {
-    background-color: rgba(99, 102, 241, 0.05);
+    background-color: var(--background);
+    box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
 }
 
 .tag-filter-item.selected {
-    background-color: rgba(99, 102, 241, 0.1);
+    background-color: var(--background);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
 }
 
 .tag-filter-item input[type="checkbox"] {
@@ -147,15 +176,17 @@
 
 .tag-filter-item .tag-name {
     flex: 1;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 0.875rem;
+    font-family: var(--font-body);
 }
 
 .no-tags-message {
     padding: 2rem;
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--muted);
     font-size: 0.875rem;
+    font-family: var(--font-body);
 }
 
 .tag-filter-pagination {
@@ -164,7 +195,6 @@
     align-items: center;
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border);
     gap: 1rem;
 }
 
@@ -173,7 +203,6 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1.5rem;
-    border-top: 1px solid var(--border);
     background-color: var(--background);
 }
 
@@ -185,7 +214,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(224, 229, 236, 0.85);
     z-index: 10001;
     align-items: center;
     justify-content: center;
@@ -197,9 +226,9 @@
 }
 
 .confirm-dialog-content {
-    background-color: var(--surface);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-lg);
+    background-color: var(--background);
+    border-radius: var(--radius-container);
+    box-shadow: 12px 12px 24px var(--shadow-dark-hover), -12px -12px 24px var(--shadow-light-hover);
     width: 90%;
     max-width: 500px;
     display: flex;
@@ -209,7 +238,6 @@
 
 .confirm-dialog-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
 }
 
 .confirm-dialog-header h3 {
@@ -217,8 +245,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 1.25rem;
+    font-family: var(--font-display);
+    font-weight: 700;
 }
 
 .confirm-dialog-body {
@@ -227,8 +257,9 @@
 
 .confirm-dialog-body p {
     margin: 0;
-    color: var(--text-primary);
+    color: var(--foreground);
     line-height: 1.6;
+    font-family: var(--font-body);
 }
 
 .confirm-dialog-footer {
@@ -236,7 +267,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1.5rem;
-    border-top: 1px solid var(--border);
+    background-color: var(--background);
 }
 
 /* Scan Dialog */
@@ -247,7 +278,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(224, 229, 236, 0.85);
     z-index: 10002;
     align-items: center;
     justify-content: center;
@@ -259,9 +290,9 @@
 }
 
 .scan-dialog-content {
-    background-color: var(--surface);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-lg);
+    background-color: var(--background);
+    border-radius: var(--radius-container);
+    box-shadow: 12px 12px 24px var(--shadow-dark-hover), -12px -12px 24px var(--shadow-light-hover);
     width: 90%;
     max-width: 500px;
     display: flex;
@@ -274,7 +305,6 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
 }
 
 .scan-dialog-header h3 {
@@ -282,8 +312,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 1.25rem;
+    font-family: var(--font-display);
+    font-weight: 700;
 }
 
 .scan-dialog-body {
@@ -292,9 +324,10 @@
 
 .scan-dialog-description {
     margin: 0 0 1.5rem 0;
-    color: var(--text-secondary);
+    color: var(--muted);
     font-size: 0.875rem;
     line-height: 1.6;
+    font-family: var(--font-body);
 }
 
 .folder-selection {
@@ -306,68 +339,84 @@
 
 .folder-selection label {
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--foreground);
     white-space: nowrap;
+    font-family: var(--font-body);
 }
 
 .folder-select {
     flex: 1;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: var(--radius-button);
     font-size: 0.875rem;
-    background-color: var(--surface);
-    color: var(--text-primary);
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
     cursor: pointer;
-    transition: border-color 0.2s ease;
+    transition: all var(--transition-fast);
+    box-shadow: inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light);
 }
 
 .folder-select:focus {
     outline: none;
-    border-color: var(--primary-color);
+    box-shadow: inset 10px 10px 20px var(--shadow-dark-hover), inset -10px -10px 20px var(--shadow-light-hover), 0 0 0 2px var(--accent);
 }
 
 .refresh-folders-btn {
     background-color: var(--background);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--border-radius);
+    border: none;
+    color: var(--foreground);
+    padding: 0.75rem;
+    border-radius: var(--radius-button);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+    min-width: 44px;
+    min-height: 44px;
 }
 
 .refresh-folders-btn:hover {
-    background-color: var(--surface);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 8px 8px 15px var(--shadow-dark-hover), -8px -8px 15px var(--shadow-light-hover);
+}
+
+.refresh-folders-btn:active {
+    transform: translateY(0.5px);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
 }
 
 .refresh-folders-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light);
+}
+
+.refresh-folders-btn:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .folder-path-display {
     padding: 0.75rem 1rem;
     background-color: var(--background);
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-button);
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    color: var(--muted);
     font-family: monospace;
     word-break: break-all;
     min-height: 2rem;
     display: flex;
     align-items: center;
+    box-shadow: inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light);
 }
 
 .folder-path-display:empty::before {
     content: 'plugins/image-viewer/images/';
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .scan-dialog-footer {
@@ -375,38 +424,62 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1.5rem;
-    border-top: 1px solid var(--border);
+    background-color: var(--background);
 }
 
-/* Common Button Styles */
+/* Common Button Styles - Neumorphic */
 .btn-primary,
 .btn-secondary {
-    padding: 0.5rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-button);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-family: var(--font-body);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
+    min-height: 44px;
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: var(--accent);
     color: white;
+    box-shadow: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 8px 8px 15px var(--shadow-dark-hover), -8px -8px 15px var(--shadow-light-hover);
+    background-color: var(--accent-light);
+}
+
+.btn-primary:active {
+    transform: translateY(0.5px);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+}
+
+.btn-primary:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .btn-secondary {
-    background-color: var(--surface);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
+    background-color: var(--background);
+    color: var(--foreground);
+    box-shadow: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
 }
 
 .btn-secondary:hover {
-    background-color: var(--background);
-    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 8px 8px 15px var(--shadow-dark-hover), -8px -8px 15px var(--shadow-light-hover);
 }
 
+.btn-secondary:active {
+    transform: translateY(0.5px);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+}
+
+.btn-secondary:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}

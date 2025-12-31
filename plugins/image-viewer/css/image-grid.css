@@ -1,4 +1,4 @@
-/* Image Grid and Items */
+/* Image Grid and Items - Neumorphic Extruded Cards */
 
 .image-grid {
     display: grid;
@@ -8,18 +8,17 @@
 }
 
 .image-item {
-    background-color: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
+    background-color: var(--background);
+    border-radius: var(--radius-button);
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all var(--transition-fast);
     cursor: pointer;
+    box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
 }
 
 .image-item:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 12px 12px 20px var(--shadow-dark-hover), -12px -12px 20px var(--shadow-light-hover);
 }
 
 .image-thumbnail {
@@ -27,7 +26,7 @@
     width: 100%;
     padding-top: 100%;
     overflow: hidden;
-    background-color: #f1f5f9;
+    background-color: var(--background);
 }
 
 .image-thumbnail img {
@@ -37,7 +36,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    transition: transform var(--transition-fast);
 }
 
 .image-item:hover .image-thumbnail img {
@@ -52,7 +51,7 @@
     bottom: 0;
     background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 50%);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--transition-fast);
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -91,17 +90,19 @@
 }
 
 .image-info {
-    padding: 0.75rem;
+    padding: 1rem;
+    background-color: var(--background);
 }
 
 .image-name {
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 0.875rem;
     margin-bottom: 0.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-family: var(--font-body);
 }
 
 .image-tags {
@@ -111,14 +112,16 @@
 }
 
 .tag {
-    background-color: var(--primary-color);
+    background-color: var(--accent);
     color: white;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-inner);
     font-size: 0.75rem;
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    font-family: var(--font-body);
+    box-shadow: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
 }
 
 .tag-remove {
@@ -129,7 +132,7 @@
     padding: 0;
     font-size: 0.75rem;
     opacity: 0.8;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--transition-fast);
 }
 
 .tag-remove:hover {
@@ -140,16 +143,26 @@
     grid-column: 1 / -1;
     text-align: center;
     padding: 4rem 2rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .empty-state i {
     font-size: 4rem;
     margin-bottom: 1rem;
-    opacity: 0.5;
+    opacity: 0.4;
+    display: inline-block;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 10px 10px 20px var(--shadow-dark-hover), inset -10px -10px 20px var(--shadow-light-hover);
+    background-color: var(--background);
 }
 
 .empty-state p {
     font-size: 1.125rem;
+    font-weight: 500;
+    font-family: var(--font-body);
 }
-
