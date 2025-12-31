@@ -1,0 +1,119 @@
+/*****************************************
+ * Basic Font Settings CSS
+ * Simple styling for the basic font UI
+ *****************************************/
+
+.font-settings-content {
+  padding: 10px 0;
+}
+
+.font-section {
+  margin-bottom: 25px;
+}
+
+.font-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.font-option-group {
+  margin-bottom: 20px;
+}
+
+.font-option-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+  font-size: 14px;
+}
+
+.font-option-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.font-option-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.font-preview {
+  padding: 15px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+.font-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.font-actions button {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.font-actions button:hover {
+  opacity: 0.8;
+}
+
+#apply-font-settings {
+  background: #28a745;
+  color: white;
+  border: none;
+}
+
+#apply-font-settings:hover {
+  background: #218838;
+}
+
+#reset-font-settings {
+  background: #6c757d;
+  color: white;
+  border: none;
+}
+
+#reset-font-settings:hover {
+  background: #5a6268;
+}
+
+/* Error state */
+.settings-error {
+  color: #dc3545;
+  padding: 10px;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .font-actions {
+    flex-direction: column;
+  }
+
+  .font-actions button {
+    width: 100%;
+    text-align: center;
+  }
+}

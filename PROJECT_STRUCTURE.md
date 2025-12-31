@@ -26,16 +26,11 @@ Luhmann-Roam is a knowledge management system inspired by Niklas Luhmann's Zette
 - **Multilingual Interface**: Toggle between English and Chinese
 - **Node Operations**: Indent, outdent, reorder, and reposition nodes
 - **Visual Feedback**: Highlighting for focus and active branches
-- **Search Functionality**: Search for nodes quickly and navigate to them
-- **Filtering Options**: Filter nodes based on user-defined criteria
 - **Task Management**: Track and manage daily tasks with time tracking
 - **Timestamp Tracking**: View creation and update timestamps for nodes
 - **Position Management**: Precisely adjust node positions and relocate nodes
 - **Enhanced Markdown Support**: Rich content editing with image resizing capabilities
-- **Node Attributes**: Add, edit, and query custom attributes for nodes
-- **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails 
-- **Code Analysis**: Visualize and analyze the codebase structure
-- **Keyboard Shortcuts**: Comprehensive hotkey system for efficient workflows
+- **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails
 - **Internationalization**: Full multilingual support with language switching
 
 ## Core Components
@@ -48,7 +43,6 @@ The Express-based backend provides a RESTful API for managing notes and their re
 - **API Endpoints**: CRUD operations for nodes and links
 - **Markdown Storage**: File-based storage for markdown content
 - **Node Operations**: Support for hierarchical operations (indent, outdent, reorder)
-- **Advanced Querying**: Parse and execute complex attribute-based queries
 - **Recursive Operations**: Handle operations that affect node hierarchies
 - **Modular Architecture**: Organized into routes, controllers, and services for maintainability
 
@@ -81,11 +75,6 @@ The frontend is organized into modular components:
 - **Bidirectional View**: Showing both incoming and outgoing links
 - **Link Metadata**: Managing weights and descriptions for links
 
-#### Search Manager (searchManager.js)
-- **Search Modal**: Interface for searching nodes
-- **Search Functionality**: Fetching and displaying search results
-- **Node Navigation**: Navigating to nodes based on search results
-
 #### Filter Manager (filterManager.js)
 - **Filter UI**: Interface for managing filters in the sidebar
 - **Active Filters**: Adding and removing filters based on user selection
@@ -112,13 +101,6 @@ The frontend is organized into modular components:
 - **Parent Selection**: Search interface for selecting new parent nodes
 - **Visual Feedback**: Display current position and available positions
 
-#### Attribute Manager (attributeManager.js)
-- **Attribute Modal**: Interface for managing custom node attributes
-- **Attribute CRUD**: Adding, editing, and deleting node attributes
-- **Attribute Queries**: Advanced querying of nodes by attributes
-- **Search Interface**: Finding nodes with specific attribute values
-- **Recent Queries**: Saving and reusing recent attribute queries
-
 #### Breadcrumb Manager (breadcrumbManager.js)
 - **Path Display**: Shows the hierarchical path to the current focused node
 - **Focus Mode**: Filter view to show only a node and its descendants
@@ -126,19 +108,24 @@ The frontend is organized into modular components:
 - **Root Return**: Quick return to the full hierarchy view
 - **Multilingual Support**: Display breadcrumbs in the selected language
 
-#### Code Analyzer Manager (codeAnalyzerManager.js)
-- **Code Statistics**: Analyze and display code structure metrics
-- **Module Visualization**: View modules and their relationships
-- **Complexity Analysis**: Identify complex or problematic modules
-- **Function Listing**: Browse all functions across the codebase
-- **Dependency Tracking**: View module dependencies and relationships
+#### Timestamp Manager (timestampManager.js)
+- **Creation Timestamps**: Display when nodes were created
+- **Update Timestamps**: Track the last modification time
+- **Timestamp Modal**: Interface for viewing node timestamps
+- **Language Support**: Multilingual timestamp display
 
-#### Hotkey Manager (hotkeyManager.js)
-- **Keyboard Navigation**: Move between nodes using keyboard shortcuts
-- **Action Shortcuts**: Perform common actions with keystroke combinations
-- **Visual Hints**: Display available shortcuts when in hotkey mode
-- **Custom Bindings**: Register and manage custom hotkeys for operations
-- **Help Modal**: Display comprehensive list of available keyboard shortcuts
+#### Node Expansion Manager (nodeExpansionManager.js)
+- **Node Toggle**: Expand or collapse nodes with optimized DOM updates
+- **Fetch Children**: Retrieve and display child nodes dynamically
+- **Expand/Collapse All**: Expand or collapse all nodes in the hierarchy
+- **Language Support**: Update language settings for display
+
+#### Node Operations Manager (nodeOperationsManager.js)
+- **Node CRUD**: Create, read, update, and delete nodes with optimized DOM updates
+- **Indent/Outdent**: Change the hierarchical level of nodes
+- **Move Nodes**: Move nodes up or down within the hierarchy
+- **Sibling Management**: Add sibling nodes efficiently
+- **Refresh Subtree**: Refresh specific node subtrees without full DOM refresh
 
 #### I18n Manager (i18n.js)
 - **Language Switching**: Toggle between English and Chinese interfaces
@@ -284,9 +271,6 @@ The frontend is organized into modular components:
 - `PUT /api/links/:id`: Update a link
 - `DELETE /api/links/:id`: Delete a link
 
-### Search
-- `GET /api/nodes/search`: Search for nodes
-
 ### Tasks
 - `GET /api/tasks/dates`: Get all dates with tasks
 - `GET /api/tasks/:date`: Get tasks for a specific date
@@ -295,13 +279,6 @@ The frontend is organized into modular components:
 - `DELETE /api/tasks/:id`: Delete a task
 - `POST /api/tasks/:id/start`: Start timing a task
 - `POST /api/tasks/:id/pause`: Pause timing a task
-
-### Attributes
-- `GET /api/nodes/:id/attributes`: Get all attributes for a node
-- `POST /api/node-attributes`: Create a new attribute
-- `PUT /api/node-attributes/:id`: Update an attribute
-- `DELETE /api/node-attributes/:id`: Delete an attribute
-- `POST /api/nodes/query`: Query nodes by attributes
 
 ### Code Analysis
 - `GET /api/code-analysis/structure`: Get code structure statistics
@@ -323,8 +300,6 @@ The frontend is organized into modular components:
 - **Link**: Manage connections to other nodes
 - **Markdown**: Edit rich content
 - **Filter**: Manage filters for node visibility
-- **Search**: Find nodes quickly
-- **Attributes**: Manage custom attributes
 - **Breadcrumbs**: Navigate hierarchical paths
 
 ### Modals
@@ -332,11 +307,6 @@ The frontend is organized into modular components:
 - **Link Manager**: Create and manage bidirectional links
 - **Move Node**: Reposition nodes in the hierarchy
 - **Position Adjust**: Fine-tune node ordering
-- **Search Modal**: Interface for searching nodes
-- **Attribute Manager**: Add and edit node attributes
-- **Attribute Query**: Search nodes by attribute values
-- **Code Analyzer**: Visualize and analyze code structure
-- **Hotkey Help**: Display available keyboard shortcuts
 
 ### Visual Elements
 - **Indentation Lines**: Visual guides showing hierarchy
@@ -344,7 +314,6 @@ The frontend is organized into modular components:
 - **Focus Highlighting**: Visual feedback when a node is focused
 - **Link Count Indicators**: Small badges showing number of links
 - **Breadcrumb Trail**: Path display for focused nodes
-- **Hotkey Hints**: Visual indicators for available keyboard shortcuts
 
 ## System Architecture
 
@@ -440,18 +409,6 @@ The frontend uses a modular pattern with self-contained manager objects:
   - Notification of language changes to other modules
   - UI text updating across the application
 
-### AttributeManager.js
-- **Public API**:
-  - `initialize()`: Sets up the attribute management system
-  - `updateLanguage(language)`: Updates the language for display
-  - `openModal(nodeId)`: Opens the attribute editor for a specific node
-  - `closeModal()`: Closes the attribute editor
-  - `addAttributeButtonToNode(nodeElement, nodeId)`: Adds attribute button to node UI
-- **Private Functions**:
-  - Attribute CRUD operations with the backend
-  - Attribute querying and search functionality
-  - Modal creation and management for the UI
-
 ### BreadcrumbManager.js
 - **Public API**:
   - `initialize()`: Sets up the breadcrumb navigation system
@@ -466,30 +423,6 @@ The frontend uses a modular pattern with self-contained manager objects:
   - Breadcrumb trail generation and display
   - Node ancestry path handling
   - Focus filtering to show only relevant nodes
-
-### CodeAnalyzerManager.js
-- **Public API**:
-  - `initialize()`: Sets up the code analyzer system
-  - `analyzeCodebase()`: Analyzes the code structure and updates the UI
-  - `openAnalyzerModal()`: Opens the code analysis visualization modal
-- **Private Functions**:
-  - Code structure data retrieval from the backend
-  - Statistics calculation and visualization
-  - Chart generation for code metrics
-  - Module and function listing display
-
-### HotkeyManager.js
-- **Public API**:
-  - `initialize()`: Sets up the hotkey system and registers default shortcuts
-  - `updateLanguage(language)`: Updates language for hotkey display
-  - `registerHotkey(key, element, action, description)`: Register a new hotkey
-  - `showHints()`: Shows visual hints for available hotkeys
-  - `showHelpModal()`: Displays comprehensive hotkey documentation
-- **Private Functions**:
-  - Keyboard event handling and processing
-  - Visual hint display and management
-  - Custom hotkey registration and storage
-  - Focused node navigation with keyboard
 
 ### NodeExpansionManager.js
 - **Public API**:
@@ -606,23 +539,11 @@ The frontend uses a modular pattern with self-contained manager objects:
 - Save to update the node's rich content
 - Nodes with markdown content are indicated with a special icon
 
-### Managing Attributes
-- Click the attribute button on a node
-- Add, edit, or delete custom attributes
-- Use the query interface to find nodes with specific attributes
-- Browse recent queries or save complex queries for future use
-
 ### Using Breadcrumbs
 - Double-click on a node to focus on it and its descendants
 - Use the breadcrumb trail to navigate up the hierarchy
 - Click the home icon to return to the full view
 - Focus mode helps concentrate on specific branches of your hierarchy
-
-### Using Keyboard Shortcuts
-- Press ? to view all available shortcuts
-- Use arrow keys to navigate between nodes
-- Press specific letter keys to trigger actions when in hotkey mode
-- Combine keys for advanced operations
 
 ### Using Drag and Drop
 - Drag nodes to reorder them within the hierarchy

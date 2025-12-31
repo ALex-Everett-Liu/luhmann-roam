@@ -12,19 +12,17 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - **Multilingual Interface**: Toggle between English and Chinese
 - **Node Operations**: Indent, outdent, reorder, and reposition nodes
 - **Visual Feedback**: Highlighting for focus and active branches
-- **Search & Filter**: Quickly find and focus on specific content
 - **Task Management**: Track daily tasks with time tracking functionality
 - **Timestamp Tracking**: View creation and modification times for nodes
 - **Position Management**: Precisely adjust node positions and hierarchy
-- **Node Attributes**: Add, edit, and query custom attributes for nodes
 - **Breadcrumb Navigation**: Navigate the node hierarchy with breadcrumb trails
-- **Bookmark Management**: Save and organize important nodes for quick access
 - **Command Palette**: Access commands and features with a searchable interface
 - **Keyboard Shortcuts**: Comprehensive hotkey system for efficient workflows
 - **2D Cosmic Visualization**: Visualize node relationships in an interactive cosmic view
 - **Image Management**: Organize and optimize images with the DCIM Manager
 - **Blog Publishing**: Convert and publish notes as blog posts
 - **Code Analysis**: Visualize and analyze the codebase structure
+- **Independent Graph Plugin**: Standalone graph visualization tool with own database (optional)
 - **Optimized Performance**: Smart DOM updates for improved responsiveness
 
 ## Screenshots
@@ -118,12 +116,6 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Add weight and description to the link
 - View both incoming and outgoing links
 
-### Managing Attributes
-- Click the attribute button on a node
-- Add, edit, or delete custom attributes
-- Use the query interface to find nodes with specific attributes
-- Browse recent queries or save complex queries for future use
-
 ### Using Breadcrumbs
 - Double-click on a node to focus on it and its descendants
 - Use the breadcrumb trail to navigate up the hierarchy
@@ -135,12 +127,6 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Click on bookmarked nodes in the sidebar for quick access
 - Bookmarks display usage statistics and can be sorted by frequency
 - Remove bookmarks with a single click
-
-### Using Command Palette
-- Press Ctrl+P (or Cmd+P on Mac) to open the command palette
-- Search for commands by name, category, or keywords
-- Execute commands with the Enter key
-- View keyboard shortcuts for frequently used commands
 
 ### Using Keyboard Shortcuts
 - Press ? to view all available shortcuts
@@ -165,6 +151,16 @@ Luhmann-Roam is a powerful knowledge management system inspired by Roam Research
 - Manage and organize published content
 - Preview content before publishing
 - Access blog posts through dedicated routes
+
+### Using Graph Plugin (Optional, Independent Tool)
+The graph plugin is integrated into the main app with its own database:
+- **No separate server needed** - uses main app server (simpler!)
+- Click the "📊 Graph Plugin" button in the sidebar to open it in a modal
+- Use the ⛶ button to expand to fullscreen, ✕ to close
+- Create and edit nodes and edges in the graph canvas
+- All data is saved to a separate `graph.db` file (completely independent)
+- Use for mind maps, concept diagrams, or any graph structures
+- Shared server, separate database - best of both worlds!
 
 ### Task Management
 - Create daily tasks in the sidebar
@@ -197,6 +193,16 @@ luhmann-roam/
 ├── database.js        # Database configuration and initialization
 ├── server.js          # Express server and API endpoints
 ├── markdown/          # Markdown content storage
+├── plugins/                # Plugin directory
+│   └── graph/             # Graph visualization plugin
+│       ├── graph-database.js      # Plugin's own database layer
+│       ├── graphPluginLauncher.js # Plugin launcher (registers with PluginRegistry)
+│       ├── graph.db               # Plugin's SQLite database (auto-created)
+│       ├── index.html             # Plugin UI
+│       ├── graph.js               # Canvas rendering logic
+│       ├── app.js                 # Plugin application logic
+│       └── README.md              # Plugin documentation
+│   Note: API routes in server.js at /api/plugins/graph/*
 ├── public/            # Static assets and client-side code
 │   ├── index.html     # Main HTML file
 │   ├── css/           # Stylesheets
@@ -204,7 +210,6 @@ luhmann-roam/
 │   │   ├── app.js                 # Main application logic
 │   │   ├── markdownManager.js     # Markdown editing functionality
 │   │   ├── linkManager.js         # Link management functionality
-│   │   ├── searchManager.js       # Search functionality
 │   │   ├── filterManager.js       # Filter functionality
 │   │   ├── bookmarkManager.js     # Bookmark management functionality
 │   │   ├── commandPaletteManager.js # Command palette functionality
@@ -214,20 +219,16 @@ luhmann-roam/
 │   │   ├── taskManager.js         # Task management functionality
 │   │   ├── timestampManager.js    # Timestamp display functionality
 │   │   ├── positionManager.js     # Node positioning functionality
-│   │   ├── attributeManager.js    # Node attributes functionality
 │   │   ├── breadcrumbManager.js   # Node navigation functionality
-│   │   ├── codeAnalyzerManager.js # Code structure analysis
-│   │   ├── hotkeyManager.js       # Keyboard shortcuts functionality
 │   │   ├── i18n.js                # Internationalization support
 │   │   ├── nodeExpansionManager.js # Node expansion functionality
 │   │   ├── nodeOperationsManager.js # Core node operations
+│   │   ├── ... (other JS modules)
 │   │   └── dragDropManager.js     # Drag and drop functionality
 │   └── attachment/    # Uploaded images and attachments
 ├── routes/            # Express route handlers
 │   ├── nodeRoutes.js  # Node-related API endpoints
 │   ├── linkRoutes.js  # Link-related API endpoints
-│   ├── blogRoutes.js  # Blog publishing endpoints
-│   └── imageRoutes.js # Image management endpoints
 └── README.md          # This file
 ```
 

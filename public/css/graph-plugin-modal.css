@@ -1,0 +1,167 @@
+/* Graph Plugin Modal Styles */
+
+.graph-plugin-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.graph-plugin-modal.visible {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-plugin-modal.fullscreen {
+  padding: 0;
+}
+
+.graph-plugin-header {
+  background: #2c3e50;
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.graph-plugin-modal.fullscreen .graph-plugin-header {
+  border-radius: 0;
+}
+
+.graph-plugin-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.graph-plugin-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.graph-plugin-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.graph-plugin-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.graph-plugin-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.graph-plugin-content {
+  flex: 1;
+  background: white;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.graph-plugin-modal.fullscreen .graph-plugin-content {
+  border-radius: 0;
+}
+
+#graph-plugin-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  transition: opacity 0.3s ease-in;
+}
+
+/* Loading state */
+.graph-plugin-content::before {
+  content: 'Loading Graph Plugin...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+  color: #666;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#graph-plugin-iframe.loaded + * {
+  display: none;
+}
+
+/* Hide loading when iframe is loaded */
+.graph-plugin-content:has(#graph-plugin-iframe.loaded)::before {
+  display: none;
+}
+
+/* Fallback for browsers without :has() support */
+#graph-plugin-iframe.loaded {
+  opacity: 1;
+}
+
+#graph-plugin-iframe:not(.loaded) {
+  opacity: 0;
+}
+
+/* Animation */
+.graph-plugin-modal.visible {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.graph-plugin-modal.closing {
+  animation: fadeOut 0.2s ease-out;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Responsive sizing */
+@media (max-width: 768px) {
+  .graph-plugin-modal {
+    padding: 10px;
+  }
+  
+  .graph-plugin-header {
+    padding: 10px 15px;
+  }
+  
+  .graph-plugin-header h3 {
+    font-size: 16px;
+  }
+}
+

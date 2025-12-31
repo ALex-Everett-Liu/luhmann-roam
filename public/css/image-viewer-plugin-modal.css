@@ -1,0 +1,173 @@
+/* Image Viewer Plugin Modal Styles
+ *
+ * Styles for the modal wrapper that contains the Image Viewer plugin iframe.
+ * The modal HTML is defined in public/index.html (lines 46-59).
+ * The modal is controlled by plugins/image-viewer/imageViewerPluginLauncher.js
+ *
+ * For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+ */
+
+.image-viewer-plugin-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.image-viewer-plugin-modal.visible {
+    display: flex;
+    flex-direction: column;
+}
+
+.image-viewer-plugin-modal.fullscreen {
+    padding: 0;
+}
+
+.image-viewer-plugin-header {
+    background: #ffb2a7;
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.image-viewer-plugin-modal.fullscreen .image-viewer-plugin-header {
+    border-radius: 0;
+}
+
+.image-viewer-plugin-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.image-viewer-plugin-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.image-viewer-plugin-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.image-viewer-plugin-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.image-viewer-plugin-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.image-viewer-plugin-content {
+    flex: 1;
+    background: white;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.image-viewer-plugin-modal.fullscreen .image-viewer-plugin-content {
+    border-radius: 0;
+}
+
+#image-viewer-plugin-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    transition: opacity 0.3s ease-in;
+}
+
+/* Loading state */
+.image-viewer-plugin-content::before {
+    content: "Loading Image Viewer...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 18px;
+    color: #666;
+    z-index: 1;
+    pointer-events: none;
+}
+
+#image-viewer-plugin-iframe.loaded + * {
+    display: none;
+}
+
+/* Hide loading when iframe is loaded */
+.image-viewer-plugin-content:has(#image-viewer-plugin-iframe.loaded)::before {
+    display: none;
+}
+
+/* Fallback for browsers without :has() support */
+#image-viewer-plugin-iframe.loaded {
+    opacity: 1;
+}
+
+#image-viewer-plugin-iframe:not(.loaded) {
+    opacity: 0;
+}
+
+/* Animation */
+.image-viewer-plugin-modal.visible {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.image-viewer-plugin-modal.closing {
+    animation: fadeOut 0.2s ease-out;
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Responsive sizing */
+@media (max-width: 768px) {
+    .image-viewer-plugin-modal {
+        padding: 10px;
+    }
+
+    .image-viewer-plugin-header {
+        padding: 10px 15px;
+    }
+
+    .image-viewer-plugin-header h3 {
+        font-size: 16px;
+    }
+}

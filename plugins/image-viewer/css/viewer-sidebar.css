@@ -1,0 +1,238 @@
+/* Viewer Sidebar and Details */
+
+.viewer-sidebar {
+    width: 300px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    overflow-y: auto;
+    color: white;
+}
+
+.viewer-details h4 {
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+}
+
+.detail-item {
+    margin-bottom: 1.5rem;
+}
+
+.detail-item label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+    margin-bottom: 0.5rem;
+}
+
+.rating-control,
+.ranking-control {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.rating-input,
+.ranking-input {
+    flex: 1;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: white;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.rating-input:focus,
+.ranking-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.rating-input::placeholder,
+.ranking-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.description-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.description-input {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    color: white;
+    font-size: 0.875rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    transition: all 0.2s ease;
+}
+
+.description-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.description-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.save-btn,
+.clear-btn {
+    padding: 0.5rem 0.75rem;
+    background-color: rgba(59, 130, 246, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    border-radius: var(--border-radius);
+    color: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.save-btn:hover {
+    background-color: rgba(59, 130, 246, 0.5);
+    border-color: rgba(59, 130, 246, 0.7);
+    transform: scale(1.05);
+}
+
+.clear-btn {
+    background-color: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.clear-btn:hover {
+    background-color: rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.7);
+}
+
+/* Legacy star rating styles (kept for backward compatibility if needed) */
+.star-rating {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.star {
+    cursor: pointer;
+    color: #fbbf24;
+    font-size: 1.5rem;
+    transition: transform 0.2s ease;
+}
+
+.star:hover {
+    transform: scale(1.2);
+}
+
+.tags-input-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.tags-input-container input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.875rem;
+}
+
+.tags-input-container input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.add-tags-btn,
+.copy-tags-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.add-tags-btn:hover,
+.copy-tags-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.link-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.link-container input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.75rem;
+    font-family: monospace;
+}
+
+.copy-link-btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-link-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.delete-btn {
+    width: 100%;
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.delete-btn:hover {
+    background-color: #dc2626;
+}
+

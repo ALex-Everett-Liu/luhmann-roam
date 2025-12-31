@@ -1,53 +1,32 @@
 /* Variables - import first so they're available to all other files */
-@import './core/variables.css';
+@import "./core/variables.css";
 
 /* Core Styles */
-@import './core/base.css';
-@import './core/layout.css';
+@import "./core/base.css";
+@import "./core/layout.css";
 
 /* Component Styles */
-@import './components/outliner.css';
-@import './components/modals.css';
-@import './components/buttons.css';
+@import "./components/outliner.css";
+@import "./components/modals.css";
+@import "./components/buttons.css";
 /* @import './components/forms.css'; */
 
 /* Feature-Specific Styles */
-@import './features/markdown-editor.css';
-@import './features/link-manager.css';
-@import './features/search-filter.css';
-@import './features/position-manager.css';
-@import './features/breadcrumbs.css';
-@import './features/task-manager.css';
-@import './features/task-statistics.css';
-@import './features/attribute-manager.css';
-@import './features/code-analyzer.css';
-@import './features/code-graph.css';
-@import './features/new-code-graph.css';
-@import './features/enhanced-code-graph.css';
-@import './features/node.css';
-@import './features/timestamp.css';
-@import './features/command-palette.css';
-@import './features/node-grid-visualizer.css';
-@import './features/node-size-manager.css';
-@import './features/node-size-highlight.css';
-@import './features/font-manager.css';
-@import './features/style-settings.css';
-@import './features/high-contrast.css';
-@import './features/cosmic-visualizer.css';
-@import './features/blog-manager.css';
-@import './features/plugin-manager.css';
-@import './features/dcim-manager.css'; 
-@import './features/dev-test-panel.css';
-@import './features/export-import.css';
-@import './features/vault-manager.css';
-@import './features/metro-map-visualizer.css';
-@import './features/word-frequency.css';
-@import './features/graph-analysis.css';
-@import './features/graph-management.css';
+/* Link Manager removed - pure node operations sufficient */
+@import "./features/position-manager.css";
+@import "./features/breadcrumbs.css";
+@import "./features/node.css";
+/* timestamp.css removed - will be redesigned later */
+/* Node size manager CSS removed for simplification */
+/* Node size highlight CSS removed for simplification */
+@import "./features/font-manager.css";
+/* Style Settings removed - basic theme options only */
+@import "./features/high-contrast.css";
+/* Export Import removed - replaced by backup functionality */
 /* @import './features/hotkeys.css'; */
 
 /* Utilities - import last to override if needed */
-@import './utilities/animations.css';
-@import './utilities/language.css';
-@import './utilities/z-index.css';
+@import "./utilities/animations.css";
+@import "./utilities/language.css";
+@import "./utilities/z-index.css";
 /* @import './utilities/utilities.css'; */

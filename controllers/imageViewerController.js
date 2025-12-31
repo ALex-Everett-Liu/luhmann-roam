@@ -1,0 +1,502 @@
+// imageViewerController.js - HTTP logic for Image Viewer Plugin operations
+// 
+// This controller handles HTTP requests for the Image Viewer plugin API.
+// API routes are registered in server.js at /api/plugins/image-viewer/*
+// Route definitions are in routes/imageViewerRoutes.js
+// Business logic is in services/imageViewerService.js
+//
+// For plugin development reference, see: docs/development/PLUGIN_TEMPLATE.md
+//
+const path = require("path");
+const fs = require("fs");
+const imageViewerService = require("../services/imageViewerService");
+
+/**
+ * Health check endpoint
+ * GET /api/plugins/image-viewer/health
+ */
+exports.health = (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+};
+
+/**
+ * Upload image
+ * POST /api/plugins/image-viewer/upload
+ */
+exports.upload = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
+
+    const result = await imageViewerService.saveImage(req.file);
+    const imageUrl = imageViewerService.generateImageUrl(result.id);
+
+    res.json({
+      success: true,
+      image: {
+        id: result.id,
+        filename: result.filename,
+        width: result.width,
+        height: result.height,
+        fileSize: result.fileSize,
+        fileSizeFormatted: result.fileSizeFormatted,
+        url: imageUrl,
+      },
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({
+      error: "Upload failed",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Get all images with optional filters
+ * GET /api/plugins/image-viewer/images
+ */
+exports.getImages = async (req, res) => {
+  try {
+    const filters = {
+      tags: req.query.tags ? req.query.tags.split(",").map(t => t.trim()) : undefined,
+      rating: req.query.rating ? parseInt(req.query.rating) : undefined,
+      ratingMin: req.query.ratingMin ? parseFloat(req.query.ratingMin) : undefined,
+      ratingMax: req.query.ratingMax ? parseFloat(req.query.ratingMax) : undefined,
+      rankingMin: req.query.rankingMin ? parseFloat(req.query.rankingMin) : undefined,
+      rankingMax: req.query.rankingMax ? parseFloat(req.query.rankingMax) : undefined,
+      sortBy: req.query.sortBy && req.query.sortBy.trim() !== "" ? req.query.sortBy.trim() : null,
+      sortOrder: req.query.sortOrder && req.query.sortOrder.trim() !== "" ? req.query.sortOrder.trim() : null,
+      limit: req.query.limit ? parseInt(req.query.limit) : undefined,
+    };
+
+    const images = await imageViewerService.getImages(filters);
+    
+    // Convert to response format with URLs
+    const imagesWithUrls = images.map(image => ({
+      id: image.id,
+      filename: image.original_filename,
+      width: image.width,
+      height: image.height,
+      fileSize: image.file_size,
+      fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
+      mimeType: image.mime_type,
+      rating: image.rating,
+      ranking: image.ranking,
+      viewCount: image.view_count,
+      tags: image.tags,
+      description: image.description,
+      createdAt: image.created_at,
+      lastViewedAt: image.last_viewed_at,
+      url: imageViewerService.generateImageUrl(image.id),
+    }));
+
+    res.json({
+      success: true,
+      images: imagesWithUrls,
+      count: imagesWithUrls.length,
+    });
+  } catch (error) {
+    console.error("Get images error:", error);
+    res.status(500).json({
+      error: "Failed to get images",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Get single image by ID
+ * GET /api/plugins/image-viewer/images/:id
+ */
+exports.getImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const image = await imageViewerService.getImageById(id);
+
+    if (!image) {
+      return res.status(404).json({ error: "Image not found" });
+    }
+
+    res.json({
+      success: true,
+      image: {
+        id: image.id,
+        filename: image.original_filename,
+        width: image.width,
+        height: image.height,
+        fileSize: image.file_size,
+        fileSizeFormatted: imageViewerService.formatFileSize(image.file_size),
+        mimeType: image.mime_type,
+        rating: image.rating,
+        ranking: image.ranking,
+        viewCount: image.view_count,
+        tags: image.tags,
+        description: image.description,
+        createdAt: image.created_at,
+        lastViewedAt: image.last_viewed_at,
+        url: imageViewerService.generateImageUrl(image.id),
+      },
+    });
+  } catch (error) {
+    console.error("Get image error:", error);
+    res.status(500).json({
+      error: "Failed to get image",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Serve image or video file (increments view count)
+ * GET /api/plugins/image-viewer/images/:id/file
+ */
+exports.serveImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const image = await imageViewerService.getImageById(id);
+
+    if (!image) {
+      return res.status(404).json({ error: "Image not found" });
+    }
+
+    // Check if this is a thumbnail request (don't increment for thumbnails)
+    const isThumbnail = req.query.thumbnail === 'true';
+    
+    // Only increment view count for full image/video views, not thumbnails
+    if (!isThumbnail) {
+      await imageViewerService.incrementViewCount(id);
+    }
+
+    // For thumbnail requests, serve the thumbnail if it exists
+    if (isThumbnail && image.thumbnail_path) {
+      const thumbnailPath = imageViewerService.toAbsolutePath(image.thumbnail_path);
+      if (fs.existsSync(thumbnailPath)) {
+        return res.sendFile(path.resolve(thumbnailPath));
+      }
+    }
+    
+    // If thumbnail doesn't exist but should, try to generate it on-demand
+    if (isThumbnail && !image.thumbnail_path) {
+      try {
+        const generatedThumbnail = await imageViewerService.getOrGenerateThumbnail(
+          image.file_path,
+          id
+        );
+        if (generatedThumbnail) {
+          const absThumbnailPath = imageViewerService.toAbsolutePath(generatedThumbnail);
+          if (fs.existsSync(absThumbnailPath)) {
+            // Update database with thumbnail path for future requests
+            await imageViewerService.updateThumbnailPath(id, generatedThumbnail);
+            return res.sendFile(path.resolve(absThumbnailPath));
+          }
+        }
+      } catch (error) {
+        console.error("Error generating thumbnail on-demand:", error);
+        // Fall through to serve original file if thumbnail generation fails
+      }
+    }
+
+    // Serve the original file (image or video)
+    if (!fs.existsSync(image.file_path)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    res.sendFile(path.resolve(image.file_path));
+  } catch (error) {
+    console.error("Serve image error:", error);
+    res.status(500).json({
+      error: "Failed to serve file",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image tags
+ * POST /api/plugins/image-viewer/images/:id/tags
+ */
+exports.updateTags = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tags } = req.body;
+
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: "Tags must be an array" });
+    }
+
+    // Remove existing tags
+    const existingTags = await imageViewerService.getImageTags(id);
+    for (const tag of existingTags) {
+      await imageViewerService.removeTagFromImage(id, tag);
+    }
+
+    // Add new tags
+    if (tags.length > 0) {
+      await imageViewerService.addTagsToImage(id, tags);
+    }
+
+    const updatedTags = await imageViewerService.getImageTags(id);
+    res.json({
+      success: true,
+      tags: updatedTags,
+    });
+  } catch (error) {
+    console.error("Update tags error:", error);
+    res.status(500).json({
+      error: "Failed to update tags",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image rating (supports decimals)
+ * POST /api/plugins/image-viewer/images/:id/rating
+ */
+exports.updateRating = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+
+    if (rating === undefined || rating === null) {
+      return res.status(400).json({ error: "Rating is required" });
+    }
+
+    const ratingValue = parseFloat(rating);
+    if (isNaN(ratingValue) || ratingValue < 0) {
+      return res.status(400).json({ error: "Rating must be a non-negative number" });
+    }
+
+    await imageViewerService.updateImageRating(id, ratingValue);
+
+    res.json({
+      success: true,
+      rating: ratingValue,
+    });
+  } catch (error) {
+    console.error("Update rating error:", error);
+    res.status(500).json({
+      error: "Failed to update rating",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image ranking (supports decimals)
+ * POST /api/plugins/image-viewer/images/:id/ranking
+ */
+exports.updateRanking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ranking } = req.body;
+
+    // Ranking can be null to clear it
+    if (ranking === undefined) {
+      return res.status(400).json({ error: "Ranking is required (can be null)" });
+    }
+
+    const rankingValue = ranking === null ? null : parseFloat(ranking);
+    if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+      return res.status(400).json({ error: "Ranking must be a non-negative number or null" });
+    }
+
+    await imageViewerService.updateImageRanking(id, rankingValue);
+
+    res.json({
+      success: true,
+      ranking: rankingValue,
+    });
+  } catch (error) {
+    console.error("Update ranking error:", error);
+    res.status(500).json({
+      error: "Failed to update ranking",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update image description
+ * POST /api/plugins/image-viewer/images/:id/description
+ */
+exports.updateDescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description } = req.body;
+
+    // Description can be null or empty string to clear it
+    if (description === undefined) {
+      return res.status(400).json({ error: "Description is required (can be null or empty string)" });
+    }
+
+    await imageViewerService.updateImageDescription(id, description);
+
+    res.json({
+      success: true,
+      description: description === null || description === '' ? null : description,
+    });
+  } catch (error) {
+    console.error("Update description error:", error);
+    res.status(500).json({
+      error: "Failed to update description",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Update both image rating and ranking
+ * POST /api/plugins/image-viewer/images/:id/review
+ */
+exports.updateReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, ranking } = req.body;
+
+    if (rating === undefined || rating === null) {
+      return res.status(400).json({ error: "Rating is required" });
+    }
+
+    const ratingValue = parseFloat(rating);
+    if (isNaN(ratingValue) || ratingValue < 0) {
+      return res.status(400).json({ error: "Rating must be a non-negative number" });
+    }
+
+    const rankingValue = ranking === undefined || ranking === null ? null : parseFloat(ranking);
+    if (rankingValue !== null && (isNaN(rankingValue) || rankingValue < 0)) {
+      return res.status(400).json({ error: "Ranking must be a non-negative number or null" });
+    }
+
+    await imageViewerService.updateImageRatingAndRanking(id, ratingValue, rankingValue);
+
+    res.json({
+      success: true,
+      rating: ratingValue,
+      ranking: rankingValue,
+    });
+  } catch (error) {
+    console.error("Update review error:", error);
+    res.status(500).json({
+      error: "Failed to update review",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Delete image
+ * DELETE /api/plugins/image-viewer/images/:id
+ */
+exports.deleteImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await imageViewerService.deleteImage(id);
+
+    res.json({
+      success: true,
+      message: "Image deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete image error:", error);
+    res.status(500).json({
+      error: "Failed to delete image",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Get all tags
+ * GET /api/plugins/image-viewer/tags
+ */
+exports.getTags = async (req, res) => {
+  try {
+    const tags = await imageViewerService.getAllTags();
+    res.json({
+      success: true,
+      tags: tags,
+    });
+  } catch (error) {
+    console.error("Get tags error:", error);
+    res.status(500).json({
+      error: "Failed to get tags",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Get list of subfolders in images directory
+ * GET /api/plugins/image-viewer/subfolders
+ */
+exports.getSubfolders = async (req, res) => {
+  try {
+    const basePath = req.query.path || '';
+    const folders = imageViewerService.getSubfolders(basePath);
+    
+    res.json({
+      success: true,
+      folders: folders.map(folder => ({
+        name: folder.name,
+        relativePath: folder.relativePath
+      })),
+    });
+  } catch (error) {
+    console.error("Get subfolders error:", error);
+    res.status(500).json({
+      error: "Failed to get subfolders",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Scan and import images from filesystem
+ * POST /api/plugins/image-viewer/scan
+ * Body: { subfolder: string (optional) } - relative path to subfolder to scan
+ */
+exports.scanImages = async (req, res) => {
+  try {
+    const subfolder = req.body.subfolder || null;
+    const result = await imageViewerService.scanAndImportImages(subfolder);
+    
+    res.json({
+      success: true,
+      imported: result.imported,
+      skipped: result.skipped,
+      errors: result.errors,
+      importedFiles: result.importedFiles.map(file => ({
+        id: file.id,
+        filename: file.filename,
+        fileSize: file.fileSize,
+        fileSizeFormatted: imageViewerService.formatFileSize(file.fileSize),
+        width: file.width,
+        height: file.height,
+      })),
+      errorFiles: result.errorFiles,
+    });
+  } catch (error) {
+    console.error("Scan images error:", error);
+    res.status(500).json({
+      error: "Failed to scan images",
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * Get system info
+ * GET /api/plugins/image-viewer/info
+ */
+exports.getInfo = (req, res) => {
+  res.json({
+    version: "1.0.0",
+    supportedFormats: ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "svg", "webm", "mp4", "mov", "avi", "mkv"],
+    maxFileSize: "500MB",
+    imageDir: imageViewerService.IMAGE_DIR,
+  });
+};
+

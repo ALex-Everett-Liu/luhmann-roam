@@ -1,0 +1,35 @@
+/* Header Styles - Neumorphic Extruded Card */
+
+.app-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 3rem 2rem;
+    background-color: var(--background);
+    border-radius: var(--radius-container);
+    box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-header:hover {
+    transform: translateY(-2px);
+    box-shadow: 12px 12px 20px var(--shadow-dark-hover), -12px -12px 20px var(--shadow-light-hover);
+}
+
+.app-header h1 {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: var(--foreground);
+}
+
+.app-header .subtitle {
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: var(--muted);
+}

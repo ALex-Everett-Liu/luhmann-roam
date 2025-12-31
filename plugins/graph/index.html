@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Graph</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .toolbar {
+            background: #333;
+            color: white;
+            padding: 8px 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+            min-height: 40px;
+        }
+
+        .toolbar button {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .toolbar button:hover {
+            background: #666;
+        }
+
+        .toolbar button.active {
+            background: #007acc;
+        }
+
+        .toolbar button.has-unsaved {
+            background: #d32f2f;
+            font-weight: bold;
+        }
+
+        .toolbar button.has-unsaved:hover {
+            background: #b71c1c;
+        }
+
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        #canvas {
+            background: white;
+            cursor: crosshair;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas.select-mode {
+            cursor: default;
+        }
+
+        .context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        .dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 2000;
+        }
+
+        .dialog-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 300px;
+        }
+
+        .dialog h3 {
+            margin-top: 0;
+        }
+
+        .dialog input, .dialog button {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .dialog-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .dialog-buttons button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <button id="select-mode" class="mode-btn active">Select</button>
+            <button id="node-mode" class="mode-btn">Add Node</button>
+            <button id="edge-mode" class="mode-btn">Add Edge</button>
+            <button id="clear-btn">Clear</button>
+            <button id="save-changes" style="display: none;">Save Changes</button>
+            <button id="discard-changes" style="display: none;">Discard Changes</button>
+        </div>
+
+        <div class="main-content">
+            <canvas id="canvas"></canvas>
+
+            <div id="context-menu" class="context-menu">
+                <div class="context-menu-item" data-action="edit">Edit</div>
+                <div class="context-menu-item" data-action="delete">Delete</div>
+            </div>
+
+            <div id="node-dialog" class="dialog">
+                <div class="dialog-content">
+                    <h3>Edit Node</h3>
+                    <input type="text" id="node-label" placeholder="Label">
+                    <input type="color" id="node-color" value="#3b82f6">
+                    <div class="dialog-buttons">
+                        <button id="node-save">Save</button>
+                        <button id="node-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="edge-dialog" class="dialog">
+                <div class="dialog-content">
+                    <h3>Edit Edge</h3>
+                    <label>Weight: <input type="range" id="edge-weight" min="0.1" max="10" step="0.1" value="1"></label>
+                    <div class="dialog-buttons">
+                        <button id="edge-save">Save</button>
+                        <button id="edge-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="graph.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

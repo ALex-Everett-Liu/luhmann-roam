@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(findstr:*)",
+      "Bash(sed:*)",
+      "Bash(node:*)",
+      "Bash(curl -s \"http://localhost:3003/api/nodes/search?q=test&lang=en&advanced=false\")",
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(npm run test)",
+      "Bash(head:*)",
+      "Bash(then grep -r style-settings public/css/)",
+      "Bash(then grep -r \"StyleSettingsManager\\|backgroundImage\" public/js/)",
+      "Bash(then echo \"✓ Basic theme functionality implemented in app.js\" else echo \"✗ Basic theme functionality missing\" fi)",
+      "Bash(echo \"✓ No major style references found\" echo echo \"3. File status check:\" if [ ! -f \"public/js/styleSettingsManager.js\" ])",
+      "Bash(then echo \"✓ styleSettingsManager.js - DELETED\" else echo \"✗ styleSettingsManager.js - STILL PRESENT\" fi if [ ! -f \"public/css/features/style-settings.css\" ])",
+      "Bash(then echo \"✓ style-settings.css - DELETED\" else echo \"✗ style-settings.css - STILL PRESENT\" fi echo echo \"4. Theme functionality verification:\" grep -q \"basic.*theme\\|dark.*theme\\|initializeBasicTheme\" public/js/app.js)",
+      "Bash(/dev/null)",
+      "Bash(git commit:*)",
+      "Bash(dir:*)",
+      "Bash(del:*)",
+      "Bash(egrep:*)",
+      "Bash(cd C: u0026u0026 find . -name \"test-syntax.js\" -type f)",
+      "Bash(cat:*)"
+    ],
+    "deny": []
+  }
+}

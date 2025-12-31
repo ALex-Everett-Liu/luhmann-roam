@@ -6,7 +6,11 @@ markdown/
 backups/
 vaults/
 temp/
+sample_data/0001
+chess_games/
 public/attachment
 public/blog
 public/fonts
 public/css/fonts
+plugins/image-viewer/images/
+plugins/image-viewer/uploads/

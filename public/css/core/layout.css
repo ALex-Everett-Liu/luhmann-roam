@@ -8,10 +8,15 @@
 
 
 .sidebar {
-  width: 395px;
-  background-color: #E9F3F1;
-  padding: 20px;
+  width: 250px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px;
   overflow-y: auto;
+  position: relative;
+  min-width: 200px;
+  max-width: 60vw;
   flex-shrink: 0;
   z-index: 10;
 }
@@ -33,54 +38,36 @@
   height: calc(100vh - 60px);
 }
 
-/* Resize handle styling */
+/* Resizable Sidebar Styles */
 
+/* Resize Handle */
 .resize-handle {
-  width: 8px;
-  height: 100%;
   position: absolute;
+  right: 0;
   top: 0;
-  left: 250px; /* Default sidebar width */
+  width: 5px;
+  height: 100%;
+  background: transparent;
   cursor: col-resize;
-  z-index: 100;
-  background-color: #e0e0e0;
-  border-left: 1px solid #ccc;
-  border-right: 1px solid #ccc;
-}
-
-/* Add a visible grip to the handle */
-.resize-grip {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 30px;
-  background-color: #999;
-  box-shadow: -2px 0 0 #999, 2px 0 0 #999;
+  z-index: 1000;
+  transition: background-color 0.2s;
 }
 
 .resize-handle:hover {
-  background-color: #4285f4;
+  background: rgba(0, 123, 255, 0.3);
 }
 
-.resize-handle:hover .resize-grip {
-  background-color: white;
-  box-shadow: -2px 0 0 white, 2px 0 0 white;
+.resize-handle:active {
+  background: rgba(0, 123, 255, 0.5);
 }
 
-.resizing {
+body.local-graph-resizing {
   cursor: col-resize !important;
-  user-select: none !important;
+  user-select: none;
 }
 
-.resizing .resize-handle {
-  background-color: #4285f4;
-}
-
-.resizing .resize-grip {
-  background-color: white;
-  box-shadow: -2px 0 0 white, 2px 0 0 white;
+body.local-graph-resizing .resize-handle {
+  background: rgba(0, 123, 255, 0.5);
 }
 
 /* Global toggle button for other language content in the sidebar */

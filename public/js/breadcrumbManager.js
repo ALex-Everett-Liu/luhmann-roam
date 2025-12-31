@@ -118,20 +118,10 @@ const BreadcrumbManager = (function() {
       if (window.createNodeElement) {
         const nodeElement = await window.createNodeElement(focusedNode);
         outlinerContainer.appendChild(nodeElement);
-        
-        // Setup any additional event handlers or drag-drop functionality
-        if (window.DragDropManager) {
-          window.DragDropManager.setupDragAndDrop();
-        }
-        
+
+        // Drag & Drop functionality removed - keyboard-focused operation only
+
         console.log('Focus view created with complete node element');
-        
-        // Refresh size highlights if enabled
-        if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-          setTimeout(() => {
-            NodeSizeHighlightManager.refreshHighlights();
-          }, 100);
-        }
       } else {
         console.error('window.createNodeElement not available - fallback to simple view');
         // Fallback to simpler node creation (should not happen in normal cases)
@@ -185,7 +175,7 @@ const BreadcrumbManager = (function() {
       const homeItem = document.createElement('div');
       homeItem.className = 'breadcrumb-item breadcrumb-home';
       homeItem.innerHTML = '🏠';
-      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
+      homeItem.title = 'Return to root level';
       homeItem.addEventListener('click', () => {
         clearFocus();
       });
@@ -204,10 +194,8 @@ const BreadcrumbManager = (function() {
         item.className = 'breadcrumb-item';
         item.dataset.id = ancestor.id;
         
-        // Use appropriate language content
-        const content = currentLanguage === 'en' ? 
-          ancestor.content : 
-          (ancestor.content_zh || ancestor.content);
+        // Single language content
+        const content = ancestor.content;
         
         item.textContent = content;
         
@@ -442,39 +430,21 @@ const BreadcrumbManager = (function() {
     if (outlinerContainer && outlinerContainer._originalContent) {
       outlinerContainer.innerHTML = outlinerContainer._originalContent;
       delete outlinerContainer._originalContent;
-      
-      // Reattach event handlers that might have been lost
-      if (window.DragDropManager) {
-        window.DragDropManager.setupDragAndDrop();
-      }
-      
+
+      // Drag & Drop functionality removed - keyboard-focused operation only
+
       console.log('Restored original content');
       
-      // Refresh size highlights if enabled
-      if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-        setTimeout(() => {
-          NodeSizeHighlightManager.refreshHighlights();
-        }, 100);
-      }
+      // Node size highlighting removed for simplification
     } else {
       // If original content wasn't saved, refresh nodes
       if (window.fetchNodes) {
         window.fetchNodes();
         console.log('Refreshing nodes from server');
-        
-        // Refresh size highlights if enabled after nodes are refreshed
-        if (window.NodeSizeHighlightManager && window.NodeSizeHighlightManager.getEnabled()) {
-          setTimeout(() => {
-            NodeSizeHighlightManager.refreshHighlights();
-          }, 200);
-        }
       }
     }
     
-    // Reapply any filters if the FilterManager is active
-    if (window.FilterManager) {
-      window.FilterManager.applyFilters();
-    }
+    // No filters to reapply - FilterManager removed
   }
   
   /**
@@ -497,7 +467,7 @@ const BreadcrumbManager = (function() {
     // Update the home icon tooltip
     const homeItem = document.querySelector('.breadcrumb-home');
     if (homeItem) {
-      homeItem.title = window.I18n ? I18n.t('returnToRoot') : 'Return to root level';
+      homeItem.title = 'Return to root level';
     }
     
   // Rebuild the breadcrumb trail with the new language

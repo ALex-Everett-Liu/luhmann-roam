@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1><i class="fas fa-images"></i> Image Viewer</h1>
+            <p class="subtitle">View, organize, and manage your images</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <h3>Drop images or videos here or click to upload</h3>
+                    <p>Supports: JPG, PNG, GIF, BMP, TIFF, WebP, SVG, WebM, MP4, MOV, AVI, MKV</p>
+                    <input type="file" id="fileInput" multiple accept="image/*,video/*" style="display: none;">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-plus"></i> Select Images
+                    </button>
+                </div>
+                <div class="scan-section">
+                    <p class="scan-hint">Or copy images directly to <code>plugins/image-viewer/images/</code> folder</p>
+                    <button id="scanBtn" class="scan-btn">
+                        <i class="fas fa-search"></i> Scan Images
+                    </button>
+                </div>
+            </section>
+
+            <!-- Manager Section -->
+            <section class="manager-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-th"></i> Image Manager</h3>
+                    <div class="manager-controls">
+                        <div class="filter-group">
+                            <label>Filter by Tags:</label>
+                            <button id="tagFilterBtn" class="tag-filter-btn" title="Select tags to filter">
+                                <i class="fas fa-tags"></i> <span id="tagFilterText">All Tags</span>
+                            </button>
+                            <div id="selectedTagsDisplay" class="selected-tags-display"></div>
+                        </div>
+                        <div class="filter-group">
+                            <label for="ratingFilter">Min Rating:</label>
+                            <select id="ratingFilter">
+                                <option value="">All</option>
+                                <option value="1">1+ Stars</option>
+                                <option value="2">2+ Stars</option>
+                                <option value="3">3+ Stars</option>
+                                <option value="4">4+ Stars</option>
+                                <option value="5">5 Stars</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Rating Range:</label>
+                            <div class="range-input-group">
+                                <input type="number" id="ratingMin" placeholder="Min" step="0.1" min="0">
+                                <span class="range-separator">-</span>
+                                <input type="number" id="ratingMax" placeholder="Max" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label>Ranking Range:</label>
+                            <div class="range-input-group">
+                                <input type="number" id="rankingMin" placeholder="Min" step="0.1" min="0">
+                                <span class="range-separator">-</span>
+                                <input type="number" id="rankingMax" placeholder="Max" step="0.1" min="0">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortBy">Sort By:</label>
+                            <select id="sortBy">
+                                <option value="default">Default (Ranking, Rating)</option>
+                                <option value="ranking">Ranking</option>
+                                <option value="rating">Rating</option>
+                                <option value="created_at">Date Added</option>
+                                <option value="view_count">Views</option>
+                                <option value="filename">Filename</option>
+                                <option value="file_size">File Size</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sortOrder">Order:</label>
+                            <select id="sortOrder">
+                                <option value="DESC">Descending</option>
+                                <option value="ASC">Ascending</option>
+                            </select>
+                        </div>
+                        <button id="refreshBtn" class="refresh-btn" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="imageGrid" class="image-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-image"></i>
+                        <p>No images uploaded yet</p>
+                    </div>
+                </div>
+                <div class="image-pagination" id="imagePagination" style="display: none;">
+                    <button id="imagePrevPage" class="pagination-btn" title="Previous page">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="pagination-info">
+                        <span id="imagePageInfo">Page 1 of 1</span>
+                        <div class="pagination-jump">
+                            <label for="imagePageJump">Go to:</label>
+                            <input type="number" id="imagePageJump" min="1" value="1" class="page-jump-input">
+                            <button id="imagePageJumpBtn" class="page-jump-btn" title="Jump to page">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="imageNextPage" class="pagination-btn" title="Next page">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Image Viewer Modal -->
+        <div id="imageViewerModal" class="image-viewer-modal">
+            <div class="viewer-header">
+                <div class="viewer-title">
+                    <span id="viewerImageName"></span>
+                    <span id="viewerImageInfo" class="viewer-info"></span>
+                </div>
+                <div class="viewer-controls">
+                    <button id="viewerZoomIn" class="viewer-btn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button id="viewerZoomOut" class="viewer-btn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button id="viewerResetZoom" class="viewer-btn" title="Reset Zoom">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                    <button id="viewerFullscreen" class="viewer-btn" title="Fullscreen">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button id="viewerCopyLink" class="viewer-btn" title="Copy Link">
+                        <i class="fas fa-link"></i>
+                    </button>
+                    <button id="viewerClose" class="viewer-btn" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="viewer-content">
+                <div class="viewer-image-container" id="viewerImageContainer">
+                    <img id="viewerImage" src="" alt="" style="display: none;">
+                    <video id="viewerVideo" src="" controls style="display: none;"></video>
+                    <button id="viewerExitFullscreen" class="exit-fullscreen-btn" title="Exit Fullscreen" style="display: none;">
+                        <i class="fas fa-compress"></i>
+                    </button>
+                </div>
+                <div class="viewer-sidebar">
+                    <div class="viewer-details">
+                        <h4>Image Details</h4>
+                        <div class="detail-item">
+                            <label>Rating:</label>
+                            <div class="rating-control">
+                                <input type="number" id="viewerRatingInput" step="0.1" min="0" placeholder="0.0" class="rating-input">
+                                <button id="viewerRatingSave" class="save-btn" title="Save Rating">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Ranking:</label>
+                            <div class="ranking-control">
+                                <input type="number" id="viewerRankingInput" step="0.1" min="0" placeholder="Not set" class="ranking-input">
+                                <button id="viewerRankingSave" class="save-btn" title="Save Ranking">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button id="viewerRankingClear" class="clear-btn" title="Clear Ranking">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tags:</label>
+                            <div class="tags-input-container">
+                                <input type="text" id="viewerTagsInput" placeholder="Add tags (comma-separated)">
+                                <button id="viewerAddTags" class="add-tags-btn">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                                <button id="viewerCopyTags" class="copy-tags-btn" title="Copy all tags">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                            <div id="viewerTagsList" class="tags-list"></div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Description:</label>
+                            <div class="description-container">
+                                <textarea id="viewerDescriptionInput" placeholder="Add a description for this image..." rows="4" class="description-input"></textarea>
+                                <button id="viewerDescriptionSave" class="save-btn" title="Save Description">
+                                    <i class="fas fa-check"></i> Save
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Views:</label>
+                            <span id="viewerViewCount">0</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>File Size:</label>
+                            <span id="viewerFileSize">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Dimensions:</label>
+                            <span id="viewerDimensions">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Public Link:</label>
+                            <div class="link-container">
+                                <input type="text" id="viewerPublicLink" readonly>
+                                <button id="viewerCopyLinkBtn" class="copy-link-btn">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <button id="viewerDeleteBtn" class="delete-btn">
+                                <i class="fas fa-trash"></i> Delete Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Processing...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Confirmation Dialog -->
+        <div id="confirmDialog" class="confirm-dialog">
+            <div class="confirm-dialog-content">
+                <div class="confirm-dialog-header">
+                    <h3 id="confirmDialogTitle"><i class="fas fa-question-circle"></i> Confirm</h3>
+                </div>
+                <div class="confirm-dialog-body">
+                    <p id="confirmDialogMessage"></p>
+                </div>
+                <div class="confirm-dialog-footer">
+                    <button id="confirmDialogCancel" type="button" class="btn-secondary">Cancel</button>
+                    <button id="confirmDialogConfirm" type="button" class="btn-primary">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Dialog -->
+        <div id="scanDialog" class="scan-dialog">
+            <div class="scan-dialog-content">
+                <div class="scan-dialog-header">
+                    <h3><i class="fas fa-search"></i> Scan Images</h3>
+                    <button id="scanDialogClose" class="dialog-close-btn" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="scan-dialog-body">
+                    <p class="scan-dialog-description">Select a folder to scan for images. Leave empty to scan all folders.</p>
+                    <div class="folder-selection">
+                        <label for="scanFolderSelect">Folder:</label>
+                        <select id="scanFolderSelect" class="folder-select">
+                            <option value="">All Folders (Root)</option>
+                        </select>
+                        <button id="scanRefreshFolders" class="refresh-folders-btn" title="Refresh folder list">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="scanFolderPath" class="folder-path-display"></div>
+                </div>
+                <div class="scan-dialog-footer">
+                    <button id="scanDialogCancel" class="btn-secondary">Cancel</button>
+                    <button id="scanDialogStart" type="button" class="btn-primary">
+                        <i class="fas fa-search"></i> Start Scan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Filter Dialog -->
+        <div id="tagFilterDialog" class="tag-filter-dialog">
+            <div class="tag-filter-dialog-content">
+                <div class="tag-filter-dialog-header">
+                    <h3><i class="fas fa-tags"></i> Filter by Tags</h3>
+                    <button id="tagFilterDialogClose" class="dialog-close-btn" title="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="tag-filter-dialog-body">
+                    <div class="tag-search-container">
+                        <input type="text" id="tagSearchInput" placeholder="Search tags..." class="tag-search-input">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div class="tag-filter-stats">
+                        <span id="tagFilterStats">0 tags selected</span>
+                        <span id="tagFilterTotal" class="tag-filter-total">Total: 0 tags</span>
+                    </div>
+                    <div id="tagFilterList" class="tag-filter-list">
+                        <!-- Tags will be populated here -->
+                    </div>
+                    <div class="tag-filter-pagination">
+                        <button id="tagFilterPrevPage" class="pagination-btn" title="Previous page">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="pagination-info">
+                            <span id="tagFilterPageInfo">Page 1 of 1</span>
+                            <div class="pagination-jump">
+                                <label for="tagFilterPageJump">Go to:</label>
+                                <input type="number" id="tagFilterPageJump" min="1" value="1" class="page-jump-input">
+                                <button id="tagFilterPageJumpBtn" class="page-jump-btn" title="Jump to page">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="tagFilterNextPage" class="pagination-btn" title="Next page">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="tag-filter-dialog-footer">
+                    <button id="tagFilterClear" class="btn-secondary">Clear All</button>
+                    <button id="tagFilterSelectAll" class="btn-secondary">Select All</button>
+                    <button id="tagFilterCancel" class="btn-secondary">Cancel</button>
+                    <button id="tagFilterApply" class="btn-primary">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load modules in dependency order -->
+    <script src="js/state.js"></script>
+    <script src="js/elements.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/fileHandling.js"></script>
+    <script src="js/imageLoader.js"></script>
+    <script src="js/tagFilter.js"></script>
+    <script src="js/scanDialog.js"></script>
+    <script src="js/imageGrid.js"></script>
+    <script src="js/imageMetadata.js"></script>
+    <script src="js/viewer.js"></script>
+    <script src="js/zoomPan.js"></script>
+    <script src="js/keyboard.js"></script>
+    <script src="js/events.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html>
+

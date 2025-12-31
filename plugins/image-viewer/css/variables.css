@@ -1,0 +1,52 @@
+/* Neumorphism Design System - Image Viewer */
+
+:root {
+    /* Colors - Cool Monochromatic Palette */
+    --background: #e0e5ec;
+    --foreground: #3d4852;
+    --muted: #6b7280;
+    --accent: #ffb2a7;
+    --accent-light: #ffbba0;
+    --accent-secondary: #38b2ac;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --warning-color: #f59e0b;
+
+    /* Shadow Colors - RGBA for Smoothness */
+    --shadow-light: rgba(255, 255, 255, 0.5);
+    --shadow-light-hover: rgba(255, 255, 255, 0.6);
+    --shadow-dark: rgb(163, 177, 198, 0.6);
+    --shadow-dark-hover: rgb(163, 177, 198, 0.7);
+
+    /* Typography */
+    --font-display: "Plus Jakarta Sans", -apple-system, sans-serif;
+    --font-body: "DM Sans", -apple-system, sans-serif;
+
+    /* Radius */
+    --radius-container: 32px;
+    --radius-button: 16px;
+    --radius-inner: 12px;
+
+    /* Transitions */
+    --transition-fast: 300ms ease-out;
+    --transition-slow: 500ms ease-out;
+
+    /* Legacy compatibility (mapped to new system) */
+    --primary-color: var(--accent);
+    --primary-hover: var(--accent-light);
+    --secondary-color: var(--accent-light);
+    --surface: var(--background);
+    --border: transparent;
+    --text-primary: var(--foreground);
+    --text-secondary: var(--muted);
+    --text-muted: var(--muted);
+    --shadow-sm:
+        5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+    --shadow-md:
+        9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
+    --shadow-lg:
+        12px 12px 20px var(--shadow-dark-hover),
+        -12px -12px 20px var(--shadow-light-hover);
+    --border-radius: var(--radius-button);
+    --border-radius-lg: var(--radius-container);
+}

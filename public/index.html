@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="css/fonts/NotoSerifSC.css">
   <link rel="stylesheet" href="css/index.css">
   <link rel="stylesheet" href="css/settings-manager.css">
+  <link rel="stylesheet" href="css/basic-font-settings.css">
+  <link rel="stylesheet" href="css/webp-converter-plugin-modal.css">
+  <!-- Image Viewer Plugin Modal CSS -->
+  <!-- Styles for the modal wrapper that contains the plugin iframe -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for modal integration -->
+  <link rel="stylesheet" href="css/image-viewer-plugin-modal.css">
 </head>
 <body>
   <div class="app-container">
@@ -15,73 +21,89 @@
       <h1 id="app-title">Outliner</h1>
       <button id="add-root-node">Add Root Node</button>
       <button id="save-changes" class="save-button">Save Changes</button>
-      <button id="language-toggle">Switch to Chinese</button>
-      <button id="toggle-grid-view">Toggle Grid View</button>
+      <button id="discard-changes" class="discard-button">Discard Changes</button>
       <button id="backup-database" class="backup-button">Backup Database</button>
+      <!-- Resize Handle -->
+      <div id="resize-handle" class="resize-handle"></div>
     </div>
     <div class="content">
       <div id="outliner-container"></div>
     </div>
   </div>
 
-  <!-- Load the i18n module first -->
-  <script src="js/i18n.js"></script>
+  <!-- WebP Converter Plugin Modal -->
+  <div id="webp-converter-plugin-modal" class="webp-converter-plugin-modal">
+    <div class="webp-converter-plugin-header">
+      <h3>WebP Converter</h3>
+      <div class="webp-converter-plugin-controls">
+        <button id="webp-converter-plugin-fullscreen" class="webp-converter-plugin-btn" title="Toggle Fullscreen">⛶</button>
+        <button id="webp-converter-plugin-close" class="webp-converter-plugin-btn" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="webp-converter-plugin-content">
+      <div id="webp-converter-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading WebP Converter...</div>
+      <iframe id="webp-converter-plugin-iframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+
+  <!-- Image Viewer Plugin Modal -->
+  <!-- Modal wrapper HTML for the Image Viewer plugin -->
+  <!-- The plugin itself loads in the iframe below -->
+  <!-- Modal controls (close, fullscreen) are handled by imageViewerPluginLauncher.js -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for integration details -->
+  <div id="image-viewer-plugin-modal" class="image-viewer-plugin-modal">
+    <div class="image-viewer-plugin-header">
+      <h3>Image Viewer</h3>
+      <div class="image-viewer-plugin-controls">
+        <button id="image-viewer-plugin-fullscreen" class="image-viewer-plugin-btn" title="Toggle Fullscreen">⛶</button>
+        <button id="image-viewer-plugin-close" class="image-viewer-plugin-btn" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="image-viewer-plugin-content">
+      <div id="image-viewer-plugin-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; color: #666; z-index: 1; pointer-events: none;">Loading Image Viewer...</div>
+      <iframe id="image-viewer-plugin-iframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+
+  <!-- Load resizable sidebar -->
+  <script src="js/resizableSidebar.js"></script>
   
-  <!-- Load plugin manager early -->
-  <script src="js/pluginManager.js"></script>
-  <script src="js/pluginAwareInitializer.js"></script>
+  <!-- Load plugin registry (before settings manager) -->
+  <script src="js/pluginRegistry.js"></script>
   
-  <!-- Load settings manager early (after plugin manager) -->
+  <!-- Load settings manager -->
   <script src="js/settingsManager.js"></script>
-  
+
   <!-- Then load other modules -->
-  <script src="js/markdownManager.js"></script>
-  <script src="js/blogManager.js"></script>
-  <script src="js/linkManager.js"></script>
-  <script src="js/filterManager.js"></script>
-  <script src="js/searchManager.js"></script>
+  <!-- Link Manager removed - node operations sufficient -->
+  <!-- FilterManager removed - search and breadcrumb managers sufficient -->
   <script src="js/breadcrumbManager.js"></script>
   <script src="js/positionManager.js"></script>
-  <script src="js/dragDropManager.js"></script>
   <script src="js/nodeOperationsManager.js"></script>
   <script src="js/nodeExpansionManager.js"></script>
-  <script src="js/taskManager.js"></script>
-  <script src="js/taskStatisticsManager.js"></script>
-  <script src="js/timestampManager.js"></script>
-  <script src="js/attributeManager.js"></script>
-  <script src="js/hotkeyManager.js"></script>
+  <script src="js/nodeActionsManager.js"></script>
+  <!-- timestampManager.js removed - will be redesigned later -->
   <script src="js/persistentTooltipManager.js"></script>
-  <script src="js/commandPaletteManager.js"></script>
-  <script src="js/bookmarkManager.js"></script>
-  <script src="js/fontManager.js"></script>
-  <script src="js/fontLoader.js"></script>
-  <script src="js/styleSettingsManager.js"></script>
-  <script src="js/cosmicNodeVisualizer.js"></script>
-  <script src="js/cosmicNodeVisualizer2D.js"></script>
-  <script src="js/nodeGridVisualizerManager.js"></script>
-  <script src="js/nodeSizeManager.js"></script>
-  <script src="js/nodeSizeHighlightManager.js"></script>
-  <script src="js/metroMapVisualizer.js"></script>
+  <script src="js/basicFontSettings.js"></script>
   <script src="js/backupManager.js"></script>
-  <script src="js/databaseExportImportManager.js"></script>
-  <script src="js/vaultManager.js"></script>
-  <script src="js/subsidiaryImageManager.js"></script>
-  <script src="js/tagManager.js"></script>
-  <script src="js/dcimManager.js"></script>
-  <script src="js/devTestPanelManager.js"></script>
-  <script src="js/wordFrequencyManager.js"></script>
-  <script src="js/codeGraphManager.js"></script>
-  <script src="js/newCodeGraphManager.js"></script>
-  <script src="js/enhancedCodeGraphManager.js"></script>
-  
+  <!-- Database Export/Import Manager removed - replaced by backup functionality -->
+
   <!-- Add Cytoscape.js library and graph analysis -->
   <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
-  <script src="js/graphManagementUI.js"></script>
-  <script src="js/graphAnalysisVisualizer.js"></script>
-  
-  <script src="js/app.js"></script>
+  <!-- Move D3.js BEFORE globalGraphManager.js -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
+
+
+  <script src="js/app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="js/codeAnalyzerManager.js"></script>
+  
+  <!-- WebP Converter Plugin Launcher -->
+  <script src="/plugins/webp-converter/webpConverterPluginLauncher.js"></script>
+  
+  <!-- Image Viewer Plugin Launcher -->
+  <!-- Loads the plugin launcher which registers the plugin and adds sidebar button -->
+  <!-- The launcher handles modal opening/closing and PluginRegistry integration -->
+  <!-- See: plugins/image-viewer/imageViewerPluginLauncher.js for implementation -->
+  <script src="/plugins/image-viewer/imageViewerPluginLauncher.js"></script>
 </body>
-</html> 
+</html>

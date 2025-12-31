@@ -1,544 +1,960 @@
 /**
  * Settings Manager Module
- * Central hub for managing all application settings including plugins, appearance, fonts, etc.
+ * Central hub for managing all application settings including appearance, fonts, etc.
  */
-const SettingsManager = (function() {
-    // Private variables
-    let isInitialized = false;
-    let settingsModal = null;
-    let modalOverlay = null;
-    let currentSection = 'plugins'; // Default section
-    
-    // Registered settings sections
-    const settingsSections = new Map();
-    
-    // Available sections configuration
-    const sectionConfig = {
-        plugins: {
-            title: 'Plugins',
-            icon: '🔌',
-            description: 'Manage application features and plugins'
-        },
-        appearance: {
-            title: 'Appearance',
-            icon: '🎨',
-            description: 'Customize colors, themes, and visual settings'
-        },
-        fonts: {
-            title: 'Fonts',
-            icon: '🔤',
-            description: 'Configure font families and typography'
-        },
-        attributes: {
-            title: 'Attributes',
-            icon: '📊',
-            description: 'Node attributes and metadata settings'
-        },
-        accessibility: {
-            title: 'Accessibility',
-            icon: '♿',
-            description: 'Accessibility and usability options'
-        }
+const SettingsManager = (function () {
+  // Private variables
+  let isInitialized = false;
+  let settingsModal = null;
+  let modalOverlay = null;
+  let currentSection = "general"; // Change default to general
+
+  // Registered settings sections
+  const settingsSections = new Map();
+
+  // Available sections configuration
+  const sectionConfig = {
+    general: {
+      title: "General",
+      icon: "⚙️",
+      description: "General application settings including language",
+    },
+    appearance: {
+      title: "Appearance",
+      icon: "🎨",
+      description: "Customize colors, themes, and visual settings",
+    },
+    fonts: {
+      title: "Fonts",
+      icon: "🔤",
+      description: "Basic font preferences",
+    },
+    attributes: {
+      title: "Attributes",
+      icon: "📊",
+      description: "Node attributes and metadata settings",
+    },
+    accessibility: {
+      title: "Accessibility",
+      icon: "♿",
+      description: "Accessibility and usability options",
+    },
+    plugins: {
+      title: "Plugins",
+      icon: "🔌",
+      description: "Manage and configure plugins",
+    },
+  };
+
+  /**
+   * Initialize the Settings Manager
+   */
+  function initialize() {
+    if (isInitialized) {
+      console.log("SettingsManager already initialized, skipping");
+      return;
+    }
+
+    console.log("Initializing SettingsManager...");
+
+    // Create the main settings button in sidebar
+    createSettingsButton();
+
+    // Register built-in sections
+    registerBuiltInSections();
+
+    isInitialized = true;
+    console.log("SettingsManager initialization complete");
+  }
+
+  /**
+   * Create the main settings button in the sidebar
+   */
+  function createSettingsButton() {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) {
+      console.error("Sidebar not found, cannot create settings button");
+      return;
+    }
+
+    const settingsButton = document.createElement("button");
+    settingsButton.id = "settings-manager-button";
+    settingsButton.className = "feature-toggle settings-button";
+    settingsButton.innerHTML = "⚙️ Settings";
+    settingsButton.title = "Open application settings";
+
+    settingsButton.addEventListener("click", openSettingsModal);
+
+    const backupButton = document.getElementById("backup-database");
+
+    if (backupButton) {
+      sidebar.insertBefore(settingsButton, backupButton);
+    } else {
+      sidebar.appendChild(settingsButton);
+    }
+
+    console.log("Settings button created and added to sidebar");
+  }
+
+  /**
+   * Register built-in settings sections
+   */
+  function registerBuiltInSections() {
+    // Register general section (includes language)
+    registerSection("general", {
+      title: sectionConfig.general.title,
+      icon: sectionConfig.general.icon,
+      description: sectionConfig.general.description,
+      render: renderGeneralSection,
+      onSave: saveGeneralSettings,
+    });
+
+
+    // Register basic appearance section
+    registerSection("appearance", {
+      title: sectionConfig.appearance.title,
+      icon: sectionConfig.appearance.icon,
+      description: "Basic theme switches and appearance settings",
+      render: renderBasicAppearanceSection,
+      onSave: saveBasicAppearanceSettings,
+    });
+
+    // Register fonts section
+    if (window.BasicFontSettings) {
+      registerSection("fonts", {
+        title: sectionConfig.fonts.title,
+        icon: sectionConfig.fonts.icon,
+        description: sectionConfig.fonts.description,
+        render: renderFontsSection,
+        onSave: saveFontSettings,
+      });
+    }
+
+    // Register plugins section
+    registerSection("plugins", {
+      title: sectionConfig.plugins.title,
+      icon: sectionConfig.plugins.icon,
+      description: sectionConfig.plugins.description,
+      render: renderPluginsSection,
+      onSave: savePluginsSettings,
+    });
+
+    console.log(
+      "Built-in sections registered:",
+      Array.from(settingsSections.keys()),
+    );
+  }
+
+  /**
+   * Register a settings section
+   */
+  function registerSection(id, config) {
+    const defaultConfig = {
+      title: id,
+      icon: "⚙️",
+      description: "",
+      render: null,
+      onSave: null,
+      onReset: null,
     };
-    
-    /**
-     * Initialize the Settings Manager
-     */
-    function initialize() {
-        if (isInitialized) {
-            console.log('SettingsManager already initialized, skipping');
-            return;
-        }
-        
-        console.log('Initializing SettingsManager...');
-        
-        // Create the main settings button in sidebar
-        createSettingsButton();
-        
-        // Register built-in sections
-        registerBuiltInSections();
-        
-        isInitialized = true;
-        console.log('SettingsManager initialization complete');
+
+    settingsSections.set(id, { ...defaultConfig, ...config });
+    console.log(`Settings section "${id}" registered`);
+  }
+
+  /**
+   * Open the settings modal
+   */
+  function openSettingsModal() {
+    // Create modal if it doesn't exist
+    if (!settingsModal) {
+      createSettingsModal();
     }
-    
-    /**
-     * Create the main settings button in the sidebar
-     */
-    function createSettingsButton() {
-        const sidebar = document.querySelector('.sidebar');
-        if (!sidebar) {
-            console.error('Sidebar not found, cannot create settings button');
-            return;
-        }
-        
-        const settingsButton = document.createElement('button');
-        settingsButton.id = 'settings-manager-button';
-        settingsButton.className = 'feature-toggle settings-button';
-        settingsButton.innerHTML = '⚙️ Settings';
-        settingsButton.title = 'Open application settings';
-        
-        settingsButton.addEventListener('click', openSettingsModal);
-        
-        // Insert before existing buttons (find a good position)
-        const gridViewButton = document.getElementById('toggle-grid-view');
-        const backupButton = document.getElementById('backup-database');
-        
-        if (backupButton) {
-            sidebar.insertBefore(settingsButton, backupButton);
-        } else if (gridViewButton) {
-            sidebar.insertBefore(settingsButton, gridViewButton);
-        } else {
-            sidebar.appendChild(settingsButton);
-        }
-        
-        console.log('Settings button created and added to sidebar');
+
+    // Show the modal
+    if (modalOverlay && settingsModal) {
+      modalOverlay.style.display = "flex";
+      modalOverlay.classList.add("show");
+
+      // Render the current section
+      renderCurrentSection();
+
+      console.log("Settings modal opened, current section:", currentSection);
     }
-    
-    /**
-     * Register built-in settings sections
-     */
-    function registerBuiltInSections() {
-        // Register plugins section
-        if (window.PluginManager) {
-            registerSection('plugins', {
-                title: sectionConfig.plugins.title,
-                icon: sectionConfig.plugins.icon,
-                description: sectionConfig.plugins.description,
-                render: renderPluginsSection,
-                onSave: () => {
-                    // Plugin settings are saved automatically
-                    console.log('Plugin settings saved');
-                }
-            });
-        }
-        
-        // Register appearance section
-        if (window.StyleSettingsManager) {
-            registerSection('appearance', {
-                title: sectionConfig.appearance.title,
-                icon: sectionConfig.appearance.icon,
-                description: sectionConfig.appearance.description,
-                render: renderAppearanceSection,
-                onSave: saveAppearanceSettings
-            });
-        }
-        
-        // Register fonts section
-        if (window.FontManager) {
-            registerSection('fonts', {
-                title: sectionConfig.fonts.title,
-                icon: sectionConfig.fonts.icon,
-                description: sectionConfig.fonts.description,
-                render: renderFontsSection,
-                onSave: saveFontSettings
-            });
-        }
-        
-        console.log('Built-in sections registered:', Array.from(settingsSections.keys()));
+  }
+
+  /**
+   * Close the settings modal
+   */
+  function closeSettingsModal() {
+    if (modalOverlay && settingsModal) {
+      modalOverlay.style.display = "none";
+      modalOverlay.classList.remove("show");
     }
-    
-    /**
-     * Register a settings section
-     */
-    function registerSection(id, config) {
-        const defaultConfig = {
-            title: id,
-            icon: '⚙️',
-            description: '',
-            render: null,
-            onSave: null,
-            onReset: null
-        };
-        
-        settingsSections.set(id, { ...defaultConfig, ...config });
-        console.log(`Settings section "${id}" registered`);
+  }
+
+  /**
+   * Create the settings modal structure
+   */
+  function createSettingsModal() {
+    // Create modal overlay with unique class name
+    modalOverlay = document.createElement("div");
+    modalOverlay.className = "settings-modal-overlay";
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) {
+        closeSettingsModal();
+      }
+    });
+
+    // Create modal with unique class name
+    settingsModal = document.createElement("div");
+    settingsModal.className = "settings-modal";
+    settingsModal.id = "settings-modal";
+
+    // Modal content
+    const modalContent = document.createElement("div");
+    modalContent.className = "settings-modal-content";
+
+    // Modal header
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "settings-modal-header";
+
+    const modalTitle = document.createElement("h2");
+    modalTitle.textContent = "Settings";
+    modalTitle.className = "settings-modal-title";
+
+    const closeButton = document.createElement("button");
+    closeButton.className = "settings-modal-close";
+    closeButton.innerHTML = "&times;";
+    closeButton.addEventListener("click", closeSettingsModal);
+
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeButton);
+
+    // Modal body with sidebar and content
+    const modalBody = document.createElement("div");
+    modalBody.className = "settings-modal-body";
+
+    // Settings sidebar (navigation)
+    const settingsSidebar = document.createElement("div");
+    settingsSidebar.className = "settings-sidebar";
+    settingsSidebar.id = "settings-sidebar";
+
+    // Settings content area
+    const settingsContent = document.createElement("div");
+    settingsContent.className = "settings-content";
+    settingsContent.id = "settings-content";
+
+    modalBody.appendChild(settingsSidebar);
+    modalBody.appendChild(settingsContent);
+
+    // Modal footer
+    const modalFooter = document.createElement("div");
+    modalFooter.className = "settings-modal-footer";
+
+    const saveButton = document.createElement("button");
+    saveButton.className = "settings-save-btn";
+    saveButton.textContent = "Save Changes";
+    saveButton.addEventListener("click", saveCurrentSection);
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "settings-cancel-btn";
+    cancelButton.textContent = "Cancel";
+    cancelButton.addEventListener("click", closeSettingsModal);
+
+    modalFooter.appendChild(cancelButton);
+    modalFooter.appendChild(saveButton);
+
+    // Assemble modal
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modalContent.appendChild(modalFooter);
+    settingsModal.appendChild(modalContent);
+    modalOverlay.appendChild(settingsModal);
+
+    // Add to document
+    document.body.appendChild(modalOverlay);
+
+    // Render sidebar navigation
+    renderSettingsSidebar();
+
+    console.log("Settings modal created");
+  }
+
+  /**
+   * Render the settings sidebar navigation
+   */
+  function renderSettingsSidebar() {
+    const sidebar = document.getElementById("settings-sidebar");
+    if (!sidebar) return;
+
+    sidebar.innerHTML = "";
+
+    // Create navigation items
+    settingsSections.forEach((config, sectionId) => {
+      const navItem = document.createElement("div");
+      navItem.className = `settings-nav-item ${sectionId === currentSection ? "active" : ""}`;
+      navItem.dataset.section = sectionId;
+
+      const icon = document.createElement("span");
+      icon.className = "settings-nav-icon";
+      icon.textContent = config.icon;
+
+      const label = document.createElement("span");
+      label.className = "settings-nav-label";
+      label.textContent = config.title;
+
+      const description = document.createElement("span");
+      description.className = "settings-nav-description";
+      description.textContent = config.description;
+
+      navItem.appendChild(icon);
+      navItem.appendChild(label);
+      navItem.appendChild(description);
+
+      navItem.addEventListener("click", () => {
+        switchToSection(sectionId);
+      });
+
+      sidebar.appendChild(navItem);
+    });
+  }
+
+  /**
+   * Switch to a different settings section
+   */
+  function switchToSection(sectionId) {
+    if (!settingsSections.has(sectionId)) {
+      console.error(`Settings section "${sectionId}" not found`);
+      return;
     }
-    
-    /**
-     * Open the settings modal
-     */
-    function openSettingsModal() {
-        // Create modal if it doesn't exist
-        if (!settingsModal) {
-            createSettingsModal();
-        }
-        
-        // Show the modal
-        if (modalOverlay && settingsModal) {
-            modalOverlay.style.display = 'flex';
-            modalOverlay.classList.add('show');
-            
-            // Render the current section
-            renderCurrentSection();
-            
-            console.log('Settings modal opened, current section:', currentSection);
-        }
+
+    currentSection = sectionId;
+
+    // Update sidebar navigation
+    const navItems = document.querySelectorAll(".settings-nav-item");
+    navItems.forEach((item) => {
+      item.classList.toggle("active", item.dataset.section === sectionId);
+    });
+
+    // Render the section content
+    renderCurrentSection();
+  }
+
+  /**
+   * Render the current section content
+   */
+  function renderCurrentSection() {
+    const contentArea = document.getElementById("settings-content");
+    if (!contentArea) return;
+
+    const sectionConfig = settingsSections.get(currentSection);
+    if (!sectionConfig) {
+      contentArea.innerHTML =
+        '<div class="settings-error">Section not found</div>';
+      return;
     }
-    
-    /**
-     * Close the settings modal
-     */
-    function closeSettingsModal() {
-        if (modalOverlay && settingsModal) {
-            modalOverlay.style.display = 'none';
-            modalOverlay.classList.remove('show');
-        }
+
+    // Clear content area
+    contentArea.innerHTML = "";
+
+    // Add section header
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "settings-section-header";
+
+    const sectionTitle = document.createElement("h3");
+    sectionTitle.className = "settings-section-title";
+    sectionTitle.innerHTML = `${sectionConfig.icon} ${sectionConfig.title}`;
+
+    const sectionDescription = document.createElement("p");
+    sectionDescription.className = "settings-section-description";
+    sectionDescription.textContent = sectionConfig.description;
+
+    sectionHeader.appendChild(sectionTitle);
+    sectionHeader.appendChild(sectionDescription);
+    contentArea.appendChild(sectionHeader);
+
+    // Render section content
+    if (sectionConfig.render && typeof sectionConfig.render === "function") {
+      const sectionContent = document.createElement("div");
+      sectionContent.className = "settings-section-content";
+      contentArea.appendChild(sectionContent);
+
+      try {
+        sectionConfig.render(sectionContent);
+      } catch (error) {
+        console.error(`Error rendering section "${currentSection}":`, error);
+        sectionContent.innerHTML =
+          '<div class="settings-error">Error loading section content</div>';
+      }
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "settings-placeholder";
+      placeholder.textContent = "This section is not yet implemented.";
+      contentArea.appendChild(placeholder);
     }
-    
-    /**
-     * Create the settings modal structure
-     */
-    function createSettingsModal() {
-        // Create modal overlay with unique class name
-        modalOverlay = document.createElement('div');
-        modalOverlay.className = 'settings-modal-overlay';
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                closeSettingsModal();
-            }
-        });
-        
-        // Create modal with unique class name
-        settingsModal = document.createElement('div');
-        settingsModal.className = 'settings-modal';
-        settingsModal.id = 'settings-modal';
-        
-        // Modal content
-        const modalContent = document.createElement('div');
-        modalContent.className = 'settings-modal-content';
-        
-        // Modal header
-        const modalHeader = document.createElement('div');
-        modalHeader.className = 'settings-modal-header';
-        
-        const modalTitle = document.createElement('h2');
-        modalTitle.textContent = 'Settings';
-        modalTitle.className = 'settings-modal-title';
-        
-        const closeButton = document.createElement('button');
-        closeButton.className = 'settings-modal-close';
-        closeButton.innerHTML = '&times;';
-        closeButton.addEventListener('click', closeSettingsModal);
-        
-        modalHeader.appendChild(modalTitle);
-        modalHeader.appendChild(closeButton);
-        
-        // Modal body with sidebar and content
-        const modalBody = document.createElement('div');
-        modalBody.className = 'settings-modal-body';
-        
-        // Settings sidebar (navigation)
-        const settingsSidebar = document.createElement('div');
-        settingsSidebar.className = 'settings-sidebar';
-        settingsSidebar.id = 'settings-sidebar';
-        
-        // Settings content area
-        const settingsContent = document.createElement('div');
-        settingsContent.className = 'settings-content';
-        settingsContent.id = 'settings-content';
-        
-        modalBody.appendChild(settingsSidebar);
-        modalBody.appendChild(settingsContent);
-        
-        // Modal footer
-        const modalFooter = document.createElement('div');
-        modalFooter.className = 'settings-modal-footer';
-        
-        const saveButton = document.createElement('button');
-        saveButton.className = 'settings-save-btn';
-        saveButton.textContent = 'Save Changes';
-        saveButton.addEventListener('click', saveCurrentSection);
-        
-        const cancelButton = document.createElement('button');
-        cancelButton.className = 'settings-cancel-btn';
-        cancelButton.textContent = 'Cancel';
-        cancelButton.addEventListener('click', closeSettingsModal);
-        
-        modalFooter.appendChild(cancelButton);
-        modalFooter.appendChild(saveButton);
-        
-        // Assemble modal
-        modalContent.appendChild(modalHeader);
-        modalContent.appendChild(modalBody);
-        modalContent.appendChild(modalFooter);
-        settingsModal.appendChild(modalContent);
-        modalOverlay.appendChild(settingsModal);
-        
-        // Add to document
-        document.body.appendChild(modalOverlay);
-        
-        // Render sidebar navigation
-        renderSettingsSidebar();
-        
-        console.log('Settings modal created');
+  }
+
+  /**
+   * Save the current section settings
+   */
+  function saveCurrentSection() {
+    const sectionConfig = settingsSections.get(currentSection);
+    if (
+      sectionConfig &&
+      sectionConfig.onSave &&
+      typeof sectionConfig.onSave === "function"
+    ) {
+      try {
+        sectionConfig.onSave();
+        console.log(`Settings saved for section: ${currentSection}`);
+
+        // Show success feedback
+        showSaveSuccess();
+      } catch (error) {
+        console.error(`Error saving section "${currentSection}":`, error);
+        showSaveError(error.message);
+      }
     }
-    
-    /**
-     * Render the settings sidebar navigation
-     */
-    function renderSettingsSidebar() {
-        const sidebar = document.getElementById('settings-sidebar');
-        if (!sidebar) return;
-        
-        sidebar.innerHTML = '';
-        
-        // Create navigation items
-        settingsSections.forEach((config, sectionId) => {
-            const navItem = document.createElement('div');
-            navItem.className = `settings-nav-item ${sectionId === currentSection ? 'active' : ''}`;
-            navItem.dataset.section = sectionId;
-            
-            const icon = document.createElement('span');
-            icon.className = 'settings-nav-icon';
-            icon.textContent = config.icon;
-            
-            const label = document.createElement('span');
-            label.className = 'settings-nav-label';
-            label.textContent = config.title;
-            
-            const description = document.createElement('span');
-            description.className = 'settings-nav-description';
-            description.textContent = config.description;
-            
-            navItem.appendChild(icon);
-            navItem.appendChild(label);
-            navItem.appendChild(description);
-            
-            navItem.addEventListener('click', () => {
-                switchToSection(sectionId);
-            });
-            
-            sidebar.appendChild(navItem);
-        });
+  }
+
+  /**
+   * Show save success feedback
+   */
+  function showSaveSuccess() {
+    const saveButton = document.querySelector(".settings-save-btn");
+    if (saveButton) {
+      const originalText = saveButton.textContent;
+      saveButton.textContent = "✓ Saved!";
+      saveButton.classList.add("success");
+
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.classList.remove("success");
+      }, 2000);
     }
-    
-    /**
-     * Switch to a different settings section
-     */
-    function switchToSection(sectionId) {
-        if (!settingsSections.has(sectionId)) {
-            console.error(`Settings section "${sectionId}" not found`);
-            return;
-        }
-        
-        currentSection = sectionId;
-        
-        // Update sidebar navigation
-        const navItems = document.querySelectorAll('.settings-nav-item');
-        navItems.forEach(item => {
-            item.classList.toggle('active', item.dataset.section === sectionId);
-        });
-        
-        // Render the section content
-        renderCurrentSection();
+  }
+
+  /**
+   * Show save error feedback
+   */
+  function showSaveError(message) {
+    const saveButton = document.querySelector(".settings-save-btn");
+    if (saveButton) {
+      const originalText = saveButton.textContent;
+      saveButton.textContent = "✗ Error";
+      saveButton.classList.add("error");
+
+      setTimeout(() => {
+        saveButton.textContent = originalText;
+        saveButton.classList.remove("error");
+      }, 3000);
     }
-    
-    /**
-     * Render the current section content
-     */
-    function renderCurrentSection() {
-        const contentArea = document.getElementById('settings-content');
-        if (!contentArea) return;
-        
-        const sectionConfig = settingsSections.get(currentSection);
-        if (!sectionConfig) {
-            contentArea.innerHTML = '<div class="settings-error">Section not found</div>';
-            return;
-        }
-        
-        // Clear content area
-        contentArea.innerHTML = '';
-        
-        // Add section header
-        const sectionHeader = document.createElement('div');
-        sectionHeader.className = 'settings-section-header';
-        
-        const sectionTitle = document.createElement('h3');
-        sectionTitle.className = 'settings-section-title';
-        sectionTitle.innerHTML = `${sectionConfig.icon} ${sectionConfig.title}`;
-        
-        const sectionDescription = document.createElement('p');
-        sectionDescription.className = 'settings-section-description';
-        sectionDescription.textContent = sectionConfig.description;
-        
-        sectionHeader.appendChild(sectionTitle);
-        sectionHeader.appendChild(sectionDescription);
-        contentArea.appendChild(sectionHeader);
-        
-        // Render section content
-        if (sectionConfig.render && typeof sectionConfig.render === 'function') {
-            const sectionContent = document.createElement('div');
-            sectionContent.className = 'settings-section-content';
-            contentArea.appendChild(sectionContent);
-            
-            try {
-                sectionConfig.render(sectionContent);
-            } catch (error) {
-                console.error(`Error rendering section "${currentSection}":`, error);
-                sectionContent.innerHTML = '<div class="settings-error">Error loading section content</div>';
-            }
-        } else {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'settings-placeholder';
-            placeholder.textContent = 'This section is not yet implemented.';
-            contentArea.appendChild(placeholder);
-        }
+
+    // Also show error message
+    alert(`Error saving settings: ${message}`);
+  }
+
+  /**
+   * Render general section content (includes language settings)
+   */
+  function renderGeneralSection(container) {
+    const generalContent = document.createElement("div");
+    generalContent.className = "general-settings-content";
+
+    // Language Settings
+    const languageSection = document.createElement("div");
+    languageSection.className = "settings-subsection";
+    languageSection.innerHTML = `
+            <h4 class="settings-subsection-title">🌐 Language Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">Interface Language:</label>
+                <div class="settings-control">
+                    <select id="language-select" class="settings-select">
+                        <option value="en">English</option>
+                        <option value="zh">中文 (Chinese)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-description">
+                    Choose the language for the application interface. This will update all menus, buttons, and messages.
+                </div>
+            </div>
+        `;
+
+    // Auto-save Settings
+    const autoSaveSection = document.createElement("div");
+    autoSaveSection.className = "settings-subsection";
+    autoSaveSection.innerHTML = `
+            <h4 class="settings-subsection-title">💾 Auto-save Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="auto-save-enabled" class="settings-checkbox">
+                    Enable auto-save
+                </label>
+            </div>
+            <div class="settings-row">
+                <label class="settings-label">Auto-save interval (seconds):</label>
+                <div class="settings-control">
+                    <input type="number" id="auto-save-interval" class="settings-input" min="10" max="300" value="30">
+                </div>
+            </div>
+        `;
+
+    // Performance Settings
+    const performanceSection = document.createElement("div");
+    performanceSection.className = "settings-subsection";
+    performanceSection.innerHTML = `
+            <h4 class="settings-subsection-title">⚡ Performance Settings</h4>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="lazy-loading-enabled" class="settings-checkbox">
+                    Enable lazy loading for large node trees
+                </label>
+            </div>
+            <div class="settings-row">
+                <label class="settings-label">
+                    <input type="checkbox" id="animations-enabled" class="settings-checkbox">
+                    Enable animations
+                </label>
+            </div>
+        `;
+
+    generalContent.appendChild(languageSection);
+    generalContent.appendChild(autoSaveSection);
+    generalContent.appendChild(performanceSection);
+    container.appendChild(generalContent);
+
+    // Set current values
+    setCurrentGeneralSettings();
+
+    // Add event listeners
+    setupGeneralSettingsListeners();
+  }
+
+  /**
+   * Set current general settings values
+   */
+  function setCurrentGeneralSettings() {
+    // Set current language
+    const languageSelect = document.getElementById("language-select");
+    if (languageSelect && window.I18n) {
+      languageSelect.value = I18n.getCurrentLanguage();
     }
-    
-    /**
-     * Save the current section settings
-     */
-    function saveCurrentSection() {
-        const sectionConfig = settingsSections.get(currentSection);
-        if (sectionConfig && sectionConfig.onSave && typeof sectionConfig.onSave === 'function') {
-            try {
-                sectionConfig.onSave();
-                console.log(`Settings saved for section: ${currentSection}`);
-                
-                // Show success feedback
-                showSaveSuccess();
-            } catch (error) {
-                console.error(`Error saving section "${currentSection}":`, error);
-                showSaveError(error.message);
-            }
-        }
+
+    // Set auto-save settings (from localStorage or defaults)
+    const autoSaveEnabled = document.getElementById("auto-save-enabled");
+    const autoSaveInterval = document.getElementById("auto-save-interval");
+
+    if (autoSaveEnabled) {
+      autoSaveEnabled.checked =
+        localStorage.getItem("autoSaveEnabled") !== "false";
     }
-    
-    /**
-     * Show save success feedback
-     */
-    function showSaveSuccess() {
-        const saveButton = document.querySelector('.settings-save-btn');
-        if (saveButton) {
-            const originalText = saveButton.textContent;
-            saveButton.textContent = '✓ Saved!';
-            saveButton.classList.add('success');
-            
+
+    if (autoSaveInterval) {
+      autoSaveInterval.value = localStorage.getItem("autoSaveInterval") || "30";
+    }
+
+    // Set performance settings
+    const lazyLoadingEnabled = document.getElementById("lazy-loading-enabled");
+    const animationsEnabled = document.getElementById("animations-enabled");
+
+    if (lazyLoadingEnabled) {
+      lazyLoadingEnabled.checked =
+        localStorage.getItem("lazyLoadingEnabled") !== "false";
+    }
+
+    if (animationsEnabled) {
+      animationsEnabled.checked =
+        localStorage.getItem("animationsEnabled") !== "false";
+    }
+  }
+
+  /**
+   * Setup event listeners for general settings
+   */
+  function setupGeneralSettingsListeners() {
+    // Language change listener
+    const languageSelect = document.getElementById("language-select");
+    if (languageSelect) {
+      languageSelect.addEventListener("change", function () {
+        const newLanguage = this.value;
+        const currentLanguage = window.I18n ? I18n.getCurrentLanguage() : "en";
+
+        if (newLanguage !== currentLanguage && window.I18n) {
+          // Show confirmation dialog
+          if (confirm("Change language? This will refresh the interface.")) {
+            I18n.toggleLanguage();
+
+            // Update the select value after language change
             setTimeout(() => {
-                saveButton.textContent = originalText;
-                saveButton.classList.remove('success');
-            }, 2000);
+              this.value = I18n.getCurrentLanguage();
+            }, 100);
+          } else {
+            // Revert the select value
+            this.value = currentLanguage;
+          }
         }
+      });
     }
     
-    /**
-     * Show save error feedback
-     */
-    function showSaveError(message) {
-        const saveButton = document.querySelector('.settings-save-btn');
-        if (saveButton) {
-            const originalText = saveButton.textContent;
-            saveButton.textContent = '✗ Error';
-            saveButton.classList.add('error');
-            
-            setTimeout(() => {
-                saveButton.textContent = originalText;
-                saveButton.classList.remove('error');
-            }, 3000);
+    // Auto-save toggle listener
+    const autoSaveEnabled = document.getElementById("auto-save-enabled");
+    if (autoSaveEnabled) {
+      autoSaveEnabled.addEventListener("change", function () {
+        const enabled = this.checked;
+        localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
+        
+        // Notify app.js to update save button visibility
+        if (window.updateAutoSaveSetting) {
+          window.updateAutoSaveSetting(enabled);
         }
         
-        // Also show error message
-        alert(`Error saving settings: ${message}`);
+        // If switching to auto-save mode, save any pending changes
+        if (enabled && window.saveAllChanges) {
+          // Small delay to ensure UI updates first
+          setTimeout(() => {
+            window.saveAllChanges();
+          }, 100);
+        }
+      });
     }
     
-    /**
-     * Render plugins section content
-     */
-    function renderPluginsSection(container) {
-        if (!window.PluginManager) {
-            container.innerHTML = '<div class="settings-error">PluginManager not available</div>';
-            return;
-        }
-        
-        // Get the plugin list content from PluginManager
-        const pluginListContainer = document.createElement('div');
-        pluginListContainer.className = 'plugins-section-content';
-        
-        // Use PluginManager's populatePluginList method
-        if (PluginManager.populatePluginList) {
-            PluginManager.populatePluginList(pluginListContainer);
-        } else {
-            // Fallback: create a basic plugin list
-            pluginListContainer.innerHTML = '<div class="settings-info">Plugin management will be integrated here</div>';
-        }
-        
-        container.appendChild(pluginListContainer);
+    // Auto-save interval listener (for future use)
+    const autoSaveInterval = document.getElementById("auto-save-interval");
+    if (autoSaveInterval) {
+      autoSaveInterval.addEventListener("change", function () {
+        localStorage.setItem("autoSaveInterval", this.value);
+      });
     }
-    
-    /**
-     * Render appearance section content
-     */
-    function renderAppearanceSection(container) {
-        if (!window.StyleSettingsManager) {
-            container.innerHTML = '<div class="settings-error">StyleSettingsManager not available</div>';
-            return;
-        }
-        
-        // Use StyleSettingsManager's renderAppearanceSettings method
-        if (StyleSettingsManager.renderAppearanceSettings) {
-            StyleSettingsManager.renderAppearanceSettings(container);
-        } else {
-            container.innerHTML = '<div class="settings-info">Appearance settings will be integrated here</div>';
-        }
+  }
+
+  /**
+   * Save general settings
+   */
+  function saveGeneralSettings() {
+    // Save auto-save settings
+    const autoSaveEnabled = document.getElementById("auto-save-enabled");
+    const autoSaveInterval = document.getElementById("auto-save-interval");
+
+    if (autoSaveEnabled) {
+      const enabled = autoSaveEnabled.checked;
+      localStorage.setItem("autoSaveEnabled", enabled ? "true" : "false");
+      
+      // Notify app.js to update save button visibility
+      if (window.updateAutoSaveSetting) {
+        window.updateAutoSaveSetting(enabled);
+      }
     }
-    
-    /**
-     * Render fonts section content
-     */
-    function renderFontsSection(container) {
-        if (!window.FontManager) {
-            container.innerHTML = '<div class="settings-error">FontManager not available</div>';
-            return;
-        }
-        
-        // Use FontManager's renderFontSettings method
-        if (FontManager.renderFontSettings) {
-            FontManager.renderFontSettings(container);
-        } else {
-            container.innerHTML = '<div class="settings-info">Font settings will be integrated here</div>';
-        }
+
+    if (autoSaveInterval) {
+      localStorage.setItem("autoSaveInterval", autoSaveInterval.value);
     }
-    
-    /**
-     * Save appearance settings
-     */
-    function saveAppearanceSettings() {
-        if (window.StyleSettingsManager && StyleSettingsManager.saveAppearanceSettings) {
-            StyleSettingsManager.saveAppearanceSettings();
-        }
+
+    // Save performance settings
+    const lazyLoadingEnabled = document.getElementById("lazy-loading-enabled");
+    const animationsEnabled = document.getElementById("animations-enabled");
+
+    if (lazyLoadingEnabled) {
+      localStorage.setItem("lazyLoadingEnabled", lazyLoadingEnabled.checked);
     }
-    
-    /**
-     * Save font settings
-     */
-    function saveFontSettings() {
-        if (window.FontManager && FontManager.saveFontSettings) {
-            FontManager.saveFontSettings();
-        }
+
+    if (animationsEnabled) {
+      localStorage.setItem("animationsEnabled", animationsEnabled.checked);
     }
+
+    console.log("General settings saved");
+  }
+
+
+  /**
+   * Render basic appearance section content
+   */
+  function renderBasicAppearanceSection(container) {
+    container.innerHTML = `
+      <div class="settings-section-content">
+        <div class="basic-appearance-settings">
+          <div class="setting-item">
+            <label for="theme-toggle-basic">Theme</label>
+            <select id="theme-toggle-basic" class="setting-input">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="setting-note">
+            Toggle between light and dark themes for the interface
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Set current theme based on document class
+    const themeSelector = container.querySelector('#theme-toggle-basic');
+    if (themeSelector) {
+      const isDark = document.body.classList.contains('dark-theme');
+      themeSelector.value = isDark ? 'dark' : 'light';
+    }
+  }
+
+  /**
+   * Save basic appearance settings
+   */
+  function saveBasicAppearanceSettings() {
+    const themeSelector = document.getElementById('theme-toggle-basic');
+    if (themeSelector) {
+      const selectedTheme = themeSelector.value;
+      const isDark = selectedTheme === 'dark';
+
+      // Apply theme
+      if (isDark) {
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+      }
+
+      // Save to localStorage
+      localStorage.setItem('basicTheme', selectedTheme);
+      console.log('Basic theme saved:', selectedTheme);
+    }
+  }
+
+  /**
+   * Render fonts section content
+   */
+  function renderFontsSection(container) {
+    if (!window.BasicFontSettings) {
+      container.innerHTML =
+        '<div class="settings-error">Font settings not available</div>';
+      return;
+    }
+
+    // Use BasicFontSettings to render font settings
+    BasicFontSettings.renderFontSettings(container);
+  }
+
+  /**
+   * Save font settings
+   */
+  function saveFontSettings() {
+    if (window.BasicFontSettings) {
+      // BasicFontSettings applies immediately when settings are changed
+      const applyButton = document.querySelector('#apply-font-settings');
+      if (applyButton) {
+        applyButton.click();
+      }
+    }
+  }
+
+  /**
+   * Render plugins section content
+   */
+  function renderPluginsSection(container) {
+    if (!window.PluginRegistry) {
+      container.innerHTML =
+        '<div class="settings-error">Plugin registry not available</div>';
+      return;
+    }
+
+    const pluginsContent = document.createElement("div");
+    pluginsContent.className = "plugins-settings-content";
+
+    // Section header
+    const header = document.createElement("div");
+    header.className = "settings-subsection";
+    header.innerHTML = `
+      <h4 class="settings-subsection-title">🔌 Installed Plugins</h4>
+      <p class="settings-description" style="margin-bottom: 20px;">
+        Manage your plugins. Enable or disable plugins, and launch them directly from here.
+      </p>
+    `;
+    pluginsContent.appendChild(header);
+
+    // Get all plugins
+    const allPlugins = window.PluginRegistry.getAll();
     
-    // Public API
-    return {
-        initialize,
-        registerSection,
-        openSettingsModal,
-        closeSettingsModal,
-        switchToSection
-    };
+    if (allPlugins.length === 0) {
+      const emptyState = document.createElement("div");
+      emptyState.className = "plugins-empty-state";
+      emptyState.style.cssText = "text-align: center; padding: 40px; color: #666;";
+      emptyState.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">🔌</div>
+        <p>No plugins installed</p>
+        <p style="font-size: 14px; margin-top: 8px;">Plugins will appear here once registered</p>
+      `;
+      pluginsContent.appendChild(emptyState);
+    } else {
+      // Group plugins by category
+      const pluginsByCategory = {};
+      allPlugins.forEach(plugin => {
+        const category = plugin.category || 'other';
+        if (!pluginsByCategory[category]) {
+          pluginsByCategory[category] = [];
+        }
+        pluginsByCategory[category].push(plugin);
+      });
+
+      // Render plugins by category
+      Object.keys(pluginsByCategory).sort().forEach(category => {
+        const categorySection = document.createElement("div");
+        categorySection.className = "plugins-category-section";
+        categorySection.style.cssText = "margin-bottom: 24px;";
+
+        const categoryTitle = document.createElement("h5");
+        categoryTitle.className = "settings-subsection-title";
+        categoryTitle.style.cssText = "font-size: 16px; margin-bottom: 12px; text-transform: capitalize;";
+        categoryTitle.textContent = category;
+        categorySection.appendChild(categoryTitle);
+
+        pluginsByCategory[category].forEach(plugin => {
+          const pluginCard = createPluginCard(plugin);
+          categorySection.appendChild(pluginCard);
+        });
+
+        pluginsContent.appendChild(categorySection);
+      });
+    }
+
+    container.appendChild(pluginsContent);
+  }
+
+  /**
+   * Create a plugin card element
+   */
+  function createPluginCard(plugin) {
+    const card = document.createElement("div");
+    card.className = "plugin-card";
+    card.style.cssText = `
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: white;
+      transition: box-shadow 0.2s;
+    `;
+    card.style.boxShadow = plugin.enabled ? '0 2px 4px rgba(0,0,0,0.1)' : 'none';
+    card.style.opacity = plugin.enabled ? '1' : '0.6';
+
+    const header = document.createElement("div");
+    header.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;";
+
+    const left = document.createElement("div");
+    left.style.cssText = "display: flex; align-items: center; gap: 12px; flex: 1;";
+
+    const icon = document.createElement("span");
+    icon.style.cssText = "font-size: 24px;";
+    icon.textContent = plugin.icon || "🔌";
+
+    const info = document.createElement("div");
+    info.style.cssText = "flex: 1;";
+
+    const name = document.createElement("div");
+    name.style.cssText = "font-weight: 600; font-size: 16px; margin-bottom: 4px;";
+    name.textContent = plugin.name;
+
+    const description = document.createElement("div");
+    description.style.cssText = "font-size: 14px; color: #666; margin-bottom: 4px;";
+    description.textContent = plugin.description || "No description";
+
+    const meta = document.createElement("div");
+    meta.style.cssText = "font-size: 12px; color: #999;";
+    meta.textContent = `v${plugin.version}${plugin.author ? ` by ${plugin.author}` : ''}`;
+
+    info.appendChild(name);
+    info.appendChild(description);
+    info.appendChild(meta);
+
+    left.appendChild(icon);
+    left.appendChild(info);
+
+    const controls = document.createElement("div");
+    controls.style.cssText = "display: flex; align-items: center; gap: 8px;";
+
+    // Enable/Disable toggle
+    const toggleLabel = document.createElement("label");
+    toggleLabel.style.cssText = "display: flex; align-items: center; cursor: pointer;";
+
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.checked = plugin.enabled;
+    toggle.dataset.pluginId = plugin.id;
+    toggle.style.cssText = "width: 40px; height: 20px; cursor: pointer; margin-right: 8px;";
+    toggle.addEventListener("change", (e) => {
+      const pluginId = e.target.dataset.pluginId;
+      if (e.target.checked) {
+        window.PluginRegistry.enable(pluginId);
+      } else {
+        window.PluginRegistry.disable(pluginId);
+      }
+      // Update card appearance
+      card.style.opacity = e.target.checked ? '1' : '0.6';
+      card.style.boxShadow = e.target.checked ? '0 2px 4px rgba(0,0,0,0.1)' : 'none';
+    });
+
+    toggleLabel.appendChild(toggle);
+    toggleLabel.appendChild(document.createTextNode(plugin.enabled ? "Enabled" : "Disabled"));
+
+    // Launch button
+    const launchButton = document.createElement("button");
+    launchButton.textContent = "Launch";
+    launchButton.style.cssText = `
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    `;
+    launchButton.disabled = !plugin.enabled;
+    launchButton.addEventListener("click", () => {
+      window.PluginRegistry.launch(plugin.id);
+    });
+
+    controls.appendChild(toggleLabel);
+    controls.appendChild(launchButton);
+
+    header.appendChild(left);
+    header.appendChild(controls);
+
+    card.appendChild(header);
+
+    return card;
+  }
+
+  /**
+   * Save plugins settings
+   */
+  function savePluginsSettings() {
+    // Plugin states are saved automatically when toggled
+    // This function is here for consistency with other sections
+    console.log("Plugin settings saved");
+  }
+
+  // Public API
+  return {
+    initialize,
+    registerSection,
+    openSettingsModal,
+    closeSettingsModal,
+    switchToSection,
+  };
 })();
 
 // Make it available globally
 window.SettingsManager = SettingsManager;
 
 // Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM ready, initializing SettingsManager');
-    SettingsManager.initialize();
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM ready, initializing SettingsManager");
+  SettingsManager.initialize();
 });
 
 // Also initialize immediately if DOM is already loaded
-if (document.readyState === 'interactive' || document.readyState === 'complete') {
-    console.log('DOM already ready, initializing SettingsManager immediately');
-    SettingsManager.initialize();
+if (
+  document.readyState === "interactive" ||
+  document.readyState === "complete"
+) {
+  console.log("DOM already ready, initializing SettingsManager immediately");
+  SettingsManager.initialize();
 }

@@ -444,69 +444,6 @@
     }
   }
   
-  /* Plugin category styles */
-  .settings-modal .plugin-category {
-    margin-bottom: 24px;
-  }
-  
-  .settings-modal .plugin-category h3 {
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #4a5568;
-    text-transform: capitalize;
-  }
-  
-  .dark-theme .settings-modal .plugin-category h3 {
-    color: #e2e8f0;
-  }
-  
-  .settings-modal .plugin-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  
-  .dark-theme .settings-modal .plugin-item {
-    border-bottom-color: #4a5568;
-  }
-  
-  .settings-modal .plugin-item:last-child {
-    border-bottom: none;
-  }
-  
-  .settings-modal .plugin-info {
-    flex: 1;
-  }
-  
-  .settings-modal .plugin-name {
-    font-weight: 500;
-    color: #2d3748;
-    margin-bottom: 2px;
-  }
-  
-  .dark-theme .settings-modal .plugin-name {
-    color: #e2e8f0;
-  }
-  
-  .settings-modal .plugin-description {
-    font-size: 13px;
-    color: #718096;
-    line-height: 1.4;
-  }
-  
-  .dark-theme .settings-modal .plugin-description {
-    color: #a0aec0;
-  }
-  
-  .settings-modal .reload-required {
-    color: #d69e2e;
-    font-size: 11px;
-    font-weight: normal;
-  }
-  
   /* Toggle switch styles */
   .settings-modal .switch {
     position: relative;
@@ -561,18 +498,61 @@
     background-color: #63b3ed;
   }
   
+  /* Basic appearance settings styles */
+  .basic-appearance-settings .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+  }
+
+  .dark-theme .basic-appearance-settings .setting-item {
+    background-color: #374151;
+  }
+
+  .basic-appearance-settings label {
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .dark-theme .basic-appearance-settings label {
+    color: #e5e7eb;
+  }
+
+  .basic-appearance-settings .setting-input {
+    margin-left: 12px;
+  }
+
+  .basic-appearance-settings .setting-note {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .dark-theme .basic-appearance-settings .setting-note {
+    color: #9ca3af;
+  }
+
   /* Appearance settings styles */
-  .settings-modal .appearance-settings-content .style-settings-section {
+  .settings-modal .appearance-settings-content .basic-appearance-settings {
     margin-bottom: 32px;
     padding-bottom: 24px;
     border-bottom: 1px solid #f1f5f9;
   }
-  
-  .dark-theme .settings-modal .appearance-settings-content .style-settings-section {
+
+  .dark-theme .settings-modal .appearance-settings-content .basic-appearance-settings {
     border-bottom-color: #4a5568;
   }
-  
-  .settings-modal .appearance-settings-content .style-settings-section:last-child {
+
+  .settings-modal .appearance-settings-content .basic-appearance-settings:last-child {
+    border-bottom: none;
+  }
+
+  .settings-modal .appearance-settings-content .basic-appearance-settings:last-child {
     border-bottom: none;
   }
   
@@ -980,3 +960,90 @@
   .dark-theme .download-status {
     color: #9ca3af;
   }
+
+.settings-subsection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.settings-subsection-title {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.settings-row {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.settings-label {
+  font-weight: 500;
+  color: #495057;
+  min-width: 200px;
+}
+
+.settings-control {
+  flex: 1;
+}
+
+.settings-select,
+.settings-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.settings-select:focus,
+.settings-input:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.settings-checkbox {
+  margin-right: 8px;
+  transform: scale(1.2);
+}
+
+.settings-description {
+  font-size: 13px;
+  color: #6c757d;
+  font-style: italic;
+  margin-left: 215px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .settings-subsection {
+      background: #2d3748;
+      border-color: #4a5568;
+  }
+  
+  .settings-subsection-title {
+      color: #e2e8f0;
+  }
+  
+  .settings-label {
+      color: #e2e8f0;
+  }
+  
+  .settings-select,
+  .settings-input {
+      background: #1a202c;
+      border-color: #4a5568;
+      color: #e2e8f0;
+  }
+  
+  .settings-description {
+      color: #a0aec0;
+  }
+}
